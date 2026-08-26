@@ -1,0 +1,17 @@
+{
+  "name": "gym-vault",
+  "version": "0.1.0",
+  "description": "Training dashboard, plans, goals and history as plain files in your Obsidian vault.",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "test": "node scripts/run-tests.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
