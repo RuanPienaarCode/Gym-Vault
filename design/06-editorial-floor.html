@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<!-- MOCKUP ONLY — design exploration for Gym Vault. Not production code.
+     Direction 06 of 6: EDITORIAL FLOOR — the chosen hybrid of 01 + 03.
+     Resting state is editorial calm; floor energy is spent only where you act. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault — 06 Editorial Floor (chosen)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#ffffff;
+    --paper-2:#f5f7ef;
+    --ink:#141a0e;
+    --ink-2:#5b6551;
+    --rule:#e2e8d8;
+    --rule-2:#cfd9be;
+    --lime:#84cc16;
+    --lime-hi:#a3e635;
+    --lime-deep:#4d7c0f;
+    --lime-ghost:#f4fbe8;
+    /* Condensed display. Anton over a condensed-ish fallback chain; on iOS the
+       chain runs out and lands on system-ui — see the footer note. */
+    --display:'Anton', Impact, 'Haettenschweiler', 'Arial Narrow Bold', 'Arial Narrow', system-ui, sans-serif;
+    --body:-apple-system, BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper-2);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+  :focus-visible{outline:3px solid var(--lime-deep);outline-offset:3px}
+
+  /* ---- direction strip ---- */
+  .dirbar{
+    position:sticky;top:0;z-index:40;background:var(--ink);color:#fff;
+    padding:10px 16px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;
+    border-bottom:3px solid var(--lime);
+  }
+  .dirbar h1{
+    margin:0;font-family:var(--display);font-weight:400;font-size:18px;
+    letter-spacing:.03em;text-transform:uppercase;color:var(--lime-hi);
+  }
+  .dirbar .pick{
+    background:var(--lime);color:var(--ink);font-size:10px;font-weight:800;letter-spacing:.14em;
+    text-transform:uppercase;padding:3px 9px;
+  }
+  .dirbar p{margin:0;font-size:12.5px;color:#d3dbc8;flex:1 1 240px}
+  .dirbar a{color:#fff;font-size:12px;font-weight:700}
+
+  .wrap{max-width:440px;margin:0 auto;padding:0 0 60px;overflow-x:hidden}
+  @media (min-width:820px){ .wrap{max-width:700px} }
+
+  .viewlabel{
+    margin:32px 16px 0;padding-bottom:6px;border-bottom:2px solid var(--ink);
+    font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  }
+  .screen{background:var(--paper);margin:0 0 6px;overflow:hidden}
+  .pad{padding:20px 16px 26px}
+  h3,h4{margin:0}
+
+  .disp{font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:.86;letter-spacing:-.005em;margin:0}
+  .kicker{font-size:10.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);margin:0}
+  .shout{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+
+  /* =========================================================
+     TODAY — editorial masthead on white, floor slab at the base
+     ========================================================= */
+  .masthead{padding:20px 16px 0}
+  .masthead .disp{
+    /* capped deliberately: 62px ceiling keeps hero + week + stats inside
+       roughly one and a half screens on a 390px pane */
+    font-size:clamp(36px,11vw,62px);margin-top:10px;
+  }
+  .mark{background:linear-gradient(180deg,transparent 56%,var(--lime-hi) 56%,var(--lime-hi) 93%,transparent 93%)}
+  .masthead .sub{margin:12px 0 0;font-size:14px;color:var(--ink-2);max-width:38ch}
+  .rx{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid var(--rule)}
+  .rx li{
+    display:flex;justify-content:space-between;gap:14px;align-items:baseline;
+    padding:7px 0;border-bottom:1px solid var(--rule);font-size:14px;font-weight:600;
+  }
+  .rx b{font-family:var(--display);font-weight:400;font-size:15px;letter-spacing:.02em;color:var(--lime-deep);white-space:nowrap}
+
+  /* the one lime flood on the page — it holds the action, nothing else */
+  .actionslab{
+    position:relative;margin-top:18px;background:var(--lime);color:var(--ink);
+    padding:18px 16px 22px;overflow:hidden;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 20px),0 100%);
+  }
+  .speed{position:absolute;inset:0;pointer-events:none}
+  .speed span{position:absolute;height:5px;background:rgba(20,26,14,.12);transform:skewX(-24deg)}
+  .actionslab .line{position:relative;display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+  .actionslab .line .shout{color:#2b3a12}
+  .go{
+    position:relative;margin-top:12px;width:100%;min-height:60px;border:0;cursor:pointer;
+    background:var(--ink);color:var(--lime-hi);
+    font-family:var(--display);font-size:23px;letter-spacing:.06em;text-transform:uppercase;
+    clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%);
+  }
+  .go:hover{background:#000}
+
+  /* week — editorial typographic row, one lime block for today */
+  .week{display:grid;grid-template-columns:repeat(7,1fr);border-top:2px solid var(--ink);border-bottom:1px solid var(--rule)}
+  .wd{padding:9px 0 8px;text-align:center;border-right:1px solid var(--rule)}
+  .wd:last-child{border-right:0}
+  .wd .d{font-family:var(--display);font-size:17px;line-height:1}
+  .wd .t{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--ink-2);margin-top:5px}
+  .wd.done .t{color:var(--lime-deep)}
+  .wd.done .d{color:var(--lime-deep)}
+  .wd.today{background:var(--ink)}
+  .wd.today .d{color:#fff}
+  .wd.today .t{color:var(--lime-hi)}
+
+  /* stats — oversized numerals on a hairline grid */
+  .figs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--rule)}
+  @media (min-width:620px){ .figs{grid-template-columns:repeat(4,1fr)} }
+  .fig{padding:13px 12px 15px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .fig:nth-child(2n){border-right:0}
+  @media (min-width:620px){ .fig,.fig:nth-child(2n){border-right:1px solid var(--rule);border-bottom:0} .fig:last-child{border-right:0} }
+  .fig .n{font-family:var(--display);font-size:clamp(36px,10vw,46px);line-height:.92;letter-spacing:-.02em}
+  .fig .n small{font-size:.4em;letter-spacing:.02em;color:var(--ink-2)}
+  .fig .l{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2);margin-top:7px}
+
+  /* goals — floor slabs, editorial labels */
+  .sect-title{margin:24px 0 14px;font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.01em}
+  .goal{margin-bottom:16px}
+  .goal-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+  .goal-name{font-size:11.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+  .goal-num{font-family:var(--display);font-size:21px;line-height:1;color:var(--lime-deep)}
+  .goal-num em{font-style:normal;color:var(--ink-2);font-size:.62em}
+  .track{height:14px;background:var(--lime-ghost);border:2px solid var(--ink);position:relative;overflow:hidden}
+  .track i{
+    position:absolute;inset:0 auto 0 0;display:block;background:var(--lime);
+    background-image:repeating-linear-gradient(115deg,rgba(20,26,14,.17) 0 5px,transparent 5px 13px);
+  }
+  .goal-note{font-size:12px;color:var(--ink-2);margin:6px 0 0}
+  .microcopy{
+    margin:22px 0 0;text-align:center;font-family:var(--display);font-size:13px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);
+  }
+
+  /* =========================================================
+     EXERCISES — editorial index, calm; energy only on hover/tap
+     ========================================================= */
+  .index{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
+  .index li{border-bottom:1px solid var(--rule)}
+  .index button{
+    width:100%;display:flex;gap:14px;align-items:center;text-align:left;
+    background:none;border:0;padding:13px 2px;cursor:pointer;font:inherit;color:inherit;
+  }
+  .index button:hover{background:var(--lime-ghost);box-shadow:inset 4px 0 0 var(--lime)}
+  .idx{font-family:var(--display);font-size:14px;color:var(--ink-2);width:26px;flex:0 0 auto}
+  .ex-main{flex:1 1 auto;min-width:0}
+  .ex-name{display:block;font-family:var(--display);font-size:clamp(22px,6vw,28px);line-height:1;text-transform:uppercase}
+  .ex-meta{display:block;font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-2);margin-top:6px}
+  .ex-best{flex:0 0 auto;background:var(--lime);font-family:var(--display);font-size:15px;padding:4px 10px;white-space:nowrap}
+
+  .detail{margin-top:28px;border-top:3px solid var(--ink);padding-top:18px}
+  .detail .disp{font-size:clamp(26px,7.5vw,36px)}
+  .frames{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .frame{margin:0;position:relative;background:var(--paper-2);border:2px solid var(--ink)}
+  .frame svg{display:block;width:100%;height:auto}
+  .frame figcaption{
+    position:absolute;left:0;bottom:0;background:var(--ink);color:var(--lime-hi);
+    font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;padding:4px 10px;
+  }
+  .steps{counter-reset:s;list-style:none;margin:18px 0 0;padding:0}
+  .steps li{counter-increment:s;position:relative;padding:0 0 11px 38px;font-size:14px;line-height:1.55}
+  .steps li::before{
+    content:counter(s,decimal-leading-zero);position:absolute;left:0;top:-2px;
+    font-family:var(--display);font-size:19px;color:var(--lime-deep);
+  }
+  .cue{border-left:4px solid var(--lime);padding:4px 0 4px 14px;font-size:13.5px;color:var(--ink-2);margin:2px 0 0;line-height:1.55}
+  .cue b{color:var(--ink)}
+
+  /* =========================================================
+     LOG — this is where the floor takes over completely
+     ========================================================= */
+  .logtop{background:var(--ink);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .logtop .disp{font-size:clamp(20px,6vw,26px);color:#fff}
+  .logtop .sub{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--lime-hi);margin-top:5px}
+  .clock{font-family:var(--display);font-size:26px;color:var(--lime-hi);font-variant-numeric:tabular-nums}
+  .logex{margin-top:18px}
+  .logex:first-of-type{margin-top:0}
+  .logex-head{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--lime);padding:9px 12px}
+  .logex-name{font-family:var(--display);font-size:16px;text-transform:uppercase;line-height:1.05}
+  .logex-target{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#2b3a12;white-space:nowrap}
+  .sets{list-style:none;margin:0;padding:0}
+  .setrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:2px solid var(--ink);border-top:0}
+  .setrow.on{background:var(--ink);color:#fff}
+  .setno{font-family:var(--display);font-size:14px;width:22px;color:var(--ink-2)}
+  .setrow.on .setno{color:var(--lime-hi)}
+  .setval{
+    width:82px;min-height:46px;border:2px solid var(--ink);background:#fff;color:var(--ink);
+    font-family:var(--display);font-size:20px;text-align:center;font-variant-numeric:tabular-nums;padding:0 4px;
+  }
+  .setval::placeholder{color:#7f8b6f;font-family:var(--body);font-weight:600}
+  .setunit{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+  .setrow.on .setunit{color:#b8c4a8}
+  .tick{
+    margin-left:auto;width:48px;height:48px;border:2px solid var(--ink);background:#fff;color:#7f8b6f;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .setrow.on .tick{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+  .tick svg{width:22px;height:22px}
+  .addset{
+    width:100%;min-height:46px;border:2px dashed var(--ink);border-top:0;background:none;cursor:pointer;
+    font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);
+  }
+  .addset:hover{background:var(--lime-ghost);color:var(--lime-deep)}
+  .tally{
+    display:flex;justify-content:space-between;gap:12px;margin-top:22px;padding-top:12px;
+    border-top:2px solid var(--ink);font-size:10.5px;font-weight:800;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-2);
+  }
+  .tally b{display:block;font-family:var(--display);font-size:22px;letter-spacing:0;color:var(--ink);margin-top:4px}
+  .finish{
+    margin-top:16px;width:100%;min-height:66px;border:0;cursor:pointer;background:var(--lime);color:var(--ink);
+    font-family:var(--display);font-size:26px;letter-spacing:.05em;text-transform:uppercase;
+    clip-path:polygon(0 0,100% 0,calc(100% - 20px) 100%,0 100%);
+  }
+  .finish:hover{background:var(--ink);color:var(--lime-hi)}
+  .discard{
+    margin-top:10px;width:100%;min-height:44px;background:none;border:0;cursor:pointer;
+    font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);
+  }
+  .discard:hover{color:#b91c1c}
+
+  /* ---- trade-offs ---- */
+  .tradeoffs{margin:32px 16px 0;background:var(--ink);color:#e6ecdd;padding:22px 18px}
+  .tradeoffs h2{margin:0 0 10px;font-family:var(--display);font-size:20px;letter-spacing:.05em;text-transform:uppercase;color:var(--lime-hi)}
+  .tradeoffs h3{margin:18px 0 6px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--lime-hi)}
+  .tradeoffs p,.tradeoffs li{font-size:13.5px;line-height:1.6;color:#d5ddca;margin:0}
+  .tradeoffs ul{margin:0;padding-left:18px}
+  .tradeoffs li{margin-bottom:7px}
+  .tradeoffs code{background:#2a331f;color:var(--lime-hi);padding:1px 5px;font-size:12.5px}
+</style>
+</head>
+<body>
+
+<header class="dirbar">
+  <h1>06 · Editorial Floor</h1>
+  <span class="pick">Chosen</span>
+  <p>Editorial calm as the resting state; floor energy spent only where you act — the hero CTA and the logging screen.</p>
+  <a href="index.html">All directions</a>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ TODAY ============ -->
+  <h2 class="viewlabel">View A — Today</h2>
+  <section class="screen" aria-label="Today dashboard">
+    <div class="masthead">
+      <p class="kicker">Wed 26 Aug · Day B · Get Over The Bar</p>
+      <h3 class="disp">Push<br><span class="mark">+ Volume</span></h3>
+      <p class="sub">The other half of the muscle-up. Dips lead today — clean reps, leave two in the tank.</p>
+      <ul class="rx">
+        <li><span>Straight-bar Dips</span><b>5 × submax</b></li>
+        <li><span>Pull-ups</span><b>4 × submax</b></li>
+        <li><span>Push-ups</span><b>3 × 10–15</b></li>
+        <li><span>Inverted Rows</span><b>3 × 8–12</b></li>
+        <li><span>Plank</span><b>3 × 65% max</b></li>
+      </ul>
+    </div>
+
+    <div class="actionslab">
+      <div class="speed" aria-hidden="true">
+        <span style="top:16%;left:-12%;width:62%"></span>
+        <span style="top:40%;left:28%;width:78%"></span>
+        <span style="top:74%;left:-8%;width:50%"></span>
+      </div>
+      <div class="line">
+        <span class="shout">17 sets · est. 30 min</span>
+        <span class="shout">Last: Mon · 21 sets</span>
+      </div>
+      <button class="go" type="button">Get after it</button>
+    </div>
+
+    <div class="week" role="group" aria-label="This week">
+      <div class="wd done"><div class="d">M</div><div class="t">A ✓</div></div>
+      <div class="wd"><div class="d">T</div><div class="t">—</div></div>
+      <div class="wd today"><div class="d">W</div><div class="t">B</div></div>
+      <div class="wd"><div class="d">T</div><div class="t">—</div></div>
+      <div class="wd"><div class="d">F</div><div class="t">C</div></div>
+      <div class="wd"><div class="d">S</div><div class="t">A*</div></div>
+      <div class="wd"><div class="d">S</div><div class="t">—</div></div>
+    </div>
+
+    <div class="figs">
+      <div class="fig"><div class="n">3</div><div class="l">Week streak</div></div>
+      <div class="fig"><div class="n">1</div><div class="l">This week</div></div>
+      <div class="fig"><div class="n">34</div><div class="l">Total sessions</div></div>
+      <div class="fig"><div class="n">21<small> sets</small></div><div class="l">Last · 24 Aug</div></div>
+    </div>
+
+    <div class="pad">
+      <h4 class="sect-title">Goals in flight</h4>
+      <div class="goal">
+        <div class="goal-head"><span class="goal-name">10 Pull-ups</span><span class="goal-num">7<em>/10</em></span></div>
+        <div class="track"><i style="width:70%"></i></div>
+        <p class="goal-note">Three reps off the first gateway.</p>
+      </div>
+      <div class="goal">
+        <div class="goal-head"><span class="goal-name">6-minute Plank</span><span class="goal-num">2:45<em>/6:00</em></span></div>
+        <div class="track"><i style="width:46%"></i></div>
+        <p class="goal-note">+10–15s a week. Test max monthly.</p>
+      </div>
+      <p class="microcopy">No zero days.</p>
+    </div>
+  </section>
+
+  <!-- ============ EXERCISES ============ -->
+  <h2 class="viewlabel">View B — Exercises &amp; detail</h2>
+  <section class="screen"><div class="pad" aria-label="Exercise library">
+    <p class="kicker" style="margin-bottom:12px">Library · 14 movements</p>
+    <ul class="index">
+      <li><button type="button">
+        <span class="idx">01</span>
+        <span class="ex-main"><span class="ex-name">Pull-ups</span><span class="ex-meta">Strength · back, biceps · bar</span></span>
+        <span class="ex-best">8</span>
+      </button></li>
+      <li><button type="button">
+        <span class="idx">02</span>
+        <span class="ex-main"><span class="ex-name">Straight-bar Dips</span><span class="ex-meta">Strength · chest, triceps · bar</span></span>
+        <span class="ex-best">6</span>
+      </button></li>
+      <li><button type="button">
+        <span class="idx">03</span>
+        <span class="ex-main"><span class="ex-name">Box Jumps</span><span class="ex-meta">Strength · quads, glutes · box</span></span>
+        <span class="ex-best">32</span>
+      </button></li>
+      <li><button type="button">
+        <span class="idx">04</span>
+        <span class="ex-main"><span class="ex-name">Plank</span><span class="ex-meta">Skill · core · bodyweight</span></span>
+        <span class="ex-best">2:45</span>
+      </button></li>
+    </ul>
+
+    <div class="detail">
+      <p class="kicker">Detail</p>
+      <h3 class="disp" style="margin-top:8px">Straight-bar Dips</h3>
+      <div class="frames">
+        <figure class="frame">
+          <svg viewBox="0 0 200 150" role="img" aria-label="Start position: athlete locked out with straight arms on top of the bar">
+            <line x1="12" y1="82" x2="188" y2="82" stroke="#141a0e" stroke-width="5"/>
+            <g fill="none" stroke="#141a0e" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M100 46 L100 76"/><path d="M100 52 L78 82"/><path d="M100 52 L122 82"/>
+              <path d="M100 76 L92 108 L98 132"/><path d="M100 76 L110 106 L104 132"/>
+            </g>
+            <circle cx="100" cy="32" r="12" fill="#141a0e"/>
+          </svg>
+          <figcaption>Start · lockout</figcaption>
+        </figure>
+        <figure class="frame">
+          <svg viewBox="0 0 200 150" role="img" aria-label="Finish position: athlete lowered until the bar reaches the lower chest, elbows bent">
+            <line x1="12" y1="82" x2="188" y2="82" stroke="#141a0e" stroke-width="5"/>
+            <g fill="none" stroke="#4d7c0f" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M100 72 L100 100"/><path d="M100 76 L74 96 L78 82"/><path d="M100 76 L126 96 L122 82"/>
+              <path d="M100 100 L120 118 L112 138"/><path d="M100 100 L106 122 L96 138"/>
+            </g>
+            <circle cx="100" cy="58" r="12" fill="#141a0e"/>
+          </svg>
+          <figcaption>Finish · bottom</figcaption>
+        </figure>
+      </div>
+      <ol class="steps">
+        <li>Support yourself on top of a single straight bar, hands just outside your hips, arms locked.</li>
+        <li>Lean slightly forward and bend the elbows until the bar reaches your lower chest / upper abs.</li>
+        <li>Press back to a <strong>full</strong> lockout at the top.</li>
+      </ol>
+      <p class="cue"><b>Cue:</b> the other half of the muscle-up — the top-out is exactly this position.</p>
+    </div>
+  </div></section>
+
+  <!-- ============ LOG ============ -->
+  <h2 class="viewlabel">View C — Logging a session</h2>
+  <section class="screen" aria-label="Live workout logging">
+    <div class="logtop">
+      <div>
+        <h3 class="disp">B · Push + Volume</h3>
+        <p class="sub">Get Over The Bar · Wed 26 Aug</p>
+      </div>
+      <span class="clock">12:41</span>
+    </div>
+
+    <div class="pad">
+      <div class="logex">
+        <div class="logex-head">
+          <h4 class="logex-name">Straight-bar Dips</h4>
+          <span class="logex-target">5 × submax</span>
+        </div>
+        <ul class="sets">
+          <li class="setrow on"><span class="setno">01</span><input class="setval" type="text" value="8" aria-label="Set 1 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 1 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow on"><span class="setno">02</span><input class="setval" type="text" value="7" aria-label="Set 2 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 2 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">03</span><input class="setval" type="text" value="6" aria-label="Set 3 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 3 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">04</span><input class="setval" type="text" placeholder="—" aria-label="Set 4 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 4 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">05</span><input class="setval" type="text" placeholder="—" aria-label="Set 5 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 5 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+        </ul>
+        <button class="addset" type="button">+ Add set</button>
+      </div>
+
+      <div class="logex">
+        <div class="logex-head">
+          <h4 class="logex-name">Pull-ups</h4>
+          <span class="logex-target">4 × submax</span>
+        </div>
+        <ul class="sets">
+          <li class="setrow on"><span class="setno">01</span><input class="setval" type="text" value="7" aria-label="Pull-ups set 1 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Pull-ups set 1 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">02</span><input class="setval" type="text" value="6" aria-label="Pull-ups set 2 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Pull-ups set 2 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">03</span><input class="setval" type="text" placeholder="—" aria-label="Pull-ups set 3 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Pull-ups set 3 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+        </ul>
+        <button class="addset" type="button">+ Add set</button>
+      </div>
+
+      <div class="tally">
+        <span>Sets<b>3</b></span>
+        <span>Reps<b>22</b></span>
+        <span>Elapsed<b>12:41</b></span>
+      </div>
+
+      <button class="finish" type="button">Bank it</button>
+      <button class="discard" type="button">Discard session</button>
+      <p class="microcopy">The bar isn't going to climb itself.</p>
+    </div>
+  </section>
+
+  <!-- ============ TRADE-OFFS ============ -->
+  <aside class="tradeoffs">
+    <h2>Trade-offs</h2>
+    <h3>Wins</h3>
+    <p>Energy is now a scarce resource instead of a background hum: there is exactly one lime flood per screen and it always sits under your thumb, so "what do I do now" is answered by colour before you read a word. The editorial masthead still tells you what today is in one glance, and the logging screen keeps 48px targets and hard-edged rows for sweaty mid-set taps — the two things each parent was actually best at.</p>
+    <h3>Costs</h3>
+    <p>It's a two-register design, so it needs discipline to extend: every new screen has to decide whether it's a reading surface or an acting surface, and a careless third register (Plans, History, Profile) will make it look inconsistent rather than intentional. The 62px display cap is a compromise — it's smaller than 01's cover-line drama and bigger than 03's slab type, so neither parent's peak moment is fully preserved. The condensed webfont is still the weak link on iOS.</p>
+    <h3>Mapping onto <code>src/styles.css</code></h3>
+    <ul>
+      <li><strong>Split the hero.</strong> <code>.gv-hero</code> loses its gradient and becomes a plain white masthead; the lime gradient moves to a new <code>.gv-hero-action</code> wrapper that holds only <code>.gv-btn-hero</code>. That's one new element in <code>page-dashboard.js</code> and keeps <code>--gv-lime</code> doing exactly one job per screen.</li>
+      <li><strong>One new token, four call sites.</strong> Add <code>--gv-display</code> (Anton, with the Impact/Arial-Narrow fallback chain) and route only <code>.gv-hero-title</code>, <code>.gv-tile-big</code>, <code>.gv-ex-name</code> and <code>.gv-goal-nums b</code> at it. Ship the woff2 inside the plugin folder and reference it with a relative <code>@font-face</code> — iOS has none of the fallbacks, and Obsidian mobile is frequently offline.</li>
+      <li><strong>Two border registers, not one.</strong> Reading surfaces keep <code>1px solid var(--gv-line)</code> with <code>--gv-radius: 0</code> and <code>--gv-shadow: none</code>; acting surfaces (<code>.gv-log-set</code>, <code>.gv-set-input</code>, <code>.gv-set-done</code>, <code>.gv-bar</code>) go to <code>2px solid var(--gv-ink)</code>. <code>.gv-bar</code> grows 8px → 14px with a repeating-gradient stripe on <code>.gv-bar-fill</code> — same width maths from <code>goalProgress()</code>. Every new button colour rule still needs the <code>.gv-app</code> ancestor to beat app.css in light mode.</li>
+    </ul>
+  </aside>
+
+</div>
+</body>
+</html>

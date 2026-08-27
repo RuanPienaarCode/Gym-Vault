@@ -13,6 +13,7 @@ const pages = {
   history: require('./page-history'),
   profile: require('./page-profile'),
   log: require('./page-log'),
+  exercise: require('./page-exercise-detail'),
 };
 
 const NAV = [
@@ -30,7 +31,7 @@ function mountApp(view) {
   const io = makeIo(plugin);
 
   const ctx = {
-    app, plugin, io,
+    app, plugin, io, view,
     settings: plugin.settings,
     data: null,
     state: { page: 'dashboard', params: {}, logDraft: null },
@@ -39,6 +40,16 @@ function mountApp(view) {
 
   const rootEl = view.contentEl;
   rootEl.addClass('gv-app');
+
+  /* Skin + accent are classes on the app root; re-synced on every reload so
+     a settings change lands without reopening the view. */
+  const syncChrome = () => {
+    for (const cls of [...rootEl.classList]) {
+      if (cls.indexOf('gv-skin-') === 0 || cls.indexOf('gv-accent-') === 0) rootEl.classList.remove(cls);
+    }
+    rootEl.classList.add(`gv-skin-${plugin.settings.skin || 'floor'}`, `gv-accent-${plugin.settings.accent || 'lime'}`);
+  };
+  syncChrome();
 
   let navEl = null, pageEl = null;
 
@@ -88,6 +99,7 @@ function mountApp(view) {
   ctx.reload = async () => {
     ctx.data = await io.loadAll();
     ctx.settings = plugin.settings;
+    syncChrome();
     ctx.rerender();
   };
 
@@ -113,7 +125,9 @@ function mountApp(view) {
 
   function renderNavState() {
     if (!navEl) return;
-    const current = ctx.state.page === 'log' ? 'dashboard' : ctx.state.page;
+    const current = ctx.state.page === 'log' ? 'dashboard'
+      : ctx.state.page === 'exercise' ? 'exercises'
+      : ctx.state.page;
     for (const b of navEl.querySelectorAll('.gv-nav-btn')) {
       b.classList.toggle('on', b.getAttribute('data-page') === current);
     }

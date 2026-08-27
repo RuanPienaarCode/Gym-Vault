@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<!-- MOCKUP ONLY — design exploration for Gym Vault. Not production code.
+     Direction 05 of 5: STAT SHEET / BROADCAST. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault — 05 Stat Sheet</title>
+<style>
+  :root{
+    --bg:#f3f5ee;
+    --paper:#ffffff;
+    --ink:#141a0e;
+    --ink-2:#5b6551;
+    --grid:#e6ebdc;
+    --grid-2:#d4dcc5;
+    --lime:#84cc16;
+    --lime-hi:#a3e635;
+    --lime-deep:#4d7c0f;
+    --lime-ghost:#f4fbe8;
+    --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,'Roboto Mono','Liberation Mono',monospace;
+    --body:-apple-system, BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14.5px;line-height:1.5}
+  :focus-visible{outline:3px solid var(--lime-deep);outline-offset:2px}
+
+  .dirbar{
+    position:sticky;top:0;z-index:30;background:var(--ink);color:#fff;padding:11px 16px;
+    display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;border-bottom:2px solid var(--lime);
+  }
+  .dirbar h1{margin:0;font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--lime-hi)}
+  .dirbar p{margin:0;font-size:12.5px;color:#d2dac7;flex:1 1 250px}
+  .dirbar a{color:#fff;font-size:12px;font-weight:700}
+
+  .wrap{max-width:440px;margin:0 auto;padding:0 0 60px}
+  @media (min-width:820px){ .wrap{max-width:720px} }
+
+  .viewlabel{
+    margin:32px 14px 8px;font-family:var(--mono);font-size:11px;font-weight:700;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);
+  }
+  .screen{background:var(--paper);border:1px solid var(--grid-2);margin:0 14px}
+
+  h3,h4{margin:0}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .lbl{
+    font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-2);
+  }
+  .pad{padding:14px}
+
+  /* ---- scoreboard header ---- */
+  .board{
+    background:var(--ink);color:#fff;padding:12px 14px 14px;
+    background-image:linear-gradient(var(--ink),var(--ink)),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,transparent 1px 22px);
+    background-blend-mode:normal;
+  }
+  .board-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .board-top .lbl{color:#96a288}
+  .live{
+    display:inline-flex;align-items:center;gap:6px;background:var(--lime);color:var(--ink);
+    font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;padding:3px 8px;
+  }
+  .board h3{
+    font-family:var(--mono);font-size:clamp(20px,6vw,26px);font-weight:700;letter-spacing:-.01em;
+    text-transform:uppercase;margin-top:10px;
+  }
+  .board .plan{font-size:12.5px;color:#b6c1a7;margin:6px 0 0}
+  .board-row{display:grid;grid-template-columns:repeat(3,1fr);margin-top:14px;border-top:1px solid #333d26}
+  .board-cell{padding:10px 8px 0;border-left:1px solid #333d26}
+  .board-cell:first-child{border-left:0;padding-left:0}
+  .board-cell .v{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--lime-hi);font-variant-numeric:tabular-nums}
+  .board-cell .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#96a288;margin-top:4px}
+
+  /* ---- data tables ---- */
+  table{width:100%;border-collapse:collapse}
+  caption{text-align:left;padding:14px 14px 8px}
+  th,td{border-top:1px solid var(--grid);padding:9px 10px;text-align:left;vertical-align:middle}
+  thead th{
+    font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--ink-2);background:#fafcf5;border-top:1px solid var(--grid-2);border-bottom:1px solid var(--grid-2);
+    padding-top:7px;padding-bottom:7px;
+  }
+  td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  tbody tr:hover{background:#fafcf3}
+
+  /* ---- week table ---- */
+  .weektable td{text-align:center;padding:8px 2px;border-left:1px solid var(--grid)}
+  .weektable td:first-child{border-left:0}
+  .weektable th{text-align:center;padding-left:2px;padding-right:2px;border-left:1px solid var(--grid)}
+  .weektable th:first-child{border-left:0}
+  .code{font-family:var(--mono);font-size:12px;font-weight:700}
+  .weektable td.done{background:var(--lime-ghost)}
+  .weektable td.done .code{color:var(--lime-deep)}
+  .weektable td.today{background:var(--ink)}
+  .weektable td.today .code{color:var(--lime-hi)}
+  .weektable td.rest .code{color:#a6b195}
+
+  /* ---- stat strip ---- */
+  .strip{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid var(--grid-2)}
+  @media (min-width:600px){ .strip{grid-template-columns:repeat(4,1fr)} }
+  .cell{padding:12px 12px 14px;border-left:1px solid var(--grid);border-bottom:1px solid var(--grid)}
+  .cell:nth-child(odd){border-left:0}
+  @media (min-width:600px){ .cell{border-left:1px solid var(--grid)} .cell:first-child{border-left:0} }
+  .cell .v{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .cell .v small{font-size:.46em;color:var(--ink-2)}
+  .cell .k{margin-top:7px}
+  .delta{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--lime-deep);margin-left:6px}
+
+  /* ---- goal rows ---- */
+  .goaltable td{padding-top:11px;padding-bottom:11px}
+  .goalbar{height:6px;background:var(--grid);position:relative;min-width:70px}
+  .goalbar i{position:absolute;inset:0 auto 0 0;background:var(--lime)}
+  .pct{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--lime-deep)}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:0 20px;
+    border:0;background:var(--ink);color:var(--lime-hi);cursor:pointer;
+    font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  }
+  .btn:hover{background:var(--lime-deep);color:#fff}
+  .btn-block{display:flex;width:100%}
+  .btn-lime{background:var(--lime);color:var(--ink)}
+  .btn-lime:hover{background:var(--ink);color:var(--lime-hi)}
+  .btn-ghost{background:var(--paper);color:var(--ink);border:1px solid var(--grid-2)}
+  .btn-ghost:hover{background:var(--bg);color:var(--ink)}
+  .btn svg{width:16px;height:16px}
+
+  /* ---- exercise table + detail ---- */
+  .exname{font-weight:700;font-size:14.5px}
+  .exsub{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-top:3px}
+  .rowbtn{width:100%;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer}
+
+  .detail{border-top:2px solid var(--ink);margin-top:18px}
+  .detail h3{font-family:var(--mono);font-size:19px;font-weight:700;text-transform:uppercase;letter-spacing:-.01em}
+  .spec{margin-top:12px}
+  .spec td{padding:7px 0;font-size:13px}
+  .spec td:first-child{width:38%}
+  .spec td.k{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-2)}
+  .frames{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--grid-2);border-bottom:1px solid var(--grid-2);margin-top:16px}
+  .frame{margin:0;position:relative;background:#fafcf5;border-left:1px solid var(--grid)}
+  .frame:first-child{border-left:0}
+  .frame svg{display:block;width:100%;height:auto}
+  .frame figcaption{
+    position:absolute;left:0;top:0;background:var(--ink);color:var(--lime-hi);
+    font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;padding:3px 8px;
+  }
+  .steps{margin:14px 0 0;padding-left:18px}
+  .steps li{margin-bottom:8px;font-size:14px;line-height:1.55}
+  .cue{
+    margin-top:12px;border-left:3px solid var(--lime);background:var(--lime-ghost);
+    padding:10px 12px;font-size:13px;color:#3f5a1a;line-height:1.55;
+  }
+
+  /* ---- log ---- */
+  .logboard{background:var(--ink);color:#fff;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .logboard h3{font-family:var(--mono);font-size:16px;font-weight:700;text-transform:uppercase}
+  .logboard .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:#96a288;margin-top:4px}
+  .logclock{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--lime-hi);font-variant-numeric:tabular-nums}
+  .settable th.c,.settable td.c{text-align:center;width:56px}
+  .settable td{padding-top:6px;padding-bottom:6px}
+  .settable tr.on{background:var(--lime-ghost)}
+  .setval{
+    width:100%;max-width:88px;min-height:42px;border:1px solid var(--grid-2);background:#fff;color:var(--ink);
+    font-family:var(--mono);font-size:17px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;padding:0 4px;
+  }
+  .setval::placeholder{color:#b8c2a9}
+  .tick{
+    width:44px;height:44px;border:1px solid var(--grid-2);background:#fff;color:#b8c2a9;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;margin:0 auto;
+  }
+  tr.on .tick{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+  .tick svg{width:20px;height:20px}
+  .exhead{
+    display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    padding:12px 14px 8px;border-top:2px solid var(--ink);
+  }
+  .exhead h4{font-family:var(--mono);font-size:14px;font-weight:700;text-transform:uppercase}
+  .addset{
+    width:100%;min-height:42px;border:0;border-top:1px solid var(--grid);background:#fafcf5;cursor:pointer;
+    font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);
+  }
+  .addset:hover{background:var(--lime-ghost);color:var(--lime-deep)}
+  .totals{
+    display:flex;justify-content:space-between;gap:12px;padding:12px 14px;
+    border-top:2px solid var(--ink);font-family:var(--mono);font-size:11px;
+    letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);
+  }
+  .totals b{color:var(--ink);font-size:14px}
+
+  /* ---- trade-offs ---- */
+  .tradeoffs{margin:32px 14px 0;background:var(--paper);border:1px solid var(--grid-2);border-top:3px solid var(--ink);padding:20px 16px}
+  .tradeoffs h2{margin:0 0 6px;font-family:var(--mono);font-size:16px;font-weight:700;text-transform:uppercase}
+  .tradeoffs h3{margin:18px 0 6px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--lime-deep)}
+  .tradeoffs p,.tradeoffs li{font-size:13.5px;line-height:1.6;color:var(--ink-2);margin:0}
+  .tradeoffs ul{margin:0;padding-left:18px}
+  .tradeoffs li{margin-bottom:7px}
+  .tradeoffs code{background:var(--lime-ghost);color:var(--lime-deep);padding:1px 5px;font-size:12.5px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<header class="dirbar">
+  <h1>05 · Stat Sheet</h1>
+  <p>Broadcast telemetry — mono numerals, ruled grids, tables instead of cards. The data is the design.</p>
+  <a href="index.html">All 5 directions</a>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ TODAY ============ -->
+  <h2 class="viewlabel">View A — Today</h2>
+  <section class="screen" aria-label="Today dashboard">
+    <div class="board">
+      <div class="board-top">
+        <span class="lbl">WED 26 AUG 2026 · WK 35</span>
+        <span class="live">DAY B</span>
+      </div>
+      <h3>Push + Volume</h3>
+      <p class="plan">GET OVER THE BAR · 5 EX · EST 30 MIN</p>
+      <div class="board-row">
+        <div class="board-cell"><div class="v">17</div><div class="k">sets planned</div></div>
+        <div class="board-cell"><div class="v">03</div><div class="k">week streak</div></div>
+        <div class="board-cell"><div class="v">34</div><div class="k">sessions</div></div>
+      </div>
+    </div>
+
+    <table>
+      <caption class="lbl">Today's card</caption>
+      <thead>
+        <tr><th scope="col">Exercise</th><th scope="col" class="num">Sets</th><th scope="col" class="num">Target</th><th scope="col" class="num">Last</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Straight-bar Dips</td><td class="num">5</td><td class="num">submax</td><td class="num">6</td></tr>
+        <tr><td>Pull-ups</td><td class="num">4</td><td class="num">submax</td><td class="num">8</td></tr>
+        <tr><td>Push-ups</td><td class="num">3</td><td class="num">10–15</td><td class="num">14</td></tr>
+        <tr><td>Inverted Rows</td><td class="num">3</td><td class="num">8–12</td><td class="num">12</td></tr>
+        <tr><td>Plank</td><td class="num">3</td><td class="num">65% max</td><td class="num">1:48</td></tr>
+      </tbody>
+    </table>
+    <div class="pad">
+      <button class="btn btn-block btn-lime" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        Start workout
+      </button>
+    </div>
+
+    <table class="weektable">
+      <caption class="lbl">Week 35</caption>
+      <thead>
+        <tr><th scope="col">Mon</th><th scope="col">Tue</th><th scope="col">Wed</th><th scope="col">Thu</th><th scope="col">Fri</th><th scope="col">Sat</th><th scope="col">Sun</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="done"><span class="code">A ✓</span></td>
+          <td class="rest"><span class="code">—</span></td>
+          <td class="today"><span class="code">B</span></td>
+          <td class="rest"><span class="code">—</span></td>
+          <td><span class="code">C</span></td>
+          <td><span class="code">A*</span></td>
+          <td class="rest"><span class="code">—</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="strip">
+      <div class="cell"><div class="v">3</div><div class="k lbl">week streak <span class="delta">+1</span></div></div>
+      <div class="cell"><div class="v">1<small>/4</small></div><div class="k lbl">this week</div></div>
+      <div class="cell"><div class="v">34</div><div class="k lbl">total sessions</div></div>
+      <div class="cell"><div class="v">21</div><div class="k lbl">last · 24 aug</div></div>
+    </div>
+
+    <table class="goaltable">
+      <caption class="lbl">Goals in flight</caption>
+      <thead>
+        <tr><th scope="col">Goal</th><th scope="col" class="num">Now</th><th scope="col" class="num">Target</th><th scope="col">Progress</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>10 Pull-ups</td><td class="num">7</td><td class="num">10</td>
+          <td><div class="goalbar"><i style="width:70%"></i></div><span class="pct">70%</span></td>
+        </tr>
+        <tr>
+          <td>6-minute Plank</td><td class="num">2:45</td><td class="num">6:00</td>
+          <td><div class="goalbar"><i style="width:46%"></i></div><span class="pct">46%</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ EXERCISES ============ -->
+  <h2 class="viewlabel">View B — Exercises &amp; detail</h2>
+  <section class="screen" aria-label="Exercise library">
+    <table>
+      <caption class="lbl">Library · 14 movements</caption>
+      <thead>
+        <tr><th scope="col">Exercise</th><th scope="col" class="num">Best</th><th scope="col" class="num">Sessions</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><button class="rowbtn" type="button"><span class="exname">Pull-ups</span><span class="exsub">STR · back, biceps · bar</span></button></td><td class="num">8</td><td class="num">26</td></tr>
+        <tr><td><button class="rowbtn" type="button"><span class="exname">Straight-bar Dips</span><span class="exsub">STR · chest, triceps · bar</span></button></td><td class="num">6</td><td class="num">24</td></tr>
+        <tr><td><button class="rowbtn" type="button"><span class="exname">Box Jumps</span><span class="exsub">STR · quads, glutes · box</span></button></td><td class="num">32</td><td class="num">14</td></tr>
+        <tr><td><button class="rowbtn" type="button"><span class="exname">Plank</span><span class="exsub">SKL · core · bodyweight</span></button></td><td class="num">2:45</td><td class="num">19</td></tr>
+      </tbody>
+    </table>
+
+    <div class="detail">
+      <div class="pad">
+        <p class="lbl" style="margin:0 0 8px">Exercise detail</p>
+        <h3>Straight-bar Dips</h3>
+        <table class="spec">
+          <tbody>
+            <tr><td class="k">Type</td><td>Strength</td></tr>
+            <tr><td class="k">Muscles</td><td>chest, triceps, shoulders</td></tr>
+            <tr><td class="k">Equipment</td><td>bar</td></tr>
+            <tr><td class="k">Unit</td><td>reps</td></tr>
+            <tr><td class="k">Personal best</td><td class="mono" style="font-weight:700;color:var(--lime-deep)">6 reps · 24 Aug 2026</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="frames">
+        <figure class="frame">
+          <svg viewBox="0 0 200 150" role="img" aria-label="Start position: athlete locked out with straight arms on top of the bar">
+            <g stroke="#e6ebdc" stroke-width="1">
+              <path d="M0 30h200M0 60h200M0 110h200M50 0v150M150 0v150"/>
+            </g>
+            <line x1="14" y1="82" x2="186" y2="82" stroke="#141a0e" stroke-width="4"/>
+            <g fill="none" stroke="#4d7c0f" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M100 46 L100 76"/><path d="M100 52 L78 82"/><path d="M100 52 L122 82"/>
+              <path d="M100 76 L92 108 L98 132"/><path d="M100 76 L110 106 L104 132"/>
+            </g>
+            <circle cx="100" cy="32" r="11" fill="#141a0e"/>
+          </svg>
+          <figcaption>Frame 01 · start</figcaption>
+        </figure>
+        <figure class="frame">
+          <svg viewBox="0 0 200 150" role="img" aria-label="Finish position: athlete lowered until the bar reaches the lower chest, elbows bent">
+            <g stroke="#e6ebdc" stroke-width="1">
+              <path d="M0 30h200M0 60h200M0 110h200M50 0v150M150 0v150"/>
+            </g>
+            <line x1="14" y1="82" x2="186" y2="82" stroke="#141a0e" stroke-width="4"/>
+            <g fill="none" stroke="#4d7c0f" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M100 72 L100 100"/><path d="M100 76 L74 96 L78 82"/><path d="M100 76 L126 96 L122 82"/>
+              <path d="M100 100 L120 118 L112 138"/><path d="M100 100 L106 122 L96 138"/>
+            </g>
+            <circle cx="100" cy="58" r="11" fill="#141a0e"/>
+          </svg>
+          <figcaption>Frame 02 · finish</figcaption>
+        </figure>
+      </div>
+      <div class="pad">
+        <p class="lbl" style="margin:0 0 6px">How to</p>
+        <ol class="steps">
+          <li>Support yourself on top of a single straight bar, hands just outside your hips, arms locked.</li>
+          <li>Lean slightly forward and bend the elbows until the bar reaches your lower chest / upper abs.</li>
+          <li>Press back to a <strong>full</strong> lockout at the top.</li>
+        </ol>
+        <p class="cue"><strong>Cue:</strong> the other half of the muscle-up — the top-out is exactly this position.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LOG ============ -->
+  <h2 class="viewlabel">View C — Logging a session</h2>
+  <section class="screen" aria-label="Live workout logging">
+    <div class="logboard">
+      <div>
+        <h3>B · Push + Volume</h3>
+        <p class="k">Get Over The Bar · Wed 26 Aug</p>
+      </div>
+      <span class="logclock">12:41</span>
+    </div>
+
+    <div class="exhead">
+      <h4>Straight-bar Dips</h4>
+      <span class="lbl">target 5 × submax</span>
+    </div>
+    <table class="settable">
+      <thead>
+        <tr><th scope="col" class="c">Set</th><th scope="col">Reps</th><th scope="col">Unit</th><th scope="col" class="c">Done</th></tr>
+      </thead>
+      <tbody>
+        <tr class="on"><td class="c mono">01</td><td><input class="setval" type="text" value="8" aria-label="Set 1 reps"></td><td class="lbl">reps</td>
+          <td class="c"><button class="tick" type="button" aria-label="Set 1 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></td></tr>
+        <tr class="on"><td class="c mono">02</td><td><input class="setval" type="text" value="7" aria-label="Set 2 reps"></td><td class="lbl">reps</td>
+          <td class="c"><button class="tick" type="button" aria-label="Set 2 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></td></tr>
+        <tr><td class="c mono">03</td><td><input class="setval" type="text" value="6" aria-label="Set 3 reps"></td><td class="lbl">reps</td>
+          <td class="c"><button class="tick" type="button" aria-label="Set 3 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></td></tr>
+        <tr><td class="c mono">04</td><td><input class="setval" type="text" placeholder="—" aria-label="Set 4 reps"></td><td class="lbl">reps</td>
+          <td class="c"><button class="tick" type="button" aria-label="Set 4 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></td></tr>
+        <tr><td class="c mono">05</td><td><input class="setval" type="text" placeholder="—" aria-label="Set 5 reps"></td><td class="lbl">reps</td>
+          <td class="c"><button class="tick" type="button" aria-label="Set 5 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></td></tr>
+      </tbody>
+    </table>
+    <button class="addset" type="button">+ Add set</button>
+
+    <div class="exhead">
+      <h4>Pull-ups</h4>
+      <span class="lbl">target 4 × submax</span>
+    </div>
+    <table class="settable">
+      <thead>
+        <tr><th scope="col" class="c">Set</th><th scope="col">Reps</th><th scope="col">Unit</th><th scope="col" class="c">Done</th></tr>
+      </thead>
+      <tbody>
+        <tr class="on"><td class="c mono">01</td><td><input class="setval" type="text" value="7" aria-label="Pull-ups set 1 reps"></td><td class="lbl">reps</td>
+          <td class="c"><button class="tick" type="button" aria-label="Pull-ups set 1 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></td></tr>
+        <tr><td class="c mono">02</td><td><input class="setval" type="text" value="6" aria-label="Pull-ups set 2 reps"></td><td class="lbl">reps</td>
+          <td class="c"><button class="tick" type="button" aria-label="Pull-ups set 2 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></td></tr>
+        <tr><td class="c mono">03</td><td><input class="setval" type="text" placeholder="—" aria-label="Pull-ups set 3 reps"></td><td class="lbl">reps</td>
+          <td class="c"><button class="tick" type="button" aria-label="Pull-ups set 3 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></td></tr>
+      </tbody>
+    </table>
+    <button class="addset" type="button">+ Add set</button>
+
+    <div class="totals">
+      <span>Sets logged <b>3</b></span>
+      <span>Reps <b>22</b></span>
+      <span>Elapsed <b>12:41</b></span>
+    </div>
+    <div class="pad" style="display:flex;gap:10px">
+      <button class="btn btn-ghost" type="button">Discard</button>
+      <button class="btn btn-lime" style="flex:1 1 auto" type="button">Finish session</button>
+    </div>
+  </section>
+
+  <!-- ============ TRADE-OFFS ============ -->
+  <aside class="tradeoffs">
+    <h2>Trade-offs</h2>
+    <h3>Wins</h3>
+    <p>Densest of the five — the whole session card, the week, four stats and two goals fit above one scroll on desktop, and tabular mono numerals make "7 vs 8 reps" comparable at a glance in a way proportional figures never are. Real <code>&lt;table&gt;</code> markup is also the most screen-reader-legible of the set.</p>
+    <h3>Costs</h3>
+    <p>It reads as an instrument, not a coach — no emotional lift on a day you don't feel like training, which is exactly when a training app earns its keep. Tables are also the most fragile layout at 390px: any new column forces a horizontal scroll or a stacked-row fallback, and long exercise names crowd the numeric columns.</p>
+    <h3>Mapping onto <code>src/styles.css</code></h3>
+    <ul>
+      <li>Add <code>--gv-mono</code> and apply it to <code>.gv-tile-big</code>, <code>.gv-goal-nums</code>, <code>.gv-set-input</code>, <code>.gv-log-clock</code>, plus <code>font-variant-numeric: tabular-nums</code> — that alone gets ~60% of this direction with no markup change.</li>
+      <li><code>.gv-set-table</code> / <code>.gv-log-sets</code> stop being flex rows and become a real <code>&lt;table&gt;</code>; that's the one structural change, and it touches <code>page-log.js</code> and <code>page-history.js</code>, not just CSS.</li>
+      <li><code>--gv-radius</code> → 0, <code>--gv-shadow</code> → none, and <code>--gv-line</code> does all separation as full-width rules. Keep <code>--gv-lime</code> for fills only (bars, ticks, the today cell) and <code>--gv-lime-deep</code> for every numeral that carries meaning — 5.0:1 on white.</li>
+    </ul>
+  </aside>
+
+</div>
+</body>
+</html>

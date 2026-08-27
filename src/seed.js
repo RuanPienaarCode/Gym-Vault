@@ -6,35 +6,156 @@
    so the plugin is useful the moment it's set up. Every file here is written
    with writeIfAbsent: a re-run never overwrites real data. */
 
+/* Demonstration media, two open sources:
+     - yuhonas/free-exercise-db (Unlicense — public domain): start/finish
+       photo pairs. Only true movement matches; where the nearest match is a
+       variant (parallel-bar dips, kettlebell pistol) the note body says so.
+     - wger.de (CC-BY-SA 4.0): extra photos and the only open exercise
+       VIDEOS around (by Goulart). Attribution lives in the note bodies and
+       in NOTICE; the media streams from wger.de when online.
+   URLs load when online and the detail page degrades quietly offline.
+   isSeedMediaUrl() below is the refresh gate — keep it covering every host
+   used here. */
+const IMG = id => [0, 1].map(n => `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/${id}/${n}.jpg`);
+const WGER = p => `https://wger.de/media/${p}`;
+
+/* True when a media URL is one the SEED wrote (vs. something the user set
+   themselves) — the only values a starter-media refresh may overwrite. */
+const isSeedMediaUrl = u => /^https:\/\/(raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\/|wger\.de\/media\/)/.test((u || '').toString());
+
 const SEED_EXERCISES = [
   { name: 'Pull-ups', type: 'strength', muscles: ['back', 'biceps', 'forearms'], equipment: 'bar', unit: 'reps',
-    note: 'Stop 1–2 reps before failure every set — quality volume, not grinding. Half of the muscle-up.' },
+    image: [...IMG('Pullups'), WGER('exercise-images/475/b0554016-16fd-4dbe-be47-a2a17d16ae0e.jpg')],
+    video: WGER('exercise-video/475/83067ffe-ccb9-4e22-8507-5131b211ce74.MOV'),
+    note: [
+      '1. Grab the bar just outside shoulder width, palms away, arms fully extended.',
+      '2. Pull the shoulder blades down first, then drive the elbows to your ribs until your chin clears the bar.',
+      '3. Lower under control to a full hang every rep.',
+      '',
+      '**Cue:** stop 1–2 reps before failure every set — quality volume, not grinding. Half of the muscle-up.',
+      '',
+      'Photo 3: Imobard · video: Goulart — both via wger.de, CC-BY-SA 4.0.',
+    ].join('\n') },
   { name: 'Explosive High Pull-ups', type: 'strength', muscles: ['back', 'biceps'], equipment: 'bar', unit: 'reps',
-    note: 'Pull as high as you can — chest, then belly toward the bar. Trains the "pop".' },
+    note: [
+      '1. Set up like a normal pull-up, but pull as FAST as you can.',
+      '2. Aim chest — then belly — toward the bar; let the elbows drive down and back.',
+      '3. Reset fully between reps; speed is the point, not reps.',
+      '',
+      '**Cue:** trains the "pop" that carries you over the bar in a muscle-up.',
+    ].join('\n') },
   { name: 'Inverted Rows', type: 'strength', muscles: ['back', 'shoulders'], equipment: 'bar', unit: 'reps',
-    note: 'Body straight as a plank, pull chest to the bar. Shoulder-health insurance — keep rows in even when time is tight.' },
+    image: IMG('Inverted_Row'),
+    note: [
+      '1. Set a bar around hip height; hang under it, heels on the floor, body straight as a plank.',
+      '2. Pull your chest to the bar, squeezing the shoulder blades together.',
+      '3. Lower slowly; don\'t let the hips sag. Walk feet further forward to make it harder.',
+      '',
+      '**Cue:** shoulder-health insurance — keep rows in even when time is tight.',
+    ].join('\n') },
   { name: 'Straight-bar Dips', type: 'strength', muscles: ['chest', 'triceps', 'shoulders'], equipment: 'bar', unit: 'reps',
-    note: 'Full lockout at the top. The other half of the muscle-up.' },
+    image: IMG('Parallel_Bar_Dip'),
+    video: WGER('exercise-video/194/d039ec90-474d-47a9-a3ad-bf0b00828c82.MP4'),
+    note: [
+      '1. Support yourself on top of a single straight bar, hands just outside your hips, arms locked.',
+      '2. Lean slightly forward and bend the elbows until the bar reaches your lower chest / upper abs.',
+      '3. Press back to a FULL lockout at the top.',
+      '',
+      '**Cue:** the other half of the muscle-up — the top-out is exactly this position.',
+      '',
+      'Media shows PARALLEL-BAR dips — same press pattern; on a straight bar both hands sit in front of you and the lean is stronger. Video: Goulart via wger.de, CC-BY-SA 4.0.',
+    ].join('\n') },
   { name: 'Push-ups', type: 'strength', muscles: ['chest', 'triceps', 'core'], equipment: 'bodyweight', unit: 'reps',
-    note: 'Elevate hands on the box if full push-ups are tough.' },
+    image: IMG('Pushups'),
+    note: [
+      '1. Hands under the shoulders, body one straight line from head to heels.',
+      '2. Lower until the chest nearly touches the floor, elbows ~45° from the body.',
+      '3. Press up to full lockout without the hips sagging or piking.',
+      '',
+      '**Cue:** elevate hands on the box if full push-ups are tough.',
+    ].join('\n') },
   { name: 'Box Jumps', type: 'strength', muscles: ['quads', 'glutes', 'calves'], equipment: 'box', unit: 'reps',
-    note: 'Soft, quiet landing. Step down every rep — never jump down. Landings over height, always.' },
+    image: IMG('Front_Box_Jump'),
+    note: [
+      '1. Stand a short step from the box, feet hip width.',
+      '2. Dip, swing the arms, and jump; land SOFT and quiet with both feet fully on the box.',
+      '3. Stand tall on top — then STEP down every rep. Never jump down.',
+      '',
+      '**Cue:** landings over height, always. Jumping down repeatedly is the #1 injury risk.',
+    ].join('\n') },
   { name: 'Dead Hang', type: 'skill', muscles: ['forearms', 'shoulders'], equipment: 'bar', unit: 'seconds',
-    note: 'Just hang. Grip + shoulder decompression — prehab gold at 40.' },
+    note: [
+      '1. Grab the bar palms away, hands shoulder width.',
+      '2. Hang with arms straight; let the shoulders decompress but keep them "plugged in" (not shrugged into your ears).',
+      '3. Breathe. Time the hold.',
+      '',
+      '**Cue:** grip + shoulder decompression — prehab gold at 40.',
+    ].join('\n') },
   { name: 'Plank', type: 'skill', muscles: ['core'], equipment: 'bodyweight', unit: 'seconds',
-    note: 'Flat back, hips don\'t sag. Sub in side planks now and then.' },
+    image: IMG('Plank'),
+    note: [
+      '1. Forearms on the floor, elbows under shoulders, feet together.',
+      '2. Squeeze glutes and brace the abs so the body is one rigid line.',
+      '3. Hold. The set ends when the hips sag or pike — not when the timer says so.',
+      '',
+      '**Cue:** flat back, hips don\'t sag. Sub in side planks now and then.',
+    ].join('\n') },
   { name: 'Romanian Deadlift', type: 'strength', muscles: ['hamstrings', 'glutes', 'back'], equipment: 'dumbbells', unit: 'kg',
-    note: 'Hips back, soft knees, load the hamstrings — chest stays proud. Two-leg first, progress to single-leg.' },
+    image: IMG('Romanian_Deadlift'),
+    video: WGER('exercise-video/507/307e7276-a14d-4ea0-b579-f5b0dbc6f5af.MOV'),
+    note: [
+      '1. Stand tall holding dumbbells in front of the thighs, soft knees.',
+      '2. Push the hips BACK, sliding the weights down the legs, chest proud, back flat.',
+      '3. Feel the hamstrings load around mid-shin, then drive the hips forward to stand.',
+      '',
+      '**Cue:** two-leg first, progress to single-leg. The posterior-chain work your back and jumps need.',
+      '',
+      'Video: Goulart via wger.de, CC-BY-SA 4.0.',
+    ].join('\n') },
   { name: 'Bulgarian Split Squat', type: 'strength', muscles: ['quads', 'glutes'], equipment: 'dumbbells', unit: 'kg',
-    note: 'Rear foot up on the box. Add weight when 8 feels easy. Leads to the pistol.' },
+    note: [
+      '1. Rear foot up on the box behind you, front foot far enough forward that the knee tracks over the toes.',
+      '2. Lower straight down until the front thigh is about parallel.',
+      '3. Drive through the front heel to stand.',
+      '',
+      '**Cue:** add weight when 8 feels easy. Builds the single-leg strength that leads to the pistol.',
+    ].join('\n') },
   { name: 'Pistol Squat Progression', type: 'skill', muscles: ['quads', 'glutes', 'core'], equipment: 'bodyweight', unit: 'reps',
-    note: 'Box-assisted (sit to box) → higher surface → full. Superset with split squats early on.' },
+    image: IMG('Kettlebell_Pistol_Squat'),
+    note: [
+      '1. Stand on one leg, the other held straight in front.',
+      '2. Sit back and down as far as your current progression allows — to a box at first.',
+      '3. Stand without touching the free leg down.',
+      '',
+      '**Progression:** sit to a box → lower surface → full pistol. Superset with split squats early on.',
+      '',
+      'Photos show the kettlebell version — the counterweight actually makes it EASIER; same pattern without it.',
+    ].join('\n') },
   { name: 'Toes-to-bar Ladder', type: 'skill', muscles: ['core', 'forearms'], equipment: 'bar', unit: 'reps',
-    note: 'Work the first rung you can\'t cheat: knee raise → leg raise → toes-to-bar. Slow, no swinging.' },
+    image: IMG('Hanging_Leg_Raise'),
+    note: [
+      '1. Hang from the bar, shoulders engaged, body still.',
+      '2. Work the first rung you can\'t cheat: knee raise → straight-leg raise → toes to the bar.',
+      '3. Lower SLOWLY — no swinging, no kipping.',
+      '',
+      '**Cue:** builds the hollow-body tension a muscle-up needs. (Image shows the leg-raise rung.)',
+    ].join('\n') },
   { name: 'L-sit / Dragon Flag', type: 'skill', muscles: ['core'], equipment: 'bodyweight', unit: 'seconds',
-    note: 'Add only once toes-to-bar is solid. L-sit off the floor or two dumbbells; dragon flag anchored to a bench.' },
+    note: [
+      '1. L-sit: hands on the floor or two dumbbells, press down and lift both straight legs to horizontal. Hold.',
+      '2. Dragon flag: lie back gripping a bench behind your head; lower the whole rigid body from vertical as slowly as possible.',
+      '',
+      '**Cue:** add only once toes-to-bar is solid. These are earned, not rushed.',
+    ].join('\n') },
   { name: 'Muscle-ups', type: 'skill', muscles: ['back', 'chest', 'triceps', 'core'], equipment: 'bar', unit: 'reps',
-    note: 'The mission. Unlocks as skill work at 8–10 clean pull-ups AND 8–10 clean dips (band-assisted reps + negatives first).' },
+    image: IMG('Muscle_Up'),
+    note: [
+      '1. False grip helps: wrists over the bar, not knuckles.',
+      '2. Pull explosively high (chest to bar and past it) while leaning back, then drive the chest OVER the bar.',
+      '3. The transition: elbows from below the bar to above it in one motion — then press out to a straight-bar dip lockout.',
+      '',
+      '**The mission.** Unlocks as skill work at 8–10 clean pull-ups AND 8–10 clean dips: band-assisted reps + slow negatives first.',
+    ].join('\n') },
 ];
 
 const SEED_PLAN = {
@@ -125,4 +246,4 @@ const SEED_PROFILE = {
   ].join('\n') + '\n',
 };
 
-module.exports = { SEED_EXERCISES, SEED_PLAN, SEED_GOALS, SEED_PROFILE };
+module.exports = { SEED_EXERCISES, SEED_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl };

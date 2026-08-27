@@ -8,7 +8,27 @@ const DEFAULT_SETTINGS = {
   weekStart: 'mon',      // 'mon' | 'sun'
   openOnStartup: false,
   onboarded: false,
+  skin: 'floor',         // keys of SKINS
+  accent: 'lime',        // keys of ACCENTS
 };
+
+/* Selectable styles. Each key maps to a gv-skin-<key> class on the app root;
+   the skin blocks live at the END of src/styles.css so they win ties. */
+const SKINS = [
+  ['floor', 'Editorial Floor — one lime flood per screen, hard edges where you act'],
+  ['editorial', 'Editorial — magazine cover: huge type, hairlines, no floods'],
+];
+
+/* Accent palettes. Each key maps to a gv-accent-<key> class that re-points
+   the --gv-lime* tokens; the color values live ONLY in styles.css (one
+   declaration per palette — never restate a hex here). */
+const ACCENTS = [
+  ['lime', 'Lime'],
+  ['volt', 'Volt (yellow)'],
+  ['blaze', 'Blaze (orange)'],
+  ['electric', 'Electric (cyan)'],
+  ['punch', 'Punch (magenta)'],
+];
 
 /* Weekday keys in plan headings — `## Pull Priority (mon)`. Order is the
    canonical mon-first order; startOfWeek() in dates.js handles the sun-start
@@ -57,6 +77,6 @@ const GOAL_METRICS = [
 const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms', 'core', 'glutes', 'quads', 'hamstrings', 'calves', 'full body'];
 
 module.exports = {
-  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS,
+  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

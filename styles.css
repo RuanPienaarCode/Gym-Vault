@@ -1,24 +1,55 @@
+/* Anton (latin subset) by Vernon Adams — SIL Open Font License 1.1.
+   Embedded as a data URI because Obsidian injects styles.css as a <style>
+   tag (no relative asset paths) and iOS Obsidian is frequently offline —
+   a Google Fonts link would silently fall back to a non-condensed face.
+   GENERATED-ADJACENT: replace by re-running the embed step, never hand-edit
+   the base64. */
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(data:font/woff2;base64,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) format('woff2');
+}
 /* ============================================================================
-   GYM VAULT — styles (build input; root styles.css is generated from this)
-   Identity: clean white surfaces, lime-green accents, big friendly numbers.
-   Everything is scoped under .gv-app so nothing leaks into the rest of
-   Obsidian, and app.css can't cascade surprises back in past the tokens.
+   GYM VAULT — styles (build input; root styles.css = src/font.css + this)
+   Design: 06 "Editorial Floor" (design/06-editorial-floor.html) — editorial
+   calm as the resting state, floor energy only where you act.
+
+   THE ONE RULE — two registers, decided per surface, never mixed:
+     reading surfaces: white paper, 1px hairlines, no radius, no shadow,
+       condensed display type for hierarchy, lime only as a highlight.
+     acting surfaces: hard 2px ink borders, lime floods (exactly ONE per
+       screen, always under the thumb), cut corners on the big CTAs.
+   A new screen must pick a register; a third register is how this design
+   stops looking intentional.
+
+   Scoped under .gv-app. Host-cascade discipline (learned the hard way):
+     - the view root also carries Obsidian's .view-content (0,2,0) — root
+       layout overrides live on .workspace-leaf-content .view-content.gv-app.
+     - app.css's button:not(.clickable-icon) (0,1,1) beats single-class
+       rules for background/box-shadow/color — EVERY rule that colors a
+       button carries the .gv-app ancestor (0,2,0).
    ============================================================================ */
 
 .gv-app {
-  --gv-bg: #fafcf7;
+  --gv-bg: #f5f7ef;
   --gv-surface: #ffffff;
-  --gv-line: #e6ebdf;
-  --gv-ink: #1b2313;
-  --gv-ink-dim: #6b7361;
+  --gv-line: #e2e8d8;
+  --gv-line-2: #cfd9be;
+  --gv-ink: #141a0e;
+  --gv-ink-dim: #5b6551;
   --gv-lime: #84cc16;
+  --gv-lime-hi: #a3e635;
   --gv-lime-deep: #4d7c0f;
-  --gv-lime-soft: #ecfccb;
   --gv-lime-ghost: #f4fbe8;
-  --gv-danger: #dc2626;
-  --gv-radius: 16px;
-  --gv-radius-s: 10px;
-  --gv-shadow: 0 1px 2px rgba(27, 35, 19, 0.05), 0 4px 16px rgba(27, 35, 19, 0.05);
+  --gv-danger: #b91c1c;
+  /* Dim text sitting ON an accent flood (stats line in the action slab,
+     target text in a log exercise bar). Re-pointed per accent below. */
+  --gv-flood-dim: #2b3a12;
+  /* Anton is embedded via src/font.css, so the fallbacks are theoretical;
+     they still matter if the face ever fails to parse. */
+  --gv-display: 'Anton', 'Avenir Next Condensed', Impact, 'Arial Narrow', sans-serif;
 
   display: flex;
   flex-direction: column;
@@ -30,377 +61,579 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Dark theme: keep the lime identity, swap the paper. */
+/* Dark theme: the paper goes near-black, lime stays the only light source. */
 .theme-dark .gv-app {
-  --gv-bg: #14180f;
-  --gv-surface: #1b2114;
+  --gv-bg: #10140b;
+  --gv-surface: #171c10;
   --gv-line: #2a3320;
+  --gv-line-2: #39452a;
   --gv-ink: #eef3e6;
   --gv-ink-dim: #9aa48c;
-  --gv-lime-soft: #2c3a17;
-  --gv-lime-ghost: #202a13;
-  --gv-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+  --gv-lime-ghost: #1d2712;
+  --gv-danger: #f87171;
 }
+
+/* Host-cascade override — see header comment. */
+.workspace-leaf-content .view-content.gv-app { padding: 0; overflow: hidden; }
 
 .gv-app *, .gv-app *::before, .gv-app *::after { box-sizing: border-box; }
 
+/* Shared type registers */
+.gv-display, .gv-app .gv-display {
+  font-family: var(--gv-display);
+  font-weight: 400;              /* Anton has one weight; faux-bold distorts it */
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: -0.005em;
+}
+.gv-kicker {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+.gv-shout {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gv-flood-dim);    /* sits on accent floods only */
+}
+.gv-microcopy {
+  margin: 22px 0 0;
+  text-align: center;
+  font-family: var(--gv-display);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+
+/* Plugin buttons carry .clickable-icon to escape the host's button chrome
+   (see dom.js). Patch the two things that class would otherwise leak in,
+   and give tap feedback ourselves — Obsidian mobile marks a touched button
+   with .mobile-tap, whose gray repaint we've opted out of. */
+.gv-app button { border-radius: 0; -webkit-tap-highlight-color: transparent; }
+.gv-app button.mobile-tap { filter: brightness(0.9); }
+
 .gv-ico { display: inline-flex; align-items: center; }
-.gv-ico svg { width: 18px; height: 18px; }
+.gv-ico svg { width: 18px; height: 18px; opacity: 1; }
 .gv-dim { color: var(--gv-ink-dim); font-size: 13px; }
 
-/* ---------- header + nav ---------- */
+/* ---------- header + nav (reading register) ---------- */
 
-.gv-head { padding: 14px 18px 8px; }
+.gv-head { padding: 14px 18px 6px; }
 .gv-logo { display: flex; align-items: center; gap: 10px; }
-.gv-logo .gv-ico {
-  background: var(--gv-lime);
-  color: #1b2313;
-  border-radius: 10px;
-  padding: 6px;
+.gv-logo .gv-ico { background: var(--gv-ink); color: var(--gv-lime-hi); padding: 6px; }
+.gv-logo-text {
+  font-family: var(--gv-display);
+  font-size: 19px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
-.gv-logo .gv-ico svg { width: 18px; height: 18px; }
-.gv-logo-text { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
 
 .gv-nav {
   display: flex;
-  gap: 6px;
-  padding: 6px 18px 12px;
+  gap: 2px;
+  padding: 8px 18px 0;
   overflow-x: auto;
   scrollbar-width: none;
   flex: 0 0 auto;
+  border-bottom: 2px solid var(--gv-ink);
 }
 .gv-nav::-webkit-scrollbar { display: none; }
-.gv-nav-btn {
+.gv-app .gv-nav-btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 14px;
-  border: 1px solid var(--gv-line);
-  border-radius: 999px;
-  background: var(--gv-surface);
+  padding: 9px 12px 10px;
+  border: 0;
+  background: transparent;
   color: var(--gv-ink-dim);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
   box-shadow: none;
 }
 .gv-nav-btn .gv-ico svg { width: 15px; height: 15px; }
-.gv-nav-btn:hover { color: var(--gv-ink); border-color: var(--gv-lime); }
-.gv-nav-btn.on {
-  background: var(--gv-ink);
-  border-color: var(--gv-ink);
-  color: var(--gv-lime);
-}
-.theme-dark .gv-app .gv-nav-btn.on { background: var(--gv-lime); border-color: var(--gv-lime); color: #1b2313; }
+.gv-app .gv-nav-btn:hover { color: var(--gv-ink); background: var(--gv-lime-ghost); }
+.gv-app .gv-nav-btn.on { background: var(--gv-ink); color: var(--gv-lime-hi); }
 
 .gv-page {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 4px 18px 32px;
+  /* The home-indicator inset is ours to supply (the host's padding is
+     overridden above). Engines without env() drop only this line. */
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
 }
 
-/* ---------- shared bits ---------- */
+/* ---------- shared controls ---------- */
 
-.gv-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  border: none;
-  border-radius: 999px;
-  background: var(--gv-ink);
-  color: var(--gv-lime);
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--gv-shadow);
-}
-.theme-dark .gv-app .gv-btn { background: var(--gv-lime); color: #1b2313; }
-.gv-btn .gv-ico svg { width: 15px; height: 15px; }
-.gv-btn:hover { filter: brightness(1.1); }
-.gv-btn-small { padding: 7px 12px; font-size: 12.5px; }
-.gv-btn-ghost, .theme-dark .gv-app .gv-btn-ghost {
-  background: var(--gv-surface);
-  color: var(--gv-ink);
-  border: 1px solid var(--gv-line);
-  box-shadow: none;
-}
-.gv-btn-ghost:hover { border-color: var(--gv-lime); filter: none; }
-.gv-btn-danger-ghost, .theme-dark .gv-app .gv-btn-danger-ghost {
-  background: var(--gv-surface);
-  color: var(--gv-danger);
-  border: 1px solid var(--gv-line);
-  box-shadow: none;
-}
-
-.gv-icon-btn {
+/* Primary pill of the old design is now a hard ink block. */
+.gv-app .gv-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px; height: 34px;
-  border: 1px solid var(--gv-line);
-  border-radius: 10px;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 2px solid var(--gv-ink);
+  background: var(--gv-ink);
+  color: var(--gv-lime-hi);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: none;
+}
+.theme-dark .gv-app .gv-btn { background: var(--gv-lime); border-color: var(--gv-lime); color: #10140b; }
+.gv-btn .gv-ico svg { width: 14px; height: 14px; }
+.gv-btn:hover { filter: brightness(1.15); }
+.gv-btn-small { padding: 7px 11px; }
+.gv-app .gv-btn-ghost, .theme-dark .gv-app .gv-btn-ghost {
   background: var(--gv-surface);
-  color: var(--gv-ink-dim);
+  color: var(--gv-ink);
+  border: 2px solid var(--gv-ink);
+  box-shadow: none;
+}
+.gv-btn-ghost:hover { background: var(--gv-lime-ghost); filter: none; }
+.theme-dark .gv-app .gv-btn-ghost { border-color: var(--gv-line-2); }
+.gv-app .gv-btn-danger-ghost, .theme-dark .gv-app .gv-btn-danger-ghost {
+  background: var(--gv-surface);
+  color: var(--gv-danger);
+  border: 2px solid var(--gv-line-2);
+  box-shadow: none;
+}
+
+.gv-app .gv-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border: 2px solid var(--gv-ink);
+  background: var(--gv-surface);
+  color: var(--gv-ink);
   cursor: pointer;
 }
-.gv-icon-btn:hover { color: var(--gv-ink); border-color: var(--gv-lime); }
-.gv-icon-btn-small { width: 28px; height: 28px; border-radius: 8px; }
+.theme-dark .gv-app .gv-icon-btn { border-color: var(--gv-line-2); }
+.gv-app .gv-icon-btn:hover { background: var(--gv-lime-ghost); }
+.gv-icon-btn-small { width: 28px; height: 28px; border-width: 1px; }
 .gv-icon-btn-small .gv-ico svg { width: 13px; height: 13px; }
 
 .gv-toolbar {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 14px 0 12px;
+  margin: 16px 0 12px;
   flex-wrap: wrap;
 }
-.gv-toolbar-title { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; flex: 1 1 auto; }
+.gv-toolbar-title {
+  font-family: var(--gv-display);
+  font-size: clamp(24px, 6.5vw, 32px);
+  text-transform: uppercase;
+  line-height: 0.95;
+  flex: 1 1 auto;
+}
 .gv-toolbar-actions { display: flex; gap: 8px; align-items: center; }
 .gv-toolbar-foot { margin-top: 18px; justify-content: space-between; }
 
-.gv-search {
+.gv-app .gv-search {
   flex: 1 1 160px;
-  padding: 9px 14px;
-  border: 1px solid var(--gv-line);
-  border-radius: 999px;
+  padding: 10px 12px;
+  border: 2px solid var(--gv-ink);
+  border-radius: 0;
   background: var(--gv-surface);
   color: var(--gv-ink);
-  font-size: 13.5px;
+  /* 16px is the iOS threshold: any focused input below it makes Safari/
+     WKWebView zoom the whole viewport in. Never drop this under 16. */
+  font-size: 16px;
+  font-weight: 600;
 }
-.gv-search:focus { outline: none; border-color: var(--gv-lime); box-shadow: 0 0 0 3px var(--gv-lime-soft); }
+.theme-dark .gv-app .gv-search { border-color: var(--gv-line-2); }
+.gv-app .gv-search:focus { outline: none; border-color: var(--gv-lime-deep); box-shadow: 0 0 0 3px var(--gv-lime-ghost); }
 
 .gv-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.gv-chip {
-  padding: 5px 12px;
-  border: 1px solid var(--gv-line);
-  border-radius: 999px;
+.gv-app .gv-chip {
+  padding: 5px 10px;
+  border: 1px solid var(--gv-line-2);
   background: var(--gv-surface);
   color: var(--gv-ink-dim);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
 }
-.gv-chip.on { background: var(--gv-lime-soft); border-color: var(--gv-lime); color: var(--gv-lime-deep); }
-.theme-dark .gv-app .gv-chip.on { color: var(--gv-lime); }
+.gv-app .gv-chip.on { background: var(--gv-ink); border-color: var(--gv-ink); color: var(--gv-lime-hi); }
 
+/* Reading-register card: paper + hairline, square. */
 .gv-card {
   background: var(--gv-surface);
   border: 1px solid var(--gv-line);
-  border-radius: var(--gv-radius);
   padding: 14px 16px;
-  box-shadow: var(--gv-shadow);
 }
-.gv-card-list { display: flex; flex-direction: column; gap: 10px; }
+.gv-card-list { display: flex; flex-direction: column; gap: 0; }
 .gv-card-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
 
 .gv-tag {
   display: inline-block;
-  padding: 2px 9px;
-  border-radius: 999px;
+  padding: 2px 8px;
   background: var(--gv-lime-ghost);
   color: var(--gv-lime-deep);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 .theme-dark .gv-app .gv-tag { color: var(--gv-lime); }
-.gv-tag-type { background: var(--gv-lime-soft); }
+.gv-tag-type { background: var(--gv-lime); color: #141a0e; }
+.theme-dark .gv-app .gv-tag-type { color: #141a0e; }
 .gv-badge {
-  padding: 3px 10px;
-  border-radius: 999px;
+  padding: 3px 9px;
   background: var(--gv-lime);
-  color: #1b2313;
-  font-size: 11px;
+  color: #141a0e;
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.12em;
 }
 
 .gv-section-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 22px 0 10px;
-  font-size: 14px;
-  font-weight: 800;
+  margin: 26px 0 12px;
+  font-family: var(--gv-display);
+  font-size: 17px;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 .gv-section-title .gv-ico { color: var(--gv-lime-deep); }
 .theme-dark .gv-app .gv-section-title .gv-ico { color: var(--gv-lime); }
 .gv-section-title .gv-ico svg { width: 16px; height: 16px; }
-.gv-section-title-inline { font-size: 14px; font-weight: 800; }
+.gv-section-title-inline { font-family: var(--gv-display); font-size: 15px; text-transform: uppercase; }
 
 .gv-empty-line {
   padding: 26px 16px;
   text-align: center;
   color: var(--gv-ink-dim);
   font-size: 13.5px;
-  border: 1px dashed var(--gv-line);
-  border-radius: var(--gv-radius);
+  border: 1px dashed var(--gv-line-2);
   margin: 10px 0;
 }
 
-.gv-add-line {
+.gv-app .gv-add-line {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
+  min-height: 44px;
   padding: 10px;
   margin-top: 8px;
-  border: 1px dashed var(--gv-line);
-  border-radius: var(--gv-radius-s);
+  border: 2px dashed var(--gv-ink);
   background: transparent;
-  color: var(--gv-ink-dim);
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--gv-ink);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   cursor: pointer;
 }
-.gv-add-line:hover { color: var(--gv-lime-deep); border-color: var(--gv-lime); }
+.theme-dark .gv-app .gv-add-line { border-color: var(--gv-line-2); color: var(--gv-ink); }
+.gv-app .gv-add-line:hover { background: var(--gv-lime-ghost); color: var(--gv-lime-deep); }
 .gv-add-line .gv-ico svg { width: 14px; height: 14px; }
 
-.gv-bar { height: 8px; border-radius: 999px; background: var(--gv-lime-ghost); overflow: hidden; }
+/* Floor slab progress bar — acting register even at rest, because it's a
+   promise of action. Same width maths from goalProgress(). */
+.gv-bar { height: 14px; background: var(--gv-lime-ghost); border: 2px solid var(--gv-ink); overflow: hidden; }
+.theme-dark .gv-app .gv-bar { border-color: var(--gv-line-2); }
 .gv-bar-fill {
   height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--gv-lime), var(--gv-lime-deep));
+  background: var(--gv-lime);
+  background-image: repeating-linear-gradient(115deg, rgba(20, 26, 14, 0.17) 0 5px, transparent 5px 13px);
   transition: width 0.4s ease;
 }
 
-/* ---------- dashboard ---------- */
+/* ---------- dashboard: editorial masthead + one lime action slab ---------- */
 
-.gv-hero {
-  margin-top: 8px;
-  padding: 22px 20px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, #a3e635 0%, #84cc16 55%, #65a30d 100%);
-  color: #1b2313;
-  box-shadow: 0 10px 30px rgba(132, 204, 22, 0.35);
+.gv-hero { margin-top: 12px; background: var(--gv-surface); border: 1px solid var(--gv-line); border-bottom: 0; padding: 18px 16px 0; }
+.gv-hero-title { font-size: clamp(36px, 11vw, 62px); margin: 10px 0 0; }
+.gv-mark {
+  background: linear-gradient(180deg, transparent 56%, var(--gv-lime-hi) 56%, var(--gv-lime-hi) 93%, transparent 93%);
 }
-.gv-hero-date { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.75; }
-.gv-hero-title { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; margin: 4px 0 2px; }
-.gv-hero-sub { font-size: 13.5px; font-weight: 500; opacity: 0.85; }
-.gv-hero-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-.gv-hero-chip {
-  padding: 4px 11px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
+.theme-dark .gv-app .gv-mark {
+  background: linear-gradient(180deg, transparent 56%, var(--gv-lime-deep) 56%, var(--gv-lime-deep) 93%, transparent 93%);
+}
+.gv-hero-sub { margin: 12px 0 0; font-size: 14px; color: var(--gv-ink-dim); max-width: 40ch; }
+.gv-rx { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--gv-line); }
+.gv-rx li {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--gv-line);
+  font-size: 14px;
   font-weight: 600;
 }
-.gv-btn-hero {
-  margin-top: 16px;
-  background: #1b2313;
-  color: #a3e635;
-  padding: 12px 22px;
-  font-size: 14.5px;
-  box-shadow: 0 6px 18px rgba(27, 35, 19, 0.3);
+.gv-rx b {
+  font-family: var(--gv-display);
+  font-weight: 400;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--gv-lime-deep);
+  white-space: nowrap;
 }
-.theme-dark .gv-app .gv-btn-hero { background: #1b2313; color: #a3e635; }
-.gv-btn-hero-ghost {
-  margin-top: 16px;
-  display: inline-flex;
+.theme-dark .gv-app .gv-rx b { color: var(--gv-lime); }
+
+/* THE lime flood of this screen. Nothing else on Today may flood. */
+.gv-hero-action {
+  position: relative;
+  margin: 18px -17px 0;          /* bleed past the hero's 1px border + padding */
+  background: var(--gv-lime);
+  color: #141a0e;
+  padding: 16px 16px 22px;
+  overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), 0 100%);
+}
+.gv-speed { position: absolute; inset: 0; pointer-events: none; }
+.gv-speed span { position: absolute; height: 5px; background: rgba(20, 26, 14, 0.12); transform: skewX(-24deg); }
+.gv-hero-action-line { position: relative; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.gv-app .gv-btn-go {
+  position: relative;
+  margin-top: 12px;
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  cursor: pointer;
+  background: #141a0e;
+  color: var(--gv-lime-hi);
+  font-family: var(--gv-display);
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+}
+.gv-app .gv-btn-go:hover { background: #000000; }
+/* Rest day: no flood — a bordered invitation instead. */
+.gv-app .gv-btn-hero-ghost {
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 11px 20px;
-  border: 2px solid rgba(27, 35, 19, 0.35);
-  border-radius: 999px;
+  width: 100%;
+  min-height: 52px;
+  margin: 16px 0 18px;
+  border: 2px solid var(--gv-ink);
   background: transparent;
-  color: #1b2313;
-  font-size: 14px;
-  font-weight: 700;
+  color: var(--gv-ink);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   cursor: pointer;
 }
+.theme-dark .gv-app .gv-btn-hero-ghost { border-color: var(--gv-line-2); }
+.gv-app .gv-btn-hero-ghost:hover { background: var(--gv-lime-ghost); }
 
+/* Week — typographic row, today is an ink block. */
 .gv-week {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 7px;
-  margin: 16px 0 4px;
-}
-.gv-day {
-  padding: 9px 4px 7px;
-  border-radius: 13px;
+  margin: 0;
   border: 1px solid var(--gv-line);
+  border-top: 2px solid var(--gv-ink);
   background: var(--gv-surface);
-  text-align: center;
 }
-.gv-day-name { font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; color: var(--gv-ink-dim); }
-.gv-day-dot { margin-top: 3px; font-size: 13px; color: var(--gv-ink-dim); display: flex; justify-content: center; }
-.gv-day-dot .gv-ico svg { width: 14px; height: 14px; }
-.gv-day.planned .gv-day-dot { color: var(--gv-lime-deep); font-size: 20px; line-height: 13px; }
-.theme-dark .gv-app .gv-day.planned .gv-day-dot { color: var(--gv-lime); }
-.gv-day.done { background: var(--gv-lime-soft); border-color: var(--gv-lime); }
-.gv-day.done .gv-day-dot { color: var(--gv-lime-deep); }
-.gv-day.today { outline: 2px solid var(--gv-lime); outline-offset: 1px; }
+.gv-day { padding: 9px 0 8px; text-align: center; border-right: 1px solid var(--gv-line); }
+.gv-day:last-child { border-right: 0; }
+.gv-day-name { font-family: var(--gv-display); font-size: 17px; line-height: 1; color: var(--gv-ink); }
+.gv-day-dot {
+  margin-top: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  min-height: 14px;
+}
+.gv-day-dot .gv-ico svg { width: 12px; height: 12px; }
+.gv-day.done .gv-day-name, .gv-day.done .gv-day-dot { color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-day.done .gv-day-name, .theme-dark .gv-app .gv-day.done .gv-day-dot { color: var(--gv-lime); }
+.gv-day.today { background: var(--gv-ink); }
+.gv-day.today .gv-day-name { color: var(--gv-surface); }
+.theme-dark .gv-app .gv-day.today .gv-day-name { color: #10140b; }
+.theme-dark .gv-app .gv-day.today { background: var(--gv-ink); }
+.gv-day.today .gv-day-dot { color: var(--gv-lime-hi); }
+.theme-dark .gv-app .gv-day.today .gv-day-dot { color: var(--gv-lime-deep); }
 
+/* Stats — oversized numerals on a hairline grid. */
 .gv-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  margin: 14px 0;
-}
-.gv-tile {
-  background: var(--gv-surface);
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0 0 14px;
   border: 1px solid var(--gv-line);
-  border-radius: var(--gv-radius);
-  padding: 12px 14px;
-  box-shadow: var(--gv-shadow);
+  border-top: 0;
+  background: var(--gv-surface);
 }
+.gv-tile { padding: 13px 12px 15px; border-right: 1px solid var(--gv-line); border-bottom: 1px solid var(--gv-line); background: var(--gv-surface); }
+.gv-tile:nth-child(2n) { border-right: 0; }
+.gv-tile:nth-last-child(-n+2) { border-bottom: 0; }
 .gv-tile-ico { color: var(--gv-lime-deep); }
 .theme-dark .gv-app .gv-tile-ico { color: var(--gv-lime); }
-.gv-tile-ico .gv-ico svg { width: 17px; height: 17px; }
-.gv-tile-big { font-size: 22px; font-weight: 900; letter-spacing: -0.02em; margin-top: 4px; }
-.gv-tile-label { font-size: 11.5px; font-weight: 600; color: var(--gv-ink-dim); }
-
-.gv-goal-mini-list { display: flex; flex-direction: column; gap: 8px; }
-.gv-goal-mini {
-  background: var(--gv-surface);
-  border: 1px solid var(--gv-line);
-  border-radius: var(--gv-radius-s);
-  padding: 10px 14px;
-  cursor: pointer;
+.gv-tile-ico .gv-ico svg { width: 15px; height: 15px; }
+.gv-tile-big {
+  font-family: var(--gv-display);
+  font-size: clamp(30px, 9vw, 42px);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  margin-top: 6px;
 }
-.gv-goal-mini:hover { border-color: var(--gv-lime); }
-.gv-goal-mini-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
-.gv-goal-mini-name { font-size: 13px; font-weight: 700; }
-.gv-goal-mini-nums { font-size: 12.5px; font-weight: 700; color: var(--gv-lime-deep); white-space: nowrap; }
+.gv-tile-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+  margin-top: 7px;
+}
+@media (min-width: 620px) {
+  .gv-tiles { grid-template-columns: repeat(4, 1fr); }
+  .gv-tile, .gv-tile:nth-child(2n) { border-right: 1px solid var(--gv-line); border-bottom: 0; }
+  .gv-tile:last-child { border-right: 0; }
+}
+
+.gv-goal-mini-list { display: flex; flex-direction: column; gap: 16px; }
+.gv-goal-mini { background: transparent; border: 0; padding: 0; cursor: pointer; }
+.gv-goal-mini-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.gv-goal-mini-name { font-size: 11.5px; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase; }
+.gv-goal-mini-nums { font-family: var(--gv-display); font-size: 20px; line-height: 1; color: var(--gv-lime-deep); white-space: nowrap; }
 .theme-dark .gv-app .gv-goal-mini-nums { color: var(--gv-lime); }
 
-/* ---------- exercises ---------- */
+/* ---------- exercises: editorial index ---------- */
 
-.gv-ex-card { display: flex; gap: 13px; align-items: flex-start; cursor: pointer; }
-.gv-ex-card:hover { border-color: var(--gv-lime); }
-.gv-ex-ico {
+.gv-ex-list { border-top: 2px solid var(--gv-ink); }
+.gv-ex-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--gv-line);
+  padding: 13px 2px;
+}
+.gv-ex-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-ex-idx { font-family: var(--gv-display); font-size: 14px; color: var(--gv-ink-dim); width: 26px; flex: 0 0 auto; }
+.gv-ex-main { flex: 1 1 auto; min-width: 0; }
+.gv-ex-name {
+  display: block;
+  font-family: var(--gv-display);
+  font-size: clamp(20px, 5.5vw, 26px);
+  line-height: 1;
+  text-transform: uppercase;
+}
+.gv-ex-meta {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+  margin-top: 6px;
+}
+.gv-ex-best {
   flex: 0 0 auto;
-  display: flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px;
-  border-radius: 12px;
-  background: var(--gv-lime-ghost);
+  background: var(--gv-lime);
+  color: #141a0e;
+  font-family: var(--gv-display);
+  font-size: 15px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+/* ---------- exercise detail ---------- */
+
+.gv-detail-tags { margin-top: 2px; }
+.gv-media { padding: 0; border: 0; background: transparent; margin-bottom: 4px; }
+.gv-media-frames { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gv-media-frame { position: relative; background: var(--gv-bg); border: 2px solid var(--gv-ink); min-width: 0; }
+.theme-dark .gv-app .gv-media-frame { border-color: var(--gv-line-2); }
+.gv-media-frame .gv-media-img { display: block; width: 100%; max-height: 300px; object-fit: contain; }
+.gv-media-frame-tag {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 4px 10px;
+  background: var(--gv-ink);
+  color: var(--gv-lime-hi);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+.theme-dark .gv-app .gv-media-frame-tag { color: var(--gv-lime-deep); }
+.gv-media-img { max-width: 100%; display: block; margin: 0 auto; }
+.gv-media-video { width: 100%; max-height: 360px; background: #000; }
+.gv-media-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 34px 12px;
+  color: var(--gv-ink-dim);
+  font-size: 13px;
+  border: 1px dashed var(--gv-line-2);
+}
+.gv-media-watch { margin-top: 10px; }
+.gv-howto { line-height: 1.55; font-size: 14px; border: 0; padding: 2px 0 0; background: transparent; }
+.gv-howto p { margin: 0 0 10px; }
+.gv-howto p:last-child { margin-bottom: 0; }
+/* Numbered steps get lime display numerals (works for MarkdownRenderer's ol
+   and the plain-paragraph fallback keeps its literal "1." prefix). */
+.gv-howto ol { list-style: none; counter-reset: gvstep; margin: 0 0 10px; padding: 0; }
+.gv-howto ol li { counter-increment: gvstep; position: relative; padding: 0 0 11px 38px; }
+.gv-howto ol li::before {
+  content: counter(gvstep, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: -2px;
+  font-family: var(--gv-display);
+  font-size: 19px;
   color: var(--gv-lime-deep);
 }
-.theme-dark .gv-app .gv-ex-ico { color: var(--gv-lime); }
-.gv-ex-main { flex: 1 1 auto; min-width: 0; }
-.gv-ex-name { font-size: 15px; font-weight: 800; }
-.gv-ex-meta { display: flex; gap: 5px; flex-wrap: wrap; margin: 5px 0; }
-.gv-ex-best { font-size: 12px; color: var(--gv-ink-dim); }
+.theme-dark .gv-app .gv-howto ol li::before { color: var(--gv-lime); }
+.gv-howto ul { margin: 0 0 10px; padding-left: 22px; }
+.gv-howto img { max-width: 100%; }
+.gv-detail-recent { margin-bottom: 8px; border-top: none; }
 
 /* ---------- plans ---------- */
 
-.gv-plan-card { display: flex; gap: 12px; align-items: center; cursor: pointer; }
-.gv-plan-card:hover { border-color: var(--gv-lime); }
-.gv-plan-card.active { border-color: var(--gv-lime); background: var(--gv-lime-ghost); }
+.gv-plan-card { display: flex; gap: 12px; align-items: center; cursor: pointer; margin-bottom: -1px; }
+.gv-plan-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-plan-card.active { box-shadow: inset 4px 0 0 var(--gv-lime); }
 .gv-plan-main { flex: 1 1 auto; min-width: 0; }
-.gv-plan-name { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 800; }
-.gv-plan-meta { font-size: 12.5px; color: var(--gv-ink-dim); margin: 3px 0 8px; }
+.gv-plan-name { display: flex; align-items: center; gap: 10px; font-family: var(--gv-display); font-size: 22px; text-transform: uppercase; line-height: 1; }
+.gv-plan-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin: 6px 0 8px; }
 .gv-plan-days { display: flex; gap: 5px; flex-wrap: wrap; }
-.gv-plan-intro { font-size: 13.5px; color: var(--gv-ink-dim); line-height: 1.55; margin-bottom: 14px; }
+.gv-plan-intro { font-size: 13.5px; color: var(--gv-ink-dim); line-height: 1.55; margin-bottom: 14px; max-width: 60ch; }
 
-.gv-day-card { margin-bottom: 12px; }
+.gv-day-card { margin-bottom: 12px; border-top: 2px solid var(--gv-ink); }
 .gv-day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.gv-day-title { font-size: 16px; font-weight: 800; }
-.gv-day-sub { font-size: 12px; font-weight: 700; color: var(--gv-lime-deep); text-transform: uppercase; letter-spacing: 0.05em; }
+.gv-day-title { font-family: var(--gv-display); font-size: 20px; text-transform: uppercase; line-height: 1; }
+.gv-day-sub { font-size: 10px; font-weight: 800; color: var(--gv-lime-deep); text-transform: uppercase; letter-spacing: 0.13em; margin-top: 5px; }
 .theme-dark .gv-app .gv-day-sub { color: var(--gv-lime); }
 .gv-day-note { font-size: 13px; color: var(--gv-ink-dim); line-height: 1.5; margin-top: 8px; }
 .gv-day-items { margin-top: 10px; }
@@ -410,167 +643,247 @@
   gap: 10px;
   padding: 8px 2px;
   border-top: 1px solid var(--gv-line);
-  font-size: 13.5px;
+  font-size: 14px;
 }
 .gv-day-item-name { font-weight: 600; flex: 1 1 auto; }
-.gv-day-item-rx { color: var(--gv-lime-deep); font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+.gv-day-item-rx { font-family: var(--gv-display); color: var(--gv-lime-deep); font-size: 14px; letter-spacing: 0.02em; white-space: nowrap; }
 .theme-dark .gv-app .gv-day-item-rx { color: var(--gv-lime); }
 
 /* ---------- goals ---------- */
 
 .gv-goal-grid { display: flex; flex-direction: column; gap: 10px; }
-.gv-goal-card { display: flex; gap: 14px; align-items: center; cursor: pointer; }
-.gv-goal-card:hover { border-color: var(--gv-lime); }
-.gv-goal-card.done { background: var(--gv-lime-ghost); border-color: var(--gv-lime); }
+.gv-goal-card { display: flex; gap: 14px; align-items: center; cursor: pointer; margin-bottom: -1px; }
+.gv-goal-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-goal-card.done { box-shadow: inset 4px 0 0 var(--gv-lime); }
 .gv-goal-ring { flex: 0 0 auto; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; }
 .gv-ring { width: 64px; height: 64px; }
-.gv-ring-track { fill: none; stroke: var(--gv-lime-ghost); stroke-width: 6; }
+.gv-ring-track { fill: none; stroke: var(--gv-lime-ghost); stroke-width: 7; }
 .theme-dark .gv-app .gv-ring-track { stroke: var(--gv-line); }
-.gv-ring-fill { fill: none; stroke: var(--gv-lime); stroke-width: 6; stroke-linecap: round; }
+.gv-ring-fill { fill: none; stroke: var(--gv-lime); stroke-width: 7; }
 .gv-ring-text {
   fill: var(--gv-ink);
-  font-size: 14px;
-  font-weight: 800;
+  font-family: var(--gv-display);
+  font-size: 15px;
   text-anchor: middle;
   dominant-baseline: central;
 }
 .gv-trophy svg { width: 34px; height: 34px; color: var(--gv-lime-deep); }
 .theme-dark .gv-app .gv-trophy svg { color: var(--gv-lime); }
 .gv-goal-main { flex: 1 1 auto; min-width: 0; }
-.gv-goal-name { font-size: 15px; font-weight: 800; }
-.gv-goal-metric { font-size: 11.5px; color: var(--gv-ink-dim); margin: 2px 0 6px; }
+.gv-goal-name { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.gv-goal-metric { font-size: 11px; color: var(--gv-ink-dim); margin: 3px 0 6px; }
 .gv-goal-nums { font-size: 13.5px; }
-.gv-goal-nums b { font-size: 16px; font-weight: 900; color: var(--gv-lime-deep); }
+.gv-goal-nums b { font-family: var(--gv-display); font-weight: 400; font-size: 20px; color: var(--gv-lime-deep); }
 .theme-dark .gv-app .gv-goal-nums b { color: var(--gv-lime); }
-.gv-goal-deadline { font-size: 11.5px; color: var(--gv-ink-dim); margin-top: 4px; }
-.gv-goal-deadline.over { color: var(--gv-danger); font-weight: 600; }
+.gv-goal-deadline { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 5px; }
+.gv-goal-deadline.over { color: var(--gv-danger); }
 
 /* ---------- history ---------- */
 
 .gv-heat-wrap { overflow-x: auto; padding: 4px 0 8px; }
 .gv-heat { display: flex; gap: 4px; min-width: 340px; }
 .gv-heat-col { display: flex; flex-direction: column; gap: 4px; }
-.gv-heat-cell { width: 13px; height: 13px; border-radius: 4px; background: var(--gv-lime-ghost); }
+.gv-heat-cell { width: 13px; height: 13px; background: var(--gv-lime-ghost); }
 .theme-dark .gv-app .gv-heat-cell { background: var(--gv-line); }
 .gv-heat-cell.on { background: var(--gv-lime); }
-.gv-heat-cell.future { background: transparent; border: 1px dashed var(--gv-line); }
-.gv-heat-cell.today { outline: 2px solid var(--gv-lime-deep); outline-offset: 1px; }
+.gv-heat-cell.future { background: transparent; border: 1px dashed var(--gv-line-2); }
+.gv-heat-cell.today { outline: 2px solid var(--gv-ink); outline-offset: 1px; }
 
-.gv-session-card { padding: 0; overflow: hidden; margin-bottom: 10px; }
+.gv-session-card { padding: 0; overflow: hidden; margin-bottom: -1px; }
 .gv-session-head { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; }
-.gv-session-head:hover { background: var(--gv-lime-ghost); }
+.gv-session-head:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
 .gv-session-when { flex: 0 0 auto; }
-.gv-session-date { font-size: 14.5px; font-weight: 800; }
-.gv-session-day { font-size: 11.5px; color: var(--gv-ink-dim); }
-.gv-session-meta { flex: 1 1 auto; text-align: right; font-size: 12px; color: var(--gv-ink-dim); }
+.gv-session-date { font-family: var(--gv-display); font-size: 18px; text-transform: uppercase; line-height: 1; }
+.gv-session-day { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 4px; }
+.gv-session-meta { flex: 1 1 auto; text-align: right; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink-dim); }
 .gv-set-table { border-top: 1px solid var(--gv-line); padding: 10px 16px 14px; }
-.gv-set-ex { font-size: 13px; font-weight: 800; margin: 10px 0 4px; }
+.gv-set-ex { font-family: var(--gv-display); font-size: 15px; text-transform: uppercase; margin: 10px 0 4px; }
 .gv-set-row { display: flex; gap: 12px; font-size: 13px; padding: 3px 0; }
 .gv-set-num { color: var(--gv-ink-dim); font-size: 12px; width: 44px; flex: 0 0 auto; }
 .gv-session-foot { margin-top: 12px; }
 
 /* ---------- profile ---------- */
 
-.gv-profile-card { display: flex; gap: 14px; align-items: center; margin-top: 10px; }
+.gv-profile-card { display: flex; gap: 14px; align-items: center; margin-top: 12px; border-top: 2px solid var(--gv-ink); }
 .gv-profile-avatar {
   flex: 0 0 auto;
   width: 52px; height: 52px;
-  border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #a3e635, #65a30d);
-  color: #1b2313;
+  background: var(--gv-ink);
+  color: var(--gv-lime-hi);
 }
 .gv-profile-avatar .gv-ico svg { width: 24px; height: 24px; }
 .gv-profile-main { flex: 1 1 auto; }
-.gv-profile-name { font-size: 18px; font-weight: 900; }
-.gv-profile-meta { font-size: 12.5px; color: var(--gv-ink-dim); margin-top: 2px; }
+.gv-profile-name { font-family: var(--gv-display); font-size: 26px; text-transform: uppercase; line-height: 1; }
+.gv-profile-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 5px; }
 
-.gv-trend-card { margin: 4px 0 8px; }
+.gv-trend-card { margin: 10px 0 8px; }
 .gv-trend-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.gv-trend-delta { font-size: 12px; font-weight: 700; color: var(--gv-ink-dim); }
+.gv-trend-delta { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); }
 .gv-trend-delta.downs { color: var(--gv-lime-deep); }
 .gv-trend-delta.ups { color: var(--gv-ink); }
 .gv-spark { width: 100%; height: 72px; }
 .gv-spark-line { fill: none; stroke: var(--gv-lime); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .gv-spark-dot { fill: var(--gv-lime-deep); }
 
-.gv-body-row { padding: 10px 14px; }
-.gv-body-date { font-size: 13px; font-weight: 800; }
+.gv-body-row { padding: 10px 14px; margin-bottom: -1px; }
+.gv-body-date { font-family: var(--gv-display); font-size: 16px; text-transform: uppercase; }
 .gv-body-vals { font-size: 12.5px; color: var(--gv-ink-dim); margin-top: 2px; }
 .gv-body-note { margin-top: 2px; }
 .gv-profile-notes p { font-size: 13px; color: var(--gv-ink-dim); line-height: 1.55; margin: 0 0 10px; }
 .gv-profile-notes p:last-child { margin-bottom: 0; }
 
-/* ---------- logging ---------- */
+/* ---------- logging: the floor takes over ---------- */
 
-.gv-log-clock { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--gv-lime-deep); }
-.theme-dark .gv-app .gv-log-clock { color: var(--gv-lime); }
-.gv-log-card { margin-bottom: 10px; }
-.gv-log-ex-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.gv-log-ex-name { font-size: 15px; font-weight: 800; }
-.gv-log-ex-target { font-size: 12px; color: var(--gv-ink-dim); }
-.gv-log-sets { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.gv-logtop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 12px -18px 16px;       /* full-bleed ink bar inside the padded page */
+  padding: 14px 18px;
+  background: var(--gv-ink);
+  color: var(--gv-surface);
+}
+.theme-dark .gv-app .gv-logtop { color: #10140b; }
+.gv-logtop-lead { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.gv-app .gv-logtop .gv-icon-btn { background: transparent; border-color: rgba(245, 247, 239, 0.4); color: var(--gv-lime-hi); }
+.theme-dark .gv-app .gv-logtop .gv-icon-btn { border-color: rgba(16, 20, 11, 0.4); color: var(--gv-lime-deep); }
+.gv-logtop-title { font-family: var(--gv-display); font-size: clamp(20px, 6vw, 26px); text-transform: uppercase; line-height: 0.95; }
+.gv-logtop-sub { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gv-lime-hi); margin-top: 5px; }
+.theme-dark .gv-app .gv-logtop-sub { color: var(--gv-lime-deep); }
+.gv-log-clock { display: flex; align-items: center; gap: 6px; font-family: var(--gv-display); font-size: 20px; color: var(--gv-lime-hi); white-space: nowrap; }
+.theme-dark .gv-app .gv-log-clock { color: var(--gv-lime-deep); }
+
+.gv-log-card { margin-bottom: 18px; border: 0; padding: 0; background: transparent; }
+.gv-log-ex-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: var(--gv-lime);
+  color: #141a0e;
+  padding: 9px 12px;
+}
+.gv-log-ex-name { font-family: var(--gv-display); font-size: 16px; text-transform: uppercase; line-height: 1.05; }
+.gv-log-ex-target { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-flood-dim); white-space: nowrap; }
+.gv-app .gv-log-ex-head .gv-icon-btn-small { border-color: #141a0e; background: transparent; color: #141a0e; }
+.gv-log-sets { margin: 0; display: flex; flex-direction: column; gap: 0; }
 .gv-log-set {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border: 1px solid var(--gv-line);
-  border-radius: var(--gv-radius-s);
+  gap: 10px;
+  padding: 8px 10px;
+  border: 2px solid var(--gv-ink);
+  border-top: 0;
+  background: var(--gv-surface);
 }
-.gv-log-set.done { background: var(--gv-lime-ghost); border-color: var(--gv-lime); }
-.gv-log-set .gv-set-num { width: 22px; text-align: center; font-weight: 700; }
-.gv-set-input {
-  width: 68px;
-  padding: 7px 9px;
-  border: 1px solid var(--gv-line);
-  border-radius: 8px;
+.theme-dark .gv-app .gv-log-set { border-color: var(--gv-line-2); }
+.gv-log-set.done { background: var(--gv-ink); color: var(--gv-surface); }
+.theme-dark .gv-app .gv-log-set.done { color: #10140b; }
+.gv-log-set .gv-set-num { width: 26px; font-family: var(--gv-display); font-size: 14px; color: var(--gv-ink-dim); }
+.gv-log-set.done .gv-set-num { color: var(--gv-lime-hi); }
+.theme-dark .gv-app .gv-log-set.done .gv-set-num { color: var(--gv-lime-deep); }
+.gv-app .gv-set-input {
+  width: 82px;
+  min-height: 46px;
+  padding: 0 4px;
+  border: 2px solid var(--gv-ink);
+  border-radius: 0;
   background: var(--gv-surface);
   color: var(--gv-ink);
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--gv-display);
+  font-size: 20px;
   text-align: center;
 }
-.gv-set-input:focus { outline: none; border-color: var(--gv-lime); }
-.gv-set-unit { font-size: 12px; color: var(--gv-ink-dim); font-weight: 600; }
-.gv-set-done {
+.theme-dark .gv-app .gv-set-input { border-color: var(--gv-line-2); }
+.gv-app .gv-set-input:focus { outline: none; border-color: var(--gv-lime-deep); }
+.gv-set-unit { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); }
+.gv-log-set.done .gv-set-unit { color: #b8c4a8; }
+.gv-app .gv-set-done {
   margin-left: auto;
-  display: flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px;
-  border-radius: 10px;
-  border: 1px solid var(--gv-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--gv-ink);
   background: var(--gv-surface);
-  color: var(--gv-ink-dim);
+  color: #7f8b6f;
   cursor: pointer;
 }
-.gv-log-set.done .gv-set-done { background: var(--gv-lime); border-color: var(--gv-lime); color: #1b2313; }
-.gv-add-set { margin-top: 8px; }
-.gv-log-foot { margin: 18px 0 8px; display: flex; justify-content: center; }
-.gv-btn-finish { width: 100%; justify-content: center; background: linear-gradient(135deg, #84cc16, #4d7c0f); color: #ffffff; }
-.theme-dark .gv-app .gv-btn-finish { background: linear-gradient(135deg, #84cc16, #4d7c0f); color: #14180f; }
+.theme-dark .gv-app .gv-set-done { border-color: var(--gv-line-2); }
+.gv-set-done .gv-ico svg { width: 22px; height: 22px; }
+.gv-app .gv-log-set.done .gv-set-done { background: var(--gv-lime); border-color: var(--gv-lime); color: #141a0e; }
+.gv-add-set { margin-top: 0; border-top: 0; }
+.gv-log-tally {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 12px;
+  border-top: 2px solid var(--gv-ink);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+.gv-log-tally b { display: block; font-family: var(--gv-display); font-weight: 400; font-size: 22px; letter-spacing: 0; color: var(--gv-ink); margin-top: 4px; }
+.gv-log-foot { margin: 16px 0 8px; display: flex; flex-direction: column; }
+.gv-app .gv-btn-finish {
+  width: 100%;
+  min-height: 64px;
+  border: 0;
+  cursor: pointer;
+  background: var(--gv-lime);
+  color: #141a0e;
+  font-family: var(--gv-display);
+  font-size: 25px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.gv-app .gv-btn-finish:hover { background: var(--gv-ink); color: var(--gv-lime-hi); }
+.gv-app .gv-btn-discard {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 44px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+.gv-app .gv-btn-discard:hover { color: var(--gv-danger); }
 
 /* ---------- setup ---------- */
 
 .gv-setup {
-  max-width: 420px;
-  margin: 12vh auto 0;
+  max-width: 440px;
+  margin: 10vh auto 0;
   text-align: center;
   padding: 30px 24px;
   background: var(--gv-surface);
   border: 1px solid var(--gv-line);
-  border-radius: 22px;
-  box-shadow: var(--gv-shadow);
+  border-top: 3px solid var(--gv-ink);
 }
 .gv-setup-logo {
   width: 64px; height: 64px;
   margin: 0 auto 14px;
-  border-radius: 20px;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #a3e635, #65a30d);
-  color: #1b2313;
+  background: var(--gv-ink);
+  color: var(--gv-lime-hi);
 }
 .gv-setup-logo .gv-ico svg { width: 30px; height: 30px; }
-.gv-setup-title { font-size: 22px; font-weight: 900; margin: 0 0 8px; }
+.gv-setup-title { font-family: var(--gv-display); font-size: 30px; font-weight: 400; text-transform: uppercase; margin: 0 0 8px; line-height: 0.95; }
 .gv-setup-sub { font-size: 13.5px; color: var(--gv-ink-dim); line-height: 1.55; margin: 0 0 18px; }
 
 /* ---------- modals ---------- */
@@ -580,10 +893,152 @@
 /* ---------- small screens ---------- */
 
 @media (max-width: 480px) {
-  .gv-page, .gv-head, .gv-nav { padding-left: 12px; padding-right: 12px; }
-  .gv-hero-title { font-size: 24px; }
-  .gv-tiles { grid-template-columns: repeat(2, 1fr); }
+  .gv-page, .gv-head { padding-left: 12px; padding-right: 12px; }
+  .gv-nav { padding-left: 12px; padding-right: 12px; }
+  .gv-logtop { margin-left: -12px; margin-right: -12px; padding-left: 14px; padding-right: 14px; }
   .gv-nav-btn span { display: none; }
-  .gv-nav-btn { padding: 9px 12px; }
+  /* .gv-app ancestor: the base rule is (0,2,0), a bare class here loses. */
+  .gv-app .gv-nav-btn { padding: 10px; }
   .gv-nav-btn .gv-ico svg { width: 17px; height: 17px; }
 }
+
+/* ============================================================================
+   ACCENT PALETTES — settings › Accent color. Each block ONLY re-points the
+   --gv-lime* tokens (names kept for history; read them as "accent"). The
+   deep value is the one used as small text on white, so it must hold AA —
+   check any new palette before adding it. One declaration per palette; no
+   accent hex may appear anywhere else in this file.
+   ============================================================================ */
+
+.gv-app.gv-accent-volt {
+  --gv-lime: #facc15;
+  --gv-lime-hi: #fde047;
+  --gv-lime-deep: #854d0e;
+  --gv-lime-ghost: #fefce8;
+  --gv-flood-dim: #4a3d08;
+}
+.theme-dark .gv-app.gv-accent-volt { --gv-lime-ghost: #2a2410; }
+
+.gv-app.gv-accent-blaze {
+  --gv-lime: #f97316;
+  --gv-lime-hi: #fb923c;
+  --gv-lime-deep: #c2410c;
+  --gv-lime-ghost: #fff7ed;
+  --gv-flood-dim: #5c2a0c;
+}
+.theme-dark .gv-app.gv-accent-blaze { --gv-lime-ghost: #2b190e; }
+
+.gv-app.gv-accent-electric {
+  --gv-lime: #06b6d4;
+  --gv-lime-hi: #22d3ee;
+  --gv-lime-deep: #0e7490;
+  --gv-lime-ghost: #ecfeff;
+  --gv-flood-dim: #093c49;
+}
+.theme-dark .gv-app.gv-accent-electric { --gv-lime-ghost: #0d2126; }
+
+.gv-app.gv-accent-punch {
+  --gv-lime: #ec4899;
+  --gv-lime-hi: #f472b6;
+  --gv-lime-deep: #be185d;
+  --gv-lime-ghost: #fdf2f8;
+  --gv-flood-dim: #4d1030;
+}
+.theme-dark .gv-app.gv-accent-punch { --gv-lime-ghost: #2a121e; }
+
+/* ============================================================================
+   SKIN: EDITORIAL — settings › Style. Pure 01 "Editorial Athlete": magazine
+   cover, hairlines everywhere, NO floods — the accent survives only as the
+   highlighter sweep, thin fills and display numerals. Kept at the end of the
+   file so its (0,3,0) rules beat both registers above on ties.
+   ============================================================================ */
+
+/* Today: bigger cover type; the action slab collapses back into the page. */
+.gv-app.gv-skin-editorial .gv-hero-title { font-size: clamp(52px, 15vw, 84px); line-height: 0.84; }
+.gv-app.gv-skin-editorial .gv-hero-action {
+  margin: 20px 0 0;
+  padding: 0 0 22px;
+  background: transparent;
+  color: var(--gv-ink);
+  clip-path: none;
+}
+.gv-app.gv-skin-editorial .gv-speed { display: none; }
+.gv-app.gv-skin-editorial .gv-hero-action-line .gv-shout { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-editorial .gv-btn-go {
+  min-height: 52px;
+  font-size: 21px;
+  letter-spacing: 0.08em;
+  clip-path: none;
+  background: var(--gv-ink);
+  color: var(--gv-lime-hi);
+}
+.gv-app.gv-skin-editorial .gv-btn-go:hover { background: var(--gv-lime-deep); color: #ffffff; }
+.theme-dark .gv-app.gv-skin-editorial .gv-btn-go { background: var(--gv-lime); color: #10140b; }
+
+/* Week: done days flood softly, today is underlined — not an ink block. */
+.gv-app.gv-skin-editorial .gv-day.done { background: var(--gv-lime-hi); }
+.gv-app.gv-skin-editorial .gv-day.done .gv-day-name,
+.gv-app.gv-skin-editorial .gv-day.done .gv-day-dot { color: #141a0e; }
+.gv-app.gv-skin-editorial .gv-day.today { background: var(--gv-surface); box-shadow: inset 0 -5px 0 var(--gv-lime-deep); }
+.gv-app.gv-skin-editorial .gv-day.today .gv-day-name { color: var(--gv-ink); }
+.gv-app.gv-skin-editorial .gv-day.today .gv-day-dot { color: var(--gv-lime-deep); }
+
+/* Stats: the numbers ARE the artwork — bigger, no icons. */
+.gv-app.gv-skin-editorial .gv-tile-ico { display: none; }
+.gv-app.gv-skin-editorial .gv-tile-big { font-size: clamp(40px, 11vw, 54px); }
+
+/* Goals: 4px hairline track, solid fill, no shouting. */
+.gv-app.gv-skin-editorial .gv-bar { height: 4px; border: 0; background: var(--gv-line); }
+.gv-app.gv-skin-editorial .gv-bar-fill { background: var(--gv-lime); background-image: none; }
+.gv-app.gv-skin-editorial .gv-microcopy { display: none; }
+
+/* Library: the best figure is a quiet display numeral, not a block. */
+.gv-app.gv-skin-editorial .gv-ex-best {
+  background: transparent;
+  color: var(--gv-lime-deep);
+  font-size: 20px;
+  padding: 0;
+}
+.theme-dark .gv-app.gv-skin-editorial .gv-ex-best { color: var(--gv-lime); }
+
+/* Logging: calm sheet — hairline rows, underline inputs, no ink bar. */
+.gv-app.gv-skin-editorial .gv-logtop {
+  margin: 12px 0 16px;
+  padding: 0 0 10px;
+  background: transparent;
+  color: var(--gv-ink);
+  border-bottom: 3px solid var(--gv-ink);
+}
+.gv-app.gv-skin-editorial .gv-logtop .gv-icon-btn { border-color: var(--gv-line-2); color: var(--gv-ink); background: transparent; }
+.gv-app.gv-skin-editorial .gv-logtop-sub { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-editorial .gv-log-clock { color: var(--gv-lime-deep); }
+.theme-dark .gv-app.gv-skin-editorial .gv-log-clock { color: var(--gv-lime); }
+.gv-app.gv-skin-editorial .gv-log-ex-head { background: transparent; color: var(--gv-ink); padding: 0 0 8px; }
+.gv-app.gv-skin-editorial .gv-log-ex-name { font-size: clamp(22px, 6.4vw, 30px); }
+.gv-app.gv-skin-editorial .gv-log-ex-target { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-editorial .gv-log-ex-head .gv-icon-btn-small { border-color: var(--gv-line-2); color: var(--gv-ink-dim); }
+.gv-app.gv-skin-editorial .gv-log-set {
+  border: 0;
+  border-bottom: 1px solid var(--gv-line);
+  background: transparent;
+  padding: 9px 2px;
+}
+.gv-app.gv-skin-editorial .gv-log-set:first-child { border-top: 1px solid var(--gv-line); }
+.gv-app.gv-skin-editorial .gv-log-set.done {
+  background: var(--gv-lime-ghost);
+  color: var(--gv-ink);
+  box-shadow: inset 4px 0 0 var(--gv-lime);
+}
+.gv-app.gv-skin-editorial .gv-log-set.done .gv-set-num { color: var(--gv-lime-deep); }
+.gv-app.gv-skin-editorial .gv-log-set.done .gv-set-unit { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-editorial .gv-set-input {
+  border: 0;
+  border-bottom: 2px solid var(--gv-ink);
+  background: transparent;
+  font-size: 26px;
+  min-height: 44px;
+}
+.gv-app.gv-skin-editorial .gv-set-done { width: 44px; height: 44px; border-color: var(--gv-line-2); }
+.gv-app.gv-skin-editorial .gv-log-set.done .gv-set-done { background: var(--gv-lime); border-color: var(--gv-lime); color: #141a0e; }
+.gv-app.gv-skin-editorial .gv-add-set { border: 2px dashed var(--gv-line-2); color: var(--gv-ink-dim); margin-top: 10px; }
+.gv-app.gv-skin-editorial .gv-btn-finish { clip-path: none; letter-spacing: 0.1em; }

@@ -4,7 +4,7 @@
    never leaves a half-written session note. */
 
 const { el, ico, fmtSeconds } = require('./dom');
-const { todayISO } = require('./dates');
+const { todayISO, fmtShort } = require('./dates');
 const { targetFirstNumber, targetWeight, targetIsDuration } = require('./plan-parse');
 const { FormModal, ConfirmModal } = require('./modals');
 
@@ -40,22 +40,26 @@ function render(ctx, root) {
   const draft = ctx.state.logDraft;
   if (!draft) { ctx.nav('dashboard'); return; }
 
-  const bar = el('div', { class: 'gv-toolbar' });
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Discard session' }, ico('arrow-left'));
-  back.addEventListener('click', () => new ConfirmModal(ctx.app, {
+  const confirmDiscard = () => new ConfirmModal(ctx.app, {
     title: 'Discard session?', message: 'Nothing has been saved yet.', confirmLabel: 'Discard',
     onConfirm: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
-  }).open());
-  bar.append(back,
-    el('div', { class: 'gv-toolbar-title' }, draft.day || 'Freestyle session'),
-    el('div', { class: 'gv-log-clock' }, ico('timer'), el('span', { class: 'gv-log-elapsed' }, elapsed(draft))));
-  root.append(bar);
+  }).open();
+
+  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Discard session' }, ico('arrow-left'));
+  back.addEventListener('click', confirmDiscard);
+  root.append(el('div', { class: 'gv-logtop' },
+    el('div', { class: 'gv-logtop-lead' },
+      back,
+      el('div', {},
+        el('div', { class: 'gv-logtop-title' }, draft.day || 'Freestyle session'),
+        el('div', { class: 'gv-logtop-sub' }, [draft.plan, fmtShort(draft.date)].filter(Boolean).join(' · ')))),
+    el('div', { class: 'gv-log-clock' }, ico('timer'), el('span', { class: 'gv-log-elapsed' }, elapsed(draft)))));
 
   // Tick the elapsed label without re-rendering the whole page (inputs would
   // lose focus). The interval dies with the page via ctx.pageInterval.
   ctx.setPageInterval(() => {
-    const s = root.querySelector('.gv-log-elapsed');
-    if (s) s.textContent = elapsed(ctx.state.logDraft || draft);
+    const t = elapsed(ctx.state.logDraft || draft);
+    for (const s of root.querySelectorAll('.gv-log-elapsed')) s.textContent = t;
   }, 30000);
 
   draft.entries.forEach((entry, ei) => root.append(entryCard(ctx, draft, entry, ei)));
@@ -64,9 +68,27 @@ function render(ctx, root) {
     ico('plus'), el('span', {}, 'Add exercise'));
   root.append(addEx);
 
-  const finish = el('button', { class: 'gv-btn gv-btn-hero gv-btn-finish', type: 'button', onclick: () => finishSession(ctx, draft) },
-    ico('circle-check'), el('span', {}, 'Finish workout'));
-  root.append(el('div', { class: 'gv-log-foot' }, finish));
+  /* Tally — recomputed on every rerender, so ticking a set updates it. */
+  let doneSets = 0, doneReps = 0;
+  for (const entry of draft.entries) for (const set of entry.sets) {
+    if (!set.done) continue;
+    doneSets++;
+    const r = parseFloat(set.reps);
+    if (Number.isFinite(r)) doneReps += r;
+  }
+  root.append(el('div', { class: 'gv-log-tally' },
+    el('span', {}, 'Sets', el('b', {}, String(doneSets))),
+    el('span', {}, 'Reps', el('b', {}, String(doneReps))),
+    el('span', {}, 'Elapsed', el('b', { class: 'gv-log-elapsed' }, elapsed(draft)))));
+
+  const finish = el('button', { class: 'gv-btn-finish', type: 'button', onclick: () => finishSession(ctx, draft) },
+    el('span', {}, 'Bank it'));
+  const discard = el('button', { class: 'gv-btn-discard', type: 'button', onclick: () => new ConfirmModal(ctx.app, {
+    title: 'Discard session?', message: 'Nothing has been saved yet.', confirmLabel: 'Discard',
+    onConfirm: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
+  }).open() }, 'Discard session');
+  root.append(el('div', { class: 'gv-log-foot' }, finish, discard,
+    el('p', { class: 'gv-microcopy' }, "The bar isn't going to climb itself.")));
 }
 
 function elapsed(draft) {
@@ -98,7 +120,7 @@ function entryCard(ctx, draft, entry, ei) {
 
 function setRow(ctx, entry, set, si) {
   const row = el('div', { class: `gv-log-set${set.done ? ' done' : ''}` });
-  row.append(el('span', { class: 'gv-set-num' }, String(si + 1)));
+  row.append(el('span', { class: 'gv-set-num' }, String(si + 1).padStart(2, '0')));
 
   const numInput = (key, placeholder, cls) => {
     const i = el('input', {

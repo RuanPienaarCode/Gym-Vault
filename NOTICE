@@ -1,0 +1,13 @@
+Gym Vault bundles the "Anton" typeface (latin subset, woff2) by Vernon Adams,
+licensed under the SIL Open Font License 1.1 (https://openfontlicense.org).
+It is embedded as a data URI in styles.css (source: src/font.css) so the
+plugin renders identically on desktop and iOS with no network dependency.
+
+Seed exercise demonstration images are linked from the free-exercise-db
+project (https://github.com/yuhonas/free-exercise-db), released under the
+Unlicense (public domain).
+
+Some seed exercises additionally link demonstration photos and videos from
+the wger project (https://wger.de), licensed CC-BY-SA 4.0 — videos by
+Goulart, pull-up photo by Imobard. The media streams from wger.de and is
+credited in the exercise notes that use it.

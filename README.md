@@ -6,7 +6,12 @@ own vault — no account, no server, works on desktop and iOS/Android.
 - **Today** — what's on the plan today, week strip, streak, goal snapshot,
   one tap into a live workout-logging screen.
 - **Exercises** — searchable library with muscle-group filters and your best
-  set per exercise.
+  set per exercise. Each exercise opens a detail page: how-to steps (the note
+  body, rendered as markdown), an image or video, your bests and recent sets.
+  Media comes from `image:` / `video:` frontmatter — a vault path (offline,
+  synced) or an https URL. Seed images are from
+  [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
+  (public domain / Unlicense).
 - **Plans** — weekly training plans as readable notes (`## Day (mon)` +
   `- Exercise | 4 x 8-12 @ 20kg`); one plan is *active* and drives the
   dashboard.

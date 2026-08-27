@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<!-- MOCKUP ONLY — design exploration for Gym Vault. Not production code.
+     Direction 03 of 5: TRAINING FLOOR. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault — 03 Training Floor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f6ef;
+    --paper:#ffffff;
+    --ink:#141a0e;
+    --ink-2:#5b6551;
+    --line:#e2e8d8;
+    --lime:#84cc16;
+    --lime-hi:#a3e635;
+    --lime-deep:#4d7c0f;
+    --lime-ghost:#f2fbe2;
+    --slab:'Archivo Black', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    --body:-apple-system, BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+  :focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+
+  .dirbar{
+    position:sticky;top:0;z-index:30;background:var(--ink);color:#fff;padding:11px 16px;
+    display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;
+  }
+  .dirbar h1{margin:0;font-family:var(--slab);font-size:16px;letter-spacing:-.01em;text-transform:uppercase;color:var(--lime-hi)}
+  .dirbar p{margin:0;font-size:12.5px;color:#d3dbc8;flex:1 1 250px}
+  .dirbar a{color:#fff;font-size:12px;font-weight:700}
+
+  .wrap{max-width:440px;margin:0 auto;padding:0 0 60px;overflow-x:hidden}
+  @media (min-width:820px){ .wrap{max-width:700px} }
+
+  .viewlabel{
+    margin:32px 16px 10px;font-size:11px;font-weight:800;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-2);
+  }
+  .screen{background:var(--paper);overflow:hidden}
+  .pad{padding:20px 16px 28px}
+
+  h3,h4{margin:0}
+  .slab{font-family:var(--slab);font-weight:400;text-transform:uppercase;letter-spacing:-.015em;line-height:.95}
+  .shout{
+    font-family:var(--slab);text-transform:uppercase;font-size:11px;letter-spacing:.1em;
+    transform:skewX(-9deg);display:inline-block;
+  }
+
+  /* ---- today hero: lime flood + diagonal cut ---- */
+  .hero{
+    position:relative;background:var(--lime);color:var(--ink);
+    padding:26px 16px 54px;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 26px),0 100%);
+    overflow:hidden;
+  }
+  .speed{position:absolute;inset:0;pointer-events:none;opacity:.5}
+  .speed span{
+    position:absolute;height:6px;background:rgba(20,26,14,.13);transform:skewX(-24deg);border-radius:3px;
+  }
+  .hero .tagline{
+    display:inline-block;background:var(--ink);color:var(--lime-hi);
+    font-family:var(--slab);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    padding:5px 12px;transform:skewX(-9deg);
+  }
+  .hero .tagline span{display:inline-block;transform:skewX(9deg)}
+  .hero h3{font-size:clamp(34px,10.5vw,50px);margin:14px 0 0;position:relative}
+  .hero .sub{margin:10px 0 0;font-size:14px;font-weight:600;color:#2b3a12;position:relative;max-width:34ch}
+  .blocks{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px;position:relative}
+  .blk{
+    background:var(--ink);color:#fff;font-size:12.5px;font-weight:700;padding:7px 12px;
+    transform:skewX(-9deg);
+  }
+  .blk span{display:inline-block;transform:skewX(9deg)}
+  .blk b{color:var(--lime-hi)}
+  .go{
+    margin-top:20px;position:relative;width:100%;min-height:60px;border:0;cursor:pointer;
+    background:var(--ink);color:var(--lime-hi);font-family:var(--slab);font-size:22px;
+    letter-spacing:.03em;text-transform:uppercase;
+    clip-path:polygon(0 0,100% 0,calc(100% - 18px) 100%,0 100%);
+  }
+  .go:hover{background:#000}
+
+  /* ---- week: chunky blocks ---- */
+  .week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:-16px;padding:0 16px;position:relative;z-index:2}
+  .wd{background:var(--paper);border:3px solid var(--ink);padding:8px 0 7px;text-align:center}
+  .wd .n{font-family:var(--slab);font-size:12px}
+  .wd .t{font-size:9.5px;font-weight:800;letter-spacing:.05em;color:var(--ink-2);margin-top:4px}
+  .wd.done{background:var(--ink);color:#fff}
+  .wd.done .t{color:var(--lime-hi)}
+  .wd.today{background:var(--lime)}
+  .wd.today .t{color:#2b3a12}
+
+  /* ---- chunky stats ---- */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:22px}
+  @media (min-width:640px){ .stats{grid-template-columns:repeat(4,1fr)} }
+  .st{background:var(--ink);color:#fff;padding:14px}
+  .st:nth-child(2){background:var(--lime);color:var(--ink)}
+  .st .v{font-family:var(--slab);font-size:34px;line-height:1}
+  .st:nth-child(2) .v{color:var(--ink)}
+  .st .v em{font-style:normal;font-size:.42em}
+  .st .k{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-top:6px;color:#b8c4a8}
+  .st:nth-child(2) .k{color:#3f5a1a}
+
+  /* ---- chunky goal bars ---- */
+  .sect-title{margin:28px 0 12px;font-family:var(--slab);font-size:15px;text-transform:uppercase;letter-spacing:.01em}
+  .goal{margin-bottom:16px}
+  .goal-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:7px}
+  .goal-name{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+  .goal-num{font-family:var(--slab);font-size:17px;color:var(--lime-deep)}
+  .goal-num em{font-style:normal;color:var(--ink-2);font-size:.7em}
+  .track{height:18px;background:var(--lime-ghost);border:3px solid var(--ink);position:relative;overflow:hidden}
+  .track i{
+    position:absolute;inset:0 auto 0 0;display:block;background:var(--lime);
+    background-image:repeating-linear-gradient(115deg,rgba(20,26,14,.16) 0 6px,transparent 6px 15px);
+  }
+  .goal-note{font-size:12px;color:var(--ink-2);margin-top:6px}
+
+  /* ---- exercises ---- */
+  .exlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .excard{
+    width:100%;display:flex;gap:0;align-items:stretch;text-align:left;background:var(--paper);
+    border:3px solid var(--ink);padding:0;cursor:pointer;font:inherit;color:inherit;
+  }
+  .excard:hover{background:var(--lime-ghost)}
+  .exnum{
+    flex:0 0 auto;width:52px;background:var(--ink);color:var(--lime-hi);
+    display:flex;align-items:center;justify-content:center;font-family:var(--slab);font-size:18px;
+  }
+  .excard:hover .exnum{background:var(--lime-deep);color:#fff}
+  .exmain{flex:1 1 auto;min-width:0;padding:12px 12px 12px 14px}
+  .exname{font-family:var(--slab);font-size:17px;text-transform:uppercase;line-height:1.05}
+  .exmeta{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-top:5px}
+  .exbest{
+    flex:0 0 auto;align-self:center;margin-right:12px;background:var(--lime);
+    font-family:var(--slab);font-size:14px;padding:5px 10px;transform:skewX(-9deg);white-space:nowrap;
+  }
+  .exbest span{display:inline-block;transform:skewX(9deg)}
+
+  .detail{margin-top:30px;border-top:5px solid var(--ink);padding-top:20px}
+  .detail h3{font-size:clamp(24px,7vw,32px)}
+  .frames{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+  .frame{margin:0;position:relative;background:var(--lime-ghost);border:3px solid var(--ink)}
+  .frame svg{display:block;width:100%;height:auto}
+  .frame figcaption{
+    position:absolute;left:0;bottom:0;background:var(--ink);color:var(--lime-hi);
+    font-family:var(--slab);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;
+  }
+  .steps{margin:18px 0 0;padding:0;list-style:none;counter-reset:s}
+  .steps li{counter-increment:s;display:flex;gap:12px;margin-bottom:12px;font-size:14.5px;line-height:1.5}
+  .steps li::before{
+    content:counter(s);flex:0 0 auto;width:28px;height:28px;background:var(--ink);color:var(--lime-hi);
+    font-family:var(--slab);font-size:14px;display:flex;align-items:center;justify-content:center;
+  }
+  .cue{margin-top:6px;background:var(--ink);color:var(--lime-hi);padding:14px;font-size:13.5px;line-height:1.55}
+  .cue b{color:#fff}
+
+  /* ---- log ---- */
+  .logtop{background:var(--ink);color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .logtop h3{font-family:var(--slab);font-size:19px;text-transform:uppercase;color:#fff}
+  .logtop .sub{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lime-hi);margin-top:4px}
+  .clock{font-family:var(--slab);font-size:26px;color:var(--lime-hi);font-variant-numeric:tabular-nums}
+  .logex{margin-top:20px}
+  .logex-head{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--lime);padding:9px 12px}
+  .logex-name{font-family:var(--slab);font-size:16px;text-transform:uppercase}
+  .logex-target{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;color:#2b3a12}
+  .sets{list-style:none;margin:0;padding:0}
+  .setrow{display:flex;align-items:center;gap:10px;padding:9px 10px;border:3px solid var(--ink);border-top:0}
+  .setrow.on{background:var(--ink);color:#fff}
+  .setno{font-family:var(--slab);font-size:14px;width:22px;color:var(--ink-2)}
+  .setrow.on .setno{color:var(--lime-hi)}
+  .setval{
+    width:80px;min-height:44px;border:3px solid var(--ink);background:#fff;color:var(--ink);
+    font-family:var(--slab);font-size:19px;text-align:center;font-variant-numeric:tabular-nums;padding:0 4px;
+  }
+  .setval::placeholder{color:#b8c2a9;font-family:var(--body)}
+  .setunit{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+  .setrow.on .setunit{color:#b8c4a8}
+  .tick{
+    margin-left:auto;width:48px;height:48px;border:3px solid var(--ink);background:#fff;color:#c2ccb4;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .setrow.on .tick{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+  .tick svg{width:22px;height:22px}
+  .addset{
+    width:100%;min-height:46px;border:3px dashed var(--ink);border-top:0;background:none;cursor:pointer;
+    font-family:var(--slab);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);
+  }
+  .addset:hover{background:var(--lime-ghost)}
+  .finish{
+    margin-top:26px;width:100%;min-height:70px;border:0;cursor:pointer;background:var(--lime);color:var(--ink);
+    font-family:var(--slab);font-size:26px;letter-spacing:.02em;text-transform:uppercase;
+    clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,0 100%);
+  }
+  .finish:hover{background:var(--ink);color:var(--lime-hi)}
+  .microcopy{margin:12px 0 0;text-align:center;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+
+  /* ---- trade-offs ---- */
+  .tradeoffs{margin:34px 16px 0;background:var(--ink);color:#e6ecdd;padding:22px 18px}
+  .tradeoffs h2{margin:0 0 10px;font-family:var(--slab);font-size:19px;text-transform:uppercase;color:var(--lime-hi)}
+  .tradeoffs h3{margin:18px 0 6px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--lime-hi)}
+  .tradeoffs p,.tradeoffs li{font-size:13.5px;line-height:1.6;color:#d5ddca;margin:0}
+  .tradeoffs ul{margin:0;padding-left:18px}
+  .tradeoffs li{margin-bottom:7px}
+  .tradeoffs code{background:#2a331f;color:var(--lime-hi);padding:1px 5px;font-size:12.5px}
+</style>
+</head>
+<body>
+
+<header class="dirbar">
+  <h1>03 · Training Floor</h1>
+  <p>Loud on purpose — lime floods the hero, everything is a block, and the app talks back to you.</p>
+  <a href="index.html">All 5 directions</a>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ TODAY ============ -->
+  <h2 class="viewlabel">View A — Today</h2>
+  <section class="screen" aria-label="Today dashboard">
+    <div class="hero">
+      <div class="speed" aria-hidden="true">
+        <span style="top:18%;left:-10%;width:60%"></span>
+        <span style="top:32%;left:20%;width:75%"></span>
+        <span style="top:66%;left:-20%;width:55%"></span>
+        <span style="top:80%;left:35%;width:70%"></span>
+      </div>
+      <p class="tagline" style="margin:0"><span>Wed 26 Aug · Day B</span></p>
+      <h3 class="slab">Push +<br>Volume</h3>
+      <p class="sub">Dips lead today. Clean reps — leave two in the tank.</p>
+      <div class="blocks">
+        <span class="blk"><span>Dips <b>5×submax</b></span></span>
+        <span class="blk"><span>Pull-ups <b>4×submax</b></span></span>
+        <span class="blk"><span>Push-ups <b>3×10–15</b></span></span>
+        <span class="blk"><span>Rows <b>3×8–12</b></span></span>
+        <span class="blk"><span>Plank <b>3×65%</b></span></span>
+      </div>
+      <button class="go" type="button">Get after it</button>
+    </div>
+
+    <div class="week" role="group" aria-label="This week">
+      <div class="wd done"><div class="n">M</div><div class="t">A ✓</div></div>
+      <div class="wd"><div class="n">T</div><div class="t">rest</div></div>
+      <div class="wd today"><div class="n">W</div><div class="t">B</div></div>
+      <div class="wd"><div class="n">T</div><div class="t">rest</div></div>
+      <div class="wd"><div class="n">F</div><div class="t">C</div></div>
+      <div class="wd"><div class="n">S</div><div class="t">A*</div></div>
+      <div class="wd"><div class="n">S</div><div class="t">rest</div></div>
+    </div>
+
+    <div class="pad">
+      <div class="stats">
+        <div class="st"><div class="v">3</div><div class="k">week streak</div></div>
+        <div class="st"><div class="v">1</div><div class="k">this week</div></div>
+        <div class="st"><div class="v">34</div><div class="k">total sessions</div></div>
+        <div class="st"><div class="v">21<em> sets</em></div><div class="k">last · 24 Aug</div></div>
+      </div>
+
+      <h4 class="sect-title">Goals in flight</h4>
+      <div class="goal">
+        <div class="goal-head"><span class="goal-name">10 Pull-ups</span><span class="goal-num">7<em>/10</em></span></div>
+        <div class="track"><i style="width:70%"></i></div>
+        <p class="goal-note">Three reps off the first gateway.</p>
+      </div>
+      <div class="goal">
+        <div class="goal-head"><span class="goal-name">6-minute Plank</span><span class="goal-num">2:45<em>/6:00</em></span></div>
+        <div class="track"><i style="width:46%"></i></div>
+        <p class="goal-note">+10–15s a week. Test max monthly.</p>
+      </div>
+      <p class="microcopy">No zero days.</p>
+    </div>
+  </section>
+
+  <!-- ============ EXERCISES ============ -->
+  <h2 class="viewlabel">View B — Exercises &amp; detail</h2>
+  <section class="screen"><div class="pad" aria-label="Exercise library">
+    <h3 class="slab" style="font-size:26px;margin-bottom:14px">The Library</h3>
+    <ul class="exlist">
+      <li><button class="excard" type="button">
+        <span class="exnum">01</span>
+        <span class="exmain"><span class="exname">Pull-ups</span><span class="exmeta">Strength · back · bar</span></span>
+        <span class="exbest"><span>8</span></span>
+      </button></li>
+      <li><button class="excard" type="button">
+        <span class="exnum">02</span>
+        <span class="exmain"><span class="exname">Straight-bar Dips</span><span class="exmeta">Strength · chest · bar</span></span>
+        <span class="exbest"><span>6</span></span>
+      </button></li>
+      <li><button class="excard" type="button">
+        <span class="exnum">03</span>
+        <span class="exmain"><span class="exname">Box Jumps</span><span class="exmeta">Strength · quads · box</span></span>
+        <span class="exbest"><span>32</span></span>
+      </button></li>
+      <li><button class="excard" type="button">
+        <span class="exnum">04</span>
+        <span class="exmain"><span class="exname">Plank</span><span class="exmeta">Skill · core · bodyweight</span></span>
+        <span class="exbest"><span>2:45</span></span>
+      </button></li>
+    </ul>
+
+    <div class="detail">
+      <h3 class="slab">Straight-bar Dips</h3>
+      <div class="frames">
+        <figure class="frame">
+          <svg viewBox="0 0 200 150" role="img" aria-label="Start position: athlete locked out with straight arms on top of the bar">
+            <line x1="10" y1="82" x2="190" y2="82" stroke="#141a0e" stroke-width="6"/>
+            <g fill="none" stroke="#141a0e" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M100 46 L100 76"/><path d="M100 52 L78 82"/><path d="M100 52 L122 82"/>
+              <path d="M100 76 L92 108 L98 132"/><path d="M100 76 L110 106 L104 132"/>
+            </g>
+            <circle cx="100" cy="32" r="12" fill="#141a0e"/>
+          </svg>
+          <figcaption>Start</figcaption>
+        </figure>
+        <figure class="frame">
+          <svg viewBox="0 0 200 150" role="img" aria-label="Finish position: athlete lowered until the bar reaches the lower chest, elbows bent">
+            <line x1="10" y1="82" x2="190" y2="82" stroke="#141a0e" stroke-width="6"/>
+            <g fill="none" stroke="#141a0e" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M100 72 L100 100"/><path d="M100 76 L74 96 L78 82"/><path d="M100 76 L126 96 L122 82"/>
+              <path d="M100 100 L120 118 L112 138"/><path d="M100 100 L106 122 L96 138"/>
+            </g>
+            <circle cx="100" cy="58" r="12" fill="#141a0e"/>
+          </svg>
+          <figcaption>Finish</figcaption>
+        </figure>
+      </div>
+      <ol class="steps">
+        <li>Support yourself on top of a single straight bar, hands just outside your hips, arms locked.</li>
+        <li>Lean slightly forward and bend the elbows until the bar reaches your lower chest / upper abs.</li>
+        <li>Press back to a full lockout at the top.</li>
+      </ol>
+      <p class="cue"><b>Cue:</b> the other half of the muscle-up — the top-out is exactly this position.</p>
+    </div>
+  </div></section>
+
+  <!-- ============ LOG ============ -->
+  <h2 class="viewlabel">View C — Logging a session</h2>
+  <section class="screen" aria-label="Live workout logging">
+    <div class="logtop">
+      <div>
+        <h3>B · Push + Volume</h3>
+        <p class="sub">Get Over The Bar</p>
+      </div>
+      <span class="clock">12:41</span>
+    </div>
+    <div class="pad">
+      <div class="logex" style="margin-top:0">
+        <div class="logex-head">
+          <h4 class="logex-name">Straight-bar Dips</h4>
+          <span class="logex-target">5 × submax</span>
+        </div>
+        <ul class="sets">
+          <li class="setrow on"><span class="setno">1</span><input class="setval" type="text" value="8" aria-label="Set 1 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 1 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow on"><span class="setno">2</span><input class="setval" type="text" value="7" aria-label="Set 2 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 2 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">3</span><input class="setval" type="text" value="6" aria-label="Set 3 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 3 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">4</span><input class="setval" type="text" placeholder="—" aria-label="Set 4 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 4 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">5</span><input class="setval" type="text" placeholder="—" aria-label="Set 5 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Set 5 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+        </ul>
+        <button class="addset" type="button">+ Add set</button>
+      </div>
+
+      <div class="logex">
+        <div class="logex-head">
+          <h4 class="logex-name">Pull-ups</h4>
+          <span class="logex-target">4 × submax</span>
+        </div>
+        <ul class="sets">
+          <li class="setrow on"><span class="setno">1</span><input class="setval" type="text" value="7" aria-label="Pull-ups set 1 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Pull-ups set 1 done" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">2</span><input class="setval" type="text" value="6" aria-label="Pull-ups set 2 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Pull-ups set 2 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+          <li class="setrow"><span class="setno">3</span><input class="setval" type="text" placeholder="—" aria-label="Pull-ups set 3 reps"><span class="setunit">reps</span>
+            <button class="tick" type="button" aria-label="Pull-ups set 3 done" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></button></li>
+        </ul>
+        <button class="addset" type="button">+ Add set</button>
+      </div>
+
+      <button class="finish" type="button">Bank it</button>
+      <p class="microcopy">The bar isn't going to climb itself.</p>
+    </div>
+  </section>
+
+  <!-- ============ TRADE-OFFS ============ -->
+  <aside class="tradeoffs">
+    <h2>Trade-offs</h2>
+    <h3>Wins</h3>
+    <p>Highest motivational charge of the five — the hero is unmissable, the chunky bars make a 46% plank feel like progress rather than a statistic, and the 48px tick targets are the easiest to hit with sweaty hands mid-set. It's the only direction that actively pushes you.</p>
+    <h3>Costs</h3>
+    <p>Loud gets tiring: microcopy that lands on day 3 grates on day 300, and 3px borders plus clip-path cuts are heavy visual furniture inside an Obsidian pane that already has its own chrome. Diagonal clips also complicate responsive edges — the cut angle has to be re-tuned at desktop width or it reads as a mistake.</p>
+    <h3>Mapping onto <code>src/styles.css</code></h3>
+    <ul>
+      <li><code>.gv-hero</code> keeps its lime gradient but drops <code>border-radius</code> for a <code>clip-path</code> cut and goes full-bleed — which means <code>.gv-page</code>'s <code>padding: 4px 18px</code> has to move onto the inner sections instead of the scroll container.</li>
+      <li><code>.gv-bar</code> grows 8px → 18px with a <code>3px solid var(--gv-ink)</code> frame and a repeating-gradient stripe on <code>.gv-bar-fill</code>; same markup, same width calculation from <code>goalProgress()</code>.</li>
+      <li>Borders go from <code>1px solid var(--gv-line)</code> to <code>3px solid var(--gv-ink)</code> across <code>.gv-card</code>, <code>.gv-tile</code>, <code>.gv-log-set</code>, and <code>--gv-radius</code> drops to 0. Watch the light-mode button trap noted at the top of the file — every new <code>.gv-btn</code> colour rule still needs the <code>.gv-app</code> ancestor to beat app.css.</li>
+    </ul>
+  </aside>
+
+</div>
+</body>
+</html>

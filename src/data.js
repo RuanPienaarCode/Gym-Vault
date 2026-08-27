@@ -8,11 +8,11 @@
    where the body IS the plugin's own structure (plan day lists, the two flat
    tables) — and even then prose lines round-trip verbatim via plan-parse. */
 
-const { normalizePath, TFile, TFolder } = require('obsidian');
+const { normalizePath, TFile, TFolder, requestUrl } = require('obsidian');
 const { parseFrontmatter, serializeFrontmatter, tableToObjects, buildMdTable } = require('./markdown');
 const { parsePlanBody, serializePlanBody } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
-const { SEED_EXERCISES, SEED_PLAN, SEED_GOALS, SEED_PROFILE } = require('./seed');
+const { SEED_EXERCISES, SEED_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 
 /* Windows/OSX-illegal filename characters, folded to '-' so an exercise or
    plan named from user input always lands on disk. */
@@ -31,6 +31,7 @@ function makeIo(plugin) {
     goals: () => `${root()}/Goals`,
     profile: () => `${root()}/Profile.md`,
     bodyLog: () => `${root()}/Body Log.md`,
+    attachments: () => `${root()}/Attachments`,
   };
 
   const stamp = () => { plugin._lastWrite = Date.now(); };
@@ -145,7 +146,7 @@ function makeIo(plugin) {
   async function createExercise(ex) {
     await ensureFolder(paths.exercises());
     const path = `${paths.exercises()}/${safeName(ex.name)}.md`;
-    const fm = { type: ex.type, muscles: ex.muscles, equipment: ex.equipment, unit: ex.unit };
+    const fm = { type: ex.type, muscles: ex.muscles, equipment: ex.equipment, unit: ex.unit, image: ex.image, video: ex.video };
     return writeIfAbsent(path, serializeFrontmatter(fm) + '\n' + (ex.note ? ex.note + '\n' : ''));
   }
 
@@ -213,8 +214,97 @@ function makeIo(plugin) {
     await writeIfAbsent(paths.bodyLog(), buildMdTable(BODY_COLUMNS, []) + '\n');
   }
 
+  /* Upgrade the media frontmatter of SEED exercise notes in place — when a
+     later plugin version ships better images/videos, this is how existing
+     vaults get them. Strictly gated: a note's image/video is only replaced
+     when it is empty or every entry still points at a known seed source
+     (free-exercise-db / wger.de) — anything the user set themselves is
+     untouched, and note BODIES are never rebuilt (attribution lines are
+     appended, once, when wger media arrives). Returns the patch count. */
+  async function refreshSeedMedia() {
+    const listOfMedia = v => Array.isArray(v) ? v : v ? [v] : [];
+    const replaceable = v => { const l = listOfMedia(v); return !l.length || l.every(isSeedMediaUrl); };
+    const sameList = (a, b) => JSON.stringify(listOfMedia(a)) === JSON.stringify(listOfMedia(b));
+    let patched = 0;
+    for (const seedEx of SEED_EXERCISES) {
+      const path = `${paths.exercises()}/${safeName(seedEx.name)}.md`;
+      const f = v.getFileByPath(path);
+      if (!f) continue;
+      const { fm, body } = parseFrontmatter(await v.cachedRead(f));
+      let changed = false;
+      const next = { ...fm };
+      if (seedEx.image && replaceable(fm.image) && !sameList(fm.image, seedEx.image)) { next.image = seedEx.image; changed = true; }
+      if (seedEx.video && replaceable(fm.video) && (fm.video || '') !== seedEx.video) { next.video = seedEx.video; changed = true; }
+      if (!changed) continue;
+      let nextBody = body;
+      if (nextBody.indexOf('wger.de') < 0) {
+        for (const line of (seedEx.note || '').split('\n')) {
+          if (line.indexOf('wger.de') >= 0 || /^(Photos|Media) show/.test(line)) {
+            nextBody = nextBody.replace(/\s*$/, '') + '\n\n' + line + '\n';
+          }
+        }
+      }
+      await writeFile(path, serializeFrontmatter(next) + '\n' + nextBody);
+      patched++;
+    }
+    return patched;
+  }
+
+  /* Localize remote exercise images: download each https image into
+     Gym/Attachments/<exercise>/<i>.<ext> and re-point the note's image list
+     at the vault files, so the library works fully offline (and syncs to
+     every device with the vault). Videos are deliberately left streaming —
+     they are tens of MB each and would ride iCloud sync to every device.
+     Idempotent: an already-local list is skipped, an existing file is
+     reused, and a failed download leaves that entry as the remote URL so a
+     later run can retry. Returns {saved, patched, failed}. */
+  async function downloadMedia() {
+    const isRemote = u => /^https:\/\//i.test((u || '').toString());
+    const extOf = u => {
+      const m = (u || '').match(/\.(jpe?g|png|webp|gif)(\?|#|$)/i);
+      return m ? m[1].toLowerCase().replace('jpeg', 'jpg') : 'jpg';
+    };
+    const out = { saved: 0, patched: 0, failed: 0 };
+    for (const f of await readNotesIn(paths.exercises())) {
+      const { fm, body } = parseFrontmatter(await v.cachedRead(f));
+      const images = Array.isArray(fm.image) ? fm.image : fm.image ? [fm.image] : [];
+      if (!images.some(isRemote)) continue;
+      const dir = `${paths.attachments()}/${safeName(f.basename)}`;
+      const next = [];
+      let changed = false;
+      for (let i = 0; i < images.length; i++) {
+        const u = images[i];
+        if (!isRemote(u)) { next.push(u); continue; }
+        const localPath = `${dir}/${i}.${extOf(u)}`;
+        if (!v.getFileByPath(localPath)) {
+          try {
+            const res = await requestUrl({ url: u, throw: true });
+            await ensureFolder(paths.attachments());
+            await ensureFolder(dir);
+            stamp();
+            await v.createBinary(localPath, res.arrayBuffer);
+            out.saved++;
+          } catch (e) {
+            console.error('gym-vault download', u, e);
+            out.failed++;
+            next.push(u);   // keep the remote URL so a retry can pick it up
+            continue;
+          }
+        }
+        next.push(localPath);
+        changed = true;
+      }
+      if (changed) {
+        const nfm = { ...fm, image: next.length > 1 ? next : (next[0] || '') };
+        await writeFile(f.path, serializeFrontmatter(nfm) + '\n' + body);
+        out.patched++;
+      }
+    }
+    return out;
+  }
+
   return {
-    paths, loadAll, scaffold, saveProfile, appendBodyRow,
+    paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveProfile, appendBodyRow,
     createExercise, saveExercise, createGoal, saveGoal,
     createPlan, savePlan, setActivePlan, saveWorkout, trash, safeName,
   };

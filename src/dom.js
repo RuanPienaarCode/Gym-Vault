@@ -13,17 +13,41 @@ const el = (tag, attrs = {}, ...kids) => {
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), val);
     else if (val !== null && val !== undefined) n.setAttribute(k, val);
   }
+  /* Every plugin button opts OUT of Obsidian's own button chrome by carrying
+     .clickable-icon: app.css's `button:not(.clickable-icon)` sets gray
+     background/shadow at (0,1,1), and on MOBILE `button:not(.clickable-icon)
+     .mobile-tap` repaints a touched button gray at (0,2,1) — which beats our
+     (0,2,0) rules and flashes over the design mid-tap. Everything
+     .clickable-icon itself brings is (0,1,0/1) and loses to our rules; the
+     leftover gaps (radius, svg opacity) are patched in styles.css. */
+  if (tag === 'button') n.classList.add('clickable-icon');
   for (const kid of kids.flat()) n.append(kid && kid.nodeType ? kid : document.createTextNode(kid ?? ''));
   return n;
 };
 
 /* Lucide icon span. Names must exist in the app's pinned lucide set —
-   setIcon() on an unknown name is a SILENT no-op that ships an empty box, so
-   every name used in this plugin is checked against obsidian.asar before it
-   lands here. */
+   setIcon() on an unknown name is a SILENT no-op that ships an empty box.
+   Every name is checked against the DESKTOP obsidian.asar, but iOS often
+   runs an older app with an older lucide, where some of these names didn't
+   exist yet (lucide renamed whole families: line-chart→chart-line,
+   check-circle→circle-check…). So: try the name, then its older aliases,
+   then a neutral dot — never ship a blank box. */
+const ICON_FALLBACKS = {
+  'chart-line': ['line-chart'],
+  'circle-check': ['check-circle'],
+  'calendar-days': ['calendar'],
+  'clipboard-list': ['clipboard'],
+  'heart-pulse': ['heart'],
+  'medal': ['award'],
+  'timer': ['clock'],
+  'repeat-2': ['repeat'],
+};
 const ico = (name, cls) => {
   const s = el('span', { class: `gv-ico${cls ? ' ' + cls : ''}` });
-  setIcon(s, name);
+  for (const candidate of [name, ...(ICON_FALLBACKS[name] || []), 'circle']) {
+    setIcon(s, candidate);
+    if (s.querySelector('svg')) break;
+  }
   return s;
 };
 

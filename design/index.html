@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<!-- MOCKUP ONLY — design exploration index for Gym Vault. Not production code. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault — design directions (06 chosen)</title>
+<style>
+  :root{
+    --bg:#f6f8f1;
+    --paper:#ffffff;
+    --ink:#141a0e;
+    --ink-2:#5b6551;
+    --line:#e2e8d8;
+    --line-2:#d2dbc3;
+    --lime:#84cc16;
+    --lime-hi:#a3e635;
+    --lime-deep:#4d7c0f;
+    --lime-ghost:#f4fbe8;
+    --body:-apple-system, BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.55}
+  :focus-visible{outline:3px solid var(--lime-deep);outline-offset:3px;border-radius:6px}
+  a{color:var(--lime-deep)}
+
+  .top{background:var(--ink);color:#fff;padding:34px 20px 30px;border-bottom:4px solid var(--lime)}
+  .top-in{max-width:1080px;margin:0 auto}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--lime-hi);margin:0}
+  .top h1{margin:12px 0 0;font-size:clamp(28px,6vw,42px);font-weight:900;letter-spacing:-.03em;line-height:1.05}
+  .top p{margin:14px 0 0;font-size:15.5px;color:#c9d3ba;max-width:62ch}
+  .rules{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .rule{
+    background:#242e18;border:1px solid #38452a;color:#d7e0c9;font-size:12px;font-weight:600;
+    padding:5px 11px;border-radius:999px;
+  }
+  .rule b{color:var(--lime-hi)}
+
+  main{max-width:1080px;margin:0 auto;padding:32px 20px 70px}
+  .lead{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);margin:0 0 16px}
+
+  .grid{display:grid;gap:18px;grid-template-columns:1fr}
+  @media (min-width:720px){ .grid{grid-template-columns:1fr 1fr} }
+  @media (min-width:1040px){ .grid{grid-template-columns:1fr 1fr 1fr} }
+
+  .card{
+    background:var(--paper);border:1px solid var(--line-2);border-radius:16px;overflow:hidden;
+    display:flex;flex-direction:column;
+  }
+  .card--chosen{border:2px solid var(--ink);box-shadow:0 10px 30px rgba(20,26,14,.10)}
+  @media (min-width:720px){
+    .card--chosen{grid-column:1/-1;flex-direction:row;align-items:stretch}
+    .card--chosen .thumb{width:44%;flex:0 0 auto;border-bottom:0;border-right:1px solid var(--line);object-fit:cover}
+    .card--chosen .card-in{padding:24px 26px 26px}
+  }
+  .card--chosen h2{font-size:25px}
+  .chosen-flag{
+    display:inline-flex;align-items:center;gap:7px;background:var(--lime);color:var(--ink);
+    font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    padding:4px 11px;border-radius:999px;
+  }
+  .parents{margin:12px 0 0;font-size:12.5px;font-weight:700;color:var(--ink-2)}
+  .parents b{color:var(--lime-deep)}
+  .superseded .num::after{content:' · folded into 06';color:var(--ink-2);letter-spacing:.08em}
+  .thumb{display:block;width:100%;height:auto;border-bottom:1px solid var(--line)}
+  .card-in{padding:18px 18px 20px;display:flex;flex-direction:column;flex:1 1 auto}
+  .num{font-size:11px;font-weight:800;letter-spacing:.16em;color:var(--lime-deep)}
+  .card h2{margin:6px 0 0;font-size:21px;font-weight:900;letter-spacing:-.02em}
+  .intent{margin:10px 0 0;font-size:14.5px;color:var(--ink)}
+  .kv{margin:14px 0 0;padding:0;list-style:none;border-top:1px solid var(--line)}
+  .kv div{padding:10px 0;border-bottom:1px solid var(--line)}
+  .kv dt{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+  .kv dd{margin:4px 0 0;font-size:13.5px;color:var(--ink-2);line-height:1.5}
+  .kv dd.win{color:var(--ink)}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+  .tag{
+    background:var(--lime-ghost);color:var(--lime-deep);border:1px solid #dcefbd;
+    font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;
+  }
+  .open{
+    margin-top:18px;display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    min-height:48px;padding:0 20px;border-radius:999px;background:var(--ink);color:var(--lime-hi);
+    font-size:14.5px;font-weight:800;text-decoration:none;
+  }
+  .open:hover{background:var(--lime-deep);color:#fff}
+  .open svg{width:16px;height:16px}
+
+  .foot{max-width:1080px;margin:0 auto;padding:0 20px 70px}
+  .foot-card{background:var(--paper);border:1px solid var(--line-2);border-radius:16px;padding:22px 20px}
+  .foot-card h2{margin:0 0 10px;font-size:19px;font-weight:900;letter-spacing:-.02em}
+  .foot-card h3{margin:18px 0 6px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--lime-deep)}
+  .foot-card p,.foot-card li{font-size:14px;color:var(--ink-2);line-height:1.6;margin:0}
+  .foot-card ul{margin:0;padding-left:20px}
+  .foot-card li{margin-bottom:7px}
+  .foot-card code{background:var(--lime-ghost);color:var(--lime-deep);padding:1px 5px;border-radius:4px;font-size:13px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <p class="eyebrow">Gym Vault · design exploration · 26 Aug 2026</p>
+    <h1>Five directions for a training tracker that means it — plus the one we're building</h1>
+    <p>Same three views in every file — Today, Exercises &amp; detail, and a live logging screen — so the directions can be compared on identical content rather than on how good their filler looks. Real data throughout: the <strong>Get Over The Bar</strong> program, Day B, week streak 3, plank at 2:45 of 6:00.</p>
+    <p><strong style="color:var(--lime-hi)">Decision:</strong> Ruan picked 01 Editorial and 03 Training Floor. <strong>06 Editorial Floor</strong> is the fusion and is now the direction to build; 01 and 03 stay here as the source material.</p>
+    <div class="rules">
+      <span class="rule"><b>Chosen:</b> 06 Editorial Floor</span>
+      <span class="rule"><b>Brand:</b> white + lime, one dark counterpoint</span>
+      <span class="rule"><b>Accent:</b> #84cc16 · text lime #4d7c0f</span>
+      <span class="rule"><b>Target:</b> 390px iPhone pane → desktop</span>
+      <span class="rule"><b>Grade:</b> mockup, not production</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <p class="lead">The chosen direction</p>
+  <div class="grid">
+
+    <!-- 06 — chosen hybrid -->
+    <article class="card card--chosen">
+      <svg class="thumb" viewBox="0 0 320 200" role="img" aria-label="Preview: white editorial masthead with a condensed headline and lime highlighter sweep above a lime diagonally-cut action slab, then a hairline numeral grid and a chunky striped progress bar">
+        <rect width="320" height="200" fill="#ffffff"/>
+        <rect x="20" y="16" width="96" height="6" fill="#5b6551"/>
+        <rect x="20" y="32" width="176" height="22" fill="#141a0e"/>
+        <rect x="20" y="60" width="128" height="22" fill="#141a0e"/>
+        <rect x="20" y="72" width="128" height="10" fill="#a3e635" opacity=".9"/>
+        <g fill="#e2e8d8"><rect x="20" y="94" width="280" height="1"/><rect x="20" y="106" width="280" height="1"/></g>
+        <path d="M0 118h320v52L0 178z" fill="#84cc16"/>
+        <g fill="rgba(20,26,14,.12)"><rect x="10" y="126" width="150" height="5" transform="skewX(-24)"/><rect x="90" y="146" width="180" height="5" transform="skewX(-24)"/></g>
+        <path d="M20 140h268l-10 22H20z" fill="#141a0e"/>
+        <g fill="#e2e8d8"><rect x="0" y="182" width="320" height="1"/><rect x="80" y="182" width="1" height="18"/><rect x="160" y="182" width="1" height="18"/><rect x="240" y="182" width="1" height="18"/></g>
+        <g fill="#141a0e"><rect x="20" y="188" width="22" height="10"/><rect x="96" y="188" width="22" height="10"/><rect x="176" y="188" width="34" height="10"/><rect x="256" y="188" width="34" height="10"/></g>
+      </svg>
+      <div class="card-in">
+        <p class="chosen-flag">Chosen · building this</p>
+        <p class="num" style="margin-top:12px">06</p>
+        <h2>Editorial Floor</h2>
+        <p class="parents">Fusion of <b>01 Editorial</b> + <b>03 Training Floor</b></p>
+        <p class="intent">Editorial calm is the page's resting state; floor energy is rationed and spent only where you act — one lime flood per screen, always under your thumb. The masthead answers "what is today" in a capped condensed headline, stats stay on a quiet hairline grid, and the logging screen goes fully hard-edged with 48px targets.</p>
+        <dl class="kv">
+          <div><dt>Wins</dt><dd class="win">Colour becomes a wayfinding signal instead of decoration — you can see where to act before you read anything. Keeps 01's one-glance hierarchy and 03's mid-set ergonomics without inheriting either one's fatigue.</dd></div>
+          <div><dt>Costs</dt><dd>Two registers need discipline to extend — Plans, History and Profile each have to be classified as a reading or an acting surface, and the 62px display cap is a compromise that gives up 01's full cover-line drama.</dd></div>
+        </dl>
+        <div class="tags"><span class="tag">capped condensed display</span><span class="tag">one lime flood per screen</span><span class="tag">hairline numeral grid</span><span class="tag">striped progress slabs</span><span class="tag">48px set targets</span></div>
+        <a class="open" href="06-editorial-floor.html">Open direction 06
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </article>
+  </div>
+
+  <p class="lead" style="margin-top:36px">The five explorations it came from</p>
+  <div class="grid">
+
+    <!-- 01 -->
+    <article class="card superseded">
+      <svg class="thumb" viewBox="0 0 320 160" role="img" aria-label="Preview: white page with an oversized condensed headline, a lime highlighter sweep and four large numerals">
+        <rect width="320" height="160" fill="#ffffff"/>
+        <rect x="20" y="18" width="90" height="6" fill="#5b6551"/>
+        <rect x="20" y="34" width="200" height="26" fill="#141a0e"/>
+        <rect x="20" y="66" width="150" height="26" fill="#141a0e"/>
+        <rect x="20" y="80" width="150" height="12" fill="#a3e635" opacity=".85"/>
+        <rect x="20" y="106" width="280" height="2" fill="#141a0e"/>
+        <g fill="#141a0e"><rect x="20" y="118" width="30" height="24"/><rect x="90" y="118" width="30" height="24"/><rect x="160" y="118" width="44" height="24"/><rect x="244" y="118" width="44" height="24"/></g>
+      </svg>
+      <div class="card-in">
+        <p class="num">01</p>
+        <h2>Editorial Athlete</h2>
+        <p class="intent">Treat the dashboard like a magazine cover: one huge condensed headline says what today is, and the stats become the artwork.</p>
+        <dl class="kv">
+          <div><dt>Wins</dt><dd class="win">Most personality and the clearest single answer to "what am I doing today".</dd></div>
+          <div><dt>Costs</dt><dd>Eats vertical space on a 390px pane and leans on a condensed webfont that iOS won't have offline.</dd></div>
+        </dl>
+        <div class="tags"><span class="tag">condensed display</span><span class="tag">hairline rules</span><span class="tag">lime as highlighter</span></div>
+        <a class="open" href="01-editorial.html">Open direction 01
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </article>
+
+    <!-- 02 -->
+    <article class="card">
+      <svg class="thumb" viewBox="0 0 320 160" role="img" aria-label="Preview: quiet white layout with a lime left rail, hairline dividers and a rounded lime button">
+        <rect width="320" height="160" fill="#ffffff"/>
+        <rect x="20" y="22" width="3" height="34" fill="#84cc16"/>
+        <rect x="34" y="26" width="150" height="12" rx="2" fill="#141a0e"/>
+        <rect x="34" y="46" width="96" height="7" rx="2" fill="#8d977f"/>
+        <g fill="#eaeee1"><rect x="20" y="70" width="280" height="1"/><rect x="20" y="92" width="280" height="1"/><rect x="20" y="114" width="280" height="1"/></g>
+        <g fill="#c8d1b8"><rect x="20" y="78" width="120" height="7" rx="3"/><rect x="20" y="100" width="90" height="7" rx="3"/></g>
+        <g fill="#4d7c0f"><rect x="230" y="78" width="70" height="7" rx="3"/><rect x="250" y="100" width="50" height="7" rx="3"/></g>
+        <rect x="20" y="126" width="280" height="22" rx="11" fill="#4d7c0f"/>
+      </svg>
+      <div class="card-in">
+        <p class="num">02</p>
+        <h2>Clean Performance</h2>
+        <p class="intent">The current design with the noise taken out — hairlines instead of shadows, lime as a signal rather than a surface, whitespace doing the structuring.</p>
+        <dl class="kv">
+          <div><dt>Wins</dt><dd class="win">Cheapest to ship, never fights an Obsidian theme, ages well at every pane width.</dd></div>
+          <div><dt>Costs</dt><dd>Least memorable of the five; the athletic energy has to come from copy, not chrome.</dd></div>
+        </dl>
+        <div class="tags"><span class="tag">token-native</span><span class="tag">generous air</span><span class="tag">quiet lime</span></div>
+        <a class="open" href="02-clean-performance.html">Open direction 02
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </article>
+
+    <!-- 03 -->
+    <article class="card superseded">
+      <svg class="thumb" viewBox="0 0 320 160" role="img" aria-label="Preview: lime hero block with a diagonal cut, black slab type and chunky striped progress bars">
+        <path d="M0 0h320v96L0 116z" fill="#84cc16"/>
+        <rect y="96" width="320" height="64" fill="#ffffff"/>
+        <g fill="rgba(20,26,14,.13)"><rect x="-10" y="20" width="180" height="6" transform="skewX(-24)"/><rect x="60" y="44" width="220" height="6" transform="skewX(-24)"/></g>
+        <rect x="20" y="18" width="86" height="14" fill="#141a0e" transform="skewX(-9)"/>
+        <rect x="20" y="42" width="190" height="20" fill="#141a0e"/>
+        <rect x="20" y="66" width="130" height="20" fill="#141a0e"/>
+        <rect x="20" y="122" width="280" height="16" fill="#f2fbe2" stroke="#141a0e" stroke-width="3"/>
+        <rect x="22" y="124" width="180" height="12" fill="#84cc16"/>
+      </svg>
+      <div class="card-in">
+        <p class="num">03</p>
+        <h2>Training Floor</h2>
+        <p class="intent">Loud on purpose — lime floods the hero, every element is a hard-edged block, and the app talks back to you between sets.</p>
+        <dl class="kv">
+          <div><dt>Wins</dt><dd class="win">Highest motivational charge and the biggest tap targets for sweaty mid-set hands.</dd></div>
+          <div><dt>Costs</dt><dd>Loud gets tiring by month three, and heavy borders crowd an Obsidian pane that has its own chrome.</dd></div>
+        </dl>
+        <div class="tags"><span class="tag">lime flood</span><span class="tag">diagonal cuts</span><span class="tag">motivational copy</span></div>
+        <a class="open" href="03-training-floor.html">Open direction 03
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </article>
+
+    <!-- 04 -->
+    <article class="card">
+      <svg class="thumb" viewBox="0 0 320 160" role="img" aria-label="Preview: near-black screen with a lime glow, a lime pill button and a thin lime progress line">
+        <rect width="320" height="160" fill="#0b0e08"/>
+        <circle cx="40" cy="10" r="86" fill="#a3e635" opacity=".15"/>
+        <circle cx="26" cy="26" r="5" fill="#a3e635"/>
+        <rect x="40" y="22" width="96" height="7" rx="3" fill="#a3e635"/>
+        <rect x="20" y="44" width="184" height="18" rx="3" fill="#eef3e6"/>
+        <g fill="#2b3520"><rect x="20" y="78" width="280" height="1"/><rect x="20" y="102" width="280" height="1"/></g>
+        <g fill="#5b6551"><rect x="20" y="86" width="110" height="7" rx="3"/></g>
+        <rect x="240" y="86" width="60" height="7" rx="3" fill="#a3e635"/>
+        <rect x="20" y="112" width="280" height="4" rx="2" fill="#3a462b"/>
+        <rect x="20" y="112" width="180" height="4" rx="2" fill="#a3e635"/>
+        <rect x="20" y="128" width="280" height="22" rx="11" fill="#a3e635"/>
+      </svg>
+      <div class="card-in">
+        <p class="num">04</p>
+        <h2>Night Session</h2>
+        <p class="intent">The dark counterpoint — near-black paper with lime as the only light source, tuned for a 9pm garage session and a dark Obsidian theme.</p>
+        <dl class="kv">
+          <div><dt>Wins</dt><dd class="win">No white flash between sets; the active set and running clock find your eye instantly.</dd></div>
+          <div><dt>Costs</dt><dd>Breaks the white + lime identity, so it can only ship as the dark half of a pair — two surfaces to keep in sync forever.</dd></div>
+        </dl>
+        <div class="tags"><span class="tag">near-black</span><span class="tag">neon lime signal</span><span class="tag">evening training</span></div>
+        <a class="open" href="04-night-session.html">Open direction 04
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </article>
+
+    <!-- 05 -->
+    <article class="card">
+      <svg class="thumb" viewBox="0 0 320 160" role="img" aria-label="Preview: black scoreboard bar above a ruled data table with mono numerals">
+        <rect width="320" height="160" fill="#ffffff"/>
+        <rect width="320" height="58" fill="#141a0e"/>
+        <g fill="rgba(255,255,255,.06)"><rect x="40" width="1" height="58"/><rect x="80" width="1" height="58"/><rect x="120" width="1" height="58"/><rect x="160" width="1" height="58"/><rect x="200" width="1" height="58"/><rect x="240" width="1" height="58"/><rect x="280" width="1" height="58"/></g>
+        <rect x="20" y="14" width="74" height="6" fill="#96a288"/>
+        <rect x="250" y="12" width="50" height="12" fill="#84cc16"/>
+        <rect x="20" y="30" width="150" height="14" fill="#ffffff"/>
+        <g fill="#d4dcc5"><rect x="0" y="72" width="320" height="1"/><rect x="0" y="94" width="320" height="1"/><rect x="0" y="116" width="320" height="1"/><rect x="0" y="138" width="320" height="1"/></g>
+        <g fill="#c8d1b8"><rect x="20" y="80" width="110" height="7"/><rect x="20" y="102" width="130" height="7"/><rect x="20" y="124" width="96" height="7"/></g>
+        <g fill="#4d7c0f"><rect x="256" y="80" width="44" height="7"/><rect x="256" y="102" width="44" height="7"/><rect x="256" y="124" width="44" height="7"/></g>
+      </svg>
+      <div class="card-in">
+        <p class="num">05</p>
+        <h2>Stat Sheet / Broadcast</h2>
+        <p class="intent">Sports telemetry — a scoreboard header over real ruled tables, mono tabular numerals, and the data doing all the decorating.</p>
+        <dl class="kv">
+          <div><dt>Wins</dt><dd class="win">Densest and most comparable; tabular numerals make rep-to-rep progress readable at a glance.</dd></div>
+          <div><dt>Costs</dt><dd>Reads as an instrument, not a coach — no lift on the day you don't feel like training. Tables are the most fragile layout at 390px.</dd></div>
+        </dl>
+        <div class="tags"><span class="tag">mono numerals</span><span class="tag">ruled grid</span><span class="tag">data-dense</span></div>
+        <a class="open" href="05-stat-sheet.html">Open direction 05
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </article>
+
+  </div>
+</main>
+
+<div class="foot">
+  <div class="foot-card">
+    <h2>How to read these</h2>
+    <p>Every file stacks the same three views so you're comparing structure, not content. Scroll each one on a narrow window first — that's the real target — then widen it to check the desktop pane.</p>
+    <h3>What the hybrid resolved</h3>
+    <ul>
+      <li><strong>Kept from 01</strong> — the capped condensed masthead answering "what is today", oversized numerals on a hairline grid, the lime highlighter sweep, and the whitespace discipline that makes the rest of the page quiet.</li>
+      <li><strong>Kept from 03</strong> — the lime flood with its diagonal cut (now a slab that holds only the CTA), the striped progress bars, the hard-edged 2px set rows with 48px tick targets, and the motivational voice at two points per screen.</li>
+      <li><strong>Dropped</strong> — 01's 84px cover type (capped at 62px so a 390px pane doesn't scroll excessively) and 01's shadowless-everything austerity on the logging screen; 03's global 3px black borders, its skewed block chips, and most of its microcopy.</li>
+    </ul>
+    <h3>Still open for later</h3>
+    <ul>
+      <li><strong>06 + 05</strong> — Editorial Floor with Stat Sheet's mono tabular numerals for every figure. One new token (<code>--gv-mono</code>), no markup change.</li>
+      <li><strong>06 + 04</strong> — Night Session becomes 06's <code>.theme-dark</code> block rather than a separate design, so the plugin follows the Obsidian theme.</li>
+    </ul>
+    <h3>What these are not</h3>
+    <p>Mockup grade: no state handling, no empty/error/loading cases, no responsive polish past two breakpoints, and Tailwind-free hand-written CSS that is <em>not</em> meant to be lifted into <code>src/styles.css</code> as-is. Each file's footer lists how its ideas map onto the existing tokens; that mapping is the handoff, not the CSS.</p>
+  </div>
+</div>
+
+</body>
+</html>

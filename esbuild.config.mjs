@@ -15,7 +15,12 @@ import * as esbuild from 'esbuild';
 const root = dirname(fileURLToPath(import.meta.url));
 const rel = p => join(root, p);
 
-writeFileSync(rel('styles.css'), readFileSync(rel('src/styles.css'), 'utf8'));
+/* Font first so the face is declared before anything references it. Both
+   halves are inputs; root styles.css stays pure build output. */
+writeFileSync(
+  rel('styles.css'),
+  readFileSync(rel('src/font.css'), 'utf8') + readFileSync(rel('src/styles.css'), 'utf8'),
+);
 
 /* target safari15 pins the syntax floor at the engine this plugin actually has
    to parse on. The floor is NOT minAppVersion — Obsidian mobile runs the OS

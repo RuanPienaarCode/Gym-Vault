@@ -1,13 +1,10 @@
 'use strict';
 /* Exercise library — searchable, filterable, with per-exercise bests. */
 
-const { el, ico, fmt, fmtSeconds } = require('./dom');
+const { el, ico, fmtSeconds } = require('./dom');
 const { EXERCISE_TYPES, MUSCLE_GROUPS } = require('./constants');
 const { exerciseBests } = require('./stats');
-const { fmtShort } = require('./dates');
 const { FormModal, ConfirmModal } = require('./modals');
-
-const TYPE_ICON = { strength: 'dumbbell', cardio: 'heart-pulse', mobility: 'ruler', skill: 'medal' };
 
 function render(ctx, root) {
   const { data } = ctx;
@@ -36,7 +33,7 @@ function render(ctx, root) {
   }
   root.append(chips);
 
-  const listWrap = el('div', { class: 'gv-card-list' });
+  const listWrap = el('div', { class: 'gv-card-list gv-ex-list' });
   root.append(listWrap);
 
   const renderList = () => {
@@ -49,37 +46,36 @@ function render(ctx, root) {
       listWrap.append(el('div', { class: 'gv-empty-line' }, data.exercises.length ? 'No matches.' : 'No exercises yet — add one.'));
       return;
     }
-    for (const ex of items) listWrap.append(card(ctx, ex));
+    items.forEach((ex, i) => listWrap.append(card(ctx, ex, i)));
   };
   renderList();
 }
 
 function listOf(v) { return Array.isArray(v) ? v : v ? [v] : []; }
 
-function card(ctx, ex) {
+function card(ctx, ex, idx) {
   const bests = exerciseBests(ctx.data.workouts, ex.name);
+  /* One number in the lime block: the best in the exercise's own unit. */
   const unit = ex.fm.unit || 'reps';
-  const bestBits = [];
-  if (bests.weight !== null) bestBits.push(`best ${bests.weight}kg`);
-  if (bests.reps !== null) bestBits.push(`${bests.reps} reps`);
-  if (bests.seconds !== null) bestBits.push(fmtSeconds(bests.seconds));
-  const c = el('div', { class: 'gv-card gv-ex-card' },
-    el('div', { class: 'gv-ex-ico' }, ico(TYPE_ICON[ex.fm.type] || 'dumbbell')),
+  const best = unit === 'seconds' ? (bests.seconds !== null ? fmtSeconds(bests.seconds) : null)
+    : unit === 'kg' ? (bests.weight !== null ? `${bests.weight}kg` : null)
+    : (bests.reps !== null ? String(bests.reps) : null);
+  const meta = [ex.fm.type || 'strength', listOf(ex.fm.muscles).join(', '), ex.fm.equipment]
+    .filter(Boolean).join(' · ');
+  const c = el('div', { class: 'gv-ex-card' },
+    el('span', { class: 'gv-ex-idx' }, String(idx + 1).padStart(2, '0')),
     el('div', { class: 'gv-ex-main' },
-      el('div', { class: 'gv-ex-name' }, ex.name),
-      el('div', { class: 'gv-ex-meta' },
-        el('span', { class: 'gv-tag gv-tag-type' }, ex.fm.type || 'strength'),
-        ...listOf(ex.fm.muscles).map(m => el('span', { class: 'gv-tag' }, m))),
-      el('div', { class: 'gv-ex-best' },
-        bestBits.length ? `${bestBits.join(' · ')}${bests.lastDate ? ` · last ${fmtShort(bests.lastDate)}` : ''}` : 'not logged yet')),
+      el('span', { class: 'gv-ex-name' }, ex.name),
+      el('span', { class: 'gv-ex-meta' }, meta)),
     el('div', { class: 'gv-card-actions' },
+      best !== null ? el('span', { class: 'gv-ex-best' }, best) : '',
       iconBtn('pencil', 'Edit', () => openEdit(ctx, ex)),
       iconBtn('trash-2', 'Delete', () => new ConfirmModal(ctx.app, {
         title: 'Delete exercise?',
         message: `"${ex.name}" will be moved to the system trash. Logged history keeps its rows.`,
         onConfirm: async () => { await ctx.io.trash(ex.file); ctx.reload(); },
       }).open())));
-  c.addEventListener('click', e => { if (!e.target.closest('button')) ctx.openFile(ex.file); });
+  c.addEventListener('click', e => { if (!e.target.closest('button')) ctx.nav('exercise', { exercise: ex.name }); });
   return c;
 }
 
@@ -96,10 +92,18 @@ function exerciseFields(fm, name) {
     { key: 'muscles', label: 'Muscles', kind: 'text', value: listOf(fm && fm.muscles).join(', '), placeholder: 'back, biceps', desc: 'Comma-separated' },
     { key: 'equipment', label: 'Equipment', kind: 'text', value: (fm && fm.equipment) || '', placeholder: 'bar, dumbbells, bodyweight' },
     { key: 'unit', label: 'Tracked as', kind: 'dropdown', options: [['reps', 'reps'], ['kg', 'weight (kg)'], ['seconds', 'seconds']], value: (fm && fm.unit) || 'reps' },
+    { key: 'image', label: 'Images', kind: 'text', value: listOf(fm && fm.image).join(', '), placeholder: 'vault path or https URL', desc: 'Comma-separate two (start, finish) to show the movement' },
+    { key: 'video', label: 'Video', kind: 'text', value: (fm && fm.video) || '', placeholder: 'vault path or https URL' },
   ];
 }
 
 const parseMuscles = s => (s || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+
+/* Comma-separated field → single string or list (two = start/finish pair). */
+const parseImages = s => {
+  const list = (s || '').split(',').map(x => x.trim()).filter(Boolean);
+  return list.length > 1 ? list : (list[0] || '');
+};
 
 function openAdd(ctx) {
   new FormModal(ctx.app, {
@@ -110,6 +114,7 @@ function openAdd(ctx) {
     onSubmit: async v => {
       const created = await ctx.io.createExercise({
         name: v.name.trim(), type: v.type, muscles: parseMuscles(v.muscles), equipment: v.equipment.trim(), unit: v.unit,
+        image: parseImages(v.image), video: v.video.trim(),
       });
       if (!created) ctx.notice('An exercise with that name already exists.');
       ctx.reload();
@@ -122,11 +127,14 @@ function openEdit(ctx, ex) {
     title: `Edit ${ex.name}`,
     fields: exerciseFields(ex.fm, ex.name).filter(f => f.key !== 'name'), // rename = rename the note, like every entity here
     onSubmit: async v => {
-      ex.fm = { ...ex.fm, type: v.type, muscles: parseMuscles(v.muscles), equipment: v.equipment.trim(), unit: v.unit };
+      ex.fm = {
+        ...ex.fm, type: v.type, muscles: parseMuscles(v.muscles), equipment: v.equipment.trim(), unit: v.unit,
+        image: parseImages(v.image), video: v.video.trim(),
+      };
       await ctx.io.saveExercise(ex);
       ctx.reload();
     },
   }).open();
 }
 
-module.exports = { render };
+module.exports = { render, editExercise: openEdit };
