@@ -6,6 +6,7 @@
 
 const { el, ico } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
+const { addItem, removeItemAt } = require('./plan-parse');
 const { FormModal, ConfirmModal } = require('./modals');
 
 function render(ctx, root) {
@@ -110,7 +111,7 @@ function renderDetail(ctx, root, plan) {
 function removeItemBtn(ctx, plan, day, idx) {
   const b = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'Remove' }, ico('x'));
   b.addEventListener('click', async () => {
-    day.items.splice(idx, 1);
+    removeItemAt(day, idx);
     await ctx.io.savePlan(plan);
     ctx.reload();
   });
@@ -148,7 +149,7 @@ function openAddDay(ctx, plan) {
     submitLabel: 'Add',
     validate: v => (!v.name.trim() ? 'Give the day a name.' : null),
     onSubmit: async v => {
-      plan.model.days.push({ name: v.name.trim(), weekday: v.weekday, notes: [], items: [] });
+      plan.model.days.push({ name: v.name.trim(), weekday: v.weekday, parts: [], notes: [], items: [] });
       await ctx.io.savePlan(plan);
       ctx.reload();
     },
@@ -170,7 +171,7 @@ function openAddItem(ctx, plan, day) {
     validate: v => (!String(v.exercise).trim() ? 'Pick an exercise.' : null),
     onSubmit: async v => {
       const sets = parseInt(v.sets, 10);
-      day.items.push({ exercise: String(v.exercise).trim(), sets: Number.isFinite(sets) && sets > 0 ? sets : null, target: v.target.trim() });
+      addItem(day, { exercise: String(v.exercise).trim(), sets: Number.isFinite(sets) && sets > 0 ? sets : null, target: v.target.trim() });
       await ctx.io.savePlan(plan);
       ctx.reload();
     },

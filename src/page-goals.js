@@ -92,7 +92,8 @@ function goalFields(ctx, g) {
 
 const validateGoal = v => {
   if (v.name !== undefined && !v.name.trim()) return 'Give it a name.';
-  if (!String(v.target).trim()) return 'Set a target number.';
+  const t = parseFloat(v.target);
+  if (!Number.isFinite(t) || t <= 0) return 'Set a target above zero.';
   if (v.metric.startsWith('exercise-') && !String(v.exercise).trim()) return 'Pick the exercise this goal measures.';
   return null;
 };

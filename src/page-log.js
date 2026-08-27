@@ -5,12 +5,13 @@
 
 const { el, ico, fmtSeconds } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
-const { targetFirstNumber, targetWeight, targetIsDuration } = require('./plan-parse');
+const { setCounts } = require('./stats');
+const { targetFirstNumber, targetWeight, targetIsDuration, itemSets } = require('./plan-parse');
 const { FormModal, ConfirmModal } = require('./modals');
 
 function startDraft(ctx, plan, day) {
   const entries = [];
-  if (day) for (const it of day.items) entries.push(makeEntry(ctx, it.exercise, it.sets || 3, it.target));
+  if (day) for (const it of day.items) entries.push(makeEntry(ctx, it.exercise, itemSets(it), it.target));
   ctx.state.logDraft = {
     date: todayISO(),
     plan: plan ? plan.name : '',
@@ -30,8 +31,10 @@ function makeEntry(ctx, exercise, sets, target) {
   const prefW = targetWeight(target || '') ?? '';
   return {
     exercise, target: target || '', duration, weighted,
+    /* touched: false marks these as PREFILLS — they don't count until the
+       user ticks the set or edits a field (see stats.setCounts). */
     sets: Array.from({ length: Math.max(1, sets) }, () => ({
-      reps: prefReps, weight_kg: prefW, seconds: prefSecs, done: false,
+      reps: prefReps, weight_kg: prefW, seconds: prefSecs, done: false, touched: false,
     })),
   };
 }
@@ -68,10 +71,11 @@ function render(ctx, root) {
     ico('plus'), el('span', {}, 'Add exercise'));
   root.append(addEx);
 
-  /* Tally — recomputed on every rerender, so ticking a set updates it. */
+  /* Tally — recomputed on every rerender, so ticking a set updates it.
+     Counts by stats.setCounts, the SAME rule finishSession saves by. */
   let doneSets = 0, doneReps = 0;
   for (const entry of draft.entries) for (const set of entry.sets) {
-    if (!set.done) continue;
+    if (!setCounts(set)) continue;
     doneSets++;
     const r = parseFloat(set.reps);
     if (Number.isFinite(r)) doneReps += r;
@@ -111,7 +115,8 @@ function entryCard(ctx, draft, entry, ei) {
   const addSet = el('button', { class: 'gv-add-line gv-add-set', type: 'button' }, ico('plus'), el('span', {}, 'Set'));
   addSet.addEventListener('click', () => {
     const prev = entry.sets[entry.sets.length - 1] || { reps: '', weight_kg: '', seconds: '' };
-    entry.sets.push({ reps: prev.reps, weight_kg: prev.weight_kg, seconds: prev.seconds, done: false });
+    // Copied values are prefills too — the new set must not count untouched.
+    entry.sets.push({ reps: prev.reps, weight_kg: prev.weight_kg, seconds: prev.seconds, done: false, touched: false });
     ctx.rerender();
   });
   card.append(addSet);
@@ -127,7 +132,7 @@ function setRow(ctx, entry, set, si) {
       class: `gv-set-input${cls ? ' ' + cls : ''}`, type: 'number', inputmode: 'decimal',
       placeholder, value: set[key] ?? '',
     });
-    i.addEventListener('input', () => { set[key] = i.value; });
+    i.addEventListener('input', () => { set[key] = i.value; set.touched = true; });
     return i;
   };
 
@@ -171,14 +176,15 @@ function openAddExercise(ctx, draft) {
 }
 
 async function finishSession(ctx, draft) {
-  /* A set counts when it holds any figure or was ticked done; a prefilled
-     value alone doesn't (untouched rows are the sets you skipped). */
+  /* stats.setCounts is the one rule for what gets saved: ticked done OR
+     holding any typed figure — sweaty thumbs forget ticks, and silently
+     dropping three typed sets is worse than saving an untucked one. The
+     tally above uses the same rule, so what you see is what lands. */
   const rows = [];
   for (const entry of draft.entries) {
     let n = 0;
     for (const set of entry.sets) {
-      const has = set.done || String(set.reps).trim() || String(set.weight_kg).trim() || String(set.seconds).trim();
-      if (!has || !set.done) continue;
+      if (!setCounts(set)) continue;
       n++;
       rows.push({
         exercise: entry.exercise, set: n,
@@ -189,9 +195,19 @@ async function finishSession(ctx, draft) {
       });
     }
   }
-  if (!rows.length) { ctx.notice('Tick at least one set as done before finishing.'); return; }
+  if (!rows.length) { ctx.notice('Tick a set (or type a figure) before finishing.'); return; }
+  /* Double-tap guard: the save can take a beat on a syncing vault, and a
+     second tap mid-await would write "<date> 2.md" with identical rows. */
+  if (draft.finishing) return;
+  draft.finishing = true;
   const duration_min = Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));
-  await ctx.io.saveWorkout({ date: draft.date, plan: draft.plan, day: draft.day, duration_min, rows });
+  try {
+    await ctx.io.saveWorkout({ date: draft.date, plan: draft.plan, day: draft.day, duration_min, rows });
+  } catch (e) {
+    draft.finishing = false;
+    ctx.notice(`could not save the session (${e.message || e})`);
+    return;
+  }
   ctx.state.logDraft = null;
   ctx.notice('Session logged. Strong work.');
   ctx.nav('dashboard');

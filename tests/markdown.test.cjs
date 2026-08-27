@@ -56,4 +56,40 @@ const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('../src/constants');
   assert.deepStrictEqual(rows[1], ['1', '2', '3']);
 }
 
+/* Save-cycle fixpoint: every writer joins `serializeFrontmatter(fm) + '\n'
+   + body`; three cycles must not change the body BY ONE BYTE (a .trim()
+   here would hide the blank-line-per-save bug this guards against). */
+{
+  let text = '---\ntype: strength\n---\nFirst line.\n\nSecond para.\n';
+  for (let i = 0; i < 3; i++) {
+    const { fm, body } = parseFrontmatter(text);
+    assert.strictEqual(body, 'First line.\n\nSecond para.\n', `cycle ${i}: body drifted to ${JSON.stringify(body)}`);
+    text = serializeFrontmatter(fm) + '\n' + body;
+  }
+}
+
+/* Values containing double quotes must round-trip without gaining escapes. */
+{
+  let fm = { note: 'He said "go" now', equipment: 'bar: straight' };
+  for (let i = 0; i < 3; i++) {
+    fm = parseFrontmatter(serializeFrontmatter(fm) + '\n').fm;
+    assert.strictEqual(fm.note, 'He said "go" now', `quote cycle ${i}`);
+    assert.strictEqual(fm.equipment, 'bar: straight');
+  }
+}
+
+/* Inline lists: quoted items keep their commas; wikilinks stay scalar. */
+{
+  const { fm } = parseFrontmatter('---\nmuscles: ["a, b", c]\nimage: [[pic.png]]\n---\n');
+  assert.deepStrictEqual(fm.muscles, ['a, b', 'c']);
+  assert.strictEqual(fm.image, '[[pic.png]]');
+}
+
+/* An all-dash DATA row is data, not a second separator. */
+{
+  const rows = parseMdTable('| a | b |\n|---|---|\n| - | - |\n| 1 | 2 |');
+  assert.deepStrictEqual(rows[1], ['-', '-']);
+  assert.deepStrictEqual(rows[2], ['1', '2']);
+}
+
 console.log('markdown round-trips OK');

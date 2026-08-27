@@ -28,6 +28,8 @@ Everything lives under one folder (default `Gym/`), all hand-editable:
 Gym/
   Profile.md            # frontmatter: name, birth_year, height_cm, sex
   Body Log.md           # one markdown table, a row per measurement
+                        # (plugin-owned: prose written around this table is
+                        #  replaced on the next logged measurement)
   Exercises/<name>.md   # frontmatter: type, muscles, equipment, unit
   Plans/<name>.md       # day sections + exercise lines (see above)
   Goals/<name>.md       # frontmatter: metric, exercise, target, deadline

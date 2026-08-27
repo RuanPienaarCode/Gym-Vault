@@ -57,6 +57,12 @@ function targetIsDuration(target) {
   return /\d\s*(s\b|sec|min)/i.test(target || '');
 }
 
+/* A day keeps its lines as ORDERED `parts` ({kind:'note',line} |
+   {kind:'item',item}) so a coaching cue written BETWEEN two exercise lines
+   stays exactly where the author put it across saves — the earlier
+   notes-then-items model silently hoisted such prose above the whole list.
+   `day.items` and `day.notes` remain as derived views (same item objects by
+   identity) because every page reads them. */
 function parsePlanBody(body) {
   const intro = [];
   const days = [];
@@ -64,25 +70,52 @@ function parsePlanBody(body) {
   for (const line of (body || '').split(/\r?\n/)) {
     const h = line.match(DAY_HEADING);
     if (h) {
-      day = { name: h[1].trim(), weekday: h[2].toLowerCase(), notes: [], items: [] };
+      day = { name: h[1].trim(), weekday: h[2].toLowerCase(), parts: [], notes: [], items: [] };
       days.push(day);
       continue;
     }
     const t = line.trim();
     if (day && t.startsWith('- ')) {
       const cells = splitBarePipes(t.slice(2)).map(c => c.trim());
-      const { sets, target } = parsePrescription(cells[1] || '');
-      day.items.push({ exercise: unescMd(cells[0] || ''), sets, target, raw: t });
+      /* Everything after the FIRST pipe is the prescription — rejoining
+         keeps a hand-written `- A | B | C` intact instead of dropping C. */
+      const { sets, target } = parsePrescription(cells.slice(1).join(' | '));
+      const item = { exercise: unescMd(cells[0] || ''), sets, target };
+      day.parts.push({ kind: 'item', item });
+      day.items.push(item);
       continue;
     }
-    if (day) { if (t !== '' || day.notes.length) day.notes.push(line); }
-    else intro.push(line);
+    if (day) {
+      if (t !== '' || day.parts.length) day.parts.push({ kind: 'note', line });
+      if (t !== '' || day.notes.length) day.notes.push(line);
+    } else intro.push(line);
   }
-  // Trim trailing blank note lines per day so serialization stays stable.
-  for (const d of days) while (d.notes.length && d.notes[d.notes.length - 1].trim() === '') d.notes.pop();
+  // Trim trailing blanks per day so serialization stays a fixpoint.
+  for (const d of days) {
+    while (d.parts.length && d.parts[d.parts.length - 1].kind === 'note' && d.parts[d.parts.length - 1].line.trim() === '') d.parts.pop();
+    while (d.notes.length && d.notes[d.notes.length - 1].trim() === '') d.notes.pop();
+  }
   while (intro.length && intro[intro.length - 1].trim() === '') intro.pop();
   return { intro, days };
 }
+
+/* Structural edits go through these so parts and items never drift. */
+function addItem(day, item) {
+  if (!day.parts) day.parts = [];
+  day.parts.push({ kind: 'item', item });
+  day.items.push(item);
+}
+function removeItemAt(day, idx) {
+  const [item] = day.items.splice(idx, 1);
+  if (day.parts && item) {
+    const pi = day.parts.findIndex(p => p.kind === 'item' && p.item === item);
+    if (pi >= 0) day.parts.splice(pi, 1);
+  }
+}
+
+/* Prescribed set count with the ONE default — page-log prefill and the
+   dashboard's sets-total must never disagree on what "no count" means. */
+const itemSets = it => it.sets || 3;
 
 function serializeItem(it) {
   const rhs = it.sets != null ? `${it.sets} x ${it.target || ''}`.trim() : (it.target || '');
@@ -94,8 +127,12 @@ function serializePlanBody(model) {
   if (model.intro && model.intro.length) { out.push(...model.intro, ''); }
   for (const d of model.days) {
     out.push(`## ${d.name} (${WEEKDAYS.includes(d.weekday) ? d.weekday : 'mon'})`, '');
-    if (d.notes && d.notes.length) { out.push(...d.notes, ''); }
-    for (const it of d.items) out.push(serializeItem(it));
+    const parts = d.parts || [
+      ...(d.notes || []).map(line => ({ kind: 'note', line })),
+      ...((d.notes && d.notes.length) ? [{ kind: 'note', line: '' }] : []),
+      ...(d.items || []).map(item => ({ kind: 'item', item })),
+    ];
+    for (const p of parts) out.push(p.kind === 'item' ? serializeItem(p.item) : p.line);
     out.push('');
   }
   while (out.length && out[out.length - 1] === '') out.pop();
@@ -103,6 +140,6 @@ function serializePlanBody(model) {
 }
 
 module.exports = {
-  parsePlanBody, serializePlanBody, parsePrescription,
+  parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, itemSets,
   targetWeight, targetFirstNumber, targetIsDuration,
 };

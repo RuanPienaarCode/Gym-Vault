@@ -135,6 +135,10 @@ function makeIo(plugin) {
       rows = tableToObjects(body, BODY_COLUMNS);
       head = Object.keys(fm).length ? serializeFrontmatter(fm) + '\n' : '';
     }
+    /* The form sends EVERY column, unmeasured ones as '' — drop those
+       before the merge or an evening resting-HR entry blanks the morning's
+       weight (empty must mean "not remeasured", never "erase"). */
+    for (const k of Object.keys(row)) if (String(row[k] ?? '').trim() === '') delete row[k];
     // One row per date: logging twice on a day updates in place.
     const i = rows.findIndex(r => r.date === row.date);
     if (i >= 0) rows[i] = { ...rows[i], ...row };
@@ -236,12 +240,13 @@ function makeIo(plugin) {
       if (seedEx.image && replaceable(fm.image) && !sameList(fm.image, seedEx.image)) { next.image = seedEx.image; changed = true; }
       if (seedEx.video && replaceable(fm.video) && (fm.video || '') !== seedEx.video) { next.video = seedEx.video; changed = true; }
       if (!changed) continue;
+      /* Append each attribution/caveat line at most ONCE — gate on the
+         line itself, not a proxy string, or a note that already carries a
+         "Photos show…" caveat gains a duplicate on the next media change. */
       let nextBody = body;
-      if (nextBody.indexOf('wger.de') < 0) {
-        for (const line of (seedEx.note || '').split('\n')) {
-          if (line.indexOf('wger.de') >= 0 || /^(Photos|Media) show/.test(line)) {
-            nextBody = nextBody.replace(/\s*$/, '') + '\n\n' + line + '\n';
-          }
+      for (const line of (seedEx.note || '').split('\n')) {
+        if ((line.indexOf('wger.de') >= 0 || /^(Photos|Media) show/.test(line)) && nextBody.indexOf(line) < 0) {
+          nextBody = nextBody.replace(/\s*$/, '') + '\n\n' + line + '\n';
         }
       }
       await writeFile(path, serializeFrontmatter(next) + '\n' + nextBody);

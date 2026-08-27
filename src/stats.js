@@ -6,7 +6,7 @@
    streaks, weekly counts, bests, goal progress — is computed HERE and only
    here, so the dashboard and the goals page can never disagree. */
 
-const { startOfWeek, addDays, todayISO } = require('./dates');
+const { startOfWeek, addDays, todayISO, fromISO, toISO } = require('./dates');
 
 const num = v => {
   const n = parseFloat(v);
@@ -15,12 +15,30 @@ const num = v => {
 
 /* ---- session-level --------------------------------------------------- */
 
-/* Unique workout dates, ascending. Sessions carry their date in frontmatter;
-   rows without one are ignored rather than guessed. */
+/* Unique workout dates, ascending, normalized to plain YYYY-MM-DD — a
+   hand-edited `date: 2026-08-26T09:00` must count the same everywhere
+   (equality checks AND range compares), not split between them. Sessions
+   without a parseable date are ignored rather than guessed. */
 function workoutDates(workouts) {
   const set = new Set();
-  for (const w of workouts) if (w.fm && w.fm.date) set.add(w.fm.date);
+  for (const w of workouts) {
+    const d = w.fm && w.fm.date ? fromISO(w.fm.date) : null;
+    if (d) set.add(toISO(d));
+  }
   return [...set].sort();
+}
+
+/* The one rule for "does this logged set count": ticked done, OR the USER
+   edited it and it holds a figure. `touched` (set by the log page's input
+   listeners) is what separates a typed value from a plan-target prefill —
+   without it, tapping Finish on an untouched session would log every
+   exercise as performed exactly to target. Used by BOTH the live tally and
+   finishSession — two copies of this rule is how they drift apart. */
+function setCounts(set) {
+  const hasFigure = !!(String(set.reps ?? '').trim() ||
+    String(set.weight_kg ?? '').trim() ||
+    String(set.seconds ?? '').trim());
+  return !!(set.done || (set.touched && hasFigure));
 }
 
 function countInWeek(dates, refIso, weekStart) {
@@ -139,5 +157,5 @@ function bmi(weightKg, heightCm) {
 
 module.exports = {
   num, workoutDates, countInWeek, weekStreak, exerciseBests, epley1RM,
-  sessionVolume, sessionSets, goalCurrent, goalProgress, weightSeries, bmi,
+  sessionVolume, sessionSets, setCounts, goalCurrent, goalProgress, weightSeries, bmi,
 };

@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert');
-const { weekStreak, countInWeek, exerciseBests, goalCurrent, goalProgress, sessionVolume, weightSeries, bmi } = require('../src/stats');
+const { weekStreak, countInWeek, exerciseBests, goalCurrent, goalProgress, sessionVolume, weightSeries, bmi, setCounts, workoutDates } = require('../src/stats');
 
 const w = (date, rows) => ({ fm: { date }, rows });
 const set = (exercise, reps, weight_kg, seconds) => ({ exercise, reps, weight_kg, seconds });
@@ -60,6 +60,26 @@ const set = (exercise, reps, weight_kg, seconds) => ({ exercise, reps, weight_kg
   assert.deepStrictEqual(s.map(p => p.value), [95, 92]);
   assert.strictEqual(bmi(92, 190), 25.5);
   assert.strictEqual(bmi('', 190), null);
+}
+
+/* The one rule for whether a logged set counts: ticked done, OR the user
+   edited it and it holds a figure. A PREFILLED (untouched) value must NOT
+   count — otherwise finishing an untouched session logs every exercise as
+   performed exactly to the plan's target. */
+{
+  assert.ok(setCounts({ done: true, touched: false, reps: '', weight_kg: '', seconds: '' }));
+  assert.ok(setCounts({ done: false, touched: true, reps: '8', weight_kg: '', seconds: '' }));
+  assert.ok(setCounts({ done: false, touched: true, reps: '', weight_kg: '20', seconds: '' }));
+  assert.ok(setCounts({ done: false, touched: true, reps: '', weight_kg: '', seconds: '45' }));
+  assert.ok(!setCounts({ done: false, touched: false, reps: '8', weight_kg: '20', seconds: '' })); // prefill only
+  assert.ok(!setCounts({ done: false, touched: true, reps: '', weight_kg: '', seconds: '' }));     // touched but emptied
+  assert.ok(!setCounts({ done: false, touched: false, reps: '', weight_kg: '', seconds: '' }));
+}
+
+/* A hand-edited datetime date counts the same as a plain date everywhere. */
+{
+  const dates = workoutDates([w('2026-08-26T09:00', []), w('2026-08-26', []), w('not-a-date', [])]);
+  assert.deepStrictEqual(dates, ['2026-08-26']);
 }
 
 console.log('stats OK');

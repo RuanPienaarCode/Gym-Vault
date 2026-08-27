@@ -24,6 +24,29 @@ const unescMd = s => (s ?? '').replace(/<br>/g, '\n').replace(/\\\|/g, '|').trim
    deliberately out of the format — every file this plugin owns keeps its
    structure in the BODY (tables, day sections), so a tiny parser stays honest
    about what it can round-trip. */
+/* Unquote a scalar: strip outer quotes, then undo yamlStr's escapes. The
+   unescape must exist or values containing `"` gain a backslash per save
+   cycle (write \" → read \" verbatim → write \\\" → …). */
+const unquote = s => {
+  if (/^".*"$/.test(s)) return s.slice(1, -1).replace(/\\(["\\])/g, '$1');
+  return s;
+};
+
+/* Split an inline list on commas that sit OUTSIDE quotes, so
+   `[ "a, b", c ]` stays two items. Char-by-char (no lookbehind — iOS). */
+function splitListItems(inner) {
+  const items = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (ch === '"' && inner[i - 1] !== '\\') { inQ = !inQ; cur += ch; }
+    else if (ch === ',' && !inQ) { items.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  items.push(cur);
+  return items.map(s => unquote(s.trim())).filter(Boolean);
+}
+
 function parseFrontmatter(text) {
   const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   const fm = {};
@@ -32,14 +55,20 @@ function parseFrontmatter(text) {
     if (i > 0) {
       const key = line.slice(0, i).trim();
       let val = line.slice(i + 1).trim();
-      if (/^".*"$/.test(val)) val = val.slice(1, -1);
-      else if (/^\[.*\]$/.test(val)) {
-        val = val.slice(1, -1).split(',').map(s => s.trim().replace(/^"|"$/g, '')).filter(Boolean);
+      /* `[[wikilink]]` is a scalar, not a list — Obsidian users type these
+         for media paths, and eating the outer brackets breaks the link. */
+      if (/^\[.*\]$/.test(val) && !/^\[\[.*\]\]$/.test(val)) {
+        val = splitListItems(val.slice(1, -1));
+      } else {
+        val = unquote(val);
       }
       fm[key] = val;
     }
   }
-  return { fm, raw: m ? m[1] : '', body: m ? text.slice(m[0].length).replace(/^\r?\n/, '') : text };
+  /* Strip ALL leading blank lines, not just one: every writer joins with
+     `fm + '\n' + body`, so a single-newline strip here would grow the body
+     by one blank line per save cycle (verified in the logic audit). */
+  return { fm, raw: m ? m[1] : '', body: m ? text.slice(m[0].length).replace(/^(\r?\n)+/, '') : text };
 }
 
 /* Quote a scalar for YAML when it would otherwise change meaning. The
@@ -92,10 +121,14 @@ function splitBarePipes(s) {
    table below never bleeds into the data. */
 function parseMdTable(text) {
   const rows = [];
+  let sepSeen = false;
   for (const line of text.split(/\r?\n/)) {
     const t = line.trim();
     if (!t.startsWith('|')) { if (rows.length) break; continue; }
-    if (/^\|[\s:|-]+\|$/.test(t)) continue;
+    /* Exactly ONE separator, right after the header — matching the dash
+       pattern anywhere else would eat a hand-written all-dash DATA row
+       like `| - | - | … |`. */
+    if (!sepSeen && rows.length === 1 && /^\|[\s:|-]+\|$/.test(t)) { sepSeen = true; continue; }
     let inner = t.slice(1);
     if (endsWithBarePipe(inner)) inner = inner.slice(0, -1);
     rows.push(splitBarePipes(inner).map(c => c.trim()));

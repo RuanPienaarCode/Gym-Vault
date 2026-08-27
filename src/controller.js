@@ -136,25 +136,43 @@ function mountApp(view) {
   /* Vault watcher: reload when a gym file changes and the change wasn't one
      of our own writes (write-guard, same pattern as the budget plugin). */
   let debounceTimer = null;
-  const onVaultEvent = f => {
+  const onVaultEvent = (f, oldPath) => {
     if (!f || !f.path) return;
-    const root = normalizePath(plugin.settings.gymFolder || 'Gym') + '/';
-    if (!f.path.startsWith(root) && f.path !== normalizePath(plugin.settings.gymFolder || 'Gym')) return;
+    const base = normalizePath(plugin.settings.gymFolder || 'Gym');
+    const inGym = p => !!p && (p.startsWith(base + '/') || p === base);
+    /* rename passes (file, oldPath) — a note dragged OUT of the gym folder
+       only matches on its OLD path, and missing it leaves stale data. */
+    if (!inGym(f.path) && !inGym(oldPath)) return;
     if (Date.now() - (plugin._lastWrite || 0) < 1500) return;
     if (debounceTimer) window.clearTimeout(debounceTimer);
     debounceTimer = window.setTimeout(() => { debounceTimer = null; ctx.reload(); }, 400);
+  };
+
+  /* Narrow-pane mode tracks the app root's OWN width (a 300px desktop
+     split-pane must compact even when the window is wide — media queries
+     can't see pane width). ResizeObserver is iOS 13.4+, under the floor. */
+  let resizeObs = null;
+  const watchWidth = () => {
+    if (typeof ResizeObserver === 'undefined') return;
+    resizeObs = new ResizeObserver(entries => {
+      const w = entries[entries.length - 1].contentRect.width;
+      rootEl.classList.toggle('gv-narrow', w > 0 && w <= 480);
+    });
+    resizeObs.observe(rootEl);
   };
 
   return {
     ctx,
     async start() {
       buildShell();
+      watchWidth();
       for (const evt of ['modify', 'create', 'delete', 'rename']) {
         view.registerEvent(app.vault.on(evt, onVaultEvent));
       }
       await ctx.reload();
     },
     stop() {
+      if (resizeObs) resizeObs.disconnect();
       if (ctx._interval) window.clearInterval(ctx._interval);
       if (debounceTimer) window.clearTimeout(debounceTimer);
     },

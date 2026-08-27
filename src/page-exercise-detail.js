@@ -20,6 +20,15 @@ const isUrl = v => /^https?:\/\//i.test(v || '');
 /* A URL the <video> tag can play directly (vs. a page link like YouTube). */
 const isDirectVideo = v => /\.(mp4|m4v|mov|webm)(\?|#|$)/i.test(v || '');
 
+/* Resolve a vault media value: plain path, or the `[[wikilink]]` an
+   Obsidian user will naturally type (resolved the way Obsidian resolves
+   links, relative to the exercise note). */
+function vaultFile(ctx, value, sourcePath) {
+  const wl = (value || '').match(/^\[\[(.+?)(\|.*)?\]\]$/);
+  if (wl) return ctx.app.metadataCache.getFirstLinkpathDest(wl[1].trim(), sourcePath || '');
+  return ctx.app.vault.getFileByPath(value);
+}
+
 function render(ctx, root) {
   const name = ctx.state.params && ctx.state.params.exercise;
   const ex = ctx.data.exercises.find(e => e.name === name);
@@ -105,9 +114,10 @@ function mediaBlock(ctx, ex) {
   /* Vault video files and direct remote media both get a real player;
      anything else video-shaped (a YouTube page, say) gets a link button. A
      remote stream that errors (offline, moved) swaps to the button. */
+  const srcPath = ex.file ? ex.file.path : '';
   const videoSrc = !video ? null
     : isUrl(video) ? (isDirectVideo(video) ? video : null)
-    : (() => { const f = ctx.app.vault.getFileByPath(video); return f ? ctx.app.vault.getResourcePath(f) : null; })();
+    : (() => { const f = vaultFile(ctx, video, srcPath); return f ? ctx.app.vault.getResourcePath(f) : null; })();
   if (videoSrc) {
     const player = el('video', { class: 'gv-media-video', src: videoSrc, controls: '', playsinline: '', preload: 'metadata' });
     player.addEventListener('error', () => {
@@ -123,7 +133,7 @@ function mediaBlock(ctx, ex) {
     images.forEach((image, i) => {
       const src = isUrl(image)
         ? image
-        : (() => { const f = ctx.app.vault.getFileByPath(image); return f ? ctx.app.vault.getResourcePath(f) : null; })();
+        : (() => { const f = vaultFile(ctx, image, srcPath); return f ? ctx.app.vault.getResourcePath(f) : null; })();
       if (!src) { alive--; return; }
       const tag = pair ? (i === 0 ? 'start' : 'finish') : String(i + 1);
       const frame = el('div', { class: 'gv-media-frame' },

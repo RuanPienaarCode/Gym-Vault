@@ -51,4 +51,38 @@ assert.ok(!targetIsDuration('8-12'));
   assert.strictEqual(m.days[0].items[0].exercise, 'Odd | Name');
 }
 
+/* Prose written BETWEEN two exercise lines keeps its position across a
+   save (the notes-then-items model used to hoist it above the list). */
+{
+  const body = '## D (mon)\n\n- Pull-ups | 3 x 5\nRest 90s here.\n- Dips | 3 x 8\n';
+  const m = parsePlanBody(body);
+  const s = serializePlanBody(m);
+  const lines = s.split('\n').filter(l => l.trim());
+  assert.deepStrictEqual(lines, ['## D (mon)', '- Pull-ups | 3 x 5', 'Rest 90s here.', '- Dips | 3 x 8']);
+  assert.strictEqual(serializePlanBody(parsePlanBody(s)), s); // still a fixpoint
+}
+
+/* A hand-written item with extra pipes keeps its whole tail. */
+{
+  const m = parsePlanBody('## D (mon)\n\n- Superset: rows \\| dips | 3 x 5 | slow\n');
+  assert.strictEqual(m.days[0].items[0].exercise, 'Superset: rows | dips');
+  assert.strictEqual(m.days[0].items[0].target, '5 | slow');
+  const s = serializePlanBody(m);
+  assert.strictEqual(serializePlanBody(parsePlanBody(s)), s);
+}
+
+/* Structural edit helpers keep parts and items in lockstep. */
+{
+  const { addItem, removeItemAt } = require('../src/plan-parse');
+  const m = parsePlanBody('## D (mon)\n\nCue line.\n\n- A | 3 x 5\n- B | 3 x 8\n');
+  const day = m.days[0];
+  addItem(day, { exercise: 'C', sets: 2, target: '10' });
+  removeItemAt(day, 0); // drop A
+  const s = serializePlanBody(m);
+  assert.ok(s.includes('Cue line.'));
+  assert.ok(!s.includes('- A |'));
+  assert.ok(s.indexOf('- B | 3 x 8') < s.indexOf('- C | 2 x 10'));
+  assert.strictEqual(day.items.length, day.parts.filter(p => p.kind === 'item').length);
+}
+
 console.log('plan grammar OK');

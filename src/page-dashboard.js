@@ -7,6 +7,7 @@ const { el, ico, fmt, fmtSeconds } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
 const { workoutDates, weekStreak, countInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
+const { itemSets } = require('./plan-parse');
 
 function render(ctx, root) {
   const { data, settings } = ctx;
@@ -38,7 +39,7 @@ function render(ctx, root) {
     }
     hero.append(rx);
 
-    const setsTotal = day.items.reduce((n, it) => n + (it.sets || 3), 0);
+    const setsTotal = day.items.reduce((n, it) => n + itemSets(it), 0);
     const slab = el('div', { class: 'gv-hero-action' });
     const speed = el('div', { class: 'gv-speed', 'aria-hidden': 'true' },
       el('span', { style: 'top:16%;left:-12%;width:62%' }),
