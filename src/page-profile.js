@@ -39,6 +39,13 @@ function render(ctx, root) {
     tile(ico('activity'), fmt(bmiVal), 'BMI'),
     tile(ico('heart-pulse'), fmt(latest.resting_hr), 'resting HR'),
     tile(ico('ruler'), fmt(latest.waist_cm, ' cm'), 'waist'));
+  /* Clinical tiles appear only once there's a reading — four permanent
+     dashes would be noise for anyone who never logs bloods. */
+  if (latest.bp_systolic && latest.bp_diastolic) {
+    tiles.append(tile(ico('gauge'), `${latest.bp_systolic}/${latest.bp_diastolic}`, 'blood pressure'));
+  }
+  if (latest.cholesterol) tiles.append(tile(ico('test-tube'), fmt(latest.cholesterol), 'cholesterol'));
+  if (latest.glucose) tiles.append(tile(ico('droplet'), fmt(latest.glucose), 'glucose'));
   root.append(tiles);
 
   /* Weight trend. */
@@ -143,6 +150,10 @@ function openAddMeasurement(ctx) {
       { key: 'arm_cm', label: 'Arm (cm)', kind: 'number' },
       { key: 'thigh_cm', label: 'Thigh (cm)', kind: 'number' },
       { key: 'resting_hr', label: 'Resting heart rate', kind: 'number' },
+      { key: 'bp_systolic', label: 'Blood pressure — systolic', kind: 'number' },
+      { key: 'bp_diastolic', label: 'Blood pressure — diastolic', kind: 'number' },
+      { key: 'cholesterol', label: 'Total cholesterol (mmol/L)', kind: 'number' },
+      { key: 'glucose', label: 'Glucose (mmol/L)', kind: 'number' },
       { key: 'note', label: 'Note', kind: 'text' },
     ],
     submitLabel: 'Log',

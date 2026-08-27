@@ -52,6 +52,14 @@ const BODY_COLUMNS = [
   { key: 'thigh_cm',    label: 'Thigh (cm)' },
   { key: 'resting_hr',  label: 'Resting HR' },
   { key: 'note',        label: 'Note' },
+  /* Clinical markers from a health check (the "health stats" half of this
+     app). APPENDED after `note` on purpose: the mapping is POSITIONAL, so
+     inserting them mid-list would silently re-read every existing row's
+     note column as a blood-pressure reading. Ugly order, correct data. */
+  { key: 'bp_systolic',  label: 'Systolic (mmHg)' },
+  { key: 'bp_diastolic', label: 'Diastolic (mmHg)' },
+  { key: 'cholesterol',  label: 'Cholesterol (mmol/L)' },
+  { key: 'glucose',      label: 'Glucose (mmol/L)' },
 ];
 
 const WORKOUT_COLUMNS = [
