@@ -13,6 +13,7 @@ const pages = {
   history: require('./page-history'),
   profile: require('./page-profile'),
   running: require('./page-running'),
+  export: require('./page-export'),
   log: require('./page-log'),
   exercise: require('./page-exercise-detail'),
 };
@@ -25,6 +26,7 @@ const NAV = [
   { id: 'running', label: 'Running', icon: 'footprints', when: ctx => ctx.hasRunning() },
   { id: 'history', label: 'History', icon: 'history' },
   { id: 'profile', label: 'Profile', icon: 'user' },
+  { id: 'export', label: 'Export', icon: 'share-2' },
 ];
 
 function mountApp(view) {

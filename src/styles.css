@@ -671,6 +671,57 @@
 
 .gv-rx-rest b { color: var(--gv-ink-dim); font-family: inherit; font-weight: 700; font-size: 12px; }
 
+/* ---------- export ---------- */
+
+.gv-export-lede { margin: 0 0 4px; }
+.gv-optrow { display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: -1px; }
+.gv-optrow:hover { background: var(--gv-lime-ghost); }
+.gv-optrow.on { box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-optrow-main { flex: 1 1 auto; min-width: 0; }
+.gv-optrow-name { font-size: 14px; font-weight: 700; }
+.gv-optrow-desc { font-size: 12px; color: var(--gv-ink-dim); margin-top: 3px; line-height: 1.45; }
+.gv-optrow-tick { color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-optrow-tick { color: var(--gv-lime); }
+
+/* A switch drawn in CSS — no checkbox to fight the host's form styling. */
+.gv-switch {
+  flex: 0 0 auto;
+  position: relative;
+  width: 42px; height: 24px;
+  border: 2px solid var(--gv-ink);
+  background: var(--gv-surface);
+}
+.theme-dark .gv-app .gv-switch { border-color: var(--gv-line-2); }
+.gv-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: var(--gv-ink-dim);
+  transition: left 0.15s ease, background 0.15s ease;
+}
+.theme-dark .gv-app .gv-switch::after { background: var(--gv-line-2); }
+.gv-switch.on { background: var(--gv-lime); border-color: var(--gv-lime); }
+.gv-switch.on::after { left: 22px; background: #141a0e; }
+
+.gv-export-size { margin-bottom: 8px; }
+.gv-export-preview {
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--gv-line);
+  background: var(--gv-surface);
+  color: var(--gv-ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre;
+  -webkit-overflow-scrolling: touch;
+}
+.gv-export-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.gv-export-note { margin-top: 10px; line-height: 1.5; }
+
 /* ---------- running ---------- */
 
 .gv-alsotoday { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
@@ -828,6 +879,10 @@
 .theme-dark .gv-app .gv-set-input { border-color: var(--gv-line-2); }
 .gv-app .gv-set-input:focus { outline: none; border-color: var(--gv-lime-deep); }
 .gv-app .gv-set-input-narrow { width: 66px; font-size: 17px; }
+/* Flex items refuse to shrink below their automatic minimum; on sub-390px
+   phones the fullest rows need the inputs to give up a few px gracefully
+   instead of hard-overflowing the row. */
+.gv-app .gv-log-set .gv-set-input { min-width: 0; }
 .gv-set-unit { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); }
 .gv-log-set.done .gv-set-unit { color: #b8c4a8; }
 .gv-app .gv-set-done {

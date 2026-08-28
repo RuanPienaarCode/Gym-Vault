@@ -32,6 +32,7 @@ function makeIo(plugin) {
     profile: () => `${root()}/Profile.md`,
     bodyLog: () => `${root()}/Body Log.md`,
     attachments: () => `${root()}/Attachments`,
+    exports: () => `${root()}/Exports`,
   };
 
   const stamp = () => { plugin._lastWrite = Date.now(); };
@@ -200,6 +201,20 @@ function makeIo(plugin) {
     return path;
   }
 
+  /* An export is a normal vault note so it can be opened, synced and sent
+     on through Obsidian's own share sheet. Never overwrites: a second
+     export the same day gets a numbered name. */
+  async function saveExport(text, kind, ext) {
+    await ensureFolder(paths.exports());
+    const { todayISO } = require('./dates');
+    const base = `${todayISO()} gym ${kind}`;
+    let path = `${paths.exports()}/${safeName(base)}.${ext}`;
+    for (let n = 2; v.getFileByPath(path); n++) path = `${paths.exports()}/${safeName(base)} ${n}.${ext}`;
+    stamp();
+    await v.create(path, ext === 'md' ? text : '```' + (ext === 'json' ? 'json' : 'csv') + '\n' + text + '```\n');
+    return path;
+  }
+
   /* System trash, never a hard delete — recoverable by the user. */
   async function trash(file) { stamp(); await v.trash(file, true); }
 
@@ -315,7 +330,7 @@ function makeIo(plugin) {
   }
 
   return {
-    paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveProfile, appendBodyRow,
+    paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveExport, saveProfile, appendBodyRow,
     createExercise, saveExercise, createGoal, saveGoal,
     createPlan, savePlan, setActivePlan, saveWorkout, trash, safeName,
   };
