@@ -110,7 +110,7 @@ function mountApp(view) {
     navEl = el('nav', { class: 'gv-nav', 'aria-label': 'Gym sections' });
     for (const item of NAV) {
       const b = el('button', { class: 'gv-nav-btn', type: 'button', 'data-page': item.id },
-        ico(item.icon), el('span', {}, item.label));
+        ico(item.icon), el('span', { class: 'gv-nav-label' }, item.label));
       b.addEventListener('click', () => {
         /* Leaving mid-log keeps the draft: coming back to Today offers the
            log page again via the nav highlight, and Finish/Discard are the

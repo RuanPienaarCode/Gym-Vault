@@ -904,7 +904,10 @@
 .gv-app.gv-narrow .gv-page, .gv-app.gv-narrow .gv-head { padding-left: 12px; padding-right: 12px; }
 .gv-app.gv-narrow .gv-nav { padding-left: 12px; padding-right: 12px; }
 .gv-app.gv-narrow .gv-logtop { margin-left: -12px; margin-right: -12px; padding-left: 14px; padding-right: 14px; }
-.gv-app.gv-narrow .gv-nav-btn span { display: none; }
+/* ONLY the label — `ico()` builds a <span class="gv-ico">, so a bare
+   `.gv-nav-btn span` here hides the icon too and every button in a
+   narrow pane collapses to an empty block. */
+.gv-app.gv-narrow .gv-nav-label { display: none; }
 .gv-app.gv-narrow .gv-nav-btn { padding: 10px; }
 .gv-app.gv-narrow .gv-nav-btn .gv-ico svg { width: 17px; height: 17px; }
 
