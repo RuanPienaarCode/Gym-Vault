@@ -2,14 +2,15 @@
 /* The plan grammar: seed parses, prose survives, serialization is stable. */
 const assert = require('node:assert');
 const { parsePlanBody, serializePlanBody, parsePrescription, targetWeight, targetFirstNumber, targetIsDuration, isRestDay } = require('../src/plan-parse');
-const { SEED_PLAN, SEED_RUN_PLAN } = require('../src/seed');
+const { SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN } = require('../src/seed');
 
 /* Strength and running are SEPARATE plans: the running one is `parallel`,
    so it runs alongside rather than replacing the strength programme. */
 {
   const m = parsePlanBody(SEED_PLAN.body);
-  assert.strictEqual(m.days.length, 5);
-  assert.deepStrictEqual(m.days.map(d => d.weekday), ['mon', 'wed', 'thu', 'fri', 'sun']);
+  assert.strictEqual(m.days.length, 3);
+  assert.deepStrictEqual(m.days.map(d => d.weekday), ['mon', 'wed', 'thu']);
+  assert.ok(!m.days.some(isRestDay), 'rest lives in the fallback plan, not here');
   const byDay = Object.fromEntries(m.days.map(d => [d.weekday, d]));
   assert.strictEqual(byDay.mon.items.length, 6);
   assert.strictEqual(byDay.mon.items[0].exercise, 'Pull-ups');
@@ -42,7 +43,7 @@ const { SEED_PLAN, SEED_RUN_PLAN } = require('../src/seed');
   const m2 = parsePlanBody(s1);
   const s2 = serializePlanBody(m2);
   assert.strictEqual(s1, s2);
-  assert.strictEqual(m2.days.length, 5);
+  assert.strictEqual(m2.days.length, 3);
   assert.deepStrictEqual(
     m2.days.map(d => d.items.map(i => `${i.exercise}|${i.sets}|${i.target}`)),
     m1.days.map(d => d.items.map(i => `${i.exercise}|${i.sets}|${i.target}`)));
@@ -114,8 +115,10 @@ assert.ok(!targetIsDuration('8-12'));
   const legs = strength.find(d => /legs/i.test(d.name));
   const dayBefore = WD[(WD.indexOf(longRun.weekday) + 6) % 7];
   assert.notStrictEqual(legs.weekday, dayBefore, 'legs must not sit the day before the long run');
-  const before = [...strength, ...running].filter(d => d.weekday === dayBefore);
-  assert.ok(before.every(isRestDay), 'the day before the long run should be rest');
+  /* Nothing trains that day at all, so the fallback rest plan covers it. */
+  const training = [...strength, ...running].filter(d => d.weekday === dayBefore);
+  assert.strictEqual(training.length, 0, 'the day before the long run must be free for rest');
+  assert.strictEqual(SEED_REST_PLAN.fm.fallback, true, 'a fallback rest plan must exist to fill it');
 }
 
 /* `(any)` is a wildcard weekday for fallback plans — a rest & recovery

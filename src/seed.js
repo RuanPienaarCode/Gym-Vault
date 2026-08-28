@@ -663,8 +663,9 @@ const SEED_PLAN = {
     'muscle-up — with rows for shoulder health, a full leg & core day, and mobility',
     'built into every warm-up.',
     '',
-    'THE WEEK: Mon pull, Wed push, Thu legs & core, Fri rest — with the',
-    'running plan filling Tue and Sat. Five sessions and two rest days.',
+    'THE WEEK: Mon pull, Wed push, Thu legs & core — with the running plan',
+    'filling Tue and Sat, and the Rest & Recovery plan filling whatever is',
+    'left. Five sessions and two rest days.',
     'Legs sit on Thursday so there is a clear day between them and the',
     'Saturday trail run; a leg session the day before a long run is how ITBs',
     'and knees get angry. Adding running cost the second pull day (the old',
@@ -707,27 +708,6 @@ const SEED_PLAN = {
     '- Toes-to-bar Ladder | 4 x 6-10',
     '- L-sit / Dragon Flag | 3 x holds',
     '',
-    '## Rest & Recovery (fri)',
-    '',
-    'The day before the long run: legs stay fresh. Nothing here is',
-    'compulsory — pick what feels tight. If you want a second easy 30-minute',
-    'run this is where it goes; an easy run the day before a long one is',
-    'fine, a leg session is not.',
-    '',
-    "- World's Greatest Stretch | 1 x 5/side",
-    '- IT Band and Glute Stretch | 1 x 45s/side',
-    '- Kneeling Hip Flexor Stretch | 1 x 45s/side',
-    '- Calf Stretch | 1 x 30s each position',
-    '',
-    '## Rest & Recovery (sun)',
-    '',
-    'After the long run. Walk, stretch what the trail tightened, sleep well.',
-    '',
-    '- IT Band and Glute Stretch | 1 x 45s/side',
-    '- Piriformis Stretch | 1 x 45s/side',
-    '- Calf Stretch | 1 x 30s each position',
-    "- Child's Pose | 1 x 60s",
-    '- Recovery Walk | 1 x 20-40 min easy'
   ].join('\n') + '\n',
 };
 
@@ -767,6 +747,40 @@ const SEED_RUN_PLAN = {
   ].join('\n') + '\n',
 };
 
+/* Rest & Recovery is a FALLBACK plan: it does not compete with the training
+   plan, it fills whatever weekday nothing else claims. Rest therefore never
+   has to be re-arranged by hand when training days move or the active plan
+   changes. `(any)` is the wildcard day; an exact weekday wins over it. */
+const SEED_REST_PLAN = {
+  name: 'Rest & Recovery',
+  fm: { parallel: true, fallback: true },
+  body: [
+    'Not a programme you switch to — this fills any day your training plan',
+    'leaves empty, whichever plan that is. Nothing here is compulsory: pick',
+    'what feels tight. Sleep and food are the actual training on these days.',
+    '',
+    '## Rest & Recovery (any)',
+    '',
+    'The default recovery day.',
+    '',
+    "- World's Greatest Stretch | 1 x 5/side",
+    '- Kneeling Hip Flexor Stretch | 1 x 45s/side',
+    '- IT Band and Glute Stretch | 1 x 45s/side',
+    '- Cat-Cow | 1 x 8-10 slow',
+    '- Recovery Walk | 1 x 20-30 min easy',
+    '',
+    '## Rest & Recovery · after the long run (sun)',
+    '',
+    'The trail tightens different things than the gym does.',
+    '',
+    '- IT Band and Glute Stretch | 1 x 45s/side',
+    '- Piriformis Stretch | 1 x 45s/side',
+    '- Calf Stretch | 1 x 30s each position',
+    "- Child's Pose | 1 x 60s",
+    '- Recovery Walk | 1 x 20-30 min easy',
+  ].join('\n') + '\n',
+};
+
 const SEED_GOALS = [
   { name: '10 Pull-ups', fm: { metric: 'exercise-reps', exercise: 'Pull-ups', target: 10, direction: 'increase' },
     note: 'The first gateway — muscle-up skill work unlocks at 8–10 clean pull-ups (with the dip gateway).' },
@@ -802,4 +816,4 @@ const SEED_PROFILE = {
   ].join('\n') + '\n',
 };
 
-module.exports = { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl };
+module.exports = { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl };

@@ -12,7 +12,7 @@ const { normalizePath, TFile, TFolder, requestUrl } = require('obsidian');
 const { parseFrontmatter, serializeFrontmatter, tableToObjects, buildMdTable } = require('./markdown');
 const { parsePlanBody, serializePlanBody } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
-const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
+const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 
 /* Windows/OSX-illegal filename characters, folded to '-' so an exercise or
    plan named from user input always lands on disk. */
@@ -234,6 +234,7 @@ function makeIo(plugin) {
     await createPlan(SEED_RUN_PLAN.name,
       { ...SEED_RUN_PLAN.fm, start_date: startOfWeek(todayISO(), 'mon') },
       SEED_RUN_PLAN.body);
+    await createPlan(SEED_REST_PLAN.name, SEED_REST_PLAN.fm, SEED_REST_PLAN.body);
     for (const g of SEED_GOALS) await createGoal(g);
     await writeIfAbsent(paths.profile(), serializeFrontmatter(SEED_PROFILE.fm) + '\n' + SEED_PROFILE.body);
     await writeIfAbsent(paths.bodyLog(), buildMdTable(BODY_COLUMNS, []) + '\n');
