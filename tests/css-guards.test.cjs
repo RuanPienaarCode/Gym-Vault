@@ -45,4 +45,15 @@ assert.ok(
   'narrow mode must never hide .gv-ico',
 );
 
+/* GUARD 3: primary touch targets must stay thumb-sized (Apple HIG ~44px).
+   The nav shipped at 37px once and had to be reported from a phone. */
+{
+  const navTouch = bare.match(/\.gv-app\.gv-narrow \.gv-nav-btn\s*\{[^}]*\}/);
+  assert.ok(navTouch, 'narrow nav button rule missing');
+  const minW = /min-width:\s*(\d+)px/.exec(navTouch[0]);
+  const minH = /min-height:\s*(\d+)px/.exec(navTouch[0]);
+  assert.ok(minW && Number(minW[1]) >= 44, `narrow nav button min-width must be >= 44px, got ${minW && minW[1]}`);
+  assert.ok(minH && Number(minH[1]) >= 44, `narrow nav button min-height must be >= 44px, got ${minH && minH[1]}`);
+}
+
 console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons)');

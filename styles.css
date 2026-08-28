@@ -908,8 +908,40 @@
    `.gv-nav-btn span` here hides the icon too and every button in a
    narrow pane collapses to an empty block. */
 .gv-app.gv-narrow .gv-nav-label { display: none; }
-.gv-app.gv-narrow .gv-nav-btn { padding: 10px; }
-.gv-app.gv-narrow .gv-nav-btn .gv-ico svg { width: 17px; height: 17px; }
+
+/* ---------- touch targets ----------
+   Thumbs, not cursors: Apple's HIG asks for ~44px and these were 37px.
+   Keyed on the HOST's own mobile class as well as narrow panes, so a
+   tablet with a wide pane still gets thumb-sized controls. Both selectors
+   beat the (0,2,0) base rules. */
+
+body.is-mobile .gv-app .gv-nav-btn,
+.gv-app.gv-narrow .gv-nav-btn {
+  min-width: 48px;
+  min-height: 48px;
+  /* Horizontal padding still matters where labels are VISIBLE (a mobile
+     host with a wide pane); min-width carries the icon-only case. */
+  padding: 0 12px;
+  justify-content: center;
+}
+body.is-mobile .gv-app .gv-nav-btn .gv-ico svg,
+.gv-app.gv-narrow .gv-nav-btn .gv-ico svg { width: 22px; height: 22px; }
+
+body.is-mobile .gv-app .gv-icon-btn,
+.gv-app.gv-narrow .gv-icon-btn { width: 44px; height: 44px; }
+body.is-mobile .gv-app .gv-icon-btn .gv-ico svg,
+.gv-app.gv-narrow .gv-icon-btn .gv-ico svg { width: 20px; height: 20px; }
+
+/* Row-level remove buttons stay a little smaller ON PURPOSE — they are
+   destructive and sit right beside content you scroll past. */
+body.is-mobile .gv-app .gv-icon-btn-small,
+.gv-app.gv-narrow .gv-icon-btn-small { width: 40px; height: 40px; }
+body.is-mobile .gv-app .gv-icon-btn-small .gv-ico svg,
+.gv-app.gv-narrow .gv-icon-btn-small .gv-ico svg { width: 17px; height: 17px; }
+
+/* Decorative tile icons: legibility only, nothing to press. */
+body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
+.gv-app.gv-narrow .gv-tile-ico .gv-ico svg { width: 18px; height: 18px; }
 
 /* ============================================================================
    ACCENT PALETTES — settings › Accent color. Each block ONLY re-points the
