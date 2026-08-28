@@ -669,6 +669,42 @@
 .gv-goal-deadline { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 5px; }
 .gv-goal-deadline.over { color: var(--gv-danger); }
 
+/* ---------- running ---------- */
+
+.gv-alsotoday { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.gv-alsotoday-main { flex: 1 1 auto; min-width: 0; }
+.gv-alsotoday-name { font-family: var(--gv-display); font-size: 20px; text-transform: uppercase; line-height: 1; margin-top: 4px; }
+.gv-alsotoday-plan { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 4px; }
+
+.gv-runday { display: flex; align-items: center; gap: 12px; margin-bottom: -1px; }
+.gv-runday.today { box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-runday.done { background: var(--gv-lime-ghost); }
+.gv-runday-when { flex: 0 0 auto; width: 54px; text-align: center; }
+.gv-runday-day { font-family: var(--gv-display); font-size: 20px; text-transform: uppercase; line-height: 1; }
+.gv-runday-date { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 3px; }
+.gv-runday-main { flex: 1 1 auto; min-width: 0; }
+.gv-runday-name { font-size: 14px; font-weight: 700; }
+.gv-runday-rx { font-size: 11.5px; color: var(--gv-ink-dim); margin-top: 3px; }
+
+.gv-ladder {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 3px;
+  border: 1px solid var(--gv-line);
+  border-top: 2px solid var(--gv-ink);
+  background: var(--gv-surface);
+  padding: 10px 8px;
+}
+.gv-rung { text-align: center; padding: 6px 0; min-width: 0; }
+.gv-rung-km { font-family: var(--gv-display); font-size: 15px; line-height: 1; color: var(--gv-ink-dim); }
+.gv-rung-wk { font-size: 8.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 4px; }
+.gv-rung.past .gv-rung-km { color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-rung.past .gv-rung-km { color: var(--gv-lime); }
+.gv-rung.now { background: var(--gv-ink); }
+.gv-rung.now .gv-rung-km { color: var(--gv-lime-hi); font-size: 17px; }
+.gv-rung.now .gv-rung-wk { color: var(--gv-lime-hi); }
+.gv-ladder-note { margin-top: 8px; line-height: 1.5; }
+
 /* ---------- history ---------- */
 
 .gv-heat-wrap { overflow-x: auto; padding: 4px 0 8px; }
@@ -882,6 +918,99 @@
 /* ---------- modals ---------- */
 
 .gv-modal .gv-modal-err { color: var(--gv-danger); font-size: 13px; min-height: 18px; margin: 4px 0; }
+
+/* ---------- rep counter ----------
+   Full-screen tap-to-count takeover (src/rep-counter-modal.js). Obsidian
+   appends modals to <body>, OUTSIDE .gv-app's own subtree, so the modalEl
+   itself is also given the .gv-app class (plus the user's current
+   gv-skin-*/gv-accent-* classes) — that's what pulls in the --gv-* tokens
+   and the shared .gv-btn/.gv-icon-btn styling above, with no new hex added
+   anywhere here (sealed palette — see the ACCENT PALETTES banner). Layout
+   is restated on the (0,2,1) .modal.gv-repcounter-modal selector rather
+   than left to source-order tie-breaking against app.css's own `.modal`. */
+.modal.gv-repcounter-modal {
+  position: fixed;
+  inset: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--gv-bg);
+  color: var(--gv-ink);
+  overflow: hidden;
+}
+.modal.gv-repcounter-modal .modal-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+.modal.gv-repcounter-modal .modal-close-button,
+.modal.gv-repcounter-modal .modal-title { display: none; }
+
+.gv-rc-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: max(env(safe-area-inset-top, 0px), 10px) 12px 10px;
+  border-bottom: 2px solid var(--gv-ink);
+  background: var(--gv-surface);
+}
+.theme-dark .gv-rc-bar { border-color: var(--gv-line-2); }
+.gv-rc-label {
+  font-family: var(--gv-display);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gv-rc-controls { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.gv-rc-controls .gv-btn-small { padding: 8px 10px; }
+.gv-rc-controls .gv-btn[disabled],
+.gv-rc-controls .gv-icon-btn[disabled] { opacity: 0.4; cursor: default; pointer-events: none; }
+
+.gv-rc-zone {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gv-bg);
+  /* touch-action: none is the CSS half of the guard; e.preventDefault() on
+     touchstart in rep-counter-modal.js is the JS half — together they stop
+     scroll/rubber-band under a tap zone that fills the whole screen. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color 120ms ease;
+}
+.gv-rc-zone.gv-rc-flash { background: var(--gv-lime-ghost); }
+
+.gv-rc-count {
+  font-family: var(--gv-display);
+  font-size: clamp(120px, 42vw, 320px);
+  line-height: 1;
+  color: var(--gv-ink);
+  transition: color 120ms ease;
+  /* The zone (not the digits) is the tap target — a giant number must not
+     steal the hit area it sits in front of. */
+  pointer-events: none;
+}
+.gv-rc-zone.gv-rc-flash .gv-rc-count { color: var(--gv-lime); }
 
 /* ---------- narrow panes ----------
    Keyed on .gv-narrow (a ResizeObserver in controller.js watches the APP

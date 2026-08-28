@@ -106,6 +106,33 @@ function sessionVolume(rows) {
 
 function sessionSets(rows) { return (rows || []).length; }
 
+/* Total km logged inside the week containing refIso. Sums EVERY distance
+   row, whatever the exercise — a week's running volume is a week's running
+   volume. */
+function distanceInWeek(workouts, refIso, weekStart) {
+  const start = startOfWeek(refIso || todayISO(), weekStart);
+  const end = addDays(start, 7);
+  let km = 0;
+  for (const w of workouts) {
+    const d = w.fm && w.fm.date ? fromISO(w.fm.date) : null;
+    if (!d) continue;
+    const iso = toISO(d);
+    if (iso < start || iso >= end) continue;
+    for (const r of w.rows || []) { const di = num(r.distance_km); if (di !== null) km += di; }
+  }
+  return Math.round(km * 10) / 10;
+}
+
+/* Which week of a training ladder `today` falls in: 1-based, null before the
+   start date, clamped to the last rung once the plan is finished. */
+function ladderWeek(startDate, today, weeks) {
+  const start = fromISO(startDate), now = fromISO(today || todayISO());
+  if (!start || !now || !weeks) return null;
+  const days = Math.floor((now - start) / 86400000);
+  if (days < 0) return null;
+  return Math.min(weeks, Math.floor(days / 7) + 1);
+}
+
 /* ---- goals ----------------------------------------------------------- */
 
 /* The single source for "where is this goal now". `ctx` carries everything
@@ -164,5 +191,6 @@ function bmi(weightKg, heightCm) {
 
 module.exports = {
   num, workoutDates, countInWeek, weekStreak, exerciseBests, epley1RM,
-  sessionVolume, sessionSets, setCounts, goalCurrent, goalProgress, weightSeries, bmi,
+  sessionVolume, sessionSets, setCounts, distanceInWeek, ladderWeek,
+  goalCurrent, goalProgress, weightSeries, bmi,
 };

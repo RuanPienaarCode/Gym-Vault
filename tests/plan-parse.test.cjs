@@ -2,24 +2,37 @@
 /* The plan grammar: seed parses, prose survives, serialization is stable. */
 const assert = require('node:assert');
 const { parsePlanBody, serializePlanBody, parsePrescription, targetWeight, targetFirstNumber, targetIsDuration } = require('../src/plan-parse');
-const { SEED_PLAN } = require('../src/seed');
+const { SEED_PLAN, SEED_RUN_PLAN } = require('../src/seed');
 
-/* The seed program: 4 strength days + 3 running days, in weekday order,
-   with items and hand-written prose intact. */
+/* Strength and running are SEPARATE plans: the running one is `parallel`,
+   so it runs alongside rather than replacing the strength programme. */
 {
   const m = parsePlanBody(SEED_PLAN.body);
-  assert.strictEqual(m.days.length, 7);
-  assert.deepStrictEqual(m.days.map(d => d.weekday), ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+  assert.strictEqual(m.days.length, 4);
+  assert.deepStrictEqual(m.days.map(d => d.weekday), ['mon', 'wed', 'fri', 'sat']);
   const byDay = Object.fromEntries(m.days.map(d => [d.weekday, d]));
   assert.strictEqual(byDay.mon.items.length, 6);
   assert.strictEqual(byDay.mon.items[0].exercise, 'Pull-ups');
   assert.strictEqual(byDay.mon.items[0].sets, 5);
   assert.strictEqual(byDay.mon.items[0].target, 'submax');
-  assert.strictEqual(byDay.tue.items[0].exercise, 'Easy Run');
-  assert.strictEqual(byDay.sun.items[0].exercise, 'Long Trail Run');
   assert.ok(m.intro.join(' ').includes('muscle-up'));
-  assert.ok(m.intro.join(' ').includes('15km'), 'intro should carry the run ladder');
   assert.ok(byDay.fri.notes.join(' ').includes('Superset'));
+  assert.ok(!m.days.some(d => d.items.some(i => /Run/.test(i.exercise))), 'running must not live in the strength plan');
+}
+
+/* The running plan: parallel, 3 days, and a ladder that is DATA (so the
+   Running page can say which week you are in) ending at the 15km goal. */
+{
+  const r = parsePlanBody(SEED_RUN_PLAN.body);
+  assert.strictEqual(SEED_RUN_PLAN.fm.parallel, true);
+  assert.deepStrictEqual(r.days.map(d => d.weekday), ['tue', 'thu', 'sun']);
+  assert.strictEqual(r.days[0].items[0].exercise, 'Easy Run');
+  assert.strictEqual(r.days[2].items[0].exercise, 'Long Trail Run');
+  const ladder = SEED_RUN_PLAN.fm.ladder;
+  assert.strictEqual(ladder.length, 12);
+  assert.strictEqual(ladder[ladder.length - 1], 15);
+  assert.ok(ladder[3] < ladder[2] && ladder[7] < ladder[6], 'weeks 4 and 8 must step down');
+  assert.strictEqual(serializePlanBody(parsePlanBody(serializePlanBody(r))), serializePlanBody(r));
 }
 
 /* Serialize → parse is a fixpoint (stable round trip). */
@@ -29,7 +42,7 @@ const { SEED_PLAN } = require('../src/seed');
   const m2 = parsePlanBody(s1);
   const s2 = serializePlanBody(m2);
   assert.strictEqual(s1, s2);
-  assert.strictEqual(m2.days.length, 7);
+  assert.strictEqual(m2.days.length, 4);
   assert.deepStrictEqual(
     m2.days.map(d => d.items.map(i => `${i.exercise}|${i.sets}|${i.target}`)),
     m1.days.map(d => d.items.map(i => `${i.exercise}|${i.sets}|${i.target}`)));

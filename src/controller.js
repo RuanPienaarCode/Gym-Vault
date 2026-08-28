@@ -12,6 +12,7 @@ const pages = {
   goals: require('./page-goals'),
   history: require('./page-history'),
   profile: require('./page-profile'),
+  running: require('./page-running'),
   log: require('./page-log'),
   exercise: require('./page-exercise-detail'),
 };
@@ -21,6 +22,7 @@ const NAV = [
   { id: 'exercises', label: 'Exercises', icon: 'dumbbell' },
   { id: 'plans', label: 'Plans', icon: 'clipboard-list' },
   { id: 'goals', label: 'Goals', icon: 'target' },
+  { id: 'running', label: 'Running', icon: 'footprints', when: ctx => ctx.hasRunning() },
   { id: 'history', label: 'History', icon: 'history' },
   { id: 'profile', label: 'Profile', icon: 'user' },
 ];
@@ -55,10 +57,31 @@ function mountApp(view) {
 
   ctx.notice = msg => new Notice(`Gym: ${msg}`, 5000);
 
+  /* A plan marked `parallel` is not an ALTERNATIVE to the active plan — it
+     runs alongside it (running beside strength), so the dashboard merges
+     days from the active plan and every parallel one. */
+  const isParallel = p => String(p.fm.parallel) === 'true';
   ctx.activePlan = () => {
     if (!ctx.data) return null;
-    return ctx.data.plans.find(p => String(p.fm.active) === 'true') || ctx.data.plans[0] || null;
+    const main = ctx.data.plans.filter(p => !isParallel(p));
+    return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
   };
+  ctx.parallelPlans = () => (ctx.data ? ctx.data.plans.filter(isParallel) : []);
+  const isRunExercise = name => !!ctx.data && ctx.data.exercises.some(e =>
+    e.name.toLowerCase() === (name || '').toLowerCase() && (e.fm.unit || '') === 'km');
+  ctx.runPlan = () =>
+    ctx.parallelPlans().find(p => p.model.days.some(d => d.items.some(i => isRunExercise(i.exercise))))
+    || ctx.parallelPlans()[0] || null;
+  /* Every {plan, day} scheduled on a weekday, active plan first. */
+  ctx.daysOn = weekday => {
+    const out = [];
+    const main = ctx.activePlan();
+    if (main) for (const d of main.model.days) if (d.weekday === weekday) out.push({ plan: main, day: d });
+    for (const p of ctx.parallelPlans()) for (const d of p.model.days) if (d.weekday === weekday) out.push({ plan: p, day: d });
+    return out;
+  };
+  /* The Running tab appears only once the vault actually holds running. */
+  ctx.hasRunning = () => !!ctx.data && ctx.data.exercises.some(e => (e.fm.unit || '') === 'km');
 
   ctx.openFile = file => { app.workspace.getLeaf('tab').openFile(file); };
 
@@ -100,15 +123,17 @@ function mountApp(view) {
     ctx.data = await io.loadAll();
     ctx.settings = plugin.settings;
     syncChrome();
+    buildNav();          // the Running tab appears once running exists
     ctx.rerender();
   };
 
-  function buildShell() {
-    clear(rootEl);
-    const head = el('div', { class: 'gv-head' },
-      el('div', { class: 'gv-logo' }, ico('dumbbell'), el('span', { class: 'gv-logo-text' }, 'Gym Vault')));
-    navEl = el('nav', { class: 'gv-nav', 'aria-label': 'Gym sections' });
+  /* Rebuilt on every reload: conditional tabs (Running) appear as soon as
+     the data that justifies them exists. */
+  function buildNav() {
+    if (!navEl) return;
+    clear(navEl);
     for (const item of NAV) {
+      if (item.when && !item.when(ctx)) continue;
       const b = el('button', { class: 'gv-nav-btn', type: 'button', 'data-page': item.id },
         ico(item.icon), el('span', { class: 'gv-nav-label' }, item.label));
       b.addEventListener('click', () => {
@@ -119,8 +144,17 @@ function mountApp(view) {
       });
       navEl.append(b);
     }
+    renderNavState();
+  }
+
+  function buildShell() {
+    clear(rootEl);
+    const head = el('div', { class: 'gv-head' },
+      el('div', { class: 'gv-logo' }, ico('dumbbell'), el('span', { class: 'gv-logo-text' }, 'Gym Vault')));
+    navEl = el('nav', { class: 'gv-nav', 'aria-label': 'Gym sections' });
     pageEl = el('main', { class: 'gv-page' });
     rootEl.append(head, navEl, pageEl);
+    buildNav();
   }
 
   function renderNavState() {

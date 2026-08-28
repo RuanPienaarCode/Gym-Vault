@@ -15,7 +15,9 @@ function render(ctx, root) {
   const dates = workoutDates(data.workouts);
   const plan = ctx.activePlan();
   const todayKeyName = weekdayKey(today);
-  const todays = plan ? plan.model.days.filter(d => d.weekday === todayKeyName) : [];
+  /* Strength AND running: daysOn merges the active plan with every
+     parallel one, so a run day shows up beside the lifting. */
+  const todays = ctx.daysOn(todayKeyName);
   const doneToday = dates.includes(today);
   const last = data.workouts.length ? data.workouts[data.workouts.length - 1] : null;
 
@@ -25,7 +27,7 @@ function render(ctx, root) {
     `${fmtShort(today)} · ${WEEKDAY_LABELS[todayKeyName]}${plan ? ` · ${plan.name}` : ''}`));
 
   if (todays.length) {
-    const day = todays[0];
+    const { plan: dayPlan, day } = todays[0];
     hero.append(el('h2', { class: 'gv-display gv-hero-title' }, el('span', { class: 'gv-mark' }, day.name)));
     const prose = (day.notes || []).join(' ').trim();
     hero.append(el('p', { class: 'gv-hero-sub' },
@@ -52,12 +54,12 @@ function render(ctx, root) {
         last && last.fm.date ? `Last: ${fmtShort(last.fm.date)} · ${sessionSets(last.rows)} sets` : 'First session — make it count')));
     slab.append(el('button', {
       class: 'gv-btn-go', type: 'button',
-      onclick: () => ctx.startLog(plan, day),
+      onclick: () => ctx.startLog(dayPlan, day),
     }, doneToday ? 'Log another session' : 'Get after it'));
     hero.append(slab);
   } else {
     hero.append(el('h2', { class: 'gv-display gv-hero-title' }, el('span', { class: 'gv-mark' }, 'Rest day')));
-    const next = nextPlannedDay(plan, todayKeyName);
+    const next = nextPlannedDay(ctx, todayKeyName);
     hero.append(el('p', { class: 'gv-hero-sub' },
       next ? `Next up: ${next.day.name} on ${WEEKDAY_LABELS[next.weekday]}. Progress lives on rest days.`
            : plan ? 'No days scheduled in the active plan yet.'
@@ -69,13 +71,25 @@ function render(ctx, root) {
   }
   root.append(hero);
 
+  /* Anything else scheduled today (a run beside the lifting) gets its own
+     card rather than being hidden behind the hero's single session. */
+  for (const extra of todays.slice(1)) {
+    root.append(el('div', { class: 'gv-card gv-alsotoday' },
+      el('div', { class: 'gv-alsotoday-main' },
+        el('div', { class: 'gv-kicker' }, 'Also today'),
+        el('div', { class: 'gv-alsotoday-name' }, extra.day.name),
+        el('div', { class: 'gv-alsotoday-plan' }, extra.plan.name)),
+      el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startLog(extra.plan, extra.day) },
+        ico('play'), el('span', {}, 'Start'))));
+  }
+
   /* Week strip — typographic: big initial, plan-day tag beneath. */
   const weekStart = startOfWeek(today, settings.weekStart);
   const strip = el('div', { class: 'gv-week', role: 'group', 'aria-label': 'This week' });
   for (let i = 0; i < 7; i++) {
     const iso = addDays(weekStart, i);
     const wk = weekdayKey(iso);
-    const planDay = plan ? plan.model.days.find(d => d.weekday === wk) : null;
+    const planDay = (ctx.daysOn(wk)[0] || {}).day || null;
     const done = dates.includes(iso);
     const cls = ['gv-day', done ? 'done' : planDay ? 'planned' : 'rest', iso === today ? 'today' : ''].join(' ');
     const tag = el('div', { class: 'gv-day-dot' });
@@ -140,13 +154,13 @@ function tile(icon, big, label) {
     el('div', { class: 'gv-tile-label' }, label));
 }
 
-function nextPlannedDay(plan, todayKeyName) {
-  if (!plan) return null;
+/* Searches every plan (active + parallel), not just the strength one. */
+function nextPlannedDay(ctx, todayKeyName) {
   const start = WEEKDAYS.indexOf(todayKeyName);
   for (let i = 1; i <= 7; i++) {
     const wk = WEEKDAYS[(start + i) % 7];
-    const day = plan.model.days.find(d => d.weekday === wk);
-    if (day) return { weekday: wk, day };
+    const hit = ctx.daysOn(wk)[0];
+    if (hit) return { weekday: wk, day: hit.day };
   }
   return null;
 }

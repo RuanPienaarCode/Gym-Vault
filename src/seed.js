@@ -562,17 +562,6 @@ const SEED_PLAN = {
     'muscle-up — with rows for shoulder health, a full leg & core day, and mobility',
     'built into every warm-up.',
     '',
-    'RUNNING — rebuilding to a comfortable 15km on trail. Two easy 30-minute',
-    'runs midweek, one long trail run at the weekend. Long-run ladder, in km:',
-    '',
-    '| Week | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |',
-    '| Long run | 4 | 5 | 6 | 5 | 7 | 8 | 9 | 6 | 10 | 11.5 | 13 | 15 |',
-    '',
-    'Weeks 4 and 8 step DOWN on purpose — that is where the adaptation lands.',
-    'Coming back from illness, walk-run the first week or two rather than',
-    'forcing it, and repeat a week whenever it felt hard. The ladder is a',
-    'guide, not a contract.',
-    '',
     'Warm-up before every session (~5 min, non-negotiable): shoulder rolls + big arm',
     'circles, 2×5 scapular pull-ups, a mobility minute (thoracic rotations, deep',
     'squat holds, wrist circles), 15 band pull-aparts, 10 easy box step-ups, 20s',
@@ -589,12 +578,6 @@ const SEED_PLAN = {
     '- Box Jumps | 4 x 8-10',
     '- Dead Hang | 2 x 30-45s',
     '',
-    '## Easy Run (tue)',
-    '',
-    '30 minutes conversational. Treadmill or road — whatever gets it done.',
-    '',
-    '- Easy Run | 1 x 30 min easy',
-    '',
     '## B · Push + Volume (wed)',
     '',
     'The other half of the muscle-up — dips lead today. Clean reps, leave 2 in the tank.',
@@ -604,12 +587,6 @@ const SEED_PLAN = {
     '- Push-ups | 3 x 10-15',
     '- Inverted Rows | 3 x 8-12',
     '- Plank | 3 x 65% max',
-    '',
-    '## Easy Run (thu)',
-    '',
-    'The optional second midweek run. Skip it without guilt in a heavy week.',
-    '',
-    '- Easy Run | 1 x 30 min easy',
     '',
     '## C · Legs, Hinge & Core (fri)',
     '',
@@ -631,10 +608,45 @@ const SEED_PLAN = {
     '- Straight-bar Dips | 3 x 5-8',
     '- Box Jumps | 4 x 8-10',
     '- Dead Hang | 2 x 30-45s',
+  ].join('\n') + '\n',
+};
+
+/* Running lives in its OWN plan, marked `parallel` — it is not an
+   alternative to the strength plan, it runs alongside it, so the dashboard
+   merges days from the active plan and every parallel one. The ladder is
+   frontmatter data (not prose) so the Running page can say which week you
+   are in and what today's target is. */
+const SEED_RUN_PLAN = {
+  name: 'Trail Base — Road to 15km',
+  fm: {
+    parallel: true,
+    ladder: [4, 5, 6, 5, 7, 8, 9, 6, 10, 11.5, 13, 15],
+    start_date: '',          // set on setup to the Monday of the current week
+  },
+  body: [
+    'Rebuilding to a comfortable 15km on trail. Two easy 30-minute runs',
+    'midweek, one long trail run at the weekend.',
+    '',
+    'The long-run ladder steps DOWN in weeks 4 and 8 on purpose — that is',
+    'where the adaptation lands. Coming back from illness, walk-run the first',
+    'week or two rather than forcing it, and repeat a week whenever it felt',
+    'hard. The ladder is a guide, not a contract.',
+    '',
+    '## Easy Run (tue)',
+    '',
+    '30 minutes conversational. Treadmill or road — whatever gets it done.',
+    '',
+    '- Easy Run | 1 x 30 min easy',
+    '',
+    '## Easy Run (thu)',
+    '',
+    'The optional second midweek run. Skip it without guilt in a heavy week.',
+    '',
+    '- Easy Run | 1 x 30 min easy',
     '',
     '## Long Trail Run (sun)',
     '',
-    'Mountain or forest. Follow the ladder in the intro — slow, walk the climbs.',
+    'Mountain or forest. Slow, and walk the climbs.',
     '',
     '- Long Trail Run | 1 x per the ladder',
   ].join('\n') + '\n',
@@ -675,4 +687,4 @@ const SEED_PROFILE = {
   ].join('\n') + '\n',
 };
 
-module.exports = { SEED_EXERCISES, SEED_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl };
+module.exports = { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl };
