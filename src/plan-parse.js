@@ -29,7 +29,9 @@
 const { WEEKDAYS } = require('./constants');
 const { splitBarePipes, escMd, unescMd } = require('./markdown');
 
-const DAY_HEADING = /^##\s+(.+?)\s*\((mon|tue|wed|thu|fri|sat|sun)\)\s*$/i;
+/* `any` is a wildcard weekday: only meaningful in a fallback plan, where
+   the day fills whatever weekday nothing else has claimed. */
+const DAY_HEADING = /^##\s+(.+?)\s*\((mon|tue|wed|thu|fri|sat|sun|any)\)\s*$/i;
 
 /* `5 x submax` → {sets: 5, target: 'submax'}; plain text → {sets: null}. */
 function parsePrescription(text) {
@@ -132,7 +134,8 @@ function serializePlanBody(model) {
   const out = [];
   if (model.intro && model.intro.length) { out.push(...model.intro, ''); }
   for (const d of model.days) {
-    out.push(`## ${d.name} (${WEEKDAYS.includes(d.weekday) ? d.weekday : 'mon'})`, '');
+    const wd = d.weekday === 'any' || WEEKDAYS.includes(d.weekday) ? d.weekday : 'mon';
+    out.push(`## ${d.name} (${wd})`, '');
     const parts = d.parts || [
       ...(d.notes || []).map(line => ({ kind: 'note', line })),
       ...((d.notes && d.notes.length) ? [{ kind: 'note', line: '' }] : []),

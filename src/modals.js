@@ -85,4 +85,46 @@ class ConfirmModal extends Modal {
   onClose() { this.contentEl.empty(); }
 }
 
-module.exports = { FormModal, ConfirmModal };
+/* Switch which plan drives the dashboard. Parallel and fallback plans are
+   listed too but not selectable — they are not alternatives, they fill in
+   around whatever is active, and saying so beats hiding them. */
+class PlanPickerModal extends Modal {
+  constructor(app, { plans, extras, currentName, onPick }) {
+    super(app);
+    this.plans = plans; this.extras = extras || []; this.currentName = currentName; this.onPick = onPick;
+  }
+  onOpen() {
+    this.modalEl.addClass('gv-modal');
+    this.titleEl.setText('Switch plan');
+    const c = this.contentEl;
+    for (const p of this.plans) {
+      const on = p.name === this.currentName;
+      const row = c.createDiv({ cls: `gv-card gv-optrow${on ? ' on' : ''}` });
+      const main = row.createDiv({ cls: 'gv-optrow-main' });
+      main.createDiv({ cls: 'gv-optrow-name', text: p.name });
+      main.createDiv({ cls: 'gv-optrow-desc', text: planSummary(p) });
+      if (on) row.createDiv({ cls: 'gv-optrow-desc', text: 'active' });
+      row.addEventListener('click', () => {
+        this.close();
+        if (!on) Promise.resolve(this.onPick(p)).catch(e => console.error('gym-vault switch plan', e));
+      });
+    }
+    for (const p of this.extras) {
+      const row = c.createDiv({ cls: 'gv-card gv-optrow gv-optrow-static' });
+      const main = row.createDiv({ cls: 'gv-optrow-main' });
+      main.createDiv({ cls: 'gv-optrow-name', text: p.name });
+      main.createDiv({ cls: 'gv-optrow-desc',
+        text: String(p.fm.fallback) === 'true'
+          ? 'Fills any day your plan leaves empty — always on.'
+          : 'Runs alongside whichever plan is active — always on.' });
+    }
+  }
+  onClose() { this.contentEl.empty(); }
+}
+
+function planSummary(p) {
+  const days = p.model.days.filter(d => d.items.length);
+  return `${days.length} day${days.length === 1 ? '' : 's'} · ${days.map(d => d.weekday).join(', ')}`;
+}
+
+module.exports = { FormModal, ConfirmModal, PlanPickerModal };

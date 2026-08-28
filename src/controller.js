@@ -68,7 +68,11 @@ function mountApp(view) {
     const main = ctx.data.plans.filter(p => !isParallel(p));
     return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
   };
-  ctx.parallelPlans = () => (ctx.data ? ctx.data.plans.filter(isParallel) : []);
+  const isFallback = p => String(p.fm.fallback) === 'true';
+  ctx.parallelPlans = () => (ctx.data ? ctx.data.plans.filter(p => isParallel(p) && !isFallback(p)) : []);
+  ctx.fallbackPlans = () => (ctx.data ? ctx.data.plans.filter(isFallback) : []);
+  /* Every non-parallel plan, for the switcher. */
+  ctx.mainPlans = () => (ctx.data ? ctx.data.plans.filter(p => !isParallel(p) && !isFallback(p)) : []);
   const isRunExercise = name => !!ctx.data && ctx.data.exercises.some(e =>
     e.name.toLowerCase() === (name || '').toLowerCase() && (e.fm.unit || '') === 'km');
   ctx.runPlan = () =>
@@ -80,6 +84,14 @@ function mountApp(view) {
     const main = ctx.activePlan();
     if (main) for (const d of main.model.days) if (d.weekday === weekday) out.push({ plan: main, day: d });
     for (const p of ctx.parallelPlans()) for (const d of p.model.days) if (d.weekday === weekday) out.push({ plan: p, day: d });
+    /* Nothing training-related today? A fallback plan (rest & recovery)
+       fills the gap — an exact weekday match first, then its `any` day. */
+    if (!out.length) {
+      for (const p of ctx.fallbackPlans()) {
+        const day = p.model.days.find(d => d.weekday === weekday) || p.model.days.find(d => d.weekday === 'any');
+        if (day) { out.push({ plan: p, day }); break; }
+      }
+    }
     return out;
   };
   /* The Running tab appears only once the vault actually holds running. */

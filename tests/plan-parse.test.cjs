@@ -1,7 +1,7 @@
 'use strict';
 /* The plan grammar: seed parses, prose survives, serialization is stable. */
 const assert = require('node:assert');
-const { parsePlanBody, serializePlanBody, parsePrescription, targetWeight, targetFirstNumber, targetIsDuration } = require('../src/plan-parse');
+const { parsePlanBody, serializePlanBody, parsePrescription, targetWeight, targetFirstNumber, targetIsDuration, isRestDay } = require('../src/plan-parse');
 const { SEED_PLAN, SEED_RUN_PLAN } = require('../src/seed');
 
 /* Strength and running are SEPARATE plans: the running one is `parallel`,
@@ -116,6 +116,25 @@ assert.ok(!targetIsDuration('8-12'));
   assert.notStrictEqual(legs.weekday, dayBefore, 'legs must not sit the day before the long run');
   const before = [...strength, ...running].filter(d => d.weekday === dayBefore);
   assert.ok(before.every(isRestDay), 'the day before the long run should be rest');
+}
+
+/* `(any)` is a wildcard weekday for fallback plans — a rest & recovery
+   plan fills whatever day training leaves empty, whichever plan is active,
+   so rest days never have to be maintained per-plan. */
+{
+  const body = '## Rest & Recovery (any)\n\n- Cat-Cow | 1 x 8\n\n## Rest & Recovery · after the long run (sun)\n\n- Calf Stretch | 1 x 30s\n';
+  const m = parsePlanBody(body);
+  assert.deepStrictEqual(m.days.map(d => d.weekday), ['any', 'sun']);
+  assert.ok(m.days.every(isRestDay), 'both should read as rest days');
+  // `any` must survive serialization rather than collapsing to Monday
+  const s2 = serializePlanBody(m);
+  assert.ok(s2.includes('(any)'), 'the any wildcard must round-trip');
+  assert.strictEqual(serializePlanBody(parsePlanBody(s2)), s2);
+
+  // resolution order: exact weekday beats the wildcard
+  const pick = wk => m.days.find(d => d.weekday === wk) || m.days.find(d => d.weekday === 'any');
+  assert.strictEqual(pick('sun').name, 'Rest & Recovery · after the long run');
+  assert.strictEqual(pick('thu').name, 'Rest & Recovery');
 }
 
 console.log('plan grammar OK');

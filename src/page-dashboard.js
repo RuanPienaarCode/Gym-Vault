@@ -8,6 +8,7 @@ const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
 const { workoutDates, weekStreak, countInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
 const { itemSets, isRestDay } = require('./plan-parse');
+const { PlanPickerModal } = require('./modals');
 
 function render(ctx, root) {
   const { data, settings } = ctx;
@@ -23,8 +24,25 @@ function render(ctx, root) {
 
   /* Masthead + action slab. */
   const hero = el('div', { class: 'gv-hero' });
-  hero.append(el('p', { class: 'gv-kicker' },
-    `${fmtShort(today)} · ${WEEKDAY_LABELS[todayKeyName]}${plan ? ` · ${plan.name}` : ''}`));
+  /* The plan name is the switcher — swapping programme is a thing you do
+     from the day you are looking at, not by hunting through Plans. */
+  const kicker = el('p', { class: 'gv-kicker' }, `${fmtShort(today)} · ${WEEKDAY_LABELS[todayKeyName]} · `);
+  if (plan) {
+    const swap = el('button', { class: 'gv-planswap', type: 'button', 'aria-label': `Active plan: ${plan.name}. Switch plan` },
+      el('span', {}, plan.name), ico('repeat-2'));
+    swap.addEventListener('click', () => new PlanPickerModal(ctx.app, {
+      plans: ctx.mainPlans(),
+      extras: [...ctx.parallelPlans(), ...ctx.fallbackPlans()],
+      currentName: plan.name,
+      onPick: async next => {
+        await ctx.io.setActivePlan(ctx.mainPlans(), next);
+        ctx.notice(`switched to ${next.name}.`);
+        ctx.reload();
+      },
+    }).open());
+    kicker.append(swap);
+  }
+  hero.append(kicker);
 
   const restToday = todays.length && isRestDay(todays[0].day);
   if (restToday) {
