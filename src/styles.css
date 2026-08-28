@@ -669,6 +669,8 @@
 .gv-goal-deadline { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 5px; }
 .gv-goal-deadline.over { color: var(--gv-danger); }
 
+.gv-rx-rest b { color: var(--gv-ink-dim); font-family: inherit; font-weight: 700; font-size: 12px; }
+
 /* ---------- running ---------- */
 
 .gv-alsotoday { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
@@ -926,8 +928,11 @@
    gv-skin-*/gv-accent-* classes) — that's what pulls in the --gv-* tokens
    and the shared .gv-btn/.gv-icon-btn styling above, with no new hex added
    anywhere here (sealed palette — see the ACCENT PALETTES banner). Layout
-   is restated on the (0,2,1) .modal.gv-repcounter-modal selector rather
-   than left to source-order tie-breaking against app.css's own `.modal`. */
+   is restated on the (0,2,0) .modal.gv-repcounter-modal selector rather
+   than left to source-order tie-breaking against app.css's own `.modal`.
+   Restating means EVERY painted property app.css sets on `.modal` must be
+   declared here — an omitted one (border, box-shadow) leaks through no
+   matter the specificity. */
 .modal.gv-repcounter-modal {
   position: fixed;
   inset: 0;
@@ -944,7 +949,12 @@
   background: var(--gv-bg);
   color: var(--gv-ink);
   overflow: hidden;
+  border: none;
+  box-shadow: none;
 }
+/* app.css's `.modal-container.mod-dim .modal` (0,3,0) re-adds a themed
+   box-shadow; outrank it outright at (0,4,0) instead of tie-breaking. */
+.modal-container.mod-dim .modal.gv-repcounter-modal { box-shadow: none; }
 .modal.gv-repcounter-modal .modal-content {
   flex: 1 1 auto;
   display: flex;

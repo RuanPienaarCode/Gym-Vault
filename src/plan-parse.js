@@ -113,6 +113,12 @@ function removeItemAt(day, idx) {
   }
 }
 
+/* A day whose NAME says rest/recovery is not a session to attack — the
+   dashboard renders it calmly and its items are suggestions, not a
+   prescription. Named-based so it needs no schema change and a
+   hand-written plan gets it for free. */
+const isRestDay = day => /\brest\b|\brecovery\b/i.test((day && day.name) || '');
+
 /* Prescribed set count with the ONE default — page-log prefill and the
    dashboard's sets-total must never disagree on what "no count" means. */
 const itemSets = it => it.sets || 3;
@@ -140,6 +146,6 @@ function serializePlanBody(model) {
 }
 
 module.exports = {
-  parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, itemSets,
+  parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, itemSets, isRestDay,
   targetWeight, targetFirstNumber, targetIsDuration,
 };

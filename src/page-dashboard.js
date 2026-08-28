@@ -7,7 +7,7 @@ const { el, ico, fmt, fmtSeconds } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
 const { workoutDates, weekStreak, countInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
-const { itemSets } = require('./plan-parse');
+const { itemSets, isRestDay } = require('./plan-parse');
 
 function render(ctx, root) {
   const { data, settings } = ctx;
@@ -26,7 +26,28 @@ function render(ctx, root) {
   hero.append(el('p', { class: 'gv-kicker' },
     `${fmtShort(today)} · ${WEEKDAY_LABELS[todayKeyName]}${plan ? ` · ${plan.name}` : ''}`));
 
-  if (todays.length) {
+  const restToday = todays.length && isRestDay(todays[0].day);
+  if (restToday) {
+    const { plan: dayPlan, day } = todays[0];
+    hero.append(el('h2', { class: 'gv-display gv-hero-title' }, el('span', { class: 'gv-mark' }, day.name)));
+    const prose = (day.notes || []).join(' ').trim();
+    hero.append(el('p', { class: 'gv-hero-sub' }, prose || 'Rest is where the adaptation happens.'));
+    if (day.items.length) {
+      const list = el('ul', { class: 'gv-rx gv-rx-rest' });
+      for (const it of day.items) {
+        list.append(el('li', {},
+          el('span', {}, it.exercise),
+          el('b', {}, it.sets != null ? `${it.sets} × ${it.target}` : it.target || '')));
+      }
+      hero.append(list);
+    }
+    /* No lime flood and no "Get after it" — the whole point of the day is
+       that there is nothing to attack. Logging it stays possible. */
+    hero.append(el('button', {
+      class: 'gv-btn-hero-ghost', type: 'button',
+      onclick: () => ctx.startLog(dayPlan, day),
+    }, ico('circle-check'), el('span', {}, 'Log recovery')));
+  } else if (todays.length) {
     const { plan: dayPlan, day } = todays[0];
     hero.append(el('h2', { class: 'gv-display gv-hero-title' }, el('span', { class: 'gv-mark' }, day.name)));
     const prose = (day.notes || []).join(' ').trim();
@@ -89,7 +110,8 @@ function render(ctx, root) {
   for (let i = 0; i < 7; i++) {
     const iso = addDays(weekStart, i);
     const wk = weekdayKey(iso);
-    const planDay = (ctx.daysOn(wk)[0] || {}).day || null;
+    const scheduled = (ctx.daysOn(wk)[0] || {}).day || null;
+    const planDay = scheduled && !isRestDay(scheduled) ? scheduled : null;
     const done = dates.includes(iso);
     const cls = ['gv-day', done ? 'done' : planDay ? 'planned' : 'rest', iso === today ? 'today' : ''].join(' ');
     const tag = el('div', { class: 'gv-day-dot' });
