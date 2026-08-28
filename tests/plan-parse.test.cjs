@@ -8,15 +8,15 @@ const { SEED_PLAN, SEED_RUN_PLAN } = require('../src/seed');
    so it runs alongside rather than replacing the strength programme. */
 {
   const m = parsePlanBody(SEED_PLAN.body);
-  assert.strictEqual(m.days.length, 4);
-  assert.deepStrictEqual(m.days.map(d => d.weekday), ['mon', 'wed', 'fri', 'sat']);
+  assert.strictEqual(m.days.length, 5);
+  assert.deepStrictEqual(m.days.map(d => d.weekday), ['mon', 'wed', 'thu', 'fri', 'sun']);
   const byDay = Object.fromEntries(m.days.map(d => [d.weekday, d]));
   assert.strictEqual(byDay.mon.items.length, 6);
   assert.strictEqual(byDay.mon.items[0].exercise, 'Pull-ups');
   assert.strictEqual(byDay.mon.items[0].sets, 5);
   assert.strictEqual(byDay.mon.items[0].target, 'submax');
   assert.ok(m.intro.join(' ').includes('muscle-up'));
-  assert.ok(byDay.fri.notes.join(' ').includes('Superset'));
+  assert.ok(byDay.thu.notes.join(' ').includes('Superset'));
   assert.ok(!m.days.some(d => d.items.some(i => /Run/.test(i.exercise))), 'running must not live in the strength plan');
 }
 
@@ -25,9 +25,9 @@ const { SEED_PLAN, SEED_RUN_PLAN } = require('../src/seed');
 {
   const r = parsePlanBody(SEED_RUN_PLAN.body);
   assert.strictEqual(SEED_RUN_PLAN.fm.parallel, true);
-  assert.deepStrictEqual(r.days.map(d => d.weekday), ['tue', 'thu', 'sun']);
+  assert.deepStrictEqual(r.days.map(d => d.weekday), ['tue', 'sat']);
   assert.strictEqual(r.days[0].items[0].exercise, 'Easy Run');
-  assert.strictEqual(r.days[2].items[0].exercise, 'Long Trail Run');
+  assert.strictEqual(r.days[1].items[0].exercise, 'Long Trail Run');
   const ladder = SEED_RUN_PLAN.fm.ladder;
   assert.strictEqual(ladder.length, 12);
   assert.strictEqual(ladder[ladder.length - 1], 15);
@@ -42,7 +42,7 @@ const { SEED_PLAN, SEED_RUN_PLAN } = require('../src/seed');
   const m2 = parsePlanBody(s1);
   const s2 = serializePlanBody(m2);
   assert.strictEqual(s1, s2);
-  assert.strictEqual(m2.days.length, 4);
+  assert.strictEqual(m2.days.length, 5);
   assert.deepStrictEqual(
     m2.days.map(d => d.items.map(i => `${i.exercise}|${i.sets}|${i.target}`)),
     m1.days.map(d => d.items.map(i => `${i.exercise}|${i.sets}|${i.target}`)));
@@ -101,6 +101,21 @@ assert.ok(!targetIsDuration('8-12'));
   assert.ok(!s.includes('- A |'));
   assert.ok(s.indexOf('- B | 3 x 8') < s.indexOf('- C | 2 x 10'));
   assert.strictEqual(day.items.length, day.parts.filter(p => p.kind === 'item').length);
+}
+
+/* The week must never put a leg session the day before the long trail run
+   — that pairing is what the Thursday move exists to prevent. */
+{
+  const { isRestDay } = require('../src/plan-parse');
+  const WD = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const strength = parsePlanBody(SEED_PLAN.body).days;
+  const running = parsePlanBody(SEED_RUN_PLAN.body).days;
+  const longRun = running.find(d => /long/i.test(d.name));
+  const legs = strength.find(d => /legs/i.test(d.name));
+  const dayBefore = WD[(WD.indexOf(longRun.weekday) + 6) % 7];
+  assert.notStrictEqual(legs.weekday, dayBefore, 'legs must not sit the day before the long run');
+  const before = [...strength, ...running].filter(d => d.weekday === dayBefore);
+  assert.ok(before.every(isRestDay), 'the day before the long run should be rest');
 }
 
 console.log('plan grammar OK');
