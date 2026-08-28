@@ -8,6 +8,7 @@ const { todayISO, fmtShort } = require('./dates');
 const { setCounts } = require('./stats');
 const { targetFirstNumber, targetWeight, targetIsDuration, itemSets } = require('./plan-parse');
 const { FormModal, ConfirmModal } = require('./modals');
+const { RepCounterModal } = require('./rep-counter-modal');
 
 function startDraft(ctx, plan, day) {
   const entries = [];
@@ -149,14 +150,39 @@ function setRow(ctx, entry, set, si) {
   } else if (entry.duration) {
     row.append(numInput('seconds', 'sec'), el('span', { class: 'gv-set-unit' }, 's'));
   } else {
-    row.append(numInput('reps', 'reps'), el('span', { class: 'gv-set-unit' }, '×'));
-    if (entry.weighted) row.append(numInput('weight_kg', 'kg'), el('span', { class: 'gv-set-unit' }, 'kg'));
+    /* Weighted rows carry two inputs + counter + the 48px tick — same
+       narrow-input rule as the distance branch, or they overflow 390px. */
+    const repsCls = entry.weighted ? 'gv-set-input-narrow' : '';
+    row.append(numInput('reps', 'reps', repsCls), el('span', { class: 'gv-set-unit' }, '×'));
+    if (entry.weighted) row.append(numInput('weight_kg', 'kg', 'gv-set-input-narrow'), el('span', { class: 'gv-set-unit' }, 'kg'));
+    row.append(counterBtn(ctx, entry, set));
   }
 
   const done = el('button', { class: 'gv-set-done', type: 'button', 'aria-label': set.done ? 'Mark not done' : 'Mark done' }, ico('check'));
   done.addEventListener('click', () => { set.done = !set.done; ctx.rerender(); });
   row.append(done);
   return row;
+}
+
+/* Hands-free rep counting for a single set: phone flat on the floor, nose
+   taps the screen at the bottom of each rep. Opens seeded with the exercise
+   name; on Done the count overwrites this set's reps and marks it touched
+   (the same rule everything else in the log obeys — see stats.setCounts). */
+function counterBtn(ctx, entry, set) {
+  const b = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `Tap-count reps for ${entry.exercise}` }, ico('repeat-2'));
+  b.addEventListener('click', () => {
+    new RepCounterModal(ctx.app, {
+      exerciseName: entry.exercise,
+      skin: ctx.settings.skin,
+      accent: ctx.settings.accent,
+      onDone: count => {
+        set.reps = String(count);
+        set.touched = true;
+        ctx.rerender();
+      },
+    }).open();
+  });
+  return b;
 }
 
 function removeBtn(ctx, draft, ei) {

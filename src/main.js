@@ -9,10 +9,11 @@
    floor on mobile, not minAppVersion).
    ============================================================================ */
 
-const { Plugin, normalizePath } = require('obsidian');
+const { Plugin, normalizePath, Notice } = require('obsidian');
 const { VIEW_TYPE, DEFAULT_SETTINGS } = require('./constants');
 const { GymView } = require('./view');
 const { GymSettingTab } = require('./settings-tab');
+const { RepCounterModal } = require('./rep-counter-modal');
 
 class GymPlugin extends Plugin {
   async onload() {
@@ -34,6 +35,18 @@ class GymPlugin extends Plugin {
           const day = plan ? plan.model.days.find(d => d.weekday === wk) : null;
           ctx.startLog(plan, day || null);
         });
+      },
+    });
+    this.addCommand({
+      id: 'open-rep-counter',
+      name: 'Open rep counter',
+      callback: () => {
+        new RepCounterModal(this.app, {
+          exerciseName: '',
+          skin: this.settings.skin,
+          accent: this.settings.accent,
+          onDone: count => new Notice(`Gym: counted ${count} rep${count === 1 ? '' : 's'}.`, 5000),
+        }).open();
       },
     });
     this.addSettingTab(new GymSettingTab(this.app, this));
