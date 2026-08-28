@@ -82,4 +82,15 @@ const set = (exercise, reps, weight_kg, seconds) => ({ exercise, reps, weight_kg
   assert.deepStrictEqual(dates, ['2026-08-26']);
 }
 
+/* Running: longest single distance and total logged, kept distinct. */
+{
+  const runs = [w('2026-08-01', [set('Long Trail Run','', '', '')]), w('2026-08-08', [])];
+  runs[0].rows = [{ exercise: 'Long Trail Run', distance_km: '6.4', seconds: '2820' }];
+  runs[1].rows = [{ exercise: 'Long Trail Run', distance_km: '8', seconds: '3600' }];
+  const b = exerciseBests(runs, 'long trail run');
+  assert.strictEqual(b.distance, 8);
+  assert.strictEqual(b.totalDistance, 14.4);
+  assert.strictEqual(exerciseBests(runs, 'Never Run').distance, null);
+}
+
 console.log('stats OK');

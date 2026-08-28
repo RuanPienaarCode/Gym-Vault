@@ -11,6 +11,7 @@ const METRIC_LABELS = {
   'exercise-reps': 'Best reps in a set',
   'exercise-duration': 'Best hold (seconds)',
   'exercise-weight': 'Heaviest weight (kg)',
+  'exercise-distance': 'Longest single run (km)',
   'body-weight': 'Body weight (kg)',
   'workouts-per-week': 'Workouts per week',
 };

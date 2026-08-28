@@ -24,18 +24,21 @@ function startDraft(ctx, plan, day) {
 function makeEntry(ctx, exercise, sets, target) {
   const ex = ctx.data.exercises.find(e => e.name.toLowerCase() === exercise.toLowerCase());
   const unit = ex ? ex.fm.unit : null;
-  const duration = unit === 'seconds' || (!unit && targetIsDuration(target || ''));
+  const distance = unit === 'km';
+  const duration = !distance && (unit === 'seconds' || (!unit && targetIsDuration(target || '')));
   const weighted = unit === 'kg' || targetWeight(target || '') !== null;
   const prefReps = duration ? '' : (targetFirstNumber(target || '') ?? '');
   const prefSecs = duration ? (targetFirstNumber(target || '') ?? '') : '';
   const prefW = targetWeight(target || '') ?? '';
   return {
-    exercise, target: target || '', duration, weighted,
+    exercise, target: target || '', duration, weighted, distance,
     /* touched: false marks these as PREFILLS — they don't count until the
        user ticks the set or edits a field (see stats.setCounts). */
-    sets: Array.from({ length: Math.max(1, sets) }, () => ({
-      reps: prefReps, weight_kg: prefW, seconds: prefSecs, done: false, touched: false,
-    })),
+    /* A run is one entry, not three sets — and nothing is prefilled, since
+       the distance you actually covered is the whole point of logging it. */
+    sets: Array.from({ length: distance ? 1 : Math.max(1, sets) }, () => (distance
+      ? { distance_km: '', minutes: '', done: false, touched: false }
+      : { reps: prefReps, weight_kg: prefW, seconds: prefSecs, done: false, touched: false })),
   };
 }
 
@@ -114,9 +117,11 @@ function entryCard(ctx, draft, entry, ei) {
 
   const addSet = el('button', { class: 'gv-add-line gv-add-set', type: 'button' }, ico('plus'), el('span', {}, 'Set'));
   addSet.addEventListener('click', () => {
-    const prev = entry.sets[entry.sets.length - 1] || { reps: '', weight_kg: '', seconds: '' };
+    const prev = entry.sets[entry.sets.length - 1] || {};
     // Copied values are prefills too — the new set must not count untouched.
-    entry.sets.push({ reps: prev.reps, weight_kg: prev.weight_kg, seconds: prev.seconds, done: false, touched: false });
+    entry.sets.push(entry.distance
+      ? { distance_km: '', minutes: '', done: false, touched: false }
+      : { reps: prev.reps ?? '', weight_kg: prev.weight_kg ?? '', seconds: prev.seconds ?? '', done: false, touched: false });
     ctx.rerender();
   });
   card.append(addSet);
@@ -136,7 +141,12 @@ function setRow(ctx, entry, set, si) {
     return i;
   };
 
-  if (entry.duration) {
+  if (entry.distance) {
+    /* Two inputs in one row — narrower so km + min + the 48px tick still
+       fit a 390px phone without wrapping. */
+    row.append(numInput('distance_km', 'km', 'gv-set-input-narrow'), el('span', { class: 'gv-set-unit' }, 'km'));
+    row.append(numInput('minutes', 'min', 'gv-set-input-narrow'), el('span', { class: 'gv-set-unit' }, 'min'));
+  } else if (entry.duration) {
     row.append(numInput('seconds', 'sec'), el('span', { class: 'gv-set-unit' }, 's'));
   } else {
     row.append(numInput('reps', 'reps'), el('span', { class: 'gv-set-unit' }, '×'));
@@ -186,13 +196,24 @@ async function finishSession(ctx, draft) {
     for (const set of entry.sets) {
       if (!setCounts(set)) continue;
       n++;
-      rows.push({
-        exercise: entry.exercise, set: n,
-        reps: entry.duration ? '' : String(set.reps).trim(),
-        weight_kg: entry.duration ? '' : String(set.weight_kg).trim(),
-        seconds: entry.duration ? String(set.seconds).trim() : '',
-        note: '',
-      });
+      if (entry.distance) {
+        /* The ONLY minutes->seconds conversion: the column is seconds, the
+           input is minutes because nobody logs a 30-minute run as 1800. */
+        const mins = parseFloat(set.minutes);
+        rows.push({
+          exercise: entry.exercise, set: n, reps: '', weight_kg: '',
+          seconds: Number.isFinite(mins) ? String(Math.round(mins * 60)) : '',
+          note: '', distance_km: String(set.distance_km ?? '').trim(),
+        });
+      } else {
+        rows.push({
+          exercise: entry.exercise, set: n,
+          reps: entry.duration ? '' : String(set.reps).trim(),
+          weight_kg: entry.duration ? '' : String(set.weight_kg).trim(),
+          seconds: entry.duration ? String(set.seconds).trim() : '',
+          note: '', distance_km: '',
+        });
+      }
     }
   }
   if (!rows.length) { ctx.notice('Tick a set (or type a figure) before finishing.'); return; }

@@ -37,7 +37,9 @@ function workoutDates(workouts) {
 function setCounts(set) {
   const hasFigure = !!(String(set.reps ?? '').trim() ||
     String(set.weight_kg ?? '').trim() ||
-    String(set.seconds ?? '').trim());
+    String(set.seconds ?? '').trim() ||
+    String(set.distance_km ?? '').trim() ||
+    String(set.minutes ?? '').trim());
   return !!(set.done || (set.touched && hasFigure));
 }
 
@@ -69,18 +71,22 @@ const sameName = (a, b) => (a || '').trim().toLowerCase() === (b || '').trim().t
 /* Scan every logged set of `exercise` for maxima. Returns nulls when the
    exercise was never logged — "no data" and "zero" must stay distinct. */
 function exerciseBests(workouts, exercise) {
-  let reps = null, weight = null, seconds = null, lastDate = null;
+  let reps = null, weight = null, seconds = null, distance = null, lastDate = null;
+  let totalDistance = 0;
   for (const w of workouts) {
     for (const r of w.rows || []) {
       if (!sameName(r.exercise, exercise)) continue;
-      const rp = num(r.reps), wt = num(r.weight_kg), sc = num(r.seconds);
+      const rp = num(r.reps), wt = num(r.weight_kg), sc = num(r.seconds), di = num(r.distance_km);
       if (rp !== null && (reps === null || rp > reps)) reps = rp;
       if (wt !== null && (weight === null || wt > weight)) weight = wt;
       if (sc !== null && (seconds === null || sc > seconds)) seconds = sc;
+      if (di !== null && (distance === null || di > distance)) distance = di;
+      if (di !== null) totalDistance += di;
       if (w.fm && w.fm.date && (!lastDate || w.fm.date > lastDate)) lastDate = w.fm.date;
     }
   }
-  return { reps, weight, seconds, lastDate };
+  /* totalDistance stays 0-vs-null honest: null distance means never run. */
+  return { reps, weight, seconds, distance, totalDistance: Math.round(totalDistance * 10) / 10, lastDate };
 }
 
 /* Estimated one-rep max (Epley). Only meaningful for weighted reps. */
@@ -110,6 +116,7 @@ function goalCurrent(goal, ctx) {
     case 'exercise-reps':     return exerciseBests(ctx.workouts, fm.exercise).reps;
     case 'exercise-duration': return exerciseBests(ctx.workouts, fm.exercise).seconds;
     case 'exercise-weight':   return exerciseBests(ctx.workouts, fm.exercise).weight;
+    case 'exercise-distance': return exerciseBests(ctx.workouts, fm.exercise).distance;
     case 'body-weight': {
       const rows = (ctx.body || []).filter(r => num(r.weight_kg) !== null);
       return rows.length ? num(rows[rows.length - 1].weight_kg) : null;

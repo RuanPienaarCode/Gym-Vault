@@ -91,6 +91,7 @@ function sessionCard(ctx, w, open) {
       table.append(el('div', { class: 'gv-set-ex' }, g.exercise));
       for (const r of g.rows) {
         const bits = [];
+        if (r.distance_km) bits.push(`${r.distance_km} km`);
         if (r.reps) bits.push(`${r.reps} reps`);
         if (r.weight_kg) bits.push(`${r.weight_kg}kg`);
         if (r.seconds) bits.push(fmtSeconds(r.seconds));

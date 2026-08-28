@@ -4,17 +4,22 @@ const assert = require('node:assert');
 const { parsePlanBody, serializePlanBody, parsePrescription, targetWeight, targetFirstNumber, targetIsDuration } = require('../src/plan-parse');
 const { SEED_PLAN } = require('../src/seed');
 
-/* The seed program must parse to its 4 days with items intact. */
+/* The seed program: 4 strength days + 3 running days, in weekday order,
+   with items and hand-written prose intact. */
 {
   const m = parsePlanBody(SEED_PLAN.body);
-  assert.strictEqual(m.days.length, 4);
-  assert.deepStrictEqual(m.days.map(d => d.weekday), ['mon', 'wed', 'fri', 'sat']);
-  assert.strictEqual(m.days[0].items.length, 6);
-  assert.strictEqual(m.days[0].items[0].exercise, 'Pull-ups');
-  assert.strictEqual(m.days[0].items[0].sets, 5);
-  assert.strictEqual(m.days[0].items[0].target, 'submax');
+  assert.strictEqual(m.days.length, 7);
+  assert.deepStrictEqual(m.days.map(d => d.weekday), ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+  const byDay = Object.fromEntries(m.days.map(d => [d.weekday, d]));
+  assert.strictEqual(byDay.mon.items.length, 6);
+  assert.strictEqual(byDay.mon.items[0].exercise, 'Pull-ups');
+  assert.strictEqual(byDay.mon.items[0].sets, 5);
+  assert.strictEqual(byDay.mon.items[0].target, 'submax');
+  assert.strictEqual(byDay.tue.items[0].exercise, 'Easy Run');
+  assert.strictEqual(byDay.sun.items[0].exercise, 'Long Trail Run');
   assert.ok(m.intro.join(' ').includes('muscle-up'));
-  assert.ok(m.days[2].notes.join(' ').includes('Superset'));
+  assert.ok(m.intro.join(' ').includes('15km'), 'intro should carry the run ladder');
+  assert.ok(byDay.fri.notes.join(' ').includes('Superset'));
 }
 
 /* Serialize → parse is a fixpoint (stable round trip). */
@@ -24,7 +29,7 @@ const { SEED_PLAN } = require('../src/seed');
   const m2 = parsePlanBody(s1);
   const s2 = serializePlanBody(m2);
   assert.strictEqual(s1, s2);
-  assert.strictEqual(m2.days.length, 4);
+  assert.strictEqual(m2.days.length, 7);
   assert.deepStrictEqual(
     m2.days.map(d => d.items.map(i => `${i.exercise}|${i.sets}|${i.target}`)),
     m1.days.map(d => d.items.map(i => `${i.exercise}|${i.sets}|${i.target}`)));

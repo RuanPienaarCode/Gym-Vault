@@ -59,6 +59,7 @@ function card(ctx, ex, idx) {
   const unit = ex.fm.unit || 'reps';
   const best = unit === 'seconds' ? (bests.seconds !== null ? fmtSeconds(bests.seconds) : null)
     : unit === 'kg' ? (bests.weight !== null ? `${bests.weight}kg` : null)
+    : unit === 'km' ? (bests.distance !== null ? `${bests.distance}km` : null)
     : (bests.reps !== null ? String(bests.reps) : null);
   const meta = [ex.fm.type || 'strength', listOf(ex.fm.muscles).join(', '), ex.fm.equipment]
     .filter(Boolean).join(' · ');
@@ -91,7 +92,7 @@ function exerciseFields(fm, name) {
     { key: 'type', label: 'Type', kind: 'dropdown', options: EXERCISE_TYPES.map(t => [t, t]), value: (fm && fm.type) || 'strength' },
     { key: 'muscles', label: 'Muscles', kind: 'text', value: listOf(fm && fm.muscles).join(', '), placeholder: 'back, biceps', desc: 'Comma-separated' },
     { key: 'equipment', label: 'Equipment', kind: 'text', value: (fm && fm.equipment) || '', placeholder: 'bar, dumbbells, bodyweight' },
-    { key: 'unit', label: 'Tracked as', kind: 'dropdown', options: [['reps', 'reps'], ['kg', 'weight (kg)'], ['seconds', 'seconds']], value: (fm && fm.unit) || 'reps' },
+    { key: 'unit', label: 'Tracked as', kind: 'dropdown', options: [['reps', 'reps'], ['kg', 'weight (kg)'], ['seconds', 'seconds'], ['km', 'distance (km)']], value: (fm && fm.unit) || 'reps' },
     { key: 'image', label: 'Images', kind: 'text', value: listOf(fm && fm.image).join(', '), placeholder: 'vault path or https URL', desc: 'Comma-separate two (start, finish) to show the movement' },
     { key: 'video', label: 'Video', kind: 'text', value: (fm && fm.video) || '', placeholder: 'vault path or https URL' },
   ];

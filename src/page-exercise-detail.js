@@ -61,13 +61,24 @@ function render(ctx, root) {
   /* Bests */
   const bests = exerciseBests(ctx.data.workouts, ex.name);
   const orm = epley1RM(bests.weight, bests.reps);
-  root.append(el('div', { class: 'gv-tiles' },
-    tile(ico('trophy'), fmt(bests.reps), 'best reps'),
-    tile(ico('dumbbell'), fmt(bests.weight, ' kg'), 'best weight'),
-    tile(ico('timer'), bests.seconds !== null ? fmtSeconds(bests.seconds) : '—', 'best hold'),
-    orm !== null
-      ? tile(ico('chart-line'), `${orm} kg`, 'est. 1RM')
-      : tile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last done')));
+  const isRun = (ex.fm.unit || '') === 'km';
+  /* A run has no "best weight" or 1RM — showing those as dashes is noise.
+     Longest time is deliberately NOT divided by longest distance to make a
+     pace: they can come from different runs, and two figures derived by
+     different rules is exactly how this codebase grows wrong numbers. */
+  root.append(isRun
+    ? el('div', { class: 'gv-tiles' },
+        tile(ico('trophy'), fmt(bests.distance, ' km'), 'longest run'),
+        tile(ico('timer'), bests.seconds !== null ? fmtSeconds(bests.seconds) : '—', 'longest time'),
+        tile(ico('chart-line'), bests.totalDistance ? `${bests.totalDistance} km` : '—', 'total logged'),
+        tile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last run'))
+    : el('div', { class: 'gv-tiles' },
+        tile(ico('trophy'), fmt(bests.reps), 'best reps'),
+        tile(ico('dumbbell'), fmt(bests.weight, ' kg'), 'best weight'),
+        tile(ico('timer'), bests.seconds !== null ? fmtSeconds(bests.seconds) : '—', 'best hold'),
+        orm !== null
+          ? tile(ico('chart-line'), `${orm} kg`, 'est. 1RM')
+          : tile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last done')));
 
   /* How-to (note body as markdown) */
   const body = (ex.body || '').trim();
@@ -170,6 +181,7 @@ function recentSessions(workouts, exercise, n) {
     const sets = (w.rows || []).filter(r => (r.exercise || '').toLowerCase() === name);
     if (!sets.length) continue;
     const summary = sets.map(r => {
+      if (r.distance_km) return `${r.distance_km} km${r.seconds ? ' · ' + fmtSeconds(r.seconds) : ''}`;
       if (r.seconds) return fmtSeconds(r.seconds);
       return r.weight_kg ? `${r.reps || '?'}×${r.weight_kg}kg` : `${r.reps || '?'}`;
     }).join('  ·  ');

@@ -69,6 +69,8 @@ const WORKOUT_COLUMNS = [
   { key: 'weight_kg', label: 'Weight (kg)' },
   { key: 'seconds',   label: 'Time (s)' },
   { key: 'note',      label: 'Note' },
+  /* Running. Appended (positional mapping — see BODY_COLUMNS note). */
+  { key: 'distance_km', label: 'Distance (km)' },
 ];
 
 /* Exercise kinds and goal metrics — closed vocabularies the UI renders
@@ -78,6 +80,7 @@ const GOAL_METRICS = [
   'exercise-reps',      // best reps in a single set of `exercise`
   'exercise-duration',  // best seconds in a single set of `exercise`
   'exercise-weight',    // heaviest weight lifted in any set of `exercise`
+  'exercise-distance',  // longest single distance of `exercise` (km)
   'body-weight',        // latest Body Log weight
   'workouts-per-week',  // sessions logged in the current week
 ];
