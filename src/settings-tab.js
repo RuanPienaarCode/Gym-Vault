@@ -1,7 +1,7 @@
 'use strict';
 
 const { PluginSettingTab, Setting, Notice } = require('obsidian');
-const { SKINS, ACCENTS } = require('./constants');
+const { SKINS, ACCENTS, MUSIC_APPS } = require('./constants');
 const { makeIo } = require('./data');
 
 class GymSettingTab extends PluginSettingTab {
@@ -58,6 +58,19 @@ class GymSettingTab extends PluginSettingTab {
         d.setValue(this.plugin.settings.accent || 'lime')
           .onChange(async v => {
             this.plugin.settings.accent = v;
+            await this.plugin.saveSettings();
+            this.plugin.refreshViews();
+          });
+      });
+
+    new Setting(c)
+      .setName('Music app')
+      .setDesc('Adds a shortcut button in guided sessions to jump out and change the song.')
+      .addDropdown(d => {
+        for (const [key, label] of MUSIC_APPS) d.addOption(key, label);
+        d.setValue(this.plugin.settings.musicApp || 'none')
+          .onChange(async v => {
+            this.plugin.settings.musicApp = v;
             await this.plugin.saveSettings();
             this.plugin.refreshViews();
           });

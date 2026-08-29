@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
   onboarded: false,
   skin: 'floor',         // keys of SKINS
   accent: 'lime',        // keys of ACCENTS
+  musicApp: 'none',      // keys of MUSIC_APPS — 'none' hides the guided-view button
   /* Raw base of a plan library repo (see RuanPienaarCode/gym_plans). Any
      repo with the same shape — plans.json + plans/ + exercises/ — works. */
   planRepo: 'https://raw.githubusercontent.com/RuanPienaarCode/gym_plans/main',
@@ -31,6 +32,15 @@ const ACCENTS = [
   ['blaze', 'Blaze (orange)'],
   ['electric', 'Electric (cyan)'],
   ['punch', 'Punch (magenta)'],
+];
+
+/* Music-app shortcut shown in guided sessions. Keys (besides 'none') must
+   match src/music-link.js's MUSIC_LINKS — that module owns the actual
+   scheme/https URLs, this is just the settings-dropdown label list. */
+const MUSIC_APPS = [
+  ['none', 'None'],
+  ['spotify', 'Spotify'],
+  ['apple-music', 'Apple Music'],
 ];
 
 /* Weekday keys in plan headings — `## Pull Priority (mon)`. Order is the
@@ -91,6 +101,6 @@ const GOAL_METRICS = [
 const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms', 'core', 'glutes', 'quads', 'hamstrings', 'calves', 'full body'];
 
 module.exports = {
-  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS,
+  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS, MUSIC_APPS,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

@@ -24,6 +24,7 @@ const { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone } = re
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const { buildRows, finishSession } = require('./page-log');
 const { nextFrameIndex } = require('./media-cycle');
+const { openMusicApp } = require('./music-link');
 
 const FLASH_MS = 180;
 const HOLD_CHECKPOINT_S = 15;
@@ -100,9 +101,25 @@ function exitButton(ctx) {
   return b;
 }
 
+/* Jump out to change the song, then back — shown in BOTH active and resting
+   phases (music changes happen mostly during rest, but gating it there
+   would just make it harder to find mid-set). Corner placement in the
+   shared top row, right after whatever `extra` (ord/skip controls, or
+   nothing during rest) already sits there — reuses .gv-icon-btn-small so it
+   gets the existing 44px/40px mobile touch-target rules and app-anchored
+   colors for free, no new CSS. */
+function musicButton(ctx) {
+  const key = ctx.settings.musicApp;
+  if (!key || key === 'none') return null;
+  const label = key === 'apple-music' ? 'Open Apple Music' : 'Open Spotify';
+  const btn = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': label }, ico('music'));
+  btn.addEventListener('click', () => openMusicApp(key));
+  return btn;
+}
+
 function topBar(ctx, draft, extra) {
   return el('div', { class: 'gv-session-top' },
-    el('div', { class: 'gv-session-top-row' }, exitButton(ctx), extra || ''),
+    el('div', { class: 'gv-session-top-row' }, exitButton(ctx), extra || '', musicButton(ctx) || ''),
     progressBar(draft));
 }
 
