@@ -73,7 +73,7 @@ function card(ctx, ex, idx) {
       iconBtn('pencil', 'Edit', () => openEdit(ctx, ex)),
       iconBtn('trash-2', 'Delete', () => new ConfirmModal(ctx.app, {
         title: 'Delete exercise?',
-        message: `"${ex.name}" will be moved to the system trash. Logged history keeps its rows.`,
+        message: `"${ex.name}" will be deleted, following your Obsidian "Deleted files" setting. Logged history keeps its rows.`,
         onConfirm: async () => { await ctx.io.trash(ex.file); ctx.reload(); },
       }).open())));
   c.addEventListener('click', e => { if (!e.target.closest('button')) ctx.nav('exercise', { exercise: ex.name }); });

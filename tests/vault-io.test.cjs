@@ -85,4 +85,39 @@ assert.ok(
   );
 }
 
-console.log('vault io OK (trash waits for the tree; failures surface)');
+/* TRIPWIRE: deleting from a DETAIL page must navigate away before it awaits.
+
+   The plans detail view renders the very plan being deleted. Awaiting the
+   delete and navigating afterwards left the user staring at that page for
+   the whole operation — reported as "it stays on the plan and looks like
+   nothing happened" — and stranded them there permanently if it threw. */
+{
+  const plans = fs.readFileSync(path.join(__dirname, '..', 'src', 'page-plans.js'), 'utf8');
+  const handler = plans.match(/onConfirm: async \(\) => \{[\s\S]*?\n        \},/);
+  assert.ok(handler, 'plan delete onConfirm not found');
+  const navAt = handler[0].indexOf("ctx.nav('plans')");
+  const trashAt = handler[0].indexOf('ctx.io.trash');
+  assert.ok(navAt !== -1 && trashAt !== -1, 'plan delete must both navigate and trash');
+  assert.ok(
+    navAt < trashAt,
+    'the plan delete must call ctx.nav() BEFORE awaiting the delete, or the user sits on the ' +
+    'detail page of a plan that is being removed and it reads as nothing happening.',
+  );
+  assert.match(
+    handler[0], /finally\s*\{[\s\S]*?ctx\.reload\(\)/,
+    'the reload must be in a finally, so the list is accurate even when the delete throws',
+  );
+}
+
+/* The confirm dialogs must not promise the system trash: deletion follows the
+   user's own "Deleted files" setting, and there is no system trash on iOS. */
+for (const f of ['page-plans.js', 'page-exercises.js', 'page-goals.js', 'page-history.js']) {
+  const body = fs.readFileSync(path.join(__dirname, '..', 'src', f), 'utf8');
+  assert.ok(
+    !/system trash/.test(body),
+    `${f}: the delete dialog still promises the "system trash" — deletion follows the user's ` +
+    'own Deleted files setting, so that copy claims a behaviour the code does not have.',
+  );
+}
+
+console.log('vault io OK (trash waits; detail-page delete navigates first; failures surface)');

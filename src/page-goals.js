@@ -60,7 +60,7 @@ function render(ctx, root) {
       el('div', { class: 'gv-card-actions' },
         iconBtn('pencil', 'Edit', () => openEdit(ctx, g)),
         iconBtn('trash-2', 'Delete', () => new ConfirmModal(ctx.app, {
-          title: 'Delete goal?', message: `"${g.name}" will be moved to the system trash.`,
+          title: 'Delete goal?', message: `"${g.name}" will be deleted, following your Obsidian "Deleted files" setting.`,
           onConfirm: async () => { await ctx.io.trash(g.file); ctx.reload(); },
         }).open())));
     card.addEventListener('click', e => { if (!e.target.closest('button')) ctx.openFile(g.file); });

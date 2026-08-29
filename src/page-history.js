@@ -68,7 +68,7 @@ function sessionCard(ctx, w, open) {
     el('div', { class: 'gv-card-actions' },
       iconBtn('trash-2', 'Delete session', () => new ConfirmModal(ctx.app, {
         title: 'Delete session?',
-        message: `${w.name} will be moved to the system trash.`,
+        message: `${w.name} will be deleted, following your Obsidian "Deleted files" setting.`,
         onConfirm: async () => { await ctx.io.trash(w.file); ctx.reload(); },
       }).open()),
       ico(open ? 'chevron-left' : 'chevron-right', 'gv-dim')));

@@ -102,8 +102,22 @@ function renderDetail(ctx, root, plan) {
       class: 'gv-btn gv-btn-danger-ghost', type: 'button',
       onclick: () => new ConfirmModal(ctx.app, {
         title: 'Delete plan?',
-        message: `"${plan.name}" will be moved to the system trash. Logged workouts stay.`,
-        onConfirm: async () => { await ctx.io.trash(plan.file); ctx.nav('plans'); ctx.reload(); },
+        message: `"${plan.name}" will be deleted, following your Obsidian "Deleted files" setting. Logged workouts stay.`,
+        /* Leave this page BEFORE deleting, not after. This is the detail
+           view of the very plan being removed: awaiting the delete first
+           meant sitting on it for the whole operation — which reads as
+           nothing having happened — and staying on it permanently if the
+           delete threw. The reload is in a finally so the list is accurate
+           whether the delete succeeded or not; the error still reaches the
+           modal's handler, which raises a Notice. */
+        onConfirm: async () => {
+          ctx.nav('plans');
+          try {
+            await ctx.io.trash(plan.file);
+          } finally {
+            await ctx.reload();
+          }
+        },
       }).open(),
     }, ico('trash-2'), el('span', {}, 'Delete plan')));
   root.append(foot);
