@@ -1144,7 +1144,29 @@
    gv-session-* classes here only resize/re-lay them for an embedded page
    context instead of a full-screen modal. No new hex anywhere below. */
 
+/* One flex column per render (see page-session.js's `page` wrapper) so the
+   tap zone (the star of this screen) can flex-grow into whatever height the
+   header/name/media/controls didn't need on a 390x844 phone, instead of
+   everything stacking at natural size and shoving the controls off-screen. */
+.gv-session-page { display: flex; flex-direction: column; min-height: 100%; }
+
+/* Obsidian mobile's floating navbar (the back/search/tabs pill) is
+   `position: fixed` and overlaps view content rather than reserving space
+   for it — the host itself computes exactly how much clearance that needs
+   in --view-bottom-spacing (app.css: `.is-phone.is-floating-nav,
+   .is-phone.auto-full-screen { --view-bottom-spacing: calc(safe-area-inset-
+   bottom - keyboard-height + navbar-height) }`; it's 0 when the navbar isn't
+   floating, so this is a no-op there). --touch-size-l (52px) is the navbar's
+   own height token, used here as the fallback for a host without the var —
+   the env() fallback branch restates the safe-area addition --view-bottom-
+   spacing would otherwise have folded in. Tablets/desktop never carry
+   body.is-phone, so they never see this extra padding. */
+body.is-phone .gv-app .gv-session-page {
+  padding-bottom: calc(var(--view-bottom-spacing, calc(52px + env(safe-area-inset-bottom, 0px))) + 12px);
+}
+
 .gv-session-top { margin: 12px -18px 14px; padding: 0 18px 10px; border-bottom: 1px solid var(--gv-line); }
+body.is-phone .gv-app .gv-session-top { margin: 8px -18px 8px; padding: 0 18px 8px; }
 .gv-session-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .gv-session-top-extra { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 auto; min-width: 0; }
 .gv-session-ord {
@@ -1154,20 +1176,58 @@
 .gv-session-skips { display: flex; gap: 6px; flex: 0 0 auto; }
 .gv-session-bar { margin-top: 2px; }
 
-.gv-session-exblock { margin: 4px 0 14px; }
+.gv-session-exblock { margin: 4px 0 14px; flex: 0 0 auto; }
 .gv-session-exname { font-size: clamp(26px, 8vw, 40px); }
 .gv-session-target {
   margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--gv-lime-deep);
 }
 .theme-dark .gv-app .gv-session-target { color: var(--gv-lime); }
+/* Phone: the tap zone is the star — the header/name/target compress to give
+   it back the room a full-size display heading would otherwise eat. */
+body.is-phone .gv-app .gv-session-exblock { margin: 2px 0 8px; }
+body.is-phone .gv-app .gv-session-exname { font-size: clamp(22px, 7vw, 30px); }
+body.is-phone .gv-app .gv-session-target { margin-top: 4px; }
 
-.gv-session-media { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 0; }
-.gv-session-frame .gv-media-img { max-height: 130px; }
+/* ONE compact media frame per exercise — every resolved image (capped to 2
+   in page-session.js: guided view only ever animates start->finish) is
+   stacked absolutely inside a single fixed-height frame and crossfades in
+   place, instead of the old side-by-side tiles that pushed the tap counter
+   below the fold on a phone. */
+.gv-session-media { margin: 10px 0 0; }
+body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
+.gv-session-frame {
+  position: relative;
+  height: clamp(140px, 30vh, 190px);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.gv-session-frame-tap { cursor: pointer; }
+.gv-session-cycle-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none; /* the frame itself is the tap target (reduced-motion fallback) */
+}
+.gv-session-cycle-img.gv-session-cycle-on { opacity: 1; }
+/* Auto-cycle is JS-gated (confetti.prefersReducedMotion() in
+   page-session.js skips the setInterval entirely), but the crossfade itself
+   must also die here — a tap-triggered frame swap in reduced-motion mode
+   must snap instead of animating. */
+@media (prefers-reduced-motion: reduce) {
+  .gv-session-cycle-img { transition: none; }
+}
 
-.gv-session-body { display: flex; flex-direction: column; }
-.gv-session-body-plain { margin-top: 4px; }
-.gv-app .gv-session-zone { min-height: 180px; margin: 0 0 10px; border: 2px solid var(--gv-ink); }
+.gv-session-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.gv-session-body-plain { flex: 0 0 auto; margin-top: 4px; }
+/* The tap zone is the star: it flex-grows to absorb whatever height the
+   header/name/media/controls didn't need, instead of everything stacking at
+   natural size and shoving the controls off a 390x844 screen. */
+.gv-app .gv-session-zone { flex: 1 1 auto; min-height: 140px; margin: 0 0 10px; border: 2px solid var(--gv-ink); }
 .theme-dark .gv-app .gv-session-zone { border-color: var(--gv-line-2); }
 .gv-app .gv-session-count { font-size: clamp(64px, 22vw, 140px); }
 .gv-session-rcbar {

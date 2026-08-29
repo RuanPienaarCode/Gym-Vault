@@ -73,9 +73,17 @@ function render(ctx, root) {
   };
   if (!sess.wakeLock) sess.wakeLock = holdWakeLock();
 
-  if (flow.isDone(draft, sess.pos)) { renderComplete(ctx, root, draft, sess); return; }
-  if (sess.phase === 'resting') { renderRest(ctx, root, draft, sess); return; }
-  renderActive(ctx, root, draft, sess);
+  /* One wrapping container per render — lets styles.css lay the phase out as
+     a flex column (the tap zone flexes to fill whatever's left of the
+     viewport) and gives the bottom controls a single, phase-independent
+     place to clear Obsidian mobile's floating navbar from, instead of
+     chasing every phase's own last element. */
+  const page = el('div', { class: 'gv-session-page' });
+  root.append(page);
+
+  if (flow.isDone(draft, sess.pos)) { renderComplete(ctx, page, draft, sess); return; }
+  if (sess.phase === 'resting') { renderRest(ctx, page, draft, sess); return; }
+  renderActive(ctx, page, draft, sess);
 }
 
 /* ---------- shared chrome ---------- */
