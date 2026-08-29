@@ -1,7 +1,8 @@
 # Gym Vault
 
-An Obsidian plugin that keeps your training as plain markdown files in your
-own vault — no account, no server, works on desktop and iOS/Android.
+Plan your training, log every set, and track goals and body stats — all as
+plain notes in your own vault. No account, no server, works offline on
+desktop and mobile.
 
 - **Today** — what's on the plan today, week strip, streak, goal snapshot,
   one tap into a live workout-logging screen.
@@ -44,29 +45,27 @@ Requires Obsidian 1.8.0 or newer. Works on desktop and on iOS/Android.
 
 ## Usage
 
-**Getting started.** Open the gym with the dumbbell icon in the left ribbon,
-or run **Gym Vault: Open** from the command palette. On first run the plugin
-offers to create starter files — a folder of example exercises, a training
-plan, some goals and a profile note. Nothing you already have is overwritten;
-you can re-run it any time from Settings → **Starter files**.
+**Open it.** Click the dumbbell in the left ribbon, or run **Gym Vault: Open**
+from the command palette.
 
-**A normal session.** *Today* shows what the active plan has scheduled. Tap
-**Start** to open the logging screen, tick sets as you complete them, and
-enter reps, weight, time or distance as appropriate. The session is written
-to `Gym/Workouts/` as a markdown table when you finish.
+**Set up.** On first run it offers to create starter files — example
+exercises, a training plan, goals and a profile note. Nothing you already have
+is overwritten, and you can re-run it any time from Settings → *Starter files*.
 
-**Making it yours.** Add exercises from the *Exercises* tab, or write the
-notes by hand — the plugin reads whatever is in the folder. Plans are just
-notes with `## Day name (mon)` headings and `- Exercise | 4 x 8-12` lines,
-so you can edit them in the app or in the editor and both stay in sync.
+**Train.** *Today* shows what's scheduled. Tap **Start**, tick each set as you
+finish it, and enter reps, weight, time or distance. Your session is saved to
+`Gym/Workouts/` when you're done.
 
-**Plans from others.** *Plans → Browse* fetches shared plans from a public
-plan library and installs them, along with any exercises they reference. Point
-it at a different repository under Settings → **Plan library**.
+**Make it yours.** Everything is a note you can edit by hand. A plan is just
+`## Day name (mon)` headings with `- Exercise | 4 x 8-12` lines underneath, so
+the app and the editor always agree.
 
-**Settings worth knowing.** Choose an accent colour and one of two visual
-styles; set which folder the plugin uses; and use **Download images for
-offline** so the exercise library works with no connection.
+**Get plans from others.** *Plans → Browse* installs shared plans and any
+exercises they need. Point it somewhere else under Settings → *Plan library*.
+
+**Worth turning on.** Settings → *Download images for offline*, so the
+exercise library works with no connection. There's also an accent colour and
+a second visual style.
 
 ## Privacy and network use
 
