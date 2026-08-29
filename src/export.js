@@ -9,9 +9,9 @@
    coach should not hand over a medical record by accident. */
 
 const { BODY_COLUMNS, WORKOUT_COLUMNS, WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
-const { todayISO, fmtShort, addDays } = require('./dates');
+const { todayISO, fmtShort, addDays, fromISO } = require('./dates');
 const {
-  num, exerciseBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets,
+  num, exerciseBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, workoutDate,
 } = require('./stats');
 
 /* Columns that are clinical rather than physical. */
@@ -26,10 +26,29 @@ function windowStart(days, today) {
 
 function pickWorkouts(data, opts) {
   const from = windowStart(opts.days, opts.today);
+  /* ONE rule for "the date of a workout" (stats.workoutDate). A local
+     `.slice(0, 10)` here meant the dashboard counted 1 session where the
+     export counted 3 for the same files, and made `d >= from` a lexical
+     compare on unnormalised strings ('2026-8-6' > '2026-08-01' is true). */
   return data.workouts.filter(w => {
-    const d = (w.fm.date || '').slice(0, 10);
+    const d = workoutDate(w);
     return d && (!from || d >= from);
   });
+}
+
+/* The profile is a WHITELIST, not a spread.
+
+   buildJson used to dump `...data.profile.fm` wholesale, so any clinical key
+   a user had added to their profile note — hba1c, medication, a diagnosis —
+   rode out in an export they had explicitly told not to include health data.
+   HEALTH_KEYS only ever filtered BODY_COLUMNS, so profile keys were
+   unfilterable by design. An unknown key is not exported, because we cannot
+   know it is safe to share. */
+function pickProfile(fm, o) {
+  const out = {};
+  for (const k of ['name', 'sex', 'birth_year']) if (fm[k] !== undefined && fm[k] !== '') out[k] = fm[k];
+  if (o.includeBody && fm.height_cm !== undefined && fm.height_cm !== '') out.height_cm = fm.height_cm;
+  return out;
 }
 
 /* ---- markdown summary: the one a human reads ---- */
@@ -49,7 +68,10 @@ function buildSummary(data, options) {
   const fm = data.profile.fm || {};
   const latest = {};
   for (const r of data.body || []) for (const c of BODY_COLUMNS) if (r[c.key]) latest[c.key] = r[c.key];
-  const age = num(fm.birth_year) ? new Date(o.today).getFullYear() - num(fm.birth_year) : null;
+  /* fromISO, not new Date(iso): the latter parses ISO as UTC midnight, so in
+     any UTC-negative zone an export dated 1 Jan reports the athlete a year
+     older. dates.js documents this rule; this was the one site ignoring it. */
+  const age = num(fm.birth_year) ? fromISO(o.today).getFullYear() - num(fm.birth_year) : null;
   const bits = [fm.name, age !== null ? `${age} yrs` : null, fm.sex || null];
   if (o.includeBody) {
     if (num(fm.height_cm)) bits.push(`${fm.height_cm} cm`);
@@ -209,7 +231,7 @@ function buildJson(data, options) {
   const out = {
     exported: o.today,
     range: o.days ? `last ${o.days} days` : 'all',
-    profile: { ...(data.profile.fm || {}), notes: (data.profile.body || '').trim() },
+    profile: pickProfile(data.profile.fm || {}, o),
     plans: data.plans.map(p => ({
       name: p.name,
       active: String(p.fm.active) === 'true',

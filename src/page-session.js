@@ -15,7 +15,7 @@
 
 const { el, ico, clear, fmtSeconds } = require('./dom');
 const { todayISO } = require('./dates');
-const { setCounts, goalCurrent, goalProgress } = require('./stats');
+const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
 const flow = require('./session-flow');
 const records = require('./records');
 const confetti = require('./confetti');
@@ -131,7 +131,7 @@ function resetActiveState(sess) {
 function setKey(pos) { return `${pos.entryIndex}:${pos.setIndex}`; }
 
 function findExercise(ctx, name) {
-  return ctx.data.exercises.find(e => e.name.toLowerCase() === (name || '').toLowerCase());
+  return ctx.data.exercises.find(e => sameName(e.name, name));
 }
 
 /* ---------- active state ---------- */
@@ -280,7 +280,9 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     sess.counterFor = setKey(sess.pos);
   }
 
-  const countEl = el('div', { class: 'gv-rc-count gv-session-count' }, String(sess.counter.count));
+  /* aria-live: see rep-counter-modal.js's countEl for why speech isn't
+     enough on its own. */
+  const countEl = el('div', { class: 'gv-rc-count gv-session-count', 'aria-live': 'polite', 'aria-atomic': 'true' }, String(sess.counter.count));
   const zone = el('div', { class: 'gv-rc-zone gv-session-zone', role: 'button', tabindex: '0', 'aria-label': `Tap to count a rep for ${entry.exercise}` }, countEl);
 
   let flashTimer = null;
@@ -309,12 +311,11 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
 }
 
 function lastWeightForExercise(ctx, name) {
-  const key = (name || '').toLowerCase();
   for (let i = ctx.data.workouts.length - 1; i >= 0; i--) {
     const rows = ctx.data.workouts[i].rows || [];
     for (let j = rows.length - 1; j >= 0; j--) {
       const r = rows[j];
-      if ((r.exercise || '').toLowerCase() !== key) continue;
+      if (!sameName(r.exercise, name)) continue;
       const wt = String(r.weight_kg ?? '').trim();
       if (wt) return wt;
     }
@@ -329,6 +330,7 @@ function weightedBody(ctx, draft, sess, entry, set) {
   }
   const weightInput = el('input', {
     class: 'gv-set-input gv-session-weight', type: 'number', inputmode: 'decimal', placeholder: 'kg', value: set.weight_kg ?? '',
+    'aria-label': `Weight in kilograms — ${entry.exercise}`,
   });
   weightInput.addEventListener('input', () => { set.weight_kg = weightInput.value; set.touched = true; });
   const weightRow = el('div', { class: 'gv-session-weightrow' }, weightInput, el('span', { class: 'gv-set-unit' }, 'kg'));
@@ -340,7 +342,7 @@ function weightedBody(ctx, draft, sess, entry, set) {
 function durationBody(ctx, draft, sess, entry, set) {
   if (!sess.hold || sess.holdFor !== setKey(sess.pos)) {
     const prefilled = parseFloat(set.seconds);
-    sess.hold = { running: false, startedAt: null, frozenSeconds: Number.isFinite(prefilled) ? prefilled : 0, lastAnnounced: -1 };
+    sess.hold = { running: false, startedAt: null, frozenSeconds: Number.isFinite(prefilled) ? prefilled : 0, lastAnnounced: -1, lastLiveAnnounced: -1 };
     sess.holdFor = setKey(sess.pos);
   }
   const hold = sess.hold;
@@ -350,6 +352,16 @@ function durationBody(ctx, draft, sess, entry, set) {
     class: 'gv-rc-zone gv-session-zone', role: 'button', tabindex: '0',
     'aria-label': hold.running ? 'Tap to stop the hold' : 'Tap to start the hold',
   }, countEl);
+  /* countEl above ticks every second (below) — an aria-live region there
+     would read out every single second, which is noise, not help. This is
+     a SEPARATE, visually-hidden region that only gets new text at the same
+     15s checkpoints speak() already announces, so a screen-reader user gets
+     the same cadence a hearing/sighted+speech user does, independent of
+     whether count-back speech is muted (aria-live is not a substitute for
+     THIS app's own speech, and must not be gated by the app's own mute
+     toggle — a screen-reader user isn't necessarily using it). Needs
+     .gv-sr-only (visually-hidden-but-AT-visible) in styles.css. */
+  const checkpointEl = el('div', { class: 'gv-sr-only', 'aria-live': 'polite', 'aria-atomic': 'true' });
 
   const currentSeconds = () => (hold.running ? Math.max(0, (Date.now() - hold.startedAt) / 1000) : hold.frozenSeconds);
 
@@ -373,23 +385,27 @@ function durationBody(ctx, draft, sess, entry, set) {
     const secs = currentSeconds();
     countEl.textContent = fmtSeconds(secs);
     const whole = Math.floor(secs);
-    if (whole > 0 && whole % HOLD_CHECKPOINT_S === 0 && whole !== hold.lastAnnounced && !sess.muted) {
+    const atCheckpoint = whole > 0 && whole % HOLD_CHECKPOINT_S === 0;
+    if (atCheckpoint && whole !== hold.lastLiveAnnounced) {
+      hold.lastLiveAnnounced = whole;
+      checkpointEl.textContent = `${fmtSeconds(whole)} held`;
+    }
+    if (atCheckpoint && whole !== hold.lastAnnounced && !sess.muted) {
       hold.lastAnnounced = whole;
       speak(whole);
     }
   }, 1000);
 
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(sess));
-  return el('div', { class: 'gv-session-body' }, zone, bar);
+  return el('div', { class: 'gv-session-body' }, zone, checkpointEl, bar);
 }
 
 function lastRunForExercise(ctx, name) {
-  const key = (name || '').toLowerCase();
   for (let i = ctx.data.workouts.length - 1; i >= 0; i--) {
     const rows = ctx.data.workouts[i].rows || [];
     for (let j = rows.length - 1; j >= 0; j--) {
       const r = rows[j];
-      if ((r.exercise || '').toLowerCase() !== key) continue;
+      if (!sameName(r.exercise, name)) continue;
       if (String(r.distance_km ?? '').trim() === '') continue;
       const secs = parseFloat(r.seconds);
       return {
@@ -406,9 +422,15 @@ function distanceBody(ctx, draft, sess, entry, set) {
     const last = lastRunForExercise(ctx, entry.exercise);
     if (last) { set.distance_km = last.distance_km; set.minutes = last.minutes; }
   }
-  const kmInput = el('input', { class: 'gv-set-input gv-session-distance', type: 'number', inputmode: 'decimal', placeholder: 'km', value: set.distance_km ?? '' });
+  const kmInput = el('input', {
+    class: 'gv-set-input gv-session-distance', type: 'number', inputmode: 'decimal', placeholder: 'km', value: set.distance_km ?? '',
+    'aria-label': `Distance in kilometres — ${entry.exercise}`,
+  });
   kmInput.addEventListener('input', () => { set.distance_km = kmInput.value; set.touched = true; });
-  const minInput = el('input', { class: 'gv-set-input gv-session-distance', type: 'number', inputmode: 'decimal', placeholder: 'min', value: set.minutes ?? '' });
+  const minInput = el('input', {
+    class: 'gv-set-input gv-session-distance', type: 'number', inputmode: 'decimal', placeholder: 'min', value: set.minutes ?? '',
+    'aria-label': `Minutes — ${entry.exercise}`,
+  });
   minInput.addEventListener('input', () => { set.minutes = minInput.value; set.touched = true; });
 
   const row = el('div', { class: 'gv-session-runrow' },

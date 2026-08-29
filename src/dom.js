@@ -53,6 +53,33 @@ const ico = (name, cls) => {
 
 const clear = node => { while (node.firstChild) node.removeChild(node.firstChild); };
 
+/* A `<div>` that behaves like a button — the pattern every "the whole card
+   is the tap target" surface in this app needs, and (before this helper)
+   each one re-implemented by hand with no keyboard route at all. Wires
+   role="button" + tabindex="0", a click listener, and the same Enter/Space
+   handling attachTapZone uses for the tap-counter zones (rep-counter-
+   shared.js) — so a keyboard or switch-control user can reach it exactly
+   like a mouse/touch user can.
+
+   `onActivate(e)` fires on click and on Enter/Space, but NOT when the event
+   target is (or is inside) a nested <button> — cards that carry their own
+   edit/delete icon buttons must let those fire on their own, not double as
+   the card's own activation. Callers that used to write
+   `c.addEventListener('click', e => { if (!e.target.closest('button')) ... })`
+   by hand now get the same guard on both click AND keydown for free. */
+function clickableCard(attrs, onActivate, ...kids) {
+  const node = el('div', { ...attrs, role: attrs.role || 'button', tabindex: '0' }, ...kids);
+  const nested = e => !!e.target.closest('button');
+  node.addEventListener('click', e => { if (!nested(e)) onActivate(e); });
+  node.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (nested(e)) return;
+    e.preventDefault(); // ' ' must not also scroll the page
+    onActivate(e);
+  });
+  return node;
+}
+
 /* Display formatting for numbers that may be null ("no data" ≠ 0). */
 const fmt = (v, suffix) => (v === null || v === undefined || v === '' ? '—' : `${v}${suffix || ''}`);
 

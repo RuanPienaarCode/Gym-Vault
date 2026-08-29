@@ -28,8 +28,14 @@ const unescMd = s => (s ?? '').replace(/<br>/g, '\n').replace(/\\\|/g, '|').trim
    unescape must exist or values containing `"` gain a backslash per save
    cycle (write \" → read \" verbatim → write \\\" → …). */
 const unquote = s => {
-  if (/^".*"$/.test(s)) return s.slice(1, -1).replace(/\\(["\\])/g, '$1');
-  return s;
+  if (!/^".*"$/.test(s)) return s;
+  /* `/^".*"$/` cannot tell "fully quoted" from "merely starts and ends with a
+     quote": `"a" and "b"` is the latter, and eating its outer quotes destroys
+     the user's delimiters. Only unquote when nothing inside is an UNESCAPED
+     quote — i.e. the final `"` really is the terminator. */
+  const inner = s.slice(1, -1);
+  if (/(^|[^\\])"/.test(inner)) return s;
+  return inner.replace(/\\(["\\])/g, '$1');
 };
 
 /* Split an inline list on commas that sit OUTSIDE quotes, so
@@ -47,23 +53,62 @@ function splitListItems(inner) {
   return items.map(s => unquote(s.trim())).filter(Boolean);
 }
 
+/* Everything this parser cannot MODEL, it must PASS THROUGH byte-for-byte.
+
+   Obsidian's own Properties panel writes `tags`, `aliases` and `cssclasses`
+   as BLOCK SEQUENCES, and users hand-write nested maps and block scalars.
+   The flat `key: value` reader turned all of those into '' (which the
+   serializer then dropped) and, worse, hoisted a nested map's children to
+   the top level — so `archive:\n  active: true` became the plan's own
+   `active: true` and silently hijacked which plan was active.
+
+   `layout` records the original line order, marking each part either as a
+   modelled key (re-emitted from `fm`) or as raw lines (re-emitted verbatim).
+   It rides on the fm object under a Symbol, so `Object.entries`, spread and
+   JSON.stringify all ignore it and every existing caller is unchanged. */
+const FM_LAYOUT = Symbol.for('gv.fmLayout');
+
+/* A scalar, an inline list, or a wikilink (which is a scalar, not a list). */
+function parseScalar(val) {
+  /* `[[a.png]]` is one wikilink; `[[[a.png]], [[b.png]]]` is a LIST of two.
+     The guard must require the FIRST `]]` to be the terminator, or a
+     two-item list is swallowed whole as a scalar string. */
+  if (/^\[.*\]$/.test(val) && !/^\[\[[^\]]*\]\]$/.test(val)) {
+    return splitListItems(val.slice(1, -1));
+  }
+  return unquote(val);
+}
+
 function parseFrontmatter(text) {
   const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   const fm = {};
-  if (m) for (const line of m[1].split(/\r?\n/)) {
-    const i = line.indexOf(':');
-    if (i > 0) {
-      const key = line.slice(0, i).trim();
-      let val = line.slice(i + 1).trim();
-      /* `[[wikilink]]` is a scalar, not a list — Obsidian users type these
-         for media paths, and eating the outer brackets breaks the link. */
-      if (/^\[.*\]$/.test(val) && !/^\[\[.*\]\]$/.test(val)) {
-        val = splitListItems(val.slice(1, -1));
-      } else {
-        val = unquote(val);
-      }
-      fm[key] = val;
+  if (m) {
+    const lines = m[1].split(/\r?\n/);
+    const layout = [];
+    const raw = line => {
+      const last = layout[layout.length - 1];
+      if (last && last.kind === 'raw') last.lines.push(line);
+      else layout.push({ kind: 'raw', lines: [line] });
+    };
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      /* Indented lines, sequence items, comments and blanks belong to
+         whatever came before them — never to the top level. */
+      if (/^\s/.test(line) || /^-\s/.test(line) || /^#/.test(line) || line.trim() === '') { raw(line); continue; }
+      const ci = line.indexOf(':');
+      if (ci <= 0) { raw(line); continue; }
+      const key = line.slice(0, ci).trim();
+      const rest = line.slice(ci + 1).trim();
+      const next = lines[i + 1] ?? '';
+      /* A key whose value lives on the FOLLOWING lines (block sequence,
+         nested map, block scalar) or which the user left empty is structure
+         we cannot represent. Model nothing — pass the line through and let
+         its continuation lines follow as raw. */
+      if (rest === '' || rest === '>' || rest === '|' || /^\s+\S/.test(next)) { raw(line); continue; }
+      fm[key] = parseScalar(rest);
+      layout.push({ kind: 'key', key });
     }
+    Object.defineProperty(fm, FM_LAYOUT, { value: layout, enumerable: true, writable: true, configurable: true });
   }
   /* Strip ALL leading blank lines, not just one: every writer joins with
      `fm + '\n' + body`, so a single-newline strip here would grow the body
@@ -88,14 +133,34 @@ const yamlVal = v => {
   return yamlStr(v);
 };
 
-/* Serialize a frontmatter object. Skips null/undefined/'' so optional keys
-   simply don't appear rather than appearing blank. */
+/* Serialize a frontmatter object.
+
+   Two different jobs, and conflating them was a data-loss bug: a key the
+   PLUGIN built with an empty value is an unset optional and should simply
+   not appear, but a key that came from the USER'S FILE with an empty value
+   is theirs and deleting it destroys their data. The layout recorded at
+   parse time is what tells the two apart; a plain object built in code has
+   no layout and behaves exactly as before. */
 function serializeFrontmatter(fm) {
+  const layout = fm ? fm[FM_LAYOUT] : null;
   const lines = [];
-  for (const [k, v] of Object.entries(fm)) {
-    if (v === null || v === undefined || v === '') continue;
-    if (Array.isArray(v) && v.length === 0) continue;
+  const done = new Set();
+  const emit = (k, v) => {
+    if (v === null || v === undefined || v === '') return;
+    if (Array.isArray(v) && v.length === 0) return;
     lines.push(`${k}: ${yamlVal(v)}`);
+  };
+  if (layout) {
+    for (const part of layout) {
+      if (part.kind === 'raw') { lines.push(...part.lines); continue; }
+      done.add(part.key);
+      emit(part.key, fm[part.key]);
+    }
+  }
+  /* Keys the plugin added since the file was read go after what was there. */
+  for (const [k, v] of Object.entries(fm)) {
+    if (done.has(k)) continue;
+    emit(k, v);
   }
   return `---\n${lines.join('\n')}\n---\n`;
 }
@@ -139,24 +204,68 @@ function parseMdTable(text) {
 /* First table → array of objects keyed by `columns` (a schema array of
    {key, label}). Mapping is POSITIONAL against the schema, which is why the
    schema is append-only. */
+/* Cells beyond the schema are the USER'S OWN COLUMN. The positional map
+   can't name them, so they ride along as an opaque tail rather than being
+   dropped on the next write. */
+const ROW_EXTRA = Symbol.for('gv.rowExtra');
+
 function tableToObjects(text, columns) {
   const rows = parseMdTable(text);
   if (!rows.length) return [];
   return rows.slice(1).map(cells => {
     const o = {};
     columns.forEach((col, i) => { o[col.key] = unescMd(cells[i] ?? ''); });
+    const tail = cells.slice(columns.length);
+    if (tail.length) o[ROW_EXTRA] = tail.map(unescMd);
     return o;
   });
 }
 
-function buildMdTable(columns, objects) {
-  const head = `| ${columns.map(c => c.label).join(' | ')} |`;
-  const sep = `|${columns.map(() => '---').join('|')}|`;
-  const body = objects.map(o => `| ${columns.map(c => escMd(o[c.key])).join(' | ')} |`);
+function buildMdTable(columns, objects, extraLabels) {
+  const extras = extraLabels && extraLabels.length ? extraLabels : [];
+  const head = `| ${[...columns.map(c => c.label), ...extras].join(' | ')} |`;
+  const sep = `|${[...columns, ...extras].map(() => '---').join('|')}|`;
+  const body = objects.map(o => {
+    const tail = o[ROW_EXTRA] || [];
+    const cells = [...columns.map(c => escMd(o[c.key])), ...extras.map((_, i) => escMd(tail[i] ?? ''))];
+    return `| ${cells.join(' | ')} |`;
+  });
   return [head, sep, ...body].join('\n');
+}
+
+/* The line span of the first table, scanned by exactly parseMdTable's rules
+   so the span we replace is always the table we actually read. */
+function firstTableSpan(text) {
+  const lines = text.split(/\r?\n/);
+  let start = -1, end = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].trim().startsWith('|')) { if (start >= 0) break; continue; }
+    if (start < 0) start = i;
+    end = i + 1;
+  }
+  return start < 0 ? null : { start, end };
+}
+
+/* Splice a rebuilt table into the file IN PLACE, leaving every other line
+   byte-identical. Returns null when there is no table to replace — the
+   caller decides whether to append or refuse, because silently rebuilding
+   the whole file is how headings, prose and whole sections got deleted. */
+function replaceFirstTable(text, table) {
+  const span = firstTableSpan(text);
+  if (!span) return null;
+  const lines = text.split(/\r?\n/);
+  lines.splice(span.start, span.end - span.start, ...table.split('\n'));
+  return lines.join('\n');
+}
+
+/* Header labels of the first table — for checking it is OURS before writing. */
+function tableHeaderLabels(text) {
+  const rows = parseMdTable(text);
+  return rows.length ? rows[0] : null;
 }
 
 module.exports = {
   escMd, unescMd, parseFrontmatter, serializeFrontmatter, yamlStr,
   splitBarePipes, parseMdTable, tableToObjects, buildMdTable,
+  firstTableSpan, replaceFirstTable, tableHeaderLabels, ROW_EXTRA,
 };

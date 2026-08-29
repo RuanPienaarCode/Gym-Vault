@@ -12,7 +12,7 @@
 
 const { MarkdownRenderer } = require('obsidian');
 const { el, ico, fmt, fmtSeconds } = require('./dom');
-const { exerciseBests, epley1RM } = require('./stats');
+const { exerciseBests, epley1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
 const { editExercise } = require('./page-exercises');
 
@@ -39,7 +39,7 @@ function render(ctx, root) {
   back.addEventListener('click', () => ctx.nav('exercises'));
   root.append(el('div', { class: 'gv-toolbar' },
     back,
-    el('div', { class: 'gv-toolbar-title' }, ex.name),
+    el('h2', { class: 'gv-toolbar-title' }, ex.name),
     el('div', { class: 'gv-toolbar-actions' },
       el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => editExercise(ctx, ex) },
         ico('pencil'), el('span', {}, 'Edit')),
@@ -190,11 +190,10 @@ function watchBtn(url) {
 }
 
 function recentSessions(workouts, exercise, n) {
-  const name = exercise.toLowerCase();
   const out = [];
   for (let i = workouts.length - 1; i >= 0 && out.length < n; i--) {
     const w = workouts[i];
-    const sets = (w.rows || []).filter(r => (r.exercise || '').toLowerCase() === name);
+    const sets = (w.rows || []).filter(r => sameName(r.exercise, exercise));
     if (!sets.length) continue;
     const summary = sets.map(r => {
       if (r.distance_km) return `${r.distance_km} km${r.seconds ? ' · ' + fmtSeconds(r.seconds) : ''}`;

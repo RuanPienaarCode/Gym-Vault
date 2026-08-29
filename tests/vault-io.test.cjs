@@ -25,7 +25,12 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'data.js'), 'utf8'
    loose. Leaving trash() unstamped costs one extra reload and makes a delete
    actually disappear. */
 {
-  const fn = src.match(/async function trash\([^)]*\)\s*\{[^}]*\}/);
+  /* `[^}]*` stops at the FIRST `}` in the source — which here is the closing
+     brace of a `${...}` placeholder inside a template literal four lines in,
+     leaving ~two thirds of trash() (including the part that actually deletes)
+     uninspected. Match to the function's closing brace instead, the same way
+     the tripwire below already does. */
+  const fn = src.match(/async function trash\([^)]*\)\s*\{[\s\S]*?\n  \}/);
   assert.ok(fn, 'trash() not found in data.js — has it been renamed?');
   assert.ok(
     !/\bstamp\(\)/.test(fn[0]),

@@ -5,7 +5,7 @@
 
 const { el, ico, fmtSeconds } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
-const { setCounts } = require('./stats');
+const { setCounts, sameName } = require('./stats');
 const { targetFirstNumber, targetWeight, targetIsDuration, itemSets } = require('./plan-parse');
 const { FormModal, ConfirmModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
@@ -23,7 +23,7 @@ function startDraft(ctx, plan, day) {
 }
 
 function makeEntry(ctx, exercise, sets, target) {
-  const ex = ctx.data.exercises.find(e => e.name.toLowerCase() === exercise.toLowerCase());
+  const ex = ctx.data.exercises.find(e => sameName(e.name, exercise));
   const unit = ex ? ex.fm.unit : null;
   const distance = unit === 'km';
   const duration = !distance && (unit === 'seconds' || (!unit && targetIsDuration(target || '')));
@@ -138,6 +138,16 @@ function entryCard(ctx, draft, entry, ei) {
   return card;
 }
 
+/* placeholder text alone ('reps', 'kg', 'sec'…) is not an accessible name —
+   it disappears the moment a value is typed, and screen readers don't treat
+   it as a label to begin with. Each input's aria-label carries the same
+   information a sighted user gets from the placeholder PLUS which exercise
+   and which set it belongs to, since a session has many of these in a row. */
+const INPUT_LABELS = {
+  reps: 'Reps', weight_kg: 'Weight in kilograms', seconds: 'Seconds',
+  distance_km: 'Distance in kilometres', minutes: 'Minutes',
+};
+
 function setRow(ctx, entry, set, si) {
   const row = el('div', { class: `gv-log-set${set.done ? ' done' : ''}` });
   row.append(el('span', { class: 'gv-set-num' }, String(si + 1).padStart(2, '0')));
@@ -146,6 +156,7 @@ function setRow(ctx, entry, set, si) {
     const i = el('input', {
       class: `gv-set-input${cls ? ' ' + cls : ''}`, type: 'number', inputmode: 'decimal',
       placeholder, value: set[key] ?? '',
+      'aria-label': `${INPUT_LABELS[key] || placeholder} — ${entry.exercise}, set ${si + 1}`,
     });
     i.addEventListener('input', () => { set[key] = i.value; set.touched = true; });
     return i;

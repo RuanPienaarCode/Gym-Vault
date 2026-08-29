@@ -4,7 +4,7 @@
    via "Open note", and everything written here round-trips through
    plan-parse so hand-written coaching cues survive. */
 
-const { el, ico, prose } = require('./dom');
+const { el, ico, prose, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { addItem, removeItemAt } = require('./plan-parse');
 const { FormModal, ConfirmModal } = require('./modals');
@@ -16,7 +16,7 @@ function render(ctx, root) {
   if (open) return renderDetail(ctx, root, open);
 
   const bar = el('div', { class: 'gv-toolbar' },
-    el('div', { class: 'gv-toolbar-title' }, 'Training plans'),
+    el('h2', { class: 'gv-toolbar-title' }, 'Training plans'),
     el('button', { class: 'gv-btn gv-btn-ghost', type: 'button', onclick: () => ctx.nav('browse') },
       ico('search'), el('span', {}, 'Browse')),
     el('button', { class: 'gv-btn', type: 'button', onclick: () => openAddPlan(ctx) }, ico('plus'), el('span', {}, 'Plan')));
@@ -30,7 +30,9 @@ function render(ctx, root) {
   for (const p of data.plans) {
     const active = String(p.fm.active) === 'true';
     const days = p.model.days;
-    const c = el('div', { class: `gv-card gv-plan-card${active ? ' active' : ''}` },
+    const c = clickableCard(
+      { class: `gv-card gv-plan-card${active ? ' active' : ''}`, 'aria-label': `Open ${p.name}` },
+      () => ctx.nav('plans', { plan: p.name }),
       el('div', { class: 'gv-plan-main' },
         el('div', { class: 'gv-plan-name' },
           el('span', {}, p.name),
@@ -40,7 +42,6 @@ function render(ctx, root) {
         el('div', { class: 'gv-plan-days' },
           ...days.map(d => el('span', { class: 'gv-tag' }, `${d.weekday} · ${d.name}`)))),
       el('div', { class: 'gv-card-actions' }, ico('chevron-right', 'gv-dim')));
-    c.addEventListener('click', () => ctx.nav('plans', { plan: p.name }));
     list.append(c);
   }
   root.append(list);
@@ -52,7 +53,7 @@ function renderDetail(ctx, root, plan) {
   const bar = el('div', { class: 'gv-toolbar' });
   const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back' }, ico('arrow-left'));
   back.addEventListener('click', () => ctx.nav('plans'));
-  bar.append(back, el('div', { class: 'gv-toolbar-title' }, plan.name));
+  bar.append(back, el('h2', { class: 'gv-toolbar-title' }, plan.name));
   const actions = el('div', { class: 'gv-toolbar-actions' });
   if (!active) {
     actions.append(el('button', {

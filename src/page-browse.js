@@ -15,7 +15,7 @@ function render(ctx, root) {
   back.addEventListener('click', () => ctx.nav('plans'));
   root.append(el('div', { class: 'gv-toolbar' },
     back,
-    el('div', { class: 'gv-toolbar-title' }, 'Plan library'),
+    el('h2', { class: 'gv-toolbar-title' }, 'Plan library'),
     el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => load(true) },
       ico('repeat-2'), el('span', {}, 'Refresh'))));
 

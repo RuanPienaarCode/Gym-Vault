@@ -9,14 +9,21 @@
    tables) — and even then prose lines round-trip verbatim via plan-parse. */
 
 const { normalizePath, TFile, TFolder, requestUrl } = require('obsidian');
-const { parseFrontmatter, serializeFrontmatter, tableToObjects, buildMdTable } = require('./markdown');
+const { parseFrontmatter, serializeFrontmatter, tableToObjects, buildMdTable, replaceFirstTable, tableHeaderLabels } = require('./markdown');
 const { parsePlanBody, serializePlanBody } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 
 /* Windows/OSX-illegal filename characters, folded to '-' so an exercise or
    plan named from user input always lands on disk. */
-const safeName = s => (s || '').toString().replace(/[\\/:*?"<>|#^\[\]]/g, '-').replace(/\s+/g, ' ').trim();
+/* Cap at 200 chars: the filesystem limit is 255 BYTES, and a longer name
+   made v.create throw a raw adapter error at the user. The '-' fallback
+   keeps an all-punctuation name from producing `Gym/Exercises/.md`, an
+   invisible dotfile. */
+const safeName = s => {
+  const cleaned = (s || '').toString().replace(/[\\/:*?"<>|#^\[\]]/g, '-').replace(/\s+/g, ' ').trim();
+  return cleaned.slice(0, 200).trim() || '-';
+};
 
 function makeIo(plugin) {
   const app = plugin.app;
@@ -45,6 +52,15 @@ function makeIo(plugin) {
 
   async function writeIfAbsent(path, content) {
     if (v.getFileByPath(path)) return false;
+    /* macOS and iOS are case-INsensitive: `bench press.md` and
+       `Bench Press.md` are one file on disk, but getFileByPath is an exact
+       -key map lookup and misses the clash. Without this, adding an exercise
+       whose name differs only in case from a hand-written note replaced that
+       note's body with a bare stub, and the "already exists" warning never
+       fired. Compare against the folder's children, folded. */
+    const slash = path.lastIndexOf('/');
+    const dir = slash > 0 ? v.getFolderByPath(path.slice(0, slash)) : null;
+    if (dir && (dir.children || []).some(c => (c.path || '').toLowerCase() === path.toLowerCase())) return false;
     stamp();
     await v.create(path, content);
     return true;
@@ -76,11 +92,16 @@ function makeIo(plugin) {
   /* ---- load everything ------------------------------------------------ */
 
   async function loadAll() {
-    const data = { profile: { fm: {}, body: '' }, body: [], exercises: [], plans: [], goals: [], workouts: [], present: false, unreadable: 0, rootExists: false };
+    const data = { profile: { fm: {}, body: '' }, body: [], exercises: [], plans: [], goals: [], workouts: [], present: false, unreadable: 0, unreadablePaths: [], duplicateExercises: [], rootExists: false };
     /* Mid-index (a fresh device, a big iCloud sync) an individual read can
        fail while the rest are fine. Skipping the file that failed and
        counting it beats losing the entire load to one bad read. */
-    const read = async f => { try { return await v.cachedRead(f); } catch (e) { data.unreadable++; return null; } };
+    const read = async f => {
+      try { return await v.cachedRead(f); }
+      /* Record WHICH file failed, not just how many: "3 files could not be
+         read" gives the user nothing to act on. */
+      catch (e) { data.unreadable++; data.unreadablePaths.push(f.path); return null; }
+    };
     data.rootExists = !!v.getFolderByPath(root());
 
     const profileFile = v.getFileByPath(paths.profile());
@@ -98,7 +119,7 @@ function makeIo(plugin) {
       const text = await read(bodyFile);
       if (text !== null) {
         const { body } = parseFrontmatter(text);
-        data.body = tableToObjects(body, BODY_COLUMNS).sort((a, b) => (a.date < b.date ? -1 : 1));
+        data.body = tableToObjects(body, BODY_COLUMNS).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
         data.bodyFile = bodyFile;
         data.present = true;
       }
@@ -108,6 +129,14 @@ function makeIo(plugin) {
       const text = await read(f);
       if (text === null) continue;
       const { fm, body } = parseFrontmatter(text);
+      /* Identity is the BASENAME, but readNotesIn walks subfolders, so
+         Exercises/Push/Bench.md and Exercises/Pull/Bench.md are two records
+         called "Bench". Lookups use .find(), so the second is unreachable
+         from the detail page and refreshSeedMedia only ever patches the
+         first. Restructuring identity to the full path ripples through every
+         page and is deliberately NOT done mid-release — but the clash must
+         not stay silent, so record it and let the UI say so. */
+      if (data.exercises.some(e => e.name === f.basename)) data.duplicateExercises.push(f.path);
       data.exercises.push({ name: f.basename, file: f, fm, body });
       data.present = true;
     }
@@ -132,7 +161,13 @@ function makeIo(plugin) {
       data.workouts.push({ name: f.basename, file: f, fm, rows: tableToObjects(body, WORKOUT_COLUMNS) });
       data.present = true;
     }
-    data.workouts.sort((a, b) => ((a.fm.date || '') < (b.fm.date || '') ? -1 : 1));
+    /* Return 0 on equality: returning 1 makes the comparator
+       non-antisymmetric, and two sessions logged on the SAME day (which
+       saveWorkout explicitly supports) then get an unstable order. */
+    data.workouts.sort((a, b) => {
+      const x = a.fm.date || '', y = b.fm.date || '';
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
     return data;
   }
 
@@ -147,23 +182,37 @@ function makeIo(plugin) {
     await ensureFolder(root());
     const path = paths.bodyLog();
     const f = v.getFileByPath(path);
-    let rows = [];
-    let head = '';
-    if (f) {
-      const { fm, body } = parseFrontmatter(await v.cachedRead(f));
-      rows = tableToObjects(body, BODY_COLUMNS);
-      head = Object.keys(fm).length ? serializeFrontmatter(fm) + '\n' : '';
-    }
     /* The form sends EVERY column, unmeasured ones as '' — drop those
        before the merge or an evening resting-HR entry blanks the morning's
-       weight (empty must mean "not remeasured", never "erase"). */
-    for (const k of Object.keys(row)) if (String(row[k] ?? '').trim() === '') delete row[k];
+       weight (empty must mean "not remeasured", never "erase"). Copy first:
+       `row` is the open modal's live values object, and deleting keys out of
+       it under the caller is a landmine for anyone who reads it after the
+       await. */
+    row = Object.fromEntries(Object.entries(row).filter(([, v]) => String(v ?? '').trim() !== ''));
+
+    if (!f) { await writeFile(path, buildMdTable(BODY_COLUMNS, [row]) + '\n'); return; }
+
+    /* This file may be one the USER writes in. Rebuilding it as
+       `frontmatter + one table` deleted their headings, prose, whole
+       sections and any column our schema doesn't know — so we now touch
+       only the lines of our own table, and refuse outright if the first
+       table isn't ours rather than overwriting something we can't read. */
+    const text = await v.cachedRead(f);
+    const header = tableHeaderLabels(text);
+    if (header && !BODY_COLUMNS.every((c, i) => i >= header.length || header[i] === c.label)) {
+      throw new Error(`Body Log: the first table in "${path}" isn't the measurement log — its columns don't match. Nothing was written. Move your own table below the log table.`);
+    }
+    const extraLabels = header ? header.slice(BODY_COLUMNS.length) : [];
+    const rows = tableToObjects(text, BODY_COLUMNS);
     // One row per date: logging twice on a day updates in place.
     const i = rows.findIndex(r => r.date === row.date);
     if (i >= 0) rows[i] = { ...rows[i], ...row };
     else rows.push(row);
-    rows.sort((a, b) => (a.date < b.date ? -1 : 1));
-    await writeFile(path, head + buildMdTable(BODY_COLUMNS, rows) + '\n');
+    rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+    const table = buildMdTable(BODY_COLUMNS, rows, extraLabels);
+    const next = replaceFirstTable(text, table);
+    await writeFile(path, next !== null ? next : text.replace(/\n*$/, '\n\n') + table + '\n');
   }
 
   async function createExercise(ex) {
@@ -203,7 +252,16 @@ function makeIo(plugin) {
     for (const p of plans) {
       const want = p === target;
       const is = String(p.fm.active) === 'true';
-      if (want !== is) { p.fm.active = want; await savePlan(p); }
+      if (want === is) continue;
+      p.fm.active = want;
+      /* Patch the FRONTMATTER only. savePlan re-serializes the body from the
+         parsed model, so flipping a flag used to rewrite every other plan's
+         prose and list formatting too — a plan switch has no business
+         touching a body the user wrote. */
+      const text = await v.cachedRead(p.file);
+      const { fm, body } = parseFrontmatter(text);
+      fm.active = want;
+      await writeFile(p.file.path, serializeFrontmatter(fm) + '\n' + body);
     }
   }
 
@@ -327,7 +385,13 @@ function makeIo(plugin) {
     } else {
       await v.trash(target, true);
     }
-    await gone(path, parent);
+    /* gone() returns false on timeout. Discarding it made a 2s timeout
+       indistinguishable from success, and the caller then reloaded into a
+       tree that still held the note — the exact failure this function
+       exists to prevent. */
+    if (!await gone(path, parent)) {
+      throw new Error(`"${path}" was deleted but the vault is still catching up. Reopen the page in a moment.`);
+    }
   }
 
   /* Resolve once the vault has actually dropped the path, so the caller's
@@ -427,6 +491,19 @@ function makeIo(plugin) {
       const m = (u || '').match(/\.(jpe?g|png|webp|gif)(\?|#|$)/i);
       return m ? m[1].toLowerCase().replace('jpeg', 'jpg') : 'jpg';
     };
+    /* A short, stable, filename-safe digest of the source URL. Plain FNV-1a
+       — no crypto (not on the iOS WebView's sync API surface) and none
+       needed: this only has to be collision-resistant across one exercise's
+       handful of images. */
+    const urlKey = u => {
+      let h = 0x811c9dc5;
+      const str = (u || '').toString();
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+      }
+      return h.toString(36);
+    };
     const out = { saved: 0, patched: 0, failed: 0 };
     for (const f of await readNotesIn(paths.exercises())) {
       const { fm, body } = parseFrontmatter(await v.cachedRead(f));
@@ -438,7 +515,11 @@ function makeIo(plugin) {
       for (let i = 0; i < images.length; i++) {
         const u = images[i];
         if (!isRemote(u)) { next.push(u); continue; }
-        const localPath = `${dir}/${i}.${extOf(u)}`;
+        /* Key the cached file on the URL, not the list POSITION. With an
+           index key, replacing image B with a new URL reused the file
+           already sitting at that index — so the note was re-pointed at the
+           OLD picture and the user's chosen image was discarded. */
+        const localPath = `${dir}/${urlKey(u)}.${extOf(u)}`;
         if (!v.getFileByPath(localPath)) {
           try {
             const res = await requestUrl({ url: u, throw: true });

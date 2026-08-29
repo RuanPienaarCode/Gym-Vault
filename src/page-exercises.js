@@ -1,7 +1,7 @@
 'use strict';
 /* Exercise library — searchable, filterable, with per-exercise bests. */
 
-const { el, ico, fmtSeconds } = require('./dom');
+const { el, ico, fmtSeconds, clickableCard } = require('./dom');
 const { EXERCISE_TYPES, MUSCLE_GROUPS } = require('./constants');
 const { exerciseBests } = require('./stats');
 const { FormModal, ConfirmModal } = require('./modals');
@@ -11,13 +11,14 @@ function render(ctx, root) {
   const ui = ctx.state.exercisesUi || (ctx.state.exercisesUi = { q: '', muscle: '' });
 
   const bar = el('div', { class: 'gv-toolbar' });
+  const title = el('h2', { class: 'gv-toolbar-title' }, 'Exercises');
   const search = el('input', {
-    class: 'gv-search', type: 'search', placeholder: 'Search exercises…', value: ui.q,
+    class: 'gv-search', type: 'search', placeholder: 'Search exercises…', value: ui.q, 'aria-label': 'Search exercises',
     oninput: e => { ui.q = e.target.value; renderList(); },
   });
   const addBtn = el('button', { class: 'gv-btn', type: 'button', onclick: () => openAdd(ctx) },
     ico('plus'), el('span', {}, 'Exercise'));
-  bar.append(search, addBtn);
+  bar.append(title, search, addBtn);
   root.append(bar);
 
   const chips = el('div', { class: 'gv-chips' });
@@ -63,7 +64,9 @@ function card(ctx, ex, idx) {
     : (bests.reps !== null ? String(bests.reps) : null);
   const meta = [ex.fm.type || 'strength', listOf(ex.fm.muscles).join(', '), ex.fm.equipment]
     .filter(Boolean).join(' · ');
-  const c = el('div', { class: 'gv-ex-card' },
+  const c = clickableCard(
+    { class: 'gv-ex-card', 'aria-label': `Open ${ex.name}` },
+    () => ctx.nav('exercise', { exercise: ex.name }),
     el('span', { class: 'gv-ex-idx' }, String(idx + 1).padStart(2, '0')),
     el('div', { class: 'gv-ex-main' },
       el('span', { class: 'gv-ex-name' }, ex.name),
@@ -76,7 +79,6 @@ function card(ctx, ex, idx) {
         message: `"${ex.name}" will be deleted, following your Obsidian "Deleted files" setting. Logged history keeps its rows.`,
         onConfirm: async () => { await ctx.io.trash(ex.file); ctx.reload(); },
       }).open())));
-  c.addEventListener('click', e => { if (!e.target.closest('button')) ctx.nav('exercise', { exercise: ex.name }); });
   return c;
 }
 

@@ -4,6 +4,7 @@
    exist in Electron). One generic FormModal covers every add/edit form. */
 
 const { Modal, Setting, Notice } = require('obsidian');
+const { el, clickableCard } = require('./dom');
 
 /* A modal action that fails must SAY so. These all used to land in
    console.error alone, which on a phone is invisible — a delete that threw
@@ -108,15 +109,21 @@ class PlanPickerModal extends Modal {
     const c = this.contentEl;
     for (const p of this.plans) {
       const on = p.name === this.currentName;
-      const row = c.createDiv({ cls: `gv-card gv-optrow${on ? ' on' : ''}` });
-      const main = row.createDiv({ cls: 'gv-optrow-main' });
-      main.createDiv({ cls: 'gv-optrow-name', text: p.name });
-      main.createDiv({ cls: 'gv-optrow-desc', text: planSummary(p) });
-      if (on) row.createDiv({ cls: 'gv-optrow-desc', text: 'active' });
-      row.addEventListener('click', () => {
-        this.close();
-        if (!on) Promise.resolve(this.onPick(p)).catch(e => failed('switching plan', e));
-      });
+      /* This modal's rows are its ONLY interactive content — before
+         clickableCard these were plain createDiv()s with a click listener
+         and no keyboard route at all, so there was no way to switch plans
+         without a mouse/touch. */
+      const row = clickableCard(
+        { class: `gv-card gv-optrow${on ? ' on' : ''}` },
+        () => {
+          this.close();
+          if (!on) Promise.resolve(this.onPick(p)).catch(e => failed('switching plan', e));
+        },
+        el('div', { class: 'gv-optrow-main' },
+          el('div', { class: 'gv-optrow-name' }, p.name),
+          el('div', { class: 'gv-optrow-desc' }, planSummary(p))),
+        on ? el('div', { class: 'gv-optrow-desc' }, 'active') : '');
+      c.append(row);
     }
     for (const p of this.extras) {
       const row = c.createDiv({ cls: 'gv-card gv-optrow gv-optrow-static' });

@@ -3,7 +3,7 @@
 
 const { el, ico, fmt, fmtSeconds, ring } = require('./dom');
 const { GOAL_METRICS } = require('./constants');
-const { goalCurrent, goalProgress } = require('./stats');
+const { goalCurrent, goalIssue, goalProgress } = require('./stats');
 const { todayISO, daysBetween, fmtShort } = require('./dates');
 const { FormModal, ConfirmModal } = require('./modals');
 
@@ -21,7 +21,7 @@ function render(ctx, root) {
   const today = todayISO();
 
   const bar = el('div', { class: 'gv-toolbar' },
-    el('div', { class: 'gv-toolbar-title' }, 'Goals'),
+    el('h2', { class: 'gv-toolbar-title' }, 'Goals'),
     el('button', { class: 'gv-btn', type: 'button', onclick: () => openAdd(ctx) }, ico('plus'), el('span', {}, 'Goal')));
   root.append(bar);
 
@@ -34,6 +34,10 @@ function render(ctx, root) {
   const list = el('div', { class: 'gv-goal-grid' });
   const scored = data.goals.map(g => {
     const current = goalCurrent(g, ctxStats);
+    /* "No data yet" and "this goal points at an exercise that doesn't exist"
+       rendered identically, so a typo'd exercise name told the user to go log
+       a workout — blaming them for the plugin's silence. */
+    const issue = goalIssue(g, { ...ctxStats, exerciseNames: ctx.data.exercises.map(e => e.name) });
     return { g, current, p: goalProgress(g, current) };
   }).sort((a, b) => (b.p ?? -1) - (a.p ?? -1));
 
@@ -53,7 +57,7 @@ function render(ctx, root) {
           `${METRIC_LABELS[g.fm.metric] || g.fm.metric}${g.fm.exercise ? ` · ${g.fm.exercise}` : ''}`),
         el('div', { class: 'gv-goal-nums' },
           el('b', {}, cur), ` of ${tgt}`,
-          p === null ? el('span', { class: 'gv-dim' }, ' — log a workout to start tracking') : ''),
+          p === null ? el('span', { class: 'gv-dim' }, issue ? ` — ${issue}` : ' — log a workout to start tracking') : ''),
         dl ? el('div', { class: `gv-goal-deadline${dLeft !== null && dLeft < 0 && !done ? ' over' : ''}` },
           done ? `done · target was ${fmtShort(dl)}`
                : dLeft === null ? '' : dLeft >= 0 ? `${dLeft} days left · ${fmtShort(dl)}` : `${-dLeft} days past ${fmtShort(dl)}`) : ''),

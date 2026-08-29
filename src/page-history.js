@@ -1,9 +1,9 @@
 'use strict';
 /* History — activity heatmap plus every logged session, newest first. */
 
-const { el, ico, fmtSeconds } = require('./dom');
+const { el, ico, fmtSeconds, clickableCard } = require('./dom');
 const { todayISO, addDays, startOfWeek, fmtShort, monthLabel, weekdayKey } = require('./dates');
-const { workoutDates, sessionVolume, sessionSets } = require('./stats');
+const { workoutDates, workoutDate, sessionVolume, sessionSets } = require('./stats');
 const { ConfirmModal } = require('./modals');
 
 const HEAT_WEEKS = 16;
@@ -12,10 +12,13 @@ function render(ctx, root) {
   const { data, settings } = ctx;
   const today = todayISO();
   const dates = new Set(workoutDates(data.workouts));
+  const counted = data.workouts.filter(w => workoutDate(w)).length;
 
   root.append(el('div', { class: 'gv-toolbar' },
-    el('div', { class: 'gv-toolbar-title' }, 'History'),
-    el('div', { class: 'gv-dim' }, `${data.workouts.length} session${data.workouts.length === 1 ? '' : 's'}`)));
+    el('h2', { class: 'gv-toolbar-title' }, 'History'),
+    /* Count DATED sessions, via the same workoutDate() rule the dashboard
+       and the export use — this line reported a third, different figure. */
+    el('div', { class: 'gv-dim' }, `${counted} session${counted === 1 ? '' : 's'}`)));
 
   /* Heat grid: HEAT_WEEKS columns × 7 rows, current week last. */
   const heat = el('div', { class: 'gv-heat', role: 'img', 'aria-label': `Workout activity, last ${HEAT_WEEKS} weeks` });
@@ -60,9 +63,12 @@ function sessionCard(ctx, w, open) {
   ].filter(Boolean).join(' · ');
 
   const card = el('div', { class: `gv-card gv-session-card${open ? ' open' : ''}` });
-  const head = el('div', { class: 'gv-session-head' },
+  const whenLabel = w.fm.date ? fmtShort(w.fm.date) : w.name;
+  const head = clickableCard(
+    { class: 'gv-session-head', 'aria-expanded': open ? 'true' : 'false', 'aria-label': `${whenLabel} session, ${open ? 'expanded' : 'collapsed'}` },
+    () => ctx.nav('history', { session: open ? undefined : w.name }),
     el('div', { class: 'gv-session-when' },
-      el('div', { class: 'gv-session-date' }, w.fm.date ? fmtShort(w.fm.date) : w.name),
+      el('div', { class: 'gv-session-date' }, whenLabel),
       el('div', { class: 'gv-session-day' }, [w.fm.day, w.fm.plan].filter(Boolean).join(' · ') || 'Freestyle')),
     el('div', { class: 'gv-session-meta' }, meta),
     el('div', { class: 'gv-card-actions' },
@@ -72,10 +78,6 @@ function sessionCard(ctx, w, open) {
         onConfirm: async () => { await ctx.io.trash(w.file); ctx.reload(); },
       }).open()),
       ico(open ? 'chevron-left' : 'chevron-right', 'gv-dim')));
-  head.addEventListener('click', e => {
-    if (e.target.closest('button')) return;
-    ctx.nav('history', { session: open ? undefined : w.name });
-  });
   card.append(head);
 
   if (open) {

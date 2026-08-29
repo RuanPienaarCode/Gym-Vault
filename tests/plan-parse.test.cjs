@@ -140,4 +140,42 @@ assert.ok(!targetIsDuration('8-12'));
   assert.strictEqual(pick('thu').name, 'Rest & Recovery');
 }
 
+
+/* Indented sub-bullets are the user's own annotations, not exercises.
+
+   THE BUG: `t.startsWith('- ')` was tested on the TRIMMED line, so
+   indentation was invisible. `  - grip: overhand` under an exercise became a
+   first-class plan item — it appeared in the day's exercise list, got logged
+   as an exercise and inflated the dashboard's set count — and the write-back
+   flattened the user's nesting on disk. */
+{
+  const src = '## Pull (mon)\n\n- Pull-ups | 5 x submax\n  - grip: overhand\n  - tempo 2-1-2\n- Rows | 3 x 8\n';
+  const model = parsePlanBody(src);
+  const names = model.days[0].items.map(i => i.exercise);
+  assert.deepStrictEqual(names, ['Pull-ups', 'Rows'],
+    `indented annotations became exercises: ${JSON.stringify(names)}`);
+
+  const out = serializePlanBody(model);
+  assert.match(out, /\n {2}- grip: overhand/, `indentation destroyed on write:\n${out}`);
+  assert.match(out, /\n {2}- tempo 2-1-2/, `indentation destroyed on write:\n${out}`);
+}
+
+/* Deeper indentation under a heading is preserved verbatim too. */
+{
+  const src = '## Pull (mon)\n\nSuperset:\n    - Pull-ups | 3 x 8\n    - Dips | 3 x 8\n';
+  const out = serializePlanBody(parsePlanBody(src));
+  assert.match(out, /\n {4}- Pull-ups \| 3 x 8/, `4-space indent lost:\n${out}`);
+}
+
+/* A day heading inside a fenced code block is an EXAMPLE, not a day. */
+{
+  const src = '## Push (mon)\n\n- Bench | 3 x 5\n\n```\n## Fake (tue)\n- Ghost | 1 x 1\n```\n\n- Real Row | 3 x 8\n';
+  const model = parsePlanBody(src);
+  const days = model.days.map(d => d.name);
+  assert.deepStrictEqual(days, ['Push'], `fenced heading became a real day: ${JSON.stringify(days)}`);
+  const pushItems = model.days[0].items.map(i => i.exercise);
+  assert.ok(pushItems.includes('Real Row'),
+    `an exercise below the fence was re-parented into the fake day: ${JSON.stringify(pushItems)}`);
+}
+
 console.log('plan grammar OK');

@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert');
-const { weekStreak, countInWeek, exerciseBests, goalCurrent, goalProgress, sessionVolume, weightSeries, bmi, setCounts, workoutDates } = require('../src/stats');
+const { weekStreak, countInWeek, exerciseBests, goalCurrent, goalIssue, goalProgress, sessionVolume, weightSeries, bmi, setCounts, workoutDates, ladderWeek, workoutDate } = require('../src/stats');
 
 const w = (date, rows) => ({ fm: { date }, rows });
 const set = (exercise, reps, weight_kg, seconds) => ({ exercise, reps, weight_kg, seconds });
@@ -91,6 +91,58 @@ const set = (exercise, reps, weight_kg, seconds) => ({ exercise, reps, weight_kg
   assert.strictEqual(b.distance, 8);
   assert.strictEqual(b.totalDistance, 14.4);
   assert.strictEqual(exerciseBests(runs, 'Never Run').distance, null);
+}
+
+
+/* One rule for "how many days apart", everywhere.
+
+   THE BUG: ladderWeek did raw millisecond arithmetic on local-midnight Dates.
+   A spring-forward DST transition between the start date and today loses an
+   hour, and Math.floor turns that into a whole missing day — so on exactly
+   the day the ladder should step up a rung, it still showed the old one.
+   dates.daysBetween already got this right with Math.round. Two rules for
+   one quantity is the recurring bug shape in this codebase. */
+{
+  const { daysBetween } = require('../src/dates');
+  const start = '2026-03-23';                       // Europe/London springs forward 29 Mar 2026
+  for (const today of ['2026-03-30', '2026-04-06', '2026-04-13', '2026-05-04']) {
+    const expected = Math.min(12, Math.floor(daysBetween(start, today) / 7) + 1);
+    assert.strictEqual(ladderWeek(start, today, 12), expected,
+      `ladderWeek disagrees with daysBetween on ${today} (DST week-rollover bug)`);
+  }
+}
+
+/* One rule for "the date of a workout", everywhere. The dashboard, the
+   history page and the export must not report three different counts for
+   the same files. */
+{
+  const wk = d => ({ fm: { date: d }, file: { basename: d }, body: '' });
+  const workouts = [wk('2026-8-6'), wk('26/08/2026'), wk('2026-08-27')];
+  assert.strictEqual(typeof workoutDate, 'function',
+    'stats must export a single workoutDate() normaliser for every consumer to route through');
+  assert.strictEqual(workoutDate(workouts[2]), '2026-08-27', 'a valid ISO date must normalise to itself');
+  assert.strictEqual(workoutDate(workouts[1]), null, 'an unparseable date must be reported as null, not guessed');
+}
+
+
+/* A goal that points at nothing must SAY so, not look like it is waiting for
+   data. Blaming the user for a typo is the failure mode being fixed. */
+{
+  const names = ['Pull-ups', 'Bench Press'];
+  const goal = fm => ({ name: 'g', fm });
+
+  assert.strictEqual(goalIssue(goal({ metric: 'exercise-reps', exercise: 'Pull-ups' }), { exerciseNames: names }), null,
+    'a goal naming a real exercise has no issue');
+  assert.strictEqual(goalIssue(goal({ metric: 'exercise-reps', exercise: 'pull-UPS' }), { exerciseNames: names }), null,
+    'the name check must fold case, like every other name comparison');
+  assert.match(goalIssue(goal({ metric: 'exercise-reps', exercise: 'pull ups' }), { exerciseNames: names }) || '',
+    /no exercise named "pull ups"/, 'a typo\'d exercise name must be reported');
+  assert.match(goalIssue(goal({ metric: 'body-weight' }), {}) || '', /^$|.*/);
+  assert.strictEqual(goalIssue(goal({ metric: 'body-weight' }), { exerciseNames: names }), null,
+    'a non-exercise metric needs no exercise');
+  assert.match(goalIssue(goal({}), {}) || '', /no metric/, 'a goal with no metric must be reported');
+  assert.strictEqual(goalIssue(goal({ metric: 'exercise-reps', exercise: 'pull ups' }), {}), null,
+    'without an exercise list the check is skipped, not guessed');
 }
 
 console.log('stats OK');

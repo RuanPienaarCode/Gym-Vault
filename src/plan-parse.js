@@ -69,16 +69,32 @@ function parsePlanBody(body) {
   const intro = [];
   const days = [];
   let day = null;
+  /* Inside a ``` fence everything is an EXAMPLE the author is showing, not
+     plan structure. Without this, a fenced `## Fake (tue)` created a real
+     day and swallowed the exercises written below the fence. */
+  let fenced = false;
   for (const line of (body || '').split(/\r?\n/)) {
-    const h = line.match(DAY_HEADING);
+    const t = line.trim();
+    if (/^(```|~~~)/.test(t)) {
+      fenced = !fenced;
+      if (day) { day.parts.push({ kind: 'note', line }); day.notes.push(line); }
+      else intro.push(line);
+      continue;
+    }
+    const h = fenced ? null : line.match(DAY_HEADING);
     if (h) {
       day = { name: h[1].trim(), weekday: h[2].toLowerCase(), parts: [], notes: [], items: [] };
       days.push(day);
       continue;
     }
-    const t = line.trim();
-    if (day && t.startsWith('- ')) {
-      const cells = splitBarePipes(t.slice(2)).map(c => c.trim());
+    /* An INDENTED bullet is the user's own annotation hanging off the line
+       above — `  - grip: overhand`, a superset's members — not an exercise.
+       Testing the trimmed line made indentation invisible, so those became
+       first-class items: they showed up in the day's exercise list, were
+       logged as exercises, inflated the set count, and the write-back
+       flattened the author's nesting on disk. Match the RAW line. */
+    if (day && !fenced && /^- /.test(line)) {
+      const cells = splitBarePipes(line.slice(2)).map(c => c.trim());
       /* Everything after the FIRST pipe is the prescription — rejoining
          keeps a hand-written `- A | B | C` intact instead of dropping C. */
       const { sets, target } = parsePrescription(cells.slice(1).join(' | '));

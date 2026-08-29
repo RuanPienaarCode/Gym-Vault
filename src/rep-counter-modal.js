@@ -70,7 +70,12 @@ class RepCounterModal extends Modal {
       label,
       el('div', { class: 'gv-rc-controls' }, this.muteBtn, undoBtn, doneBtn, cancelBtn));
 
-    this.countEl = el('div', { class: 'gv-rc-count' }, '0');
+    /* aria-live so a screen-reader user hears each new count — speech
+       synthesis (speak(), below) is a nicety, not a substitute: it's user-
+       mutable, not available on every platform, and it FIGHTS the user's
+       own screen reader rather than working with it. Announcements are
+       naturally rate-limited by how fast a human can actually tap. */
+    this.countEl = el('div', { class: 'gv-rc-count', 'aria-live': 'polite', 'aria-atomic': 'true' }, '0');
     this.zone = el('div', { class: 'gv-rc-zone', role: 'button', tabindex: '0', 'aria-label': 'Tap to count a rep' }, this.countEl);
     this._detachTapZone = attachTapZone(this.zone, () => this.registerTap());
 

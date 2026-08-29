@@ -17,6 +17,12 @@ function render(ctx, root) {
   const currentYear = new Date().getFullYear();
   const age = num(fm.birth_year) ? currentYear - num(fm.birth_year) : null;
 
+  /* Profile has no toolbar of its own (the identity card doubles as the
+     header) — this page had zero headings before, so the primary title is a
+     new addition rather than a promoted existing element, unlike the other
+     six pages in this pass. */
+  root.append(el('h2', { class: 'gv-toolbar-title' }, 'Profile'));
+
   /* Identity card. */
   const idCard = el('div', { class: 'gv-card gv-profile-card' },
     el('div', { class: 'gv-profile-avatar' }, ico('user')),

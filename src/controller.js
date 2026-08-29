@@ -49,6 +49,11 @@ function mountApp(view) {
        that ctx.nav runs the moment the page actually changes. */
     state: { page: 'dashboard', params: {}, logDraft: null, session: null, pageCleanup: null },
     _interval: null,
+    /* Set by ctx.nav() only (never by a plain ctx.rerender() from local UI
+       state — ticking a set, toggling a switch — which must NOT steal focus
+       mid-interaction). Consumed once by the focus-move at the bottom of
+       ctx.rerender(). */
+    _focusPageOnRender: false,
   };
 
   const rootEl = view.contentEl;
@@ -120,6 +125,9 @@ function mountApp(view) {
     }
     ctx.state.page = page;
     ctx.state.params = params || {};
+    /* A route change is exactly what SHOULD move focus — plain rerenders
+       from local UI state (a tick, a toggle) must not. */
+    ctx._focusPageOnRender = true;
     ctx.rerender();
   };
 
@@ -149,6 +157,22 @@ function mountApp(view) {
     ctx._interval = window.setInterval(fn, ms);
   };
 
+  /* Route change gets no signal a screen-reader user can pick up otherwise —
+     the page under the persistent nav bar is swapped in place, so nothing
+     announces "you're on a new screen now". Moving focus to the new page's
+     own heading is the same pattern any SPA route change needs; tabindex=-1
+     makes an otherwise non-interactive heading a valid focus target without
+     adding it to the normal Tab order. */
+  function focusPageHeading() {
+    if (!ctx._focusPageOnRender) return;
+    ctx._focusPageOnRender = false;
+    if (!pageEl) return;
+    const heading = pageEl.querySelector('h1, h2, h3, h4, h5, h6');
+    if (!heading) return;
+    if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+    heading.focus({ preventScroll: true });
+  }
+
   ctx.rerender = () => {
     if (ctx._interval) { window.clearInterval(ctx._interval); ctx._interval = null; }
     if (!pageEl) return;
@@ -158,22 +182,27 @@ function mountApp(view) {
        from a broken plugin, and this is exactly what a mid-index vault used
        to produce: loadAll fails or finds nothing, and the screen goes empty
        with no way back. */
-    if (!ctx.data || ctx.loadError) { renderNotReady(ctx, pageEl); return; }
-    if (!ctx.data.present) {
+    if (!ctx.data || ctx.loadError) {
+      renderNotReady(ctx, pageEl);
+    } else if (!ctx.data.present) {
       /* The gym folder existing but reading empty means Obsidian has not
          finished indexing — offering "create my gym" there would be wrong
          and alarming. Only a genuinely absent folder is a fresh start. */
-      if (ctx.data.rootExists || ctx.data.unreadable) { renderNotReady(ctx, pageEl); return; }
-      renderSetup(ctx, pageEl);
-      return;
-    }
-    const page = pages[ctx.state.page] || pages.dashboard;
-    try { page.render(ctx, pageEl); }
-    catch (e) {
-      console.error('gym-vault render', e);
-      pageEl.append(el('div', { class: 'gv-empty-line' }, `Something went wrong rendering this page (${e.message}).`));
+      if (ctx.data.rootExists || ctx.data.unreadable) {
+        renderNotReady(ctx, pageEl);
+      } else {
+        renderSetup(ctx, pageEl);
+      }
+    } else {
+      const page = pages[ctx.state.page] || pages.dashboard;
+      try { page.render(ctx, pageEl); }
+      catch (e) {
+        console.error('gym-vault render', e);
+        pageEl.append(el('div', { class: 'gv-empty-line' }, `Something went wrong rendering this page (${e.message}).`));
+      }
     }
     pageEl.scrollTop = 0;
+    focusPageHeading();
   };
 
   ctx.reload = async () => {
@@ -238,7 +267,11 @@ function mountApp(view) {
       ...navEl.querySelectorAll('.gv-nav-btn'),
       ...(headActionsEl ? headActionsEl.querySelectorAll('.gv-head-btn') : []),
     ];
-    for (const b of buttons) b.classList.toggle('on', b.getAttribute('data-page') === current);
+    for (const b of buttons) {
+      const active = b.getAttribute('data-page') === current;
+      b.classList.toggle('on', active);
+      if (active) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    }
   }
 
   /* Vault watcher: reload when a gym file changes and the change wasn't one
@@ -311,7 +344,13 @@ function renderNotReady(ctx, root) {
   const why = ctx.loadError
     ? `Could not read the gym folder (${ctx.loadError}).`
     : ctx.data && ctx.data.unreadable
-      ? `${ctx.data.unreadable} file${ctx.data.unreadable === 1 ? '' : 's'} could not be read yet.`
+      /* Name the files. "3 files could not be read" gives the user nothing
+         to act on; the paths tell them whether it's one bad note or a sync
+         still landing. Cap the list so a mid-sync vault doesn't wall of text. */
+      ? `${ctx.data.unreadable} file${ctx.data.unreadable === 1 ? '' : 's'} could not be read yet`
+        + (ctx.data.unreadablePaths && ctx.data.unreadablePaths.length
+          ? `: ${ctx.data.unreadablePaths.slice(0, 3).join(', ')}${ctx.data.unreadablePaths.length > 3 ? ', …' : ''}.`
+          : '.')
       : 'Your gym folder is there, but Obsidian has not finished indexing it.';
   const card = el('div', { class: 'gv-setup' },
     el('div', { class: 'gv-setup-logo' }, ico('history')),

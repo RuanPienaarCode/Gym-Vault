@@ -83,5 +83,40 @@ const CLINICAL_VALUES = ['118', '74', '3.92', '6.15'];
   assert.strictEqual(j.exercises[0].bests.reps, 8);
 }
 
+
+/* The privacy switches must gate the PROFILE too, in every format.
+
+   THE BUG: buildSummary gated height_cm behind includeBody, but buildJson
+   spread `...data.profile.fm` unconditionally. Any clinical key the user
+   added to their profile note (hba1c, meds, a diagnosis) rode out in a JSON
+   export they had explicitly told not to include health data. HEALTH_KEYS
+   only filtered BODY_COLUMNS, so profile keys were unfilterable by design.
+
+   The contract: the profile is a WHITELIST, not a spread. An unknown key is
+   not exported, because we cannot know it is safe. */
+{
+  const data = {
+    profile: { fm: { name: 'Ruan', birth_year: 1990, height_cm: 175, sex: 'male', hba1c: '5.4', meds: 'metformin' }, body: '' },
+    workouts: [], exercises: [], goals: [], body: [], plans: [],
+  };
+  const locked = { today: '2026-08-29', includeBody: false, includeHealth: false, days: 90 };
+
+  const j = JSON.parse(buildJson(data, locked));
+  const asText = JSON.stringify(j.profile || {});
+  assert.ok(!/hba1c/.test(asText), `unknown clinical key leaked into JSON: ${asText}`);
+  assert.ok(!/metformin/.test(asText), `unknown clinical value leaked into JSON: ${asText}`);
+  assert.ok(!/height_cm/.test(asText), `body measurement leaked with includeBody:false: ${asText}`);
+
+  const csv = buildCsv(data, locked);
+  assert.ok(!/hba1c|metformin/.test(csv), 'unknown clinical key leaked into CSV');
+
+  // ...and with the switches ON, the modelled fields still come through.
+  const open = { ...locked, includeBody: true, includeHealth: true };
+  const j2 = JSON.parse(buildJson(data, open));
+  assert.strictEqual(j2.profile.height_cm, 175, 'includeBody:true should still export height');
+  assert.ok(!/metformin/.test(JSON.stringify(j2.profile)),
+    'an unmodelled key must stay out even when the switches are on — whitelist, not spread');
+}
+
 assert.ok(isHealthKey('cholesterol') && !isHealthKey('weight_kg'));
 console.log('export OK (health markers gated, ranges honoured)');

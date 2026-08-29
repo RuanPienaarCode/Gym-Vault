@@ -3,7 +3,7 @@
    lime flood on this screen is the action slab, and it holds nothing but
    the session stats and the start button (design/06-editorial-floor.html). */
 
-const { el, ico, fmt, fmtSeconds } = require('./dom');
+const { el, ico, fmt, fmtSeconds, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
 const { workoutDates, weekStreak, countInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
@@ -174,7 +174,9 @@ function render(ctx, root) {
       const isDur = g.fm.metric === 'exercise-duration';
       const cur = isDur ? fmtSeconds(current) : fmt(current);
       const tgt = isDur ? fmtSeconds(g.fm.target) : fmt(g.fm.target);
-      wrap.append(el('div', { class: 'gv-goal-mini', onclick: () => ctx.nav('goals') },
+      wrap.append(clickableCard(
+        { class: 'gv-goal-mini', 'aria-label': `${g.name}: ${cur} of ${tgt} — open Goals` },
+        () => ctx.nav('goals'),
         el('div', { class: 'gv-goal-mini-head' },
           el('span', { class: 'gv-goal-mini-name' }, g.name),
           el('span', { class: 'gv-goal-mini-nums' }, `${cur} / ${tgt}`)),

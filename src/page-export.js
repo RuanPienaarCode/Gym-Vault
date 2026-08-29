@@ -6,7 +6,7 @@
    Gym/Exports/ (always works, and on iOS the note can then go out through
    Obsidian's own share sheet). */
 
-const { el, ico } = require('./dom');
+const { el, ico, clickableCard } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
 const { buildSummary, buildCsv, buildJson } = require('./export');
 
@@ -23,7 +23,7 @@ function render(ctx, root) {
   });
   const today = todayISO();
 
-  root.append(el('div', { class: 'gv-toolbar' }, el('div', { class: 'gv-toolbar-title' }, 'Export')));
+  root.append(el('div', { class: 'gv-toolbar' }, el('h2', { class: 'gv-toolbar-title' }, 'Export')));
   root.append(el('p', { class: 'gv-hero-sub gv-export-lede' },
     'Build a snapshot of your training to share. Nothing leaves the vault until you copy or save it.'));
 
@@ -39,25 +39,37 @@ function render(ctx, root) {
     }
   };
 
-  /* Format */
+  /* Format — a card group that behaves like radios (exactly one selected),
+     so it carries radiogroup/radio semantics rather than a bare click
+     target. Every card stays independently tabbable (rather than the
+     textbook roving-tabindex-only-on-the-checked-one pattern) — with only
+     three options and no arrow-key handling wired, roving tabindex would
+     make the two UNselected formats unreachable by keyboard, which is worse
+     than what this is fixing. */
   root.append(el('div', { class: 'gv-section-title' }, ico('clipboard-list'), el('span', {}, 'Format')));
-  const fmtWrap = el('div', { class: 'gv-card-list' });
+  const fmtWrap = el('div', { class: 'gv-card-list', role: 'radiogroup', 'aria-label': 'Export format' });
   for (const [key, label, desc] of FORMATS) {
-    const card = el('div', { class: `gv-card gv-optrow${ui.format === key ? ' on' : ''}` },
+    const on = ui.format === key;
+    const card = clickableCard(
+      { class: `gv-card gv-optrow${on ? ' on' : ''}`, role: 'radio', 'aria-checked': on ? 'true' : 'false' },
+      () => { ui.format = key; ctx.rerender(); },
       el('div', { class: 'gv-optrow-main' },
         el('div', { class: 'gv-optrow-name' }, label),
         el('div', { class: 'gv-optrow-desc' }, desc)),
-      ui.format === key ? ico('circle-check', 'gv-optrow-tick') : '');
-    card.addEventListener('click', () => { ui.format = key; ctx.rerender(); });
+      on ? ico('circle-check', 'gv-optrow-tick') : '');
     fmtWrap.append(card);
   }
   root.append(fmtWrap);
 
-  /* Range */
+  /* Range — real <button>s already, so Tab/Enter/Space worked before this
+     pass; what was missing is the radiogroup/radio exposure so a screen
+     reader announces them as a mutually-exclusive set with a selected one,
+     not three unrelated buttons. */
   root.append(el('div', { class: 'gv-section-title' }, ico('calendar-days'), el('span', {}, 'How much')));
-  const chips = el('div', { class: 'gv-chips' });
+  const chips = el('div', { class: 'gv-chips', role: 'radiogroup', 'aria-label': 'Export range' });
   for (const [days, label] of RANGES) {
-    const c = el('button', { class: `gv-chip${ui.days === days ? ' on' : ''}`, type: 'button' }, label);
+    const on = ui.days === days;
+    const c = el('button', { class: `gv-chip${on ? ' on' : ''}`, type: 'button', role: 'radio', 'aria-checked': on ? 'true' : 'false' }, label);
     c.addEventListener('click', () => { ui.days = days; ctx.rerender(); });
     chips.append(c);
   }
@@ -109,13 +121,18 @@ function render(ctx, root) {
     'Saved exports land in Gym/Exports. On a phone, open that note and use Obsidian’s share button to send it on.'));
 }
 
+/* A switch, not a button: this row toggles one thing on/off rather than
+   activating an action, so it carries role="switch" + aria-checked. The
+   accessible name lives on the row (aria-label) since the row is the whole
+   hit target and the switch glyph is now purely decorative. */
 function toggleRow(ctx, name, desc, value, onChange) {
-  const row = el('div', { class: `gv-card gv-optrow${value ? ' on' : ''}` },
+  const row = clickableCard(
+    { class: `gv-card gv-optrow${value ? ' on' : ''}`, role: 'switch', 'aria-checked': value ? 'true' : 'false', 'aria-label': name },
+    () => { onChange(!value); ctx.rerender(); },
     el('div', { class: 'gv-optrow-main' },
       el('div', { class: 'gv-optrow-name' }, name),
       el('div', { class: 'gv-optrow-desc' }, desc)),
-    el('span', { class: `gv-switch${value ? ' on' : ''}`, role: 'img', 'aria-label': value ? 'included' : 'not included' }));
-  row.addEventListener('click', () => { onChange(!value); ctx.rerender(); });
+    el('span', { class: `gv-switch${value ? ' on' : ''}`, 'aria-hidden': 'true' }));
   return row;
 }
 

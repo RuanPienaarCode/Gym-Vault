@@ -6,7 +6,7 @@
    streaks, weekly counts, bests, goal progress — is computed HERE and only
    here, so the dashboard and the goals page can never disagree. */
 
-const { startOfWeek, addDays, todayISO, fromISO, toISO } = require('./dates');
+const { startOfWeek, addDays, todayISO, fromISO, toISO, daysBetween } = require('./dates');
 
 const num = v => {
   const n = parseFloat(v);
@@ -19,14 +19,26 @@ const num = v => {
    hand-edited `date: 2026-08-26T09:00` must count the same everywhere
    (equality checks AND range compares), not split between them. Sessions
    without a parseable date are ignored rather than guessed. */
+/* THE one rule for "the date of this workout": canonical YYYY-MM-DD, or
+   null when it cannot be parsed. Every consumer — the dashboard, the history
+   page, the export's range filter — must route through this. The export used
+   to do its own `.slice(0, 10)` instead, so the same three files counted as
+   one session on the dashboard and three in the export, and its `d >= from`
+   range compare was a lexical test on unnormalised strings. */
+function workoutDate(w) {
+  const d = w && w.fm && w.fm.date ? fromISO(w.fm.date) : null;
+  return d ? toISO(d) : null;
+}
+
 function workoutDates(workouts) {
   const set = new Set();
   for (const w of workouts) {
-    const d = w.fm && w.fm.date ? fromISO(w.fm.date) : null;
-    if (d) set.add(toISO(d));
+    const d = workoutDate(w);
+    if (d) set.add(d);
   }
   return [...set].sort();
 }
+
 
 /* The one rule for "does this logged set count": ticked done, OR the USER
    edited it and it holds a figure. `touched` (set by the log page's input
@@ -128,8 +140,13 @@ function distanceInWeek(workouts, refIso, weekStart) {
 function ladderWeek(startDate, today, weeks) {
   const start = fromISO(startDate), now = fromISO(today || todayISO());
   if (!start || !now || !weeks) return null;
-  const days = Math.floor((now - start) / 86400000);
-  if (days < 0) return null;
+  /* Whole days must come from ONE rule. Raw millisecond arithmetic on
+     local-midnight Dates loses an hour across a spring-forward DST
+     transition, and Math.floor turns that into a missing day — so on exactly
+     the day the ladder should step up a rung it still showed the old one.
+     dates.daysBetween already rounds correctly; use it. */
+  const days = daysBetween(startDate, today || todayISO());
+  if (days == null || days < 0) return null;
   return Math.min(weeks, Math.floor(days / 7) + 1);
 }
 
@@ -152,6 +169,26 @@ function goalCurrent(goal, ctx) {
       return countInWeek(workoutDates(ctx.workouts), ctx.today || todayISO(), ctx.weekStart);
     default: return null;
   }
+}
+
+/* Why is this goal showing nothing?
+
+   "No data yet" and "this goal points at an exercise that doesn't exist"
+   produced the identical empty card, and the goals page rendered "log a
+   workout to start tracking" for both — blaming the user for a typo. A
+   hand-written `exercise: pull ups` against a file named `Pull-ups.md` never
+   matched and never said so. Returns a reason to show, or null when the goal
+   is genuinely just waiting for data. `ctx.exerciseNames` is optional: without
+   it the name check is skipped rather than guessed at. */
+function goalIssue(goal, ctx) {
+  const fm = (goal && goal.fm) || {};
+  if (!fm.metric) return 'this goal has no metric set';
+  if (/^exercise-/.test(fm.metric)) {
+    if (!fm.exercise) return 'this goal has no exercise set';
+    const names = (ctx && ctx.exerciseNames) || null;
+    if (names && !names.some(n => sameName(n, fm.exercise))) return `no exercise named "${fm.exercise}"`;
+  }
+  return null;
 }
 
 /* 0..1 progress. Uses start_value as the baseline when present (so a cut
@@ -180,7 +217,7 @@ function weightSeries(bodyRows) {
   return (bodyRows || [])
     .map(r => ({ date: r.date, value: num(r.weight_kg) }))
     .filter(p => p.date && p.value !== null)
-    .sort((a, b) => (a.date < b.date ? -1 : 1));
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
 function bmi(weightKg, heightCm) {
@@ -190,7 +227,7 @@ function bmi(weightKg, heightCm) {
 }
 
 module.exports = {
-  num, workoutDates, countInWeek, weekStreak, exerciseBests, epley1RM,
+  num, workoutDates, workoutDate, sameName, countInWeek, weekStreak, exerciseBests, epley1RM,
   sessionVolume, sessionSets, setCounts, distanceInWeek, ladderWeek,
-  goalCurrent, goalProgress, weightSeries, bmi,
+  goalCurrent, goalIssue, goalProgress, weightSeries, bmi,
 };

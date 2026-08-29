@@ -92,4 +92,26 @@ const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('../src/constants');
   assert.deepStrictEqual(rows[2], ['1', '2']);
 }
 
+
+/* A value containing interior double quotes keeps its delimiters.
+
+   THE BUG: `/^".*"$/` cannot tell "fully quoted" from "happens to start and
+   end with a quote", so `note: "a" and "b"` had its outer quotes eaten and
+   became `a" and "b`. */
+{
+  const { fm } = parseFrontmatter('---\nnote: "a" and "b"\n---\n');
+  assert.strictEqual(fm.note, '"a" and "b"', 'interior quotes corrupted the value');
+}
+
+/* A list of wikilinks is a LIST. The single-wikilink guard must not swallow
+   a two-item list just because it starts with `[[` and ends with `]]`. */
+{
+  const one = parseFrontmatter('---\nimage: [[a.png]]\n---\n').fm.image;
+  assert.strictEqual(one, '[[a.png]]', 'a single wikilink must stay a scalar');
+
+  const two = parseFrontmatter('---\nimage: [[[a.png]], [[b.png]]]\n---\n').fm.image;
+  assert.deepStrictEqual(two, ['[[a.png]]', '[[b.png]]'],
+    `a two-item wikilink list was read as one scalar: ${JSON.stringify(two)}`);
+}
+
 console.log('markdown round-trips OK');
