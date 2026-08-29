@@ -335,4 +335,4 @@ function prose(lines, opts = {}) {
   return wrap;
 }
 
-module.exports = { el, ico, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose };
+module.exports = { el, ico, clickableCard, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose };

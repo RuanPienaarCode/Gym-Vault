@@ -32,16 +32,17 @@ function render(ctx, root) {
 
   const ctxStats = { workouts: data.workouts, body: data.body, weekStart: settings.weekStart, today };
   const list = el('div', { class: 'gv-goal-grid' });
+  const exerciseNames = data.exercises.map(e => e.name);
   const scored = data.goals.map(g => {
     const current = goalCurrent(g, ctxStats);
     /* "No data yet" and "this goal points at an exercise that doesn't exist"
        rendered identically, so a typo'd exercise name told the user to go log
        a workout — blaming them for the plugin's silence. */
-    const issue = goalIssue(g, { ...ctxStats, exerciseNames: ctx.data.exercises.map(e => e.name) });
-    return { g, current, p: goalProgress(g, current) };
+    const issue = goalIssue(g, { ...ctxStats, exerciseNames });
+    return { g, current, issue, p: goalProgress(g, current) };
   }).sort((a, b) => (b.p ?? -1) - (a.p ?? -1));
 
-  for (const { g, current, p } of scored) {
+  for (const { g, current, issue, p } of scored) {
     const isDur = g.fm.metric === 'exercise-duration';
     const done = p !== null && p >= 1;
     const cur = isDur ? fmtSeconds(current) : fmt(current);
