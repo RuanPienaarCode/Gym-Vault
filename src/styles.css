@@ -850,7 +850,10 @@
   border: 1px solid var(--gv-line);
   background: var(--gv-surface);
   color: var(--gv-ink);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Deliberately no extended system font at the head of this stack: the
+     review linter flags those against older Obsidian, and the named faces
+     below already cover every platform. */
+  font-family: SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 11.5px;
   line-height: 1.5;
   white-space: pre;
@@ -1117,7 +1120,8 @@
    Full-screen tap-to-count takeover (src/rep-counter-modal.js). Obsidian
    appends modals to <body>, OUTSIDE .gv-app's own subtree, so the modalEl
    itself is also given the .gv-app class (plus the user's current
-   gv-skin-*/gv-accent-* classes) — that's what pulls in the --gv-* tokens
+   gv-skin- and gv-accent- classes) — that's what pulls in the --gv-* tokens
+   (never write a star followed by a slash in here: it ends the comment)
    and the shared .gv-btn/.gv-icon-btn styling above, with no new hex added
    anywhere here (sealed palette — see the ACCENT PALETTES banner). Layout
    is restated on the (0,2,0) .modal.gv-repcounter-modal selector rather

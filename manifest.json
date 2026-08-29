@@ -1,7 +1,7 @@
 {
   "id": "gym-app",
   "name": "Gym Vault",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "minAppVersion": "1.8.0",
   "description": "Your training as plain files in your own vault — a daily dashboard, exercise library, plans, goals, workout history and body stats. No account, no server.",
   "author": "Ruan Pienaar",

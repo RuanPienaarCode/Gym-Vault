@@ -553,8 +553,8 @@ const SEED_EXERCISES = [
       '**Cue:** quad endurance for long trail descents, with none of the impact. A useful one on days the knees do not want jumping.',
     ].join('\n') },
 
-  /* ---- Recovery (added 28 Aug 2026). Aimed at the specific watch-outs in
-     the profile — the watch-outs it records — plus what running tightens.
+  /* ---- Recovery (added 28 Aug 2026). Aimed at the watch-outs a profile
+     typically records, plus what running tightens.
      These are what a rest day is FOR; they are not a workout. ---- */
   { name: 'IT Band and Glute Stretch', type: 'mobility', muscles: ['glutes', 'quads'], equipment: 'bodyweight', unit: 'seconds',
     image: IMG('IT_Band_and_Glute_Stretch'),
