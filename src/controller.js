@@ -14,6 +14,7 @@ const pages = {
   profile: require('./page-profile'),
   running: require('./page-running'),
   export: require('./page-export'),
+  browse: require('./page-browse'),
   log: require('./page-log'),
   exercise: require('./page-exercise-detail'),
   session: require('./page-session'),

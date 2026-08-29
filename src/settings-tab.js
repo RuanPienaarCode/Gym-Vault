@@ -74,6 +74,16 @@ class GymSettingTab extends PluginSettingTab {
         }));
 
     new Setting(c)
+      .setName('Plan library')
+      .setDesc('Where "Browse" on the Plans page fetches shared plans from. Any repo with a plans.json, plans/ and exercises/ works.')
+      .addText(t => t
+        .setValue(this.plugin.settings.planRepo)
+        .onChange(async v => {
+          this.plugin.settings.planRepo = v.trim();
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(c)
       .setName('Download images for offline')
       .setDesc('Fetch every remote exercise image into Gym/Attachments and point the notes at the local files, so the library works with no connection. Videos keep streaming (they are large).')
       .addButton(b => b

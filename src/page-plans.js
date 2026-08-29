@@ -17,6 +17,8 @@ function render(ctx, root) {
 
   const bar = el('div', { class: 'gv-toolbar' },
     el('div', { class: 'gv-toolbar-title' }, 'Training plans'),
+    el('button', { class: 'gv-btn gv-btn-ghost', type: 'button', onclick: () => ctx.nav('browse') },
+      ico('search'), el('span', {}, 'Browse')),
     el('button', { class: 'gv-btn', type: 'button', onclick: () => openAddPlan(ctx) }, ico('plus'), el('span', {}, 'Plan')));
   root.append(bar);
 

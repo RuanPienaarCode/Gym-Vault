@@ -215,6 +215,58 @@ function makeIo(plugin) {
     return path;
   }
 
+  /* ---- plan library ---------------------------------------------------
+     Downloads are plain files fetched over https and written into the
+     vault; nothing is executed and nothing is sent anywhere. */
+
+  const repoBase = () => (plugin.settings.planRepo || '').replace(/\/+$/, '');
+
+  async function fetchPlanIndex() {
+    const res = await requestUrl({ url: `${repoBase()}/plans.json`, throw: true });
+    const index = JSON.parse(res.text);
+    if (!index || !Array.isArray(index.plans)) throw new Error('that URL did not return a plan index');
+    return index;
+  }
+
+  /* Installs the plan note plus any exercise it names that the vault does
+     not already have. Never overwrites: an existing plan or exercise of the
+     same name is left exactly as it is and reported as skipped. */
+  async function installPlan(entry) {
+    const out = { plan: null, planSkipped: false, exercisesAdded: 0, exercisesSkipped: 0, failed: [] };
+    await ensureFolder(paths.plans());
+    const planPath = `${paths.plans()}/${safeName(entry.name)}.md`;
+    if (v.getFileByPath(planPath)) {
+      out.planSkipped = true;
+      out.plan = planPath;
+    } else {
+      const res = await requestUrl({ url: `${repoBase()}/${entry.file}`, throw: true });
+      /* A downloaded plan never arrives active — it would silently take over
+         the dashboard from whatever the user is actually running. */
+      const { fm, body } = parseFrontmatter(res.text);
+      const nextFm = { ...fm, active: false };
+      delete nextFm.name;                       // the filename carries the name
+      stamp();
+      await v.create(planPath, serializeFrontmatter(nextFm) + '\n' + body);
+      out.plan = planPath;
+    }
+    for (const name of entry.exercises || []) {
+      const exPath = `${paths.exercises()}/${safeName(name)}.md`;
+      if (v.getFileByPath(exPath)) { out.exercisesSkipped++; continue; }
+      try {
+        const res = await requestUrl({ url: `${repoBase()}/exercises/${encodeURIComponent(name)}.md`, throw: true });
+        await ensureFolder(paths.exercises());
+        stamp();
+        await v.create(exPath, res.text);
+        out.exercisesAdded++;
+      } catch (e) {
+        /* A missing exercise definition is survivable — the plan still works,
+           it just has no how-to behind that line. Say which ones, though. */
+        out.failed.push(name);
+      }
+    }
+    return out;
+  }
+
   /* System trash, never a hard delete — recoverable by the user. */
   async function trash(file) { stamp(); await v.trash(file, true); }
 
@@ -332,6 +384,7 @@ function makeIo(plugin) {
 
   return {
     paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveExport, saveProfile, appendBodyRow,
+    fetchPlanIndex, installPlan,
     createExercise, saveExercise, createGoal, saveGoal,
     createPlan, savePlan, setActivePlan, saveWorkout, trash, safeName,
   };

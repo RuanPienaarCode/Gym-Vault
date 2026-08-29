@@ -703,6 +703,32 @@
 .gv-optrow-static { cursor: default; opacity: 0.75; }
 .gv-optrow-static:hover { background: var(--gv-surface); }
 
+/* ---------- plan library ---------- */
+
+.gv-browse-card { margin-bottom: 10px; }
+.gv-browse-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.gv-browse-name { font-family: var(--gv-display); font-size: 21px; text-transform: uppercase; line-height: 1; margin-top: 3px; }
+.gv-browse-summary { font-size: 13px; color: var(--gv-ink-dim); line-height: 1.5; margin-top: 8px; }
+.gv-browse-phases { margin-top: 12px; border-top: 1px solid var(--gv-line); }
+.gv-browse-phase {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gv-line);
+}
+.gv-browse-phase:last-child { border-bottom: 0; }
+.gv-browse-phase-n {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gv-ink); color: var(--gv-lime-hi);
+  font-family: var(--gv-display); font-size: 13px;
+}
+.gv-browse-phase-name { flex: 1 1 auto; min-width: 0; font-size: 13.5px; font-weight: 700; }
+.gv-browse-phase-meta { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gv-ink-dim); white-space: nowrap; }
+@media (max-width: 380px) { .gv-browse-phase-meta { display: none; } }
+
 /* ---------- export ---------- */
 
 .gv-export-lede { margin: 0 0 4px; }
