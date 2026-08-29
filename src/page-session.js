@@ -23,9 +23,12 @@ const { createCounter, tap, undo } = require('./rep-counter');
 const { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone } = require('./rep-counter-shared');
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const { buildRows, finishSession } = require('./page-log');
+const { nextFrameIndex } = require('./media-cycle');
 
 const FLASH_MS = 180;
 const HOLD_CHECKPOINT_S = 15;
+const MEDIA_CYCLE_MS = 1100; // time each frame holds before crossfading to the next
+const MEDIA_MAX_FRAMES = 2; // guided view only ever animates start->finish, never the detail page's extras
 
 function render(ctx, root) {
   const draft = ctx.state.logDraft;
@@ -46,13 +49,25 @@ function render(ctx, root) {
       goalCount: 0,
       confettiStop: null,
       completionCelebrated: false,
+      mediaCycleTimer: null,
     };
   }
   const sess = ctx.state.session;
 
+  /* The media-cycle timer (guidedImageBlock, below) is deliberately NOT
+     ctx.setPageInterval — that single slot belongs to the hold-timer / rest
+     stopwatch, and a duration exercise can have both a running hold AND a
+     cycling image live at once. Every full render rebuilds the frame DOM
+     from scratch (renderActive is called fresh on each position change), so
+     any interval from the PREVIOUS render must die here before this render
+     creates its own (or none) — otherwise it keeps ticking against detached
+     nodes and a second one stacks on top of it next render. */
+  if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
+
   ctx.state.pageCleanup = () => {
     if (sess.wakeLock) { sess.wakeLock.release(); sess.wakeLock = null; }
     if (sess.confettiStop) { sess.confettiStop(); sess.confettiStop = null; }
+    if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
     cancelSpeech();
     ctx.state.session = null;
   };
@@ -119,7 +134,7 @@ function renderActive(ctx, root, draft, sess) {
   const extra = el('div', { class: 'gv-session-top-extra' }, ord, el('div', { class: 'gv-session-skips' }, skipSetBtn, skipExBtn));
 
   root.append(topBar(ctx, draft, extra));
-  root.append(exerciseBlock(ctx, entry));
+  root.append(exerciseBlock(ctx, sess, entry));
 
   if (entry.distance) root.append(distanceBody(ctx, draft, sess, entry, set));
   else if (entry.duration) root.append(durationBody(ctx, draft, sess, entry, set));
@@ -127,33 +142,89 @@ function renderActive(ctx, root, draft, sess) {
   else root.append(repsBody(ctx, draft, sess, entry, set));
 }
 
-function exerciseBlock(ctx, entry) {
+function exerciseBlock(ctx, sess, entry) {
   const ex = findExercise(ctx, entry.exercise);
   const head = el('div', { class: 'gv-session-exhead' },
     el('h2', { class: 'gv-display gv-session-exname' }, entry.exercise),
     entry.target ? el('div', { class: 'gv-session-target' }, entry.target) : '');
-  const img = ex ? guidedImageBlock(ex, resolveExerciseImages(ctx, ex)) : null;
+  /* Guided view only ever animates a start->finish pair — cap BEFORE error
+     handling wires up, so a dropped frame 1 never promotes a frame 3 that
+     was never even resolved for this view (the detail page still shows
+     everything; this cap is guided-view only). */
+  const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES)) : null;
   return el('div', { class: 'gv-session-exblock' }, head, img || '');
 }
 
-function guidedImageBlock(ex, frames) {
+/* One compact media frame with every resolved image stacked absolutely
+   inside it, auto-crossfading between them so a start->finish pair reads as
+   the movement animating (session-flow.js has no say here — this is pure
+   presentation over whatever frames resolved). A single image is static; a
+   dead/offline image is dropped from the rotation the moment it errors and
+   never gets a chance to flash on screen; once everything has failed the
+   whole block disappears, same graceful-degrade rule as page-exercise-
+   detail.js's mediaBlock. The interval this starts is registered on `sess`
+   (not ctx.setPageInterval — see render()'s comment) and is always cleared
+   before a new one is created. */
+function guidedImageBlock(sess, ex, frames) {
   if (!frames.length) return null;
   const wrap = el('div', { class: 'gv-session-media' });
-  let alive = frames.length;
-  for (const { src, tag } of frames) {
-    const frame = el('div', { class: 'gv-media-frame gv-session-frame' },
-      el('img', { class: 'gv-media-img', src, alt: `${ex.name} — ${tag}`, loading: 'lazy' }),
-      el('span', { class: 'gv-media-frame-tag' }, tag));
-    /* Same graceful-degrade rule as page-exercise-detail.js's mediaBlock:
-       offline/dead links drop quietly, and the whole block disappears once
-       nothing is left rather than showing a broken-image glyph. */
-    frame.querySelector('img').addEventListener('error', () => {
-      frame.remove();
-      if (--alive <= 0) wrap.remove();
+  const frame = el('div', { class: 'gv-media-frame gv-session-frame' });
+  const imgs = frames.map(({ src, tag }) =>
+    el('img', { class: 'gv-session-cycle-img', src, alt: `${ex.name} — ${tag}`, loading: 'lazy' }));
+  imgs.forEach(img => frame.append(img));
+  wrap.append(frame);
+
+  const failed = new Set();
+  let current = 0;
+  imgs[0].classList.add('gv-session-cycle-on');
+
+  const showFrame = idx => {
+    imgs.forEach((img, i) => img.classList.toggle('gv-session-cycle-on', i === idx));
+    current = idx;
+  };
+
+  imgs.forEach((img, i) => {
+    img.addEventListener('error', () => {
+      failed.add(i);
+      img.remove();
+      if (failed.size >= imgs.length) { // nothing left — vanish quietly, and stop cycling nothing
+        wrap.remove();
+        if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
+        return;
+      }
+      if (current === i) {
+        const next = nextFrameIndex(imgs.length, failed, i);
+        if (next !== null) showFrame(next);
+      }
+      if (imgs.length - failed.size <= 1 && sess.mediaCycleTimer) { // one frame left — static, no need to keep ticking
+        window.clearInterval(sess.mediaCycleTimer);
+        sess.mediaCycleTimer = null;
+      }
     });
-    wrap.append(frame);
+  });
+
+  if (imgs.length <= 1) return wrap; // static — no timer, nothing to cycle
+
+  if (confetti.prefersReducedMotion()) {
+    /* No auto-cycle, no transition (the CSS drops the opacity transition
+       under the same media query) — frame 1 holds until tapped. */
+    frame.classList.add('gv-session-frame-tap');
+    frame.setAttribute('role', 'button');
+    frame.setAttribute('tabindex', '0');
+    frame.setAttribute('aria-label', `${ex.name} — tap to see the next position`);
+    attachTapZone(frame, () => {
+      const next = nextFrameIndex(imgs.length, failed, current);
+      if (next !== null) showFrame(next);
+    });
+    return wrap;
   }
-  return wrap.childNodes.length ? wrap : null;
+
+  sess.mediaCycleTimer = window.setInterval(() => {
+    const next = nextFrameIndex(imgs.length, failed, current);
+    if (next !== null && next !== current) showFrame(next);
+  }, MEDIA_CYCLE_MS);
+
+  return wrap;
 }
 
 function muteButton(sess, onToggle) {
