@@ -123,7 +123,23 @@
 
 /* ---------- header + nav (reading register) ---------- */
 
-.gv-head { padding: 14px 18px 6px; }
+.gv-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px 6px; }
+.gv-head-actions { margin-left: auto; display: flex; gap: 4px; flex: 0 0 auto; }
+.gv-app .gv-head-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--gv-ink-dim);
+  cursor: pointer;
+  box-shadow: none;
+}
+.gv-app .gv-head-btn:hover { color: var(--gv-ink); background: var(--gv-lime-ghost); }
+.gv-app .gv-head-btn.on { background: var(--gv-ink); color: var(--gv-lime-hi); }
+.gv-head-btn .gv-ico svg { width: 19px; height: 19px; }
 .gv-logo { display: flex; align-items: center; gap: 10px; }
 .gv-logo .gv-ico { background: var(--gv-ink); color: var(--gv-lime-hi); padding: 6px; }
 .gv-logo-text {
@@ -1318,6 +1334,11 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
    Keyed on the HOST's own mobile class as well as narrow panes, so a
    tablet with a wide pane still gets thumb-sized controls. Both selectors
    beat the (0,2,0) base rules. */
+
+body.is-mobile .gv-app .gv-head-btn,
+.gv-app.gv-narrow .gv-head-btn { width: 44px; height: 44px; }
+body.is-mobile .gv-app .gv-head-btn .gv-ico svg,
+.gv-app.gv-narrow .gv-head-btn .gv-ico svg { width: 21px; height: 21px; }
 
 body.is-mobile .gv-app .gv-nav-btn,
 .gv-app.gv-narrow .gv-nav-btn {

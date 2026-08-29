@@ -27,8 +27,11 @@ const NAV = [
   { id: 'goals', label: 'Goals', icon: 'target' },
   { id: 'running', label: 'Running', icon: 'footprints', when: ctx => ctx.hasRunning() },
   { id: 'history', label: 'History', icon: 'history' },
-  { id: 'profile', label: 'Profile', icon: 'user' },
-  { id: 'export', label: 'Export', icon: 'share-2' },
+  /* place:'head' — utility destinations live top-right beside the logo, not
+     in the main nav. Keeps the nav to six primary tabs, which is what makes
+     it fit a phone without scrolling. */
+  { id: 'profile', label: 'Profile', icon: 'user', place: 'head' },
+  { id: 'export', label: 'Export', icon: 'share-2', place: 'head' },
 ];
 
 function mountApp(view) {
@@ -61,7 +64,7 @@ function mountApp(view) {
   };
   syncChrome();
 
-  let navEl = null, pageEl = null;
+  let navEl = null, pageEl = null, headActionsEl = null;
 
   ctx.notice = msg => new Notice(`Gym: ${msg}`, 5000);
 
@@ -194,25 +197,32 @@ function mountApp(view) {
   function buildNav() {
     if (!navEl) return;
     clear(navEl);
+    if (headActionsEl) clear(headActionsEl);
     for (const item of NAV) {
       if (item.when && !item.when(ctx)) continue;
-      const b = el('button', { class: 'gv-nav-btn', type: 'button', 'data-page': item.id },
-        ico(item.icon), el('span', { class: 'gv-nav-label' }, item.label));
+      const head = item.place === 'head';
+      const b = el('button', {
+        class: head ? 'gv-head-btn' : 'gv-nav-btn',
+        type: 'button', 'data-page': item.id,
+        'aria-label': head ? item.label : null,
+      }, ico(item.icon), head ? '' : el('span', { class: 'gv-nav-label' }, item.label));
       b.addEventListener('click', () => {
         /* Leaving mid-log keeps the draft: coming back to Today offers the
            log page again via the nav highlight, and Finish/Discard are the
            only ways to end it. Navigation itself must never eat a session. */
         ctx.nav(item.id);
       });
-      navEl.append(b);
+      (head && headActionsEl ? headActionsEl : navEl).append(b);
     }
     renderNavState();
   }
 
   function buildShell() {
     clear(rootEl);
+    headActionsEl = el('div', { class: 'gv-head-actions' });
     const head = el('div', { class: 'gv-head' },
-      el('div', { class: 'gv-logo' }, ico('dumbbell'), el('span', { class: 'gv-logo-text' }, 'Gym Vault')));
+      el('div', { class: 'gv-logo' }, ico('dumbbell'), el('span', { class: 'gv-logo-text' }, 'Gym Vault')),
+      headActionsEl);
     navEl = el('nav', { class: 'gv-nav', 'aria-label': 'Gym sections' });
     pageEl = el('main', { class: 'gv-page' });
     rootEl.append(head, navEl, pageEl);
@@ -224,9 +234,11 @@ function mountApp(view) {
     const current = ctx.state.page === 'log' || ctx.state.page === 'session' ? 'dashboard'
       : ctx.state.page === 'exercise' ? 'exercises'
       : ctx.state.page;
-    for (const b of navEl.querySelectorAll('.gv-nav-btn')) {
-      b.classList.toggle('on', b.getAttribute('data-page') === current);
-    }
+    const buttons = [
+      ...navEl.querySelectorAll('.gv-nav-btn'),
+      ...(headActionsEl ? headActionsEl.querySelectorAll('.gv-head-btn') : []),
+    ];
+    for (const b of buttons) b.classList.toggle('on', b.getAttribute('data-page') === current);
   }
 
   /* Vault watcher: reload when a gym file changes and the change wasn't one
