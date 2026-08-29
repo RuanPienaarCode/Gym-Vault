@@ -16,6 +16,7 @@ const pages = {
   export: require('./page-export'),
   log: require('./page-log'),
   exercise: require('./page-exercise-detail'),
+  session: require('./page-session'),
 };
 
 const NAV = [
@@ -38,7 +39,11 @@ function mountApp(view) {
     app, plugin, io, view,
     settings: plugin.settings,
     data: null,
-    state: { page: 'dashboard', params: {}, logDraft: null },
+    /* session: guided-mode UI state ONLY (position, phase, timers) — the
+       draft itself stays on logDraft, per ONE DRAFT, TWO VIEWS. pageCleanup
+       is a one-shot teardown any page can register (wake lock, confetti rAF)
+       that ctx.nav runs the moment the page actually changes. */
+    state: { page: 'dashboard', params: {}, logDraft: null, session: null, pageCleanup: null },
     _interval: null,
   };
 
@@ -100,6 +105,15 @@ function mountApp(view) {
   ctx.openFile = file => { app.workspace.getLeaf('tab').openFile(file); };
 
   ctx.nav = (page, params) => {
+    /* Leaving a page that registered cleanup (guided mode's wake lock and
+       any in-flight confetti burst) tears it down exactly once — even when
+       the user bails via the persistent nav bar rather than guided mode's
+       own exit button. A re-nav to the SAME page (e.g. a refresh) must not
+       trigger it. */
+    if (ctx.state.pageCleanup && page !== ctx.state.page) {
+      try { ctx.state.pageCleanup(); } catch (e) { console.error('gym-vault page cleanup', e); }
+      ctx.state.pageCleanup = null;
+    }
     ctx.state.page = page;
     ctx.state.params = params || {};
     ctx.rerender();
@@ -108,6 +122,20 @@ function mountApp(view) {
   ctx.startLog = (plan, day) => {
     pages.log.startDraft(ctx, plan, day);
     ctx.nav('log');
+  };
+
+  /* Enter guided mode over whatever draft already exists in
+     ctx.state.logDraft — page-session.js routes to the dashboard if there
+     isn't one. session=null forces a fresh initialPosition() so re-entering
+     always resumes at the first actually-incomplete set, honouring anything
+     ticked on the overview since guided mode was last open. */
+  ctx.enterGuided = () => {
+    ctx.state.session = null;
+    ctx.nav('session');
+  };
+  ctx.startGuided = (plan, day) => {
+    pages.log.startDraft(ctx, plan, day);
+    ctx.enterGuided();
   };
 
   /* A page may register one interval (the log clock); it's cleared on every
@@ -173,7 +201,7 @@ function mountApp(view) {
 
   function renderNavState() {
     if (!navEl) return;
-    const current = ctx.state.page === 'log' ? 'dashboard'
+    const current = ctx.state.page === 'log' || ctx.state.page === 'session' ? 'dashboard'
       : ctx.state.page === 'exercise' ? 'exercises'
       : ctx.state.page;
     for (const b of navEl.querySelectorAll('.gv-nav-btn')) {
@@ -223,6 +251,12 @@ function mountApp(view) {
       if (resizeObs) resizeObs.disconnect();
       if (ctx._interval) window.clearInterval(ctx._interval);
       if (debounceTimer) window.clearTimeout(debounceTimer);
+      /* View closing mid-guided-session: release the wake lock / stop any
+         confetti burst the same way navigating away would. */
+      if (ctx.state.pageCleanup) {
+        try { ctx.state.pageCleanup(); } catch (e) { console.error('gym-vault page cleanup', e); }
+        ctx.state.pageCleanup = null;
+      }
     },
     hasDraft: () => !!ctx.state.logDraft,
     reload: () => ctx.reload(),

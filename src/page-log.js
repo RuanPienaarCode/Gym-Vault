@@ -54,12 +54,21 @@ function render(ctx, root) {
 
   const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Discard session' }, ico('arrow-left'));
   back.addEventListener('click', confirmDiscard);
+
+  /* Enters guided mode over THIS SAME draft at the first incomplete set —
+     no new session, just a second renderer over the one draft (see
+     controller.js ctx.enterGuided). */
+  const guidedBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-logtop-guided', type: 'button' },
+    ico('play'), el('span', { class: 'gv-btn-guided-label' }, 'Guided'));
+  guidedBtn.addEventListener('click', () => ctx.enterGuided());
+
   root.append(el('div', { class: 'gv-logtop' },
     el('div', { class: 'gv-logtop-lead' },
       back,
       el('div', {},
         el('div', { class: 'gv-logtop-title' }, draft.day || 'Freestyle session'),
         el('div', { class: 'gv-logtop-sub' }, [draft.plan, fmtShort(draft.date)].filter(Boolean).join(' · ')))),
+    guidedBtn,
     el('div', { class: 'gv-log-clock' }, ico('timer'), el('span', { class: 'gv-log-elapsed' }, elapsed(draft)))));
 
   // Tick the elapsed label without re-rendering the whole page (inputs would
@@ -211,11 +220,12 @@ function openAddExercise(ctx, draft) {
   }).open();
 }
 
-async function finishSession(ctx, draft) {
-  /* stats.setCounts is the one rule for what gets saved: ticked done OR
-     holding any typed figure — sweaty thumbs forget ticks, and silently
-     dropping three typed sets is worse than saving an untucked one. The
-     tally above uses the same rule, so what you see is what lands. */
+/* The one rows-shaping rule, shared by finishSession (which SAVES it) and
+   page-session.js (which builds a synthetic in-memory workout from it to
+   check goal progress mid-session, without ever writing to disk) — two
+   copies of "what a saved row looks like" is exactly how this codebase
+   grows wrong numbers (see stats.js's header comment). */
+function buildRows(draft) {
   const rows = [];
   for (const entry of draft.entries) {
     let n = 0;
@@ -242,6 +252,15 @@ async function finishSession(ctx, draft) {
       }
     }
   }
+  return rows;
+}
+
+async function finishSession(ctx, draft) {
+  /* stats.setCounts is the one rule for what gets saved: ticked done OR
+     holding any typed figure — sweaty thumbs forget ticks, and silently
+     dropping three typed sets is worse than saving an untucked one. The
+     tally above uses the same rule, so what you see is what lands. */
+  const rows = buildRows(draft);
   if (!rows.length) { ctx.notice('Tick a set (or type a figure) before finishing.'); return; }
   /* Double-tap guard: the save can take a beat on a syncing vault, and a
      second tap mid-await would write "<date> 2.md" with identical rows. */
@@ -261,4 +280,4 @@ async function finishSession(ctx, draft) {
   ctx.reload();
 }
 
-module.exports = { render, startDraft };
+module.exports = { render, startDraft, buildRows, finishSession };

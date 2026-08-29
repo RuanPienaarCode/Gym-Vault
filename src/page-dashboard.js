@@ -93,9 +93,15 @@ function render(ctx, root) {
         last && last.fm.date ? `Last: ${fmtShort(last.fm.date)} · ${sessionSets(last.rows)} sets` : 'First session — make it count')));
     slab.append(el('button', {
       class: 'gv-btn-go', type: 'button',
-      onclick: () => ctx.startLog(dayPlan, day),
+      onclick: () => ctx.startGuided(dayPlan, day),
     }, doneToday ? 'Log another session' : 'Get after it'));
     hero.append(slab);
+    /* Guided is the default path; manual entry (the old direct-to-overview
+       behaviour) stays one tap away for anyone who'd rather type it in. */
+    hero.append(el('button', {
+      class: 'gv-btn-hero-ghost gv-hero-manual', type: 'button',
+      onclick: () => ctx.startLog(dayPlan, day),
+    }, el('span', {}, 'Log manually')));
   } else {
     hero.append(el('h2', { class: 'gv-display gv-hero-title' }, el('span', { class: 'gv-mark' }, 'Rest day')));
     const next = nextPlannedDay(ctx, todayKeyName);
@@ -118,7 +124,7 @@ function render(ctx, root) {
         el('div', { class: 'gv-kicker' }, 'Also today'),
         el('div', { class: 'gv-alsotoday-name' }, extra.day.name),
         el('div', { class: 'gv-alsotoday-plan' }, extra.plan.name)),
-      el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startLog(extra.plan, extra.day) },
+      el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startGuided(extra.plan, extra.day) },
         ico('play'), el('span', {}, 'Start'))));
   }
 

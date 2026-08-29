@@ -107,17 +107,38 @@ function render(ctx, root) {
   }
 }
 
-function mediaBlock(ctx, ex) {
-  /* `image` may be a single path/URL or an inline list — two frames (start →
-     finish) is the free-exercise-db shape and reads as the movement. */
+/* Resolve an exercise's `image:` frontmatter into displayable frames —
+   [{src, tag}], in order. Shared with page-session.js (the guided view) so
+   both pages agree on vault-path / wikilink / https resolution and the
+   free-exercise-db two-frame (start→finish) convention; unresolvable entries
+   are simply dropped, same as the DOM callers that render them. DOM building
+   (the actual <img> nodes, their offline error handling) stays local to each
+   caller — this only resolves URLs. */
+function resolveExerciseImages(ctx, ex) {
   const images = (Array.isArray(ex.fm.image) ? ex.fm.image : ex.fm.image ? [ex.fm.image] : [])
     .map(s => s.toString().trim()).filter(Boolean);
   /* Notes seeded before multi-frame support hold only the 0.jpg of a
      free-exercise-db pair; derive the finish frame instead of asking anyone
-     to migrate files. A missing sibling just drops via the error handler. */
+     to migrate files. A missing sibling just drops (unresolvable → filtered
+     below, same as any other dead link). */
   if (images.length === 1 && /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\/.+\/0\.jpg$/.test(images[0])) {
     images.push(images[0].replace(/0\.jpg$/, '1.jpg'));
   }
+  const srcPath = ex.file ? ex.file.path : '';
+  const pair = images.length === 2; // the classic start/finish pair
+  const out = [];
+  images.forEach((image, i) => {
+    const src = isUrl(image)
+      ? image
+      : (() => { const f = vaultFile(ctx, image, srcPath); return f ? ctx.app.vault.getResourcePath(f) : null; })();
+    if (!src) return;
+    out.push({ src, tag: pair ? (i === 0 ? 'start' : 'finish') : String(i + 1) });
+  });
+  return out;
+}
+
+function mediaBlock(ctx, ex) {
+  const images = resolveExerciseImages(ctx, ex);
   const video = (ex.fm.video || '').toString().trim();
   if (!images.length && !video) return null;
   const wrap = el('div', { class: 'gv-card gv-media' });
@@ -139,14 +160,9 @@ function mediaBlock(ctx, ex) {
   }
   if (images.length) {
     const frames = el('div', { class: 'gv-media-frames' });
-    const pair = images.length === 2; // the classic start/finish pair
-    let alive = images.length;
-    images.forEach((image, i) => {
-      const src = isUrl(image)
-        ? image
-        : (() => { const f = vaultFile(ctx, image, srcPath); return f ? ctx.app.vault.getResourcePath(f) : null; })();
-      if (!src) { alive--; return; }
-      const tag = pair ? (i === 0 ? 'start' : 'finish') : String(i + 1);
+    const pair = images.length === 2 && images[0].tag === 'start'; // the classic start/finish pair
+    let alive = images.length; // resolveExerciseImages already dropped anything unresolvable
+    images.forEach(({ src, tag }) => {
       const frame = el('div', { class: 'gv-media-frame' },
         el('img', { class: 'gv-media-img', src, alt: `${ex.name} — ${pair ? tag + ' position' : `view ${tag}`}`, loading: 'lazy' }),
         el('span', { class: 'gv-media-frame-tag' }, tag));
@@ -197,4 +213,4 @@ function tile(icon, big, label) {
     el('div', { class: 'gv-tile-label' }, label));
 }
 
-module.exports = { render };
+module.exports = { render, resolveExerciseImages };

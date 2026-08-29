@@ -1096,6 +1096,108 @@
 }
 .gv-rc-zone.gv-rc-flash .gv-rc-count { color: var(--gv-lime); }
 
+/* ---------- guided session (src/page-session.js) ----------
+   A second renderer over the SAME draft page-log.js edits — deliberately
+   acting-register regardless of the chosen skin, same precedent as the rep
+   counter modal above (a live set is a live set; the editorial calm register
+   is for reading surfaces). Reuses .gv-rc-zone/.gv-rc-count/.gv-rc-bar,
+   .gv-set-input, .gv-bar, .gv-btn-go and .gv-hero-action wholesale — the
+   gv-session-* classes here only resize/re-lay them for an embedded page
+   context instead of a full-screen modal. No new hex anywhere below. */
+
+.gv-session-top { margin: 12px -18px 14px; padding: 0 18px 10px; border-bottom: 1px solid var(--gv-line); }
+.gv-session-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.gv-session-top-extra { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 auto; min-width: 0; }
+.gv-session-ord {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gv-ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gv-session-skips { display: flex; gap: 6px; flex: 0 0 auto; }
+.gv-session-bar { margin-top: 2px; }
+
+.gv-session-exblock { margin: 4px 0 14px; }
+.gv-session-exname { font-size: clamp(26px, 8vw, 40px); }
+.gv-session-target {
+  margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--gv-lime-deep);
+}
+.theme-dark .gv-app .gv-session-target { color: var(--gv-lime); }
+
+.gv-session-media { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 0; }
+.gv-session-frame .gv-media-img { max-height: 130px; }
+
+.gv-session-body { display: flex; flex-direction: column; }
+.gv-session-body-plain { margin-top: 4px; }
+.gv-app .gv-session-zone { min-height: 180px; margin: 0 0 10px; border: 2px solid var(--gv-ink); }
+.theme-dark .gv-app .gv-session-zone { border-color: var(--gv-line-2); }
+.gv-app .gv-session-count { font-size: clamp(64px, 22vw, 140px); }
+.gv-session-rcbar {
+  border-bottom: 0; border-top: 2px solid var(--gv-ink);
+  padding: 10px 0 0; background: transparent; justify-content: center; gap: 12px;
+}
+.theme-dark .gv-session-rcbar { border-color: var(--gv-line-2); }
+
+.gv-session-weightrow { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.gv-session-runrow { display: flex; gap: 14px; margin: 10px 0 16px; }
+.gv-session-runfield { display: flex; align-items: center; gap: 8px; }
+.gv-app .gv-session-donebtn { width: 100%; min-height: 52px; margin-top: 4px; }
+
+.gv-session-rest { padding: 6px 4px 0; text-align: center; }
+.gv-session-rest-clock-wrap {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 4px;
+  font-family: var(--gv-display); font-size: clamp(40px, 14vw, 72px); color: var(--gv-ink);
+}
+.gv-session-rest-clock-wrap .gv-ico svg { width: 28px; height: 28px; color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-session-rest-clock-wrap .gv-ico svg { color: var(--gv-lime); }
+.gv-session-rest-clock { line-height: 1; }
+.gv-session-rest-next { margin: 14px 0; }
+.gv-session-rest-nextname { font-family: var(--gv-display); font-size: clamp(22px, 7vw, 32px); text-transform: uppercase; margin-top: 4px; }
+.gv-session-rest-nextset { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 4px; }
+.gv-session-nextwrap { margin-top: 14px; }
+.gv-app .gv-session-nextwrap .gv-btn-go { margin-top: 0; }
+
+.gv-session-callouts { margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.gv-app .gv-session-callout {
+  background: var(--gv-lime-ghost); color: var(--gv-lime-deep); border: 1px solid var(--gv-lime);
+  padding: 8px 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.theme-dark .gv-app .gv-session-callout { color: var(--gv-lime); }
+
+.gv-session-complete { text-align: center; padding: 20px 4px 0; }
+.gv-session-complete-ico {
+  width: 64px; height: 64px; margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gv-ink); color: var(--gv-lime-hi);
+}
+.theme-dark .gv-app .gv-session-complete-ico { background: var(--gv-lime); color: #10140b; }
+.gv-session-complete-ico .gv-ico svg { width: 30px; height: 30px; }
+.gv-session-complete-title { font-size: clamp(32px, 10vw, 52px); margin: 0 0 6px; }
+.gv-session-wins { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-lime-deep); margin-bottom: 14px; }
+.theme-dark .gv-app .gv-session-wins { color: var(--gv-lime); }
+.gv-session-complete-tiles { margin: 4px 0 16px; }
+.gv-app .gv-session-review { width: 100%; margin-top: 10px; }
+
+/* Confetti overlay (src/confetti.js) — fixed, non-interactive, above
+   everything; the burst itself is drawn on canvas via getComputedStyle
+   colors, nothing here carries a hex value. */
+.gv-confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
+
+/* logtop "Guided" button — same treatment as the logtop's own icon buttons
+   (transparent on the ink bar, lime-hi text/border) so it reads as part of
+   the bar rather than a stray white pill. */
+.gv-app .gv-logtop .gv-btn-ghost, .theme-dark .gv-app .gv-logtop .gv-btn-ghost {
+  background: transparent;
+  border-color: rgba(245, 247, 239, 0.4);
+  color: var(--gv-lime-hi);
+}
+.theme-dark .gv-app .gv-logtop .gv-btn-ghost { border-color: rgba(16, 20, 11, 0.4); color: var(--gv-lime-deep); }
+.gv-app .gv-logtop .gv-btn-ghost:hover { background: rgba(245, 247, 239, 0.12); }
+.gv-logtop-guided { flex: 0 0 auto; }
+
+/* Dashboard hero's secondary "Log manually" — a quiet ghost, not competing
+   with the one lime flood above it. */
+.gv-app .gv-hero-manual { min-height: 40px; margin: 8px 0 18px; font-size: 10px; border-width: 1px; }
+
 /* ---------- narrow panes ----------
    Keyed on .gv-narrow (a ResizeObserver in controller.js watches the APP
    ROOT's own width) rather than a media query: media queries read the
@@ -1109,6 +1211,8 @@
    `.gv-nav-btn span` here hides the icon too and every button in a
    narrow pane collapses to an empty block. */
 .gv-app.gv-narrow .gv-nav-label { display: none; }
+.gv-app.gv-narrow .gv-btn-guided-label { display: none; }
+.gv-app.gv-narrow .gv-logtop-guided { padding: 7px 9px; }
 
 /* ---------- touch targets ----------
    Thumbs, not cursors: Apple's HIG asks for ~44px and these were 37px.
@@ -1252,6 +1356,7 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   border-bottom: 3px solid var(--gv-ink);
 }
 .gv-app.gv-skin-editorial .gv-logtop .gv-icon-btn { border-color: var(--gv-line-2); color: var(--gv-ink); background: transparent; }
+.gv-app.gv-skin-editorial .gv-logtop .gv-btn-ghost { border-color: var(--gv-line-2); color: var(--gv-ink); background: transparent; }
 .gv-app.gv-skin-editorial .gv-logtop-sub { color: var(--gv-ink-dim); }
 .gv-app.gv-skin-editorial .gv-log-clock { color: var(--gv-lime-deep); }
 .theme-dark .gv-app.gv-skin-editorial .gv-log-clock { color: var(--gv-lime); }
