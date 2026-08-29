@@ -10,6 +10,9 @@ const DEFAULT_SETTINGS = {
   onboarded: false,
   skin: 'floor',         // keys of SKINS
   accent: 'lime',        // keys of ACCENTS
+  /* Raw base of a plan library repo (see RuanPienaarCode/gym_plans). Any
+     repo with the same shape — plans.json + plans/ + exercises/ — works. */
+  planRepo: 'https://raw.githubusercontent.com/RuanPienaarCode/gym_plans/main',
 };
 
 /* Selectable styles. Each key maps to a gv-skin-<key> class on the app root;

@@ -240,7 +240,13 @@ function makeIo(plugin) {
   const repoBase = () => (plugin.settings.planRepo || '').replace(/\/+$/, '');
 
   async function fetchPlanIndex() {
-    const res = await requestUrl({ url: `${repoBase()}/plans.json`, throw: true });
+    /* An empty base would build "/plans.json", which iOS rejects with the
+       unhelpful "unsupported URL". Say what is actually wrong instead. */
+    const base = repoBase();
+    if (!/^https?:\/\//i.test(base)) {
+      throw new Error('no plan library URL is set — add one in Settings');
+    }
+    const res = await requestUrl({ url: `${base}/plans.json`, throw: true });
     const index = JSON.parse(res.text);
     if (!index || !Array.isArray(index.plans)) throw new Error('that URL did not return a plan index');
     return index;
