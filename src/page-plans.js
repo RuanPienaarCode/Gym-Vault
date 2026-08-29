@@ -75,7 +75,7 @@ function renderDetail(ctx, root, plan) {
       el('div', {},
         el('div', { class: 'gv-day-title' }, day.name),
         el('div', { class: 'gv-day-sub' }, WEEKDAY_LABELS[day.weekday] || day.weekday)),
-      el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startLog(plan, day) },
+      el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startGuided(plan, day) },
         ico('play'), el('span', {}, 'Start'))));
     if (day.notes.length) {
       const prose = day.notes.join(' ').trim();
