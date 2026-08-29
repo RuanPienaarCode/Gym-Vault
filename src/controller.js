@@ -243,7 +243,33 @@ function mountApp(view) {
       });
       (head && headActionsEl ? headActionsEl : navEl).append(b);
     }
+    if (headActionsEl) headActionsEl.append(settingsButton());
     renderNavState();
+  }
+
+  /* Settings sits beside Profile in the header, but is NOT a NAV entry: it
+     opens Obsidian's own settings dialog rather than routing to a page, so it
+     carries no data-page and renderNavState leaves it alone.
+
+     `app.setting` is not in the published API typings, so every hop is
+     guarded — on a build where it's missing the button explains where to go
+     by hand instead of doing nothing, which is the failure mode a silent
+     no-op would give. */
+  function settingsButton() {
+    const b = el('button', {
+      class: 'gv-head-btn', type: 'button', 'aria-label': 'Gym Vault settings',
+    }, ico('settings'));
+    b.addEventListener('click', () => {
+      const setting = app.setting;
+      const id = plugin.manifest && plugin.manifest.id;
+      if (setting && typeof setting.open === 'function' && typeof setting.openTabById === 'function' && id) {
+        setting.open();
+        setting.openTabById(id);
+        return;
+      }
+      ctx.notice('open Settings → Community plugins → Gym Vault.');
+    });
+    return b;
   }
 
   function buildShell() {

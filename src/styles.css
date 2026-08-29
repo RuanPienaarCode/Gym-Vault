@@ -114,6 +114,88 @@
 .gv-ico svg { width: 18px; height: 18px; opacity: 1; }
 .gv-dim { color: var(--gv-ink-dim); font-size: 13px; }
 
+/* ---------- progress photos ---------- */
+
+/* The stage is a fixed 3:4 portrait box. Sized with the padding-top ratio
+   trick rather than `aspect-ratio`: the plugin's floor is iOS 15 WebKit and
+   this file deliberately carries no post-15.0 CSS (css-guards.test.cjs and
+   the review linter both police that). */
+.gv-app .gv-photo-stage {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding-top: 0;
+  height: 0;
+  padding-bottom: 133.333%;
+  overflow: hidden;
+  background: var(--gv-lime-ghost);
+  border: 2px solid var(--gv-ink);
+  border-radius: 10px;
+}
+.gv-app .gv-photo-stage > * {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+.gv-app .gv-photo-video,
+.gv-app .gv-photo-shot,
+.gv-app .gv-photo-layer { object-fit: cover; }
+
+/* The live camera is mirrored so it reads like a mirror while you position
+   yourself. The SAVED file is not mirrored — toJpegBytes draws the raw video
+   frame — so what you compare later is the real orientation, not a flip that
+   would make one side of you appear to change. */
+.gv-app .gv-photo-video { transform: scaleX(-1); }
+
+/* Your previous photo, ghosted over the frame. Low enough to see through,
+   solid enough to line up against. */
+.gv-app .gv-photo-ghost { object-fit: cover; opacity: 0.4; pointer-events: none; }
+.gv-app .gv-photo-ghost-solo { opacity: 0.75; }
+
+/* The fallback outline, for your first shot of a pose. */
+.gv-app .gv-photo-guide { fill: none; stroke: var(--gv-lime); stroke-width: 1.6; opacity: 0.85; pointer-events: none; }
+.theme-dark .gv-app .gv-photo-guide { stroke: var(--gv-lime); }
+
+.gv-app .gv-photo-title { margin: 0 0 4px; font-size: 18px; }
+.gv-app .gv-photo-hint,
+.gv-app .gv-photo-note { margin: 0 0 10px; color: var(--gv-ink-dim); font-size: 13px; }
+.gv-app .gv-photo-note { margin-top: 10px; }
+
+.gv-app .gv-photo-actions,
+.gv-app .gv-photo-viewer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.gv-app .gv-photo-shoot { min-height: 44px; }
+
+/* Viewer: two stacked layers cross-faded by opacity. The under layer holds
+   the outgoing frame so there is never a blank flash mid-dissolve. */
+.gv-app .gv-photo-layer-top { opacity: 1; }
+.gv-app .gv-photo-caption {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--gv-ink-dim);
+}
+.gv-app .gv-photo-scrub {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin: 10px auto 0;
+  min-height: 44px;
+}
+.gv-app .gv-photos-section { margin-bottom: 18px; }
+.gv-app .gv-photos-viewer { margin-top: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-app .gv-photo-layer { transition: none !important; }
+}
+
 /* ---------- accessibility utilities ---------- */
 
 /* Visually hidden, but still read by a screen reader. The guided session's

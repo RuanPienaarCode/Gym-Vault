@@ -1,6 +1,6 @@
 {
   "name": "gym-vault",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Training dashboard, plans, goals and history as plain files in your Obsidian vault.",
   "private": true,
   "license": "AGPL-3.0-only",

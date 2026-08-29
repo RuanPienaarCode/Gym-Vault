@@ -13,6 +13,7 @@ const { parseFrontmatter, serializeFrontmatter, tableToObjects, buildMdTable, re
 const { parsePlanBody, serializePlanBody } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
+const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
 
 /* Windows/OSX-illegal filename characters, folded to '-' so an exercise or
    plan named from user input always lands on disk. */
@@ -418,6 +419,55 @@ function makeIo(plugin) {
     return true;
   }
 
+  /* ---- progress photos ------------------------------------------------ */
+
+  /* Photos are BINARY and live outside the markdown model entirely: the
+     folder names the pose, the filename carries the date, and that is the
+     only record. See progress-photos.js for why there is no index note.
+
+     Deliberately NOT part of loadAll(): loadAll reads every note on every
+     reload, and photos are needed by exactly one page. Keeping them out means
+     the dashboard never pays for them — and, more importantly, means they
+     cannot end up inside `data`, which is what the exporters walk. A body
+     photo must never be one refactor away from an export. */
+  async function listPhotos() {
+    const folder = v.getFolderByPath(photosRoot(root()));
+    if (!folder) return [];
+    const out = [];
+    const walk = f => {
+      for (const child of f.children || []) {
+        if (child instanceof TFolder) walk(child);
+        else if (child instanceof TFile) {
+          const parsed = parsePhotoPath(root(), child.path);
+          if (parsed) out.push({ ...parsed, file: child });
+        }
+      }
+    };
+    walk(folder);
+    return out;
+  }
+
+  /* Write one photo. A second photo on the same date gets ` 2`, ` 3`… rather
+     than overwriting — a retake you meant to keep must not silently replace
+     the one you were comparing against. */
+  async function savePhoto(pose, dateISO, data, ext) {
+    await ensureFolder(photosRoot(root()));
+    await ensureFolder(poseFolder(root(), pose));
+    let path = photoPath(root(), pose, dateISO, ext);
+    const base = path.replace(/\.[^.]+$/, '');
+    const suffix = path.slice(base.length);
+    for (let n = 2; v.getFileByPath(path); n++) path = `${base} ${n}${suffix}`;
+    stamp();
+    await v.createBinary(path, data);
+    return path;
+  }
+
+  /* The src an <img> can actually load. Obsidian's own resource path is the
+     only thing that works on mobile — a file:// URL does not resolve inside
+     the app's WebView, and reading the bytes into a blob: URL would hold the
+     whole photo in memory for every thumbnail on the page. */
+  const photoSrc = file => v.getResourcePath(file);
+
   /* ---- first-run scaffold --------------------------------------------- */
 
   async function scaffold() {
@@ -552,6 +602,7 @@ function makeIo(plugin) {
     fetchPlanIndex, installPlan,
     createExercise, saveExercise, createGoal, saveGoal,
     createPlan, savePlan, setActivePlan, saveWorkout, trash, safeName,
+    listPhotos, savePhoto, photoSrc,
   };
 }
 

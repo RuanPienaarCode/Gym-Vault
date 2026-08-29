@@ -3,11 +3,14 @@
    the measurement log. Static facts live in Profile.md frontmatter; every
    measurement is a dated row in Body Log.md. */
 
-const { el, ico, fmt, fmtSeconds, sparkline } = require('./dom');
+const { el, ico, clear, fmt, fmtSeconds, sparkline } = require('./dom');
 const { BODY_COLUMNS } = require('./constants');
 const { todayISO, fmtShort } = require('./dates');
 const { weightSeries, bmi, num } = require('./stats');
 const { FormModal } = require('./modals');
+const { POSES, poseSummary, beforeAfter, photosForPose } = require('./progress-photos');
+const { PhotoCaptureModal } = require('./photo-capture');
+const { renderPhotoViewer } = require('./photo-viewer');
 
 function render(ctx, root) {
   const { data } = ctx;
@@ -97,6 +100,8 @@ function render(ctx, root) {
   /* Training notes from the profile body (watch-outs, context). */
   const notes = (data.profile.body || '').trim();
   if (notes) {
+  renderPhotos(ctx, root);
+
     root.append(el('div', { class: 'gv-section-title' }, ico('clipboard-list'), el('span', {}, 'Training notes')));
     const noteCard = el('div', { class: 'gv-card gv-profile-notes' });
     for (const para of notes.split(/\n\s*\n/)) noteCard.append(el('p', {}, para.replace(/\n/g, ' ')));
@@ -165,6 +170,99 @@ function openAddMeasurement(ctx) {
     submitLabel: 'Log',
     validate: v => (!v.date ? 'Pick a date.' : null),
     onSubmit: async v => { await ctx.io.appendBodyRow(v); ctx.reload(); },
+  }).open();
+}
+
+
+/* ---- progress photos ------------------------------------------------- */
+
+/* Photos are BINARY and are fetched separately from loadAll(), so this
+   section renders its shell synchronously and fills in when the listing
+   lands. Guarding on isConnected matters: the user can leave Profile before
+   the vault answers, and writing into a detached node is how a "why is this
+   blank" bug starts. */
+function renderPhotos(ctx, root) {
+  const ui = ctx.state.photosUi || (ctx.state.photosUi = { pose: 'standing' });
+
+  root.append(el('div', { class: 'gv-toolbar' },
+    el('h3', { class: 'gv-section-title' }, ico('camera'), el('span', {}, 'Progress photos'))));
+
+  const body = el('div', { class: 'gv-photos-section' },
+    el('div', { class: 'gv-dim' }, 'Loading photos…'));
+  root.append(body);
+
+  ctx.io.listPhotos().then(entries => {
+    if (!body.isConnected) return;
+    paint(ctx, body, entries, ui);
+  }).catch(e => {
+    if (!body.isConnected) return;
+    clear(body);
+    body.append(el('div', { class: 'gv-empty-line' }, `Could not read your photos — ${(e && e.message) || e}`));
+  });
+}
+
+function paint(ctx, body, entries, ui) {
+  clear(body);
+  /* Any earlier viewer's play timer must die before we build another, or two
+     dissolves run against the same stage. */
+  if (ctx.state.pageCleanup) { ctx.state.pageCleanup(); ctx.state.pageCleanup = null; }
+
+  const summary = poseSummary(entries);
+  const chips = el('div', { class: 'gv-chips' });
+  for (const { pose, count } of summary) {
+    const c = el('button', {
+      class: `gv-chip${ui.pose === pose.key ? ' on' : ''}`, type: 'button',
+      'aria-pressed': ui.pose === pose.key ? 'true' : 'false',
+    }, el('span', {}, count ? `${pose.label} · ${count}` : pose.label));
+    c.addEventListener('click', () => { ui.pose = pose.key; paint(ctx, body, entries, ui); });
+    chips.append(c);
+  }
+  body.append(chips);
+
+  const list = photosForPose(entries, ui.pose);
+  const pair = beforeAfter(entries, ui.pose);
+
+  const shoot = el('button', { class: 'gv-btn', type: 'button' },
+    ico('camera'), el('span', {}, list.length ? 'New photo' : 'First photo'));
+  shoot.addEventListener('click', () => openCapture(ctx, ui.pose, list, body, entries, ui));
+  body.append(el('div', { class: 'gv-photo-viewer-actions' }, shoot));
+
+  if (!list.length) {
+    body.append(el('div', { class: 'gv-empty-line' },
+      'No photos in this pose yet — the first one becomes the "before".'));
+    return;
+  }
+
+  const stage = el('div', { class: 'gv-photos-viewer' });
+  body.append(stage);
+  ctx.state.pageCleanup = renderPhotoViewer(stage, {
+    entries, pose: ui.pose, srcOf: f => ctx.io.photoSrc(f),
+  });
+
+  if (pair) {
+    body.append(el('div', { class: 'gv-photo-caption gv-dim' },
+      `${pair.count} photos · ${fmtShort(pair.before.date)} → ${fmtShort(pair.after.date)}`));
+  } else {
+    body.append(el('div', { class: 'gv-photo-caption gv-dim' },
+      'One photo so far — take another to see the change.'));
+  }
+}
+
+function openCapture(ctx, pose, list, body, entries, ui) {
+  const previous = list.length ? list[list.length - 1] : null;
+  new PhotoCaptureModal(ctx.app, {
+    pose,
+    ghostSrc: previous ? ctx.io.photoSrc(previous.file) : null,
+    onCaptured: async (bytes, dateISO) => {
+      try {
+        await ctx.io.savePhoto(pose, dateISO, bytes);
+        ctx.notice('progress photo saved.');
+        const fresh = await ctx.io.listPhotos();
+        if (body.isConnected) paint(ctx, body, fresh, ui);
+      } catch (e) {
+        ctx.notice(`could not save that photo — ${(e && e.message) || e}`);
+      }
+    },
   }).open();
 }
 

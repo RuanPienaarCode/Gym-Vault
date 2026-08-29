@@ -63,6 +63,12 @@ the app and the editor always agree.
 **Get plans from others.** *Plans → Browse* installs shared plans and any
 exercises they need. Point it somewhere else under Settings → *Plan library*.
 
+**See the change.** *Profile → Progress photos* takes a photo in a fixed
+pose — standing, flexing, side on or back — and lays your previous photo over
+the camera so you can line yourself up the same way each time. Drag the slider
+to compare any two dates, or press play for a slow dissolve through all of
+them. The photos are ordinary `.jpg` files in your vault.
+
 **Worth turning on.** Settings → *Download images for offline*, so the
 exercise library works with no connection. There's also an accent colour and
 a second visual style.
@@ -86,7 +92,18 @@ looking at to the clipboard. The plugin never reads the clipboard.
 
 **Exports.** Blood pressure, cholesterol and glucose are treated as clinical
 markers and are left out of every export format unless you explicitly switch
-them on for that export.
+them on for that export. The profile is exported as a fixed whitelist — a key
+you added to your profile note yourself is never exported, because the plugin
+cannot know it is safe to share.
+
+**Camera and progress photos.** The camera is used only while the photo
+screen is open, and the stream is released the moment you leave it. Photos are
+written straight into your vault as ordinary `.jpg` files under
+`Gym/Progress Photos/` and are never uploaded, never sent anywhere, and never
+included in any export in any format — not even with every switch turned on.
+Delete them like any other file. If your vault syncs, they sync with it, the
+same as every other note; if that is not what you want, exclude that folder in
+your sync settings.
 
 ## Data layout
 
@@ -96,12 +113,13 @@ Everything lives under one folder (default `Gym/`), all hand-editable:
 Gym/
   Profile.md            # frontmatter: name, birth_year, height_cm, sex
   Body Log.md           # one markdown table, a row per measurement
-                        # (plugin-owned: prose written around this table is
-                        #  replaced on the next logged measurement)
+                        # (only the table's lines are rewritten — headings and
+                        #  prose you write around it are left alone)
   Exercises/<name>.md   # frontmatter: type, muscles, equipment, unit
   Plans/<name>.md       # day sections + exercise lines (see above)
   Goals/<name>.md       # frontmatter: metric, exercise, target, deadline
   Workouts/<date> <day>.md  # frontmatter + a table of logged sets
+  Progress Photos/<pose>/<date>.jpg   # the folder IS the record — no index note
 ```
 
 ## Development
