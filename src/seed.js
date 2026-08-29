@@ -806,13 +806,17 @@ const SEED_GOALS = [
 
 const SEED_PROFILE = {
   fm: { name: '', birth_year: '', height_cm: '', sex: '' },
+  /* Starter prompts, not someone else's history: this note ships to every
+     new vault, so it asks the questions rather than answering them with the
+     author's own injuries and age. */
   body: [
-    'Training context: an athlete's age and build — longer levers mean more range to travel, and',
-    'tendons adapt slower than muscle, so explosive work ramps gradually.',
+    'Training context: note anything that shapes how you train — age, build,',
+    'how long you have been training, time available in a week.',
     '',
-    'Watch-outs: your own injury history. Sharp joint pain',
-    '(shoulder, elbow, wrist, knee) = stop that exercise. Muscle burn is fine;',
-    'joint pain is a warning. Sleep and food are half the program.',
+    'Watch-outs: list your own injury history and anything a session should',
+    'work around. Sharp joint pain (shoulder, elbow, wrist, knee) means stop',
+    'that exercise. Muscle burn is fine; joint pain is a warning. Sleep and',
+    'food are half the program.',
   ].join('\n') + '\n',
 };
 

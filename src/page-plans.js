@@ -4,7 +4,7 @@
    via "Open note", and everything written here round-trips through
    plan-parse so hand-written coaching cues survive. */
 
-const { el, ico } = require('./dom');
+const { el, ico, prose } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { addItem, removeItemAt } = require('./plan-parse');
 const { FormModal, ConfirmModal } = require('./modals');
@@ -68,7 +68,9 @@ function renderDetail(ctx, root, plan) {
   root.append(bar);
 
   if (plan.model.intro.length) {
-    root.append(el('div', { class: 'gv-plan-intro' }, plan.model.intro.join(' ').trim()));
+    /* First paragraph only until asked — a plan's rationale is worth having
+       but should not be the first wall you meet. */
+    root.append(prose(plan.model.intro, { class: 'gv-plan-intro', preview: 1 }));
   }
 
   for (const day of plan.model.days) {
@@ -79,10 +81,7 @@ function renderDetail(ctx, root, plan) {
         el('div', { class: 'gv-day-sub' }, WEEKDAY_LABELS[day.weekday] || day.weekday)),
       el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startGuided(plan, day) },
         ico('play'), el('span', {}, 'Start'))));
-    if (day.notes.length) {
-      const prose = day.notes.join(' ').trim();
-      if (prose) card.append(el('div', { class: 'gv-day-note' }, prose));
-    }
+    if (day.notes.length) card.append(prose(day.notes, { class: 'gv-day-note', preview: 1 }));
     const ul = el('div', { class: 'gv-day-items' });
     day.items.forEach((it, idx) => {
       ul.append(el('div', { class: 'gv-day-item' },

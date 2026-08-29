@@ -648,14 +648,90 @@
 .gv-plan-name { display: flex; align-items: center; gap: 10px; font-family: var(--gv-display); font-size: 22px; text-transform: uppercase; line-height: 1; }
 .gv-plan-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin: 6px 0 8px; }
 .gv-plan-days { display: flex; gap: 5px; flex-wrap: wrap; }
-.gv-plan-intro { font-size: 13.5px; color: var(--gv-ink-dim); line-height: 1.55; margin-bottom: 14px; max-width: 60ch; }
+/* Plan prose — the reading register: paper, hairlines, no accent flood.
+   Long coaching copy is chunked; each chunk keeps its headline on screen and
+   folds only its detail away (see dom.js `prose` for why nothing is hidden
+   behind a classifier). */
+.gv-prose { max-width: 62ch; }
+.gv-prose p { font-size: 13.5px; color: var(--gv-ink-dim); line-height: 1.6; margin: 0 0 10px; }
+.gv-prose p:last-child { margin-bottom: 0; }
+.gv-prose-list { margin: 0 0 10px; padding-left: 18px; }
+.gv-prose-list li { font-size: 13.5px; color: var(--gv-ink-dim); line-height: 1.6; margin-bottom: 4px; }
+.gv-prose-list li:last-child { margin-bottom: 0; }
+.gv-prose-list:last-child { margin-bottom: 0; }
+
+.gv-chunk { border-top: 1px solid var(--gv-line); }
+.gv-chunk:first-child { border-top: 0; }
+.gv-chunk-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gv-ink);
+  line-height: 1.4;
+  /* A flex item will not shrink below its min-content width, so a long
+     headline ran off the screen edge and shoved the chevron out with it.
+     min-width:0 lets it wrap; overflow-wrap catches unbreakable tokens. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* A derived headline is the opening of a sentence, not a section title —
+   shouting it in caps reads as a label it was never written to be. */
+.gv-chunk-label.is-summary {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gv-ink-dim);
+}
+
+/* The disclosure control. Full-width so the whole headline row is the target,
+   and at least 44px tall for a thumb. */
+.gv-app .gv-chunk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+}
+/* Guarded: on a touchscreen :hover sticks after a tap, leaving the last
+   headline you touched painted in the accent colour. */
+@media (hover: hover) {
+  .gv-app .gv-chunk-head:hover .gv-chunk-label { color: var(--gv-lime-deep); }
+}
+.gv-chunk-caret {
+  flex: 0 0 auto;
+  color: var(--gv-ink-dim);
+  transition: transform 120ms ease;
+}
+.gv-chunk.open .gv-chunk-caret { transform: rotate(180deg); }
+.gv-chunk-body { padding-bottom: 12px; }
+/* Collapsed by default; the lead chunk and any opened chunk show theirs. */
+.gv-chunk .gv-chunk-body { display: none; }
+.gv-chunk.open .gv-chunk-body { display: block; }
+@media (prefers-reduced-motion: reduce) { .gv-chunk-caret { transition: none; } }
+
+@media (hover: hover) {
+  .theme-dark .gv-app .gv-chunk-head:hover .gv-chunk-label { color: var(--gv-lime); }
+}
+.gv-plan-intro { margin-bottom: 14px; }
+.gv-day-note { margin-top: 8px; }
+.gv-day-note p { font-size: 13px; }
 
 .gv-day-card { margin-bottom: 12px; border-top: 2px solid var(--gv-ink); }
 .gv-day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .gv-day-title { font-family: var(--gv-display); font-size: 20px; text-transform: uppercase; line-height: 1; }
 .gv-day-sub { font-size: 10px; font-weight: 800; color: var(--gv-lime-deep); text-transform: uppercase; letter-spacing: 0.13em; margin-top: 5px; }
 .theme-dark .gv-app .gv-day-sub { color: var(--gv-lime); }
-.gv-day-note { font-size: 13px; color: var(--gv-ink-dim); line-height: 1.5; margin-top: 8px; }
 .gv-day-items { margin-top: 10px; }
 .gv-day-item {
   display: flex;
