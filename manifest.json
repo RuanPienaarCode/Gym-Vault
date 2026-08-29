@@ -1,7 +1,7 @@
 {
   "id": "gym-app",
   "name": "Gym Vault",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "minAppVersion": "1.8.0",
   "description": "Plan your training, log every set, and track goals and body stats — all as plain notes in your own vault. Works offline, on desktop and mobile.",
   "author": "Ruan Pienaar",

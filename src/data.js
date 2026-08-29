@@ -319,21 +319,35 @@ function makeIo(plugin) {
     const path = file && file.path;
     const target = path ? v.getAbstractFileByPath(path) : null;
     if (!target) throw new Error(`"${path || 'that note'}" is not in the vault any more`);
+    /* Captured BEFORE the delete: Obsidian nulls a deleted file's .parent,
+       and this is the array loadAll() actually reads. */
+    const parent = target.parent;
     if (app.fileManager && typeof app.fileManager.trashFile === 'function') {
       await app.fileManager.trashFile(target);
     } else {
       await v.trash(target, true);
     }
-    await gone(path);
+    await gone(path, parent);
   }
 
-  /* Resolve once the vault's in-memory tree has actually dropped the path, so
-     the caller's reload cannot read a tree that still contains it. Bounded:
-     if the file is somehow still there we return anyway rather than hanging,
-     and the vault's own delete event remains as the backstop. */
-  async function gone(path, timeoutMs = 2000) {
+  /* Resolve once the vault has actually dropped the path, so the caller's
+     reload cannot read a tree that still contains it.
+
+     CHECK BOTH STRUCTURES. The path map and the parent's `children` array are
+     not updated in lockstep, and they are read by different code: `gone()`
+     used to poll only the map, while loadAll() walks `children` (see
+     readNotesIn). The map cleared first, this returned immediately, and the
+     reload that followed still walked a children array holding the deleted
+     note — so the list came back with the plan still on it. Waiting on the
+     map alone is waiting on the wrong thing.
+
+     Bounded: if it somehow never settles we return false rather than hanging
+     the delete, and the vault's own delete event remains as the backstop. */
+  async function gone(path, parent, timeoutMs = 2000) {
+    const present = () => !!v.getAbstractFileByPath(path)
+      || !!(parent && parent.children && parent.children.some(c => c && c.path === path));
     const started = Date.now();
-    while (v.getAbstractFileByPath(path)) {
+    while (present()) {
       if (Date.now() - started > timeoutMs) return false;
       await new Promise(r => window.setTimeout(r, 25));
     }
