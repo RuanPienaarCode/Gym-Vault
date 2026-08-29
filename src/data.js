@@ -291,18 +291,54 @@ function makeIo(plugin) {
     return out;
   }
 
-  /* System trash, never a hard delete — recoverable by the user.
+  /* Delete a note.
 
-     DELIBERATELY NOT STAMPED, unlike every other write here. `v.trash()`
-     resolves when the file is gone from disk, but Obsidian drops it from the
-     in-memory folder tree that loadAll() walks a tick later — so a reload
-     fired immediately after this can still list the deleted note. Stamping
-     made that permanent: the vault's own `delete` event, which would have
-     triggered the corrective reload, was suppressed as "our own write" and
-     the stale entry sat there until some unrelated file event shook it
-     loose. Leaving it unstamped costs one extra reload and makes the delete
-     actually disappear. */
-  async function trash(file) { await v.trash(file, true); }
+     Three things here are deliberate, and each of them was a way for a
+     delete to do NOTHING while looking like it had worked.
+
+     1. Re-resolve the path. The caller hands us the TFile it captured when
+        the page rendered, which may be several reloads old. `vault.trash()`
+        opens with `if (!file) return` — a stale or missing file is a SILENT
+        no-op, indistinguishable from success. Resolving by path and throwing
+        turns that into something the user can see.
+
+     2. fileManager.trashFile, not vault.trash(file, true). The latter
+        hardcodes the system trash and only falls back to the vault-local
+        .trash if the adapter returns false — it ignores the user's own
+        "Deleted files" setting entirely, and the system trash is not a thing
+        on iOS. trashFile reads that setting and does what the user asked
+        for. vault.trash stays as the fallback for older API surfaces.
+
+     3. NOT STAMPED, unlike every other write here. loadAll() walks the
+        in-memory folder tree, and Obsidian drops a deleted file from it a
+        tick after the promise resolves — so a reload fired immediately can
+        still list the note. Stamping made that stale entry permanent by
+        suppressing the vault `delete` event that would have corrected it.
+        Instead of racing, we WAIT below for the tree to catch up. */
+  async function trash(file) {
+    const path = file && file.path;
+    const target = path ? v.getAbstractFileByPath(path) : null;
+    if (!target) throw new Error(`"${path || 'that note'}" is not in the vault any more`);
+    if (app.fileManager && typeof app.fileManager.trashFile === 'function') {
+      await app.fileManager.trashFile(target);
+    } else {
+      await v.trash(target, true);
+    }
+    await gone(path);
+  }
+
+  /* Resolve once the vault's in-memory tree has actually dropped the path, so
+     the caller's reload cannot read a tree that still contains it. Bounded:
+     if the file is somehow still there we return anyway rather than hanging,
+     and the vault's own delete event remains as the backstop. */
+  async function gone(path, timeoutMs = 2000) {
+    const started = Date.now();
+    while (v.getAbstractFileByPath(path)) {
+      if (Date.now() - started > timeoutMs) return false;
+      await new Promise(r => window.setTimeout(r, 25));
+    }
+    return true;
+  }
 
   /* ---- first-run scaffold --------------------------------------------- */
 

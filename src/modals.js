@@ -3,7 +3,16 @@
    host UI and stay iOS-safe (no window.prompt/confirm/alert — those don't
    exist in Electron). One generic FormModal covers every add/edit form. */
 
-const { Modal, Setting } = require('obsidian');
+const { Modal, Setting, Notice } = require('obsidian');
+
+/* A modal action that fails must SAY so. These all used to land in
+   console.error alone, which on a phone is invisible — a delete that threw
+   looked exactly like a delete that did nothing, and cost a debugging round
+   to tell apart. */
+const failed = (what, e) => {
+  console.error(`gym-vault ${what}`, e);
+  new Notice(`Gym: ${what} failed — ${(e && e.message) || e}`, 8000);
+};
 
 /* fields: [{key, label, kind: 'text'|'number'|'date'|'dropdown'|'toggle'|'textarea',
              options?, value?, placeholder?, desc?}]
@@ -60,7 +69,7 @@ class FormModal extends Modal {
     if (err) { this.errEl.setText(err); return; }
     this.close();
     // After close so a throwing handler can't strand a dead modal on screen.
-    Promise.resolve(this.onSubmit(this.values)).catch(e => console.error('gym-vault form submit', e));
+    Promise.resolve(this.onSubmit(this.values)).catch(e => failed('save', e));
   }
 
   onClose() { this.contentEl.empty(); }
@@ -79,7 +88,7 @@ class ConfirmModal extends Modal {
       .addButton(b => b.setButtonText('Cancel').onClick(() => this.close()))
       .addButton(b => b.setButtonText(this.cl).setWarning().onClick(() => {
         this.close();
-        Promise.resolve(this.onConfirm()).catch(e => console.error('gym-vault confirm', e));
+        Promise.resolve(this.onConfirm()).catch(e => failed('delete', e));
       }));
   }
   onClose() { this.contentEl.empty(); }
@@ -106,7 +115,7 @@ class PlanPickerModal extends Modal {
       if (on) row.createDiv({ cls: 'gv-optrow-desc', text: 'active' });
       row.addEventListener('click', () => {
         this.close();
-        if (!on) Promise.resolve(this.onPick(p)).catch(e => console.error('gym-vault switch plan', e));
+        if (!on) Promise.resolve(this.onPick(p)).catch(e => failed('switching plan', e));
       });
     }
     for (const p of this.extras) {

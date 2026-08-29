@@ -53,4 +53,36 @@ assert.ok(
   'the stamp() helper is gone — writes will no longer be distinguishable from user edits',
 );
 
-console.log('vault io OK (trash unstamped so deletes refresh; writes still stamped)');
+/* TRIPWIRE: trash() must WAIT for the vault tree to drop the path.
+
+   Removing the stamp alone was not enough — it only meant a corrective
+   reload eventually arrived. The list still showed the deleted plan for a
+   noticeable beat because the reload fired immediately after the delete read
+   a folder tree that had not caught up. trash() now blocks until the path is
+   actually gone, so the caller's reload is right the first time. */
+{
+  const fn = src.match(/async function trash\([^)]*\)\s*\{[\s\S]*?\n  \}/);
+  assert.ok(fn, 'trash() not found');
+  assert.match(fn[0], /await gone\(/, 'trash() must await gone() so the reload cannot read a stale tree');
+  assert.match(src, /async function gone\(/, 'the gone() helper is missing');
+  /* and it must be bounded — an unbounded wait would hang the delete */
+  const g = src.match(/async function gone\([^)]*\)\s*\{[\s\S]*?\n  \}/);
+  assert.ok(g && /timeout/i.test(g[0]), 'gone() must be time-bounded, not an unbounded spin');
+}
+
+/* TRIPWIRE: a failed modal action must reach the user, not just the console.
+   On a phone console.error is invisible, so a delete that threw looked
+   identical to one that did nothing. */
+{
+  const modals = fs.readFileSync(path.join(__dirname, '..', 'src', 'modals.js'), 'utf8');
+  assert.ok(
+    /new Notice\(/.test(modals),
+    'modals.js must surface action failures with a Notice — console.error alone is invisible on mobile',
+  );
+  assert.ok(
+    !/\.catch\(e => console\.error\(/.test(modals),
+    'a modal action still swallows its error into console.error only; route it through failed()',
+  );
+}
+
+console.log('vault io OK (trash waits for the tree; failures surface)');
