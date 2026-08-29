@@ -140,7 +140,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** builds the hollow-body tension a muscle-up needs. (Image shows the leg-raise rung.)',
     ].join('\n') },
-  { name: 'L-sit / Dragon Flag', type: 'skill', muscles: ['core'], equipment: 'bodyweight', unit: 'seconds',
+  { name: 'L-sit & Dragon Flag', type: 'skill', muscles: ['core'], equipment: 'bodyweight', unit: 'seconds',
     note: [
       '1. L-sit: hands on the floor or two dumbbells, press down and lift both straight legs to horizontal. Hold.',
       '2. Dragon flag: lie back gripping a bench behind your head; lower the whole rigid body from vertical as slowly as possible.',
@@ -706,7 +706,7 @@ const SEED_PLAN = {
     '- Bulgarian Split Squat | 3 x 8/leg',
     '- Pistol Squat Progression | 3 x 3-5/leg',
     '- Toes-to-bar Ladder | 4 x 6-10',
-    '- L-sit / Dragon Flag | 3 x holds',
+    '- L-sit & Dragon Flag | 3 x holds',
     '',
   ].join('\n') + '\n',
 };
