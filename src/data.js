@@ -76,41 +76,59 @@ function makeIo(plugin) {
   /* ---- load everything ------------------------------------------------ */
 
   async function loadAll() {
-    const data = { profile: { fm: {}, body: '' }, body: [], exercises: [], plans: [], goals: [], workouts: [], present: false };
+    const data = { profile: { fm: {}, body: '' }, body: [], exercises: [], plans: [], goals: [], workouts: [], present: false, unreadable: 0, rootExists: false };
+    /* Mid-index (a fresh device, a big iCloud sync) an individual read can
+       fail while the rest are fine. Skipping the file that failed and
+       counting it beats losing the entire load to one bad read. */
+    const read = async f => { try { return await v.cachedRead(f); } catch (e) { data.unreadable++; return null; } };
+    data.rootExists = !!v.getFolderByPath(root());
 
     const profileFile = v.getFileByPath(paths.profile());
     if (profileFile) {
-      const { fm, body } = parseFrontmatter(await v.cachedRead(profileFile));
-      data.profile = { fm, body, file: profileFile };
-      data.present = true;
+      const text = await read(profileFile);
+      if (text !== null) {
+        const { fm, body } = parseFrontmatter(text);
+        data.profile = { fm, body, file: profileFile };
+        data.present = true;
+      }
     }
 
     const bodyFile = v.getFileByPath(paths.bodyLog());
     if (bodyFile) {
-      const { body } = parseFrontmatter(await v.cachedRead(bodyFile));
-      data.body = tableToObjects(body, BODY_COLUMNS)
-        .sort((a, b) => (a.date < b.date ? -1 : 1));
-      data.bodyFile = bodyFile;
-      data.present = true;
+      const text = await read(bodyFile);
+      if (text !== null) {
+        const { body } = parseFrontmatter(text);
+        data.body = tableToObjects(body, BODY_COLUMNS).sort((a, b) => (a.date < b.date ? -1 : 1));
+        data.bodyFile = bodyFile;
+        data.present = true;
+      }
     }
 
     for (const f of await readNotesIn(paths.exercises())) {
-      const { fm, body } = parseFrontmatter(await v.cachedRead(f));
+      const text = await read(f);
+      if (text === null) continue;
+      const { fm, body } = parseFrontmatter(text);
       data.exercises.push({ name: f.basename, file: f, fm, body });
       data.present = true;
     }
     for (const f of await readNotesIn(paths.plans())) {
-      const { fm, body } = parseFrontmatter(await v.cachedRead(f));
+      const text = await read(f);
+      if (text === null) continue;
+      const { fm, body } = parseFrontmatter(text);
       data.plans.push({ name: f.basename, file: f, fm, model: parsePlanBody(body) });
       data.present = true;
     }
     for (const f of await readNotesIn(paths.goals())) {
-      const { fm, body } = parseFrontmatter(await v.cachedRead(f));
+      const text = await read(f);
+      if (text === null) continue;
+      const { fm, body } = parseFrontmatter(text);
       data.goals.push({ name: f.basename, file: f, fm, body });
       data.present = true;
     }
     for (const f of await readNotesIn(paths.workouts())) {
-      const { fm, body } = parseFrontmatter(await v.cachedRead(f));
+      const text = await read(f);
+      if (text === null) continue;
+      const { fm, body } = parseFrontmatter(text);
       data.workouts.push({ name: f.basename, file: f, fm, rows: tableToObjects(body, WORKOUT_COLUMNS) });
       data.present = true;
     }

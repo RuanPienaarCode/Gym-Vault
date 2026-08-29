@@ -151,8 +151,19 @@ function mountApp(view) {
     if (!pageEl) return;
     clear(pageEl);
     renderNavState();
-    if (!ctx.data) return;
-    if (!ctx.data.present) { renderSetup(ctx, pageEl); return; }
+    /* NEVER render nothing. A blank page under the nav is indistinguishable
+       from a broken plugin, and this is exactly what a mid-index vault used
+       to produce: loadAll fails or finds nothing, and the screen goes empty
+       with no way back. */
+    if (!ctx.data || ctx.loadError) { renderNotReady(ctx, pageEl); return; }
+    if (!ctx.data.present) {
+      /* The gym folder existing but reading empty means Obsidian has not
+         finished indexing — offering "create my gym" there would be wrong
+         and alarming. Only a genuinely absent folder is a fresh start. */
+      if (ctx.data.rootExists || ctx.data.unreadable) { renderNotReady(ctx, pageEl); return; }
+      renderSetup(ctx, pageEl);
+      return;
+    }
     const page = pages[ctx.state.page] || pages.dashboard;
     try { page.render(ctx, pageEl); }
     catch (e) {
@@ -163,8 +174,16 @@ function mountApp(view) {
   };
 
   ctx.reload = async () => {
-    ctx.data = await io.loadAll();
     ctx.settings = plugin.settings;
+    try {
+      ctx.data = await io.loadAll();
+      ctx.loadError = null;
+    } catch (e) {
+      /* Keep whatever we already had rather than blanking the screen — a
+         failed refresh should never cost you the page you were reading. */
+      console.error('gym-vault load', e);
+      ctx.loadError = e.message || String(e);
+    }
     syncChrome();
     buildNav();          // the Running tab appears once running exists
     ctx.rerender();
@@ -246,6 +265,16 @@ function mountApp(view) {
       for (const evt of ['modify', 'create', 'delete', 'rename']) {
         view.registerEvent(app.vault.on(evt, onVaultEvent));
       }
+      /* Opening the gym while Obsidian is still indexing (a new device, a
+         big iCloud sync) can read an empty or unreadable vault. `resolved`
+         fires when the metadata cache finishes, so reload once more then —
+         otherwise the view sits on whatever the half-indexed vault gave it
+         until some unrelated file event happens to shake it loose. */
+      if (app.metadataCache && app.metadataCache.on) {
+        view.registerEvent(app.metadataCache.on('resolved', () => {
+          if (!ctx.data || ctx.loadError || !ctx.data.present) ctx.reload();
+        }));
+      }
       await ctx.reload();
     },
     stop() {
@@ -262,6 +291,23 @@ function mountApp(view) {
     hasDraft: () => !!ctx.state.logDraft,
     reload: () => ctx.reload(),
   };
+}
+
+/* Not a fresh vault and not a working one: Obsidian is still indexing, or a
+   read failed. Says which, and offers the one useful action. */
+function renderNotReady(ctx, root) {
+  const why = ctx.loadError
+    ? `Could not read the gym folder (${ctx.loadError}).`
+    : ctx.data && ctx.data.unreadable
+      ? `${ctx.data.unreadable} file${ctx.data.unreadable === 1 ? '' : 's'} could not be read yet.`
+      : 'Your gym folder is there, but Obsidian has not finished indexing it.';
+  const card = el('div', { class: 'gv-setup' },
+    el('div', { class: 'gv-setup-logo' }, ico('history')),
+    el('h2', { class: 'gv-setup-title' }, 'Waiting for the vault'),
+    el('p', { class: 'gv-setup-sub' }, `${why} This usually clears itself in a few seconds — nothing is lost.`),
+    el('button', { class: 'gv-btn gv-btn-hero', type: 'button', onclick: () => ctx.reload() },
+      ico('repeat-2'), el('span', {}, 'Try again')));
+  root.append(card);
 }
 
 /* Empty vault — first-run setup card (silent adoption handles the existing-
