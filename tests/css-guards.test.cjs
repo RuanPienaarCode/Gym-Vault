@@ -80,4 +80,20 @@ assert.ok(
   }
 }
 
-console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons; no linter-flagged features)');
+/* GUARD 5: app.css sets `white-space: nowrap` on the bare `button` element
+   (specificity 0,0,1). Any plugin button whose label is allowed to run onto a
+   second line must reset it, or the text simply overflows the screen edge
+   instead of wrapping. The plan-intro headline shipped this way and had to be
+   reported from a phone — a harness that does not load app.css wraps happily
+   and reports a false pass. */
+{
+  const head = bare.match(/\.gv-app \.gv-chunk-head\s*\{[^}]*\}/);
+  assert.ok(head, '.gv-app .gv-chunk-head rule missing');
+  assert.match(
+    head[0], /white-space:\s*normal/,
+    '.gv-chunk-head is a <button>, and app.css sets white-space:nowrap on bare `button` — ' +
+    'it must reset white-space:normal or its headline cannot wrap and runs off a phone screen.',
+  );
+}
+
+console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons; no linter-flagged features; wrapping button labels reset white-space)');

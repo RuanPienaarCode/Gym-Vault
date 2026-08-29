@@ -669,8 +669,11 @@
   line-height: 1.4;
   /* A flex item will not shrink below its min-content width, so a long
      headline ran off the screen edge and shoved the chevron out with it.
-     min-width:0 lets it wrap; overflow-wrap catches unbreakable tokens. */
+     min-width:0 lets it wrap; overflow-wrap catches unbreakable tokens.
+     `break-word` first because `anywhere` is Safari 15.4+ and the engine
+     floor here is 15 — an unsupported value is just dropped. */
   min-width: 0;
+  overflow-wrap: break-word;
   overflow-wrap: anywhere;
 }
 /* A derived headline is the opening of a sentence, not a section title —
@@ -686,6 +689,12 @@
 /* The disclosure control. Full-width so the whole headline row is the target,
    and at least 44px tall for a thumb. */
 .gv-app .gv-chunk-head {
+  /* app.css sets `white-space: nowrap` on the bare `button` element, and this
+     headline IS a button — so without this reset the label cannot wrap at
+     all and simply runs off the right edge of a phone, straight through the
+     chevron. Caught on a real phone, not in the harness: a harness that does
+     not load app.css wraps happily and reports a false pass. */
+  white-space: normal;
   display: flex;
   align-items: center;
   justify-content: space-between;

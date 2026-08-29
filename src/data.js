@@ -291,8 +291,18 @@ function makeIo(plugin) {
     return out;
   }
 
-  /* System trash, never a hard delete — recoverable by the user. */
-  async function trash(file) { stamp(); await v.trash(file, true); }
+  /* System trash, never a hard delete — recoverable by the user.
+
+     DELIBERATELY NOT STAMPED, unlike every other write here. `v.trash()`
+     resolves when the file is gone from disk, but Obsidian drops it from the
+     in-memory folder tree that loadAll() walks a tick later — so a reload
+     fired immediately after this can still list the deleted note. Stamping
+     made that permanent: the vault's own `delete` event, which would have
+     triggered the corrective reload, was suppressed as "our own write" and
+     the stale entry sat there until some unrelated file event shook it
+     loose. Leaving it unstamped costs one extra reload and makes the delete
+     actually disappear. */
+  async function trash(file) { await v.trash(file, true); }
 
   /* ---- first-run scaffold --------------------------------------------- */
 
