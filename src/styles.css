@@ -402,9 +402,8 @@
   margin: 18px -17px 0;          /* bleed past the hero's 1px border + padding */
   background: var(--gv-lime);
   color: #141a0e;
-  padding: 16px 16px 22px;
+  padding: 16px;
   overflow: hidden;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), 0 100%);
 }
 .gv-speed { position: absolute; inset: 0; pointer-events: none; }
 .gv-speed span { position: absolute; height: 5px; background: rgba(20, 26, 14, 0.12); transform: skewX(-24deg); }
@@ -422,11 +421,10 @@
   font-size: 22px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
-  /* Own padding, right side sized past the clip-path taper — without this
-     the label centers into the diagonal on narrow phones (the only padding
-     otherwise is clickable-icon's 6px leak). */
-  padding: 0 28px 0 16px;
+  /* Symmetric: the label is centred and there is no taper to clear. Keep
+     explicit padding — the only padding otherwise is clickable-icon's 6px
+     leak, which is too tight on a narrow phone. */
+  padding: 0 22px;
 }
 .gv-app .gv-btn-go:hover { background: #000000; }
 /* Rest day: no flood — a bordered invitation instead. */
@@ -1067,12 +1065,11 @@
   font-size: 25px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  clip-path: polygon(0 0, 100% 0, calc(100% - 20px) 100%, 0 100%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 0 32px 0 18px;   /* right side clears the 20px taper (see .gv-btn-go) */
+  padding: 0 25px;
 }
 .gv-app .gv-btn-finish:hover { background: var(--gv-ink); color: var(--gv-lime-hi); }
 .gv-app .gv-btn-discard {
@@ -1493,7 +1490,6 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   padding: 0 0 22px;
   background: transparent;
   color: var(--gv-ink);
-  clip-path: none;
 }
 .gv-app.gv-skin-editorial .gv-speed { display: none; }
 .gv-app.gv-skin-editorial .gv-hero-action-line .gv-shout { color: var(--gv-ink-dim); }
@@ -1501,7 +1497,6 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   min-height: 52px;
   font-size: 21px;
   letter-spacing: 0.08em;
-  clip-path: none;
   background: var(--gv-ink);
   color: var(--gv-lime-hi);
 }
@@ -1575,4 +1570,4 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 .gv-app.gv-skin-editorial .gv-set-done { width: 44px; height: 44px; border-color: var(--gv-line-2); }
 .gv-app.gv-skin-editorial .gv-log-set.done .gv-set-done { background: var(--gv-lime); border-color: var(--gv-lime); color: #141a0e; }
 .gv-app.gv-skin-editorial .gv-add-set { border: 2px dashed var(--gv-line-2); color: var(--gv-ink-dim); margin-top: 10px; }
-.gv-app.gv-skin-editorial .gv-btn-finish { clip-path: none; letter-spacing: 0.1em; }
+.gv-app.gv-skin-editorial .gv-btn-finish { letter-spacing: 0.1em; }

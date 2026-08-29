@@ -56,4 +56,28 @@ assert.ok(
   assert.ok(minH && Number(minH[1]) >= 44, `narrow nav button min-height must be >= 44px, got ${minH && minH[1]}`);
 }
 
-console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons)');
+/* GUARD 4: features the community-plugin review linter flags as only
+   partially supported by older Obsidian. Both of these shipped once and came
+   back as warnings on the submission report, so they are tripwired rather
+   than left to be re-noticed by a reviewer.
+
+   Checked against the BUILD OUTPUT as well as the source: styles.css is
+   src/font.css + src/styles.css concatenated, and the linter reads both. */
+{
+  const built = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+  for (const [label, file] of [['src/styles.css', css], ['styles.css', built]]) {
+    const stripped = file.replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.ok(
+      !/\bclip-path\s*:/.test(stripped),
+      `${label}: clip-path is flagged by the review linter as only partially supported. ` +
+      'The cut-corner CTAs were rebuilt without it — do not reintroduce it.',
+    );
+    assert.ok(
+      !/\bui-(monospace|sans-serif|serif)\b/.test(stripped),
+      `${label}: extended system fonts (ui-monospace and friends) are flagged by the ` +
+      'review linter. Name real faces instead — the fallback stack already covers every platform.',
+    );
+  }
+}
+
+console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons; no linter-flagged features)');
