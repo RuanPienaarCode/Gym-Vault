@@ -24,7 +24,8 @@ const { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone } = re
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const { buildRows, finishSession } = require('./page-log');
 const { nextFrameIndex } = require('./media-cycle');
-const { openMusicApp } = require('./music-link');
+const { musicButton } = require('./music-picker');
+const timedPlan = require('./timed-plan');
 
 const FLASH_MS = 180;
 const HOLD_CHECKPOINT_S = 15;
@@ -51,6 +52,18 @@ function render(ctx, root) {
       confettiStop: null,
       completionCelebrated: false,
       mediaCycleTimer: null,
+      /* Timed mode only (draft.timed holds the schedule). `index` walks the
+         interval list; the clock is kept as a start stamp plus the seconds
+         banked before the last pause, so a pause is exact rather than
+         drifting by however long the tick happened to be. */
+      timed: draft.timed ? {
+        index: timedPlan.initialIndex(draft.timed, draft, flow.isHandled),
+        startedAt: Date.now(),
+        bankedSeconds: 0,
+        paused: false,
+        spokenAt: null,
+        announcedFor: null,
+      } : null,
     };
   }
   const sess = ctx.state.session;
@@ -82,6 +95,12 @@ function render(ctx, root) {
   const page = el('div', { class: 'gv-session-page' });
   root.append(page);
 
+  /* Timed mode is a THIRD renderer over the same draft, not a different
+     session: it walks an interval schedule instead of the set-by-set step
+     machine, but every completed interval writes into the same
+     draft.entries[i].sets[j] object, and Finish is still page-log's. */
+  if (draft.timed && sess.timed) { renderTimed(ctx, page, draft, sess); return; }
+
   if (flow.isDone(draft, sess.pos)) { renderComplete(ctx, page, draft, sess); return; }
   if (sess.phase === 'resting') { renderRest(ctx, page, draft, sess); return; }
   renderActive(ctx, page, draft, sess);
@@ -101,21 +120,11 @@ function exitButton(ctx) {
   return b;
 }
 
-/* Jump out to change the song, then back — shown in BOTH active and resting
-   phases (music changes happen mostly during rest, but gating it there
-   would just make it harder to find mid-set). Corner placement in the
-   shared top row, right after whatever `extra` (ord/skip controls, or
-   nothing during rest) already sits there — reuses .gv-icon-btn-small so it
-   gets the existing 44px/40px mobile touch-target rules and app-anchored
-   colors for free, no new CSS. */
-function musicButton(ctx) {
-  const key = ctx.settings.musicApp;
-  if (!key || key === 'none') return null;
-  const label = key === 'apple-music' ? 'Open Apple Music' : 'Open Spotify';
-  const btn = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': label }, ico('music'));
-  btn.addEventListener('click', () => openMusicApp(key));
-  return btn;
-}
+/* Jump out to change the song (or start a saved playlist), then back — shown
+   in BOTH active and resting phases, since music changes happen mostly
+   during rest but gating it there would only make it harder to find
+   mid-set. The button and its menu live in music-picker.js so the setup
+   screen offers exactly the same list. */
 
 function topBar(ctx, draft, extra) {
   return el('div', { class: 'gv-session-top' },
@@ -497,7 +506,25 @@ function celebrate(ctx, sess, spokenWords) {
   } catch (e) { console.error('gym-vault celebrate', e); }
 }
 
-function completeSet(ctx, draft, sess, set, entry, values) {
+/* Write the figures into the set, then work out whether that just broke a
+   record or met a goal. Shared by both guided renderers — the set-by-set one
+   below and the timed one — so "what counts as a record" can never come to
+   mean two different things depending on which screen you were looking at.
+   Returns the callout lines to show on the way to the next thing.
+
+   `opts.measured` says whether the figures are OBSERVED or merely PREFILLED.
+   The set-by-set screen always observes: a rep count came off the tap
+   counter, a hold came off the stopwatch. A timed interval observes the
+   clock, but a rep or weight figure it did not watch you produce is the
+   plan's target sitting in the box — and celebrating a "new best" for a
+   number nobody measured is exactly the kind of wrong figure this codebase
+   keeps having to dig out. So a timed interval passes measured:false for
+   reps and weight, and those records are simply not claimed unless the user
+   typed the figure themselves. */
+function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
+  const measured = !opts || opts.measured !== false;
+  const typedByUser = !!set.touched;
+
   Object.assign(set, values);
   set.done = true;
   set.touched = true;
@@ -505,7 +532,9 @@ function completeSet(ctx, draft, sess, set, entry, values) {
   const callouts = [];
   try {
     const kind = classifyKind(entry);
-    if (kind) {
+    /* seconds are always measured — the clock genuinely ran that long. */
+    const trustworthy = measured || kind === 'seconds' || typedByUser;
+    if (kind && trustworthy) {
       const prev = records.previousBest(sess.workoutsAtStart, entry.exercise, kind);
       const val = valueForKind(set, kind);
       if (records.isRecord(prev, val)) {
@@ -523,6 +552,12 @@ function completeSet(ctx, draft, sess, set, entry, values) {
       celebrate(ctx, sess, 'goal met');
     }
   } catch (e) { console.error('gym-vault goals', e); }
+
+  return callouts;
+}
+
+function completeSet(ctx, draft, sess, set, entry, values) {
+  const callouts = applyCompletion(ctx, draft, sess, set, entry, values);
 
   const peek = flow.advance(draft, sess.pos);
   resetActiveState(sess);
@@ -583,6 +618,300 @@ function renderRest(ctx, root, draft, sess) {
     nextLabel,
     el('div', { class: 'gv-hero-action gv-session-nextwrap' }, nextBtn),
     el('p', { class: 'gv-microcopy' }, "Rest, don't scroll.")));
+}
+
+/* ---------- timed mode ---------- */
+
+/* Faster than once a second so the ring sweeps rather than jerks; the spoken
+   count-in and the digits are both gated on whole seconds regardless, so the
+   extra ticks cost nothing but a little arithmetic. */
+const TICK_MS = 200;
+/* "3, 2, 1" over the last three seconds of every interval. */
+const COUNT_IN_FROM = 3;
+
+/* Elapsed is derived from a start stamp plus whatever was banked before the
+   last pause, never accumulated tick by tick: a counter incremented on a
+   200ms timer drifts, and iOS throttles background timers hard enough that
+   the drift is visible within one session. */
+function timedElapsed(tp) {
+  if (tp.paused) return tp.bankedSeconds;
+  return tp.bankedSeconds + Math.max(0, (Date.now() - tp.startedAt) / 1000);
+}
+
+function startInterval(sess, index) {
+  const tp = sess.timed;
+  tp.index = index;
+  tp.startedAt = Date.now();
+  tp.bankedSeconds = 0;
+  tp.paused = false;
+  tp.spokenAt = null;
+  tp.announcedFor = null;
+}
+
+/* A countdown ring. Decorative on purpose (aria-hidden): the seconds
+   themselves are in a real element beside it, and a screen reader gets the
+   meaningful moments from the live region in renderTimedInterval rather than
+   a per-tick stream of numbers. Built with createElementNS — no innerHTML,
+   same rule as dom.js. */
+function countdownRing(size) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const r = (size - 12) / 2;
+  const circumference = 2 * Math.PI * r;
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  svg.setAttribute('class', 'gv-count-ring');
+  svg.setAttribute('aria-hidden', 'true');
+  const arc = cls => {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', size / 2); c.setAttribute('cy', size / 2); c.setAttribute('r', r);
+    c.setAttribute('class', cls);
+    svg.appendChild(c);
+    return c;
+  };
+  arc('gv-count-ring-track');
+  const fill = arc('gv-count-ring-fill');
+  fill.setAttribute('transform', `rotate(-90 ${size / 2} ${size / 2})`);
+  return {
+    svg,
+    set(p) {
+      const clamped = Math.max(0, Math.min(1, p || 0));
+      fill.setAttribute('stroke-dasharray', `${(circumference * clamped).toFixed(2)} ${circumference.toFixed(2)}`);
+    },
+  };
+}
+
+/* What gets said out loud as an interval opens. A transition already names
+   what is coming, so the work interval that follows it stays quiet — being
+   told "Push-ups" twice in ten seconds is noise. With transitions switched
+   off there is no such announcement, so the work interval makes it itself. */
+function announcementFor(schedule, index) {
+  const iv = schedule.intervals[index];
+  if (!iv) return null;
+  if (iv.kind === 'transition') return iv.leadIn ? `Starting with ${iv.exercise}` : `Next, ${iv.exercise}`;
+  if (iv.kind === 'work') {
+    const prev = schedule.intervals[index - 1];
+    return prev && prev.kind === 'transition' ? null : iv.exercise;
+  }
+  return iv.exercise;
+}
+
+function renderTimed(ctx, root, draft, sess) {
+  const schedule = draft.timed;
+  const intervals = (schedule && schedule.intervals) || [];
+  const tp = sess.timed;
+  if (!intervals.length || tp.index >= intervals.length) { renderComplete(ctx, root, draft, sess); return; }
+  renderTimedInterval(ctx, root, draft, sess, intervals[tp.index]);
+}
+
+/* Move on. `opts.skip` leaves the set untouched and unticked — exactly what
+   skipping a set means everywhere else in this app (see session-flow.js), so
+   a skipped interval still counts only as a plan-target prefill.
+
+   `tp.completed` guards the write: stepping BACK and forward again must not
+   claim the same record twice. Back is position-only by design — it never
+   un-ticks a set, because silently undoing logged work to let you re-watch
+   an exercise is a worse surprise than the position moving. */
+function advanceTimed(ctx, draft, sess, opts) {
+  const tp = sess.timed;
+  const iv = draft.timed.intervals[tp.index];
+  const skip = !!(opts && opts.skip);
+
+  if (iv && iv.kind === 'work' && !skip) {
+    if (!tp.completed) tp.completed = {};
+    if (!tp.completed[tp.index]) {
+      tp.completed[tp.index] = true;
+      const entry = draft.entries[iv.entryIndex];
+      const set = entry && entry.sets && entry.sets[iv.setIndex];
+      if (entry && set) {
+        /* The clock is the one figure this screen actually measured, so it is
+           the one it writes. Reps and weight keep whatever is in their boxes —
+           the plan's target, or what the user typed over it — and
+           applyCompletion's measured:false stops an untyped target being
+           celebrated as a personal best.
+
+           A run is the exception, and it has to be: page-log's buildRows
+           takes a distance entry's time from `minutes` and ignores `seconds`
+           entirely, so writing seconds here would tick the set done and then
+           save a row with no distance AND no time — a junk row that counts
+           towards the session tally and says nothing. */
+        const measured = entry.distance
+          ? { minutes: String(Math.round((iv.seconds / 60) * 10) / 10) }
+          : { seconds: String(Math.round(iv.seconds)) };
+        sess.pendingCallouts = applyCompletion(ctx, draft, sess, set, entry, measured, { measured: false });
+      }
+    }
+  }
+
+  cancelSpeech();
+  startInterval(sess, tp.index + 1);
+  ctx.rerender();
+}
+
+function stepBack(ctx, sess) {
+  cancelSpeech();
+  startInterval(sess, Math.max(0, sess.timed.index - 1));
+  ctx.rerender();
+}
+
+function timedTopBar(ctx, draft, sess, schedule, iv) {
+  const tp = sess.timed;
+  const workDone = schedule.intervals.slice(0, tp.index + 1).filter(i => i.kind === 'work').length;
+  const workTotal = timedPlan.workIntervals(schedule).length;
+  const label = iv.kind === 'work'
+    ? `Interval ${workDone}/${workTotal}${iv.round != null ? ` · Round ${iv.round + 1}` : ''}`
+    : iv.kind === 'transition' ? (iv.leadIn ? 'Get ready' : 'Next up')
+      : iv.kind === 'warmup' ? 'Warm-up' : 'Cool-down';
+
+  const ord = el('div', { class: 'gv-session-ord' }, label);
+  const bar = el('div', { class: 'gv-bar gv-session-bar' }, el('div', { class: 'gv-bar-fill gv-timed-bar-fill' }));
+  return {
+    node: el('div', { class: 'gv-session-top' },
+      el('div', { class: 'gv-session-top-row' },
+        exitButton(ctx),
+        el('div', { class: 'gv-session-top-extra' }, ord),
+        musicButton(ctx) || ''),
+      bar),
+    fill: bar.firstChild,
+  };
+}
+
+function renderTimedInterval(ctx, root, draft, sess, iv) {
+  const schedule = draft.timed;
+  const tp = sess.timed;
+  const isWork = iv.kind === 'work';
+  const entry = isWork ? draft.entries[iv.entryIndex] : null;
+  const set = entry && entry.sets ? entry.sets[iv.setIndex] : null;
+
+  const top = timedTopBar(ctx, draft, sess, schedule, iv);
+  root.append(top.node);
+
+  const body = el('div', { class: `gv-session-body gv-timed gv-timed-${iv.kind}` });
+
+  /* The exercise block is the same one the set-by-set screen uses, so the
+     demonstration media animates here too. A warm-up or transition has no
+     draft entry — it passes the interval's own name and target instead,
+     which is all exerciseBlock reads. */
+  root.append(exerciseBlock(ctx, sess, entry || { exercise: iv.exercise, target: iv.target || '' }));
+
+  const ring = countdownRing(200);
+  const digits = el('div', { class: 'gv-timed-count' }, String(Math.ceil(iv.seconds)));
+  /* Announced at the START of the interval and again over the count-in, not
+     every second: a live region that fires once a second is noise, not help
+     (same rule as the hold timer's checkpoint region above). */
+  const live = el('div', { class: 'gv-sr-only', 'aria-live': 'assertive', 'aria-atomic': 'true' });
+  const dial = el('div', { class: 'gv-timed-dial' }, ring.svg, digits);
+  body.append(dial);
+
+  /* Rep and weight boxes for a work interval that has them. A timer cannot
+     count your push-ups, so the plan's target sits in the box as a starting
+     point and this is where you correct it — typing marks the set touched,
+     which is also what makes a personal best claimable (see
+     applyCompletion). */
+  if (isWork && set && !entry.duration) {
+    body.append(timedFigures(ctx, entry, set, iv));
+  } else if (iv.target) {
+    body.append(el('div', { class: 'gv-timed-target' }, iv.target));
+  }
+
+  const backBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Previous interval' }, ico('skip-back'));
+  backBtn.addEventListener('click', () => stepBack(ctx, sess));
+
+  const playBtn = el('button', {
+    class: 'gv-timed-play', type: 'button',
+    'aria-label': tp.paused ? 'Resume' : 'Pause',
+  }, ico(tp.paused ? 'play' : 'pause'));
+  playBtn.addEventListener('click', () => {
+    if (tp.paused) { tp.startedAt = Date.now(); tp.paused = false; }
+    else { tp.bankedSeconds = timedElapsed(tp); tp.paused = true; cancelSpeech(); }
+    ctx.rerender();
+  });
+
+  const skipBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': isWork ? 'Skip this interval' : 'Skip ahead' }, ico('skip-forward'));
+  skipBtn.addEventListener('click', () => advanceTimed(ctx, draft, sess, { skip: true }));
+
+  body.append(el('div', { class: 'gv-timed-controls' }, backBtn, playBtn, skipBtn));
+  body.append(el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(sess)));
+
+  const callouts = (sess.pendingCallouts || []).length
+    ? el('div', { class: 'gv-session-callouts' }, ...(sess.pendingCallouts || []).map(line => el('div', { class: 'gv-session-callout' }, line)))
+    : '';
+  if (callouts) { body.append(callouts); }
+
+  root.append(body, live);
+
+  /* Announce once per interval, not once per render — a mute toggle or a
+     typed rep re-renders this screen and must not re-announce. */
+  if (tp.announcedFor !== tp.index) {
+    tp.announcedFor = tp.index;
+    const words = announcementFor(schedule, tp.index);
+    if (words) {
+      live.textContent = `${words}, ${Math.round(iv.seconds)} seconds`;
+      if (!sess.muted) speak(words);
+    } else {
+      live.textContent = `${iv.exercise}, ${Math.round(iv.seconds)} seconds`;
+    }
+    sess.pendingCallouts = [];
+  }
+
+  const totalBefore = schedule.intervals.slice(0, tp.index).reduce((n, i) => n + i.seconds, 0);
+  const tick = () => {
+    const elapsed = timedElapsed(tp);
+    const remaining = Math.max(0, iv.seconds - elapsed);
+    digits.textContent = String(Math.ceil(remaining));
+    ring.set(iv.seconds ? remaining / iv.seconds : 0);
+    if (schedule.totalSeconds) {
+      top.fill.style.width = `${Math.min(100, ((totalBefore + elapsed) / schedule.totalSeconds) * 100).toFixed(1)}%`;
+    }
+
+    if (tp.paused) return;
+
+    /* "3, 2, 1" into the next thing. Math.ceil means 3 is spoken as the
+       display flips to 3, which is where a human expects to hear it. */
+    const whole = Math.ceil(remaining);
+    if (whole >= 1 && whole <= COUNT_IN_FROM && whole !== tp.spokenAt) {
+      tp.spokenAt = whole;
+      live.textContent = String(whole);
+      if (!sess.muted) speak(whole);
+    }
+
+    if (remaining <= 0) advanceTimed(ctx, draft, sess);
+  };
+  tick();
+  ctx.setPageInterval(tick, TICK_MS);
+}
+
+/* The reps (and weight) boxes shown during a timed work interval. Deliberately
+   small and off to the side: the countdown is what you are looking at, and
+   this is only there for the moment you notice you managed twelve rather than
+   the fifteen the plan asked for. */
+function timedFigures(ctx, entry, set, iv) {
+  const row = el('div', { class: 'gv-timed-figures' });
+
+  if (entry.weighted && String(set.weight_kg ?? '').trim() === '') {
+    const last = lastWeightForExercise(ctx, entry.exercise);
+    if (last !== null) set.weight_kg = last; // prefill only — not touched, same as a plan-target prefill
+  }
+
+  const field = (key, placeholder, unit, label) => {
+    const input = el('input', {
+      class: 'gv-set-input gv-timed-input', type: 'number', inputmode: 'decimal',
+      placeholder, value: set[key] ?? '',
+      'aria-label': `${label} — ${entry.exercise}`,
+    });
+    input.addEventListener('input', () => { set[key] = input.value; set.touched = true; });
+    return el('div', { class: 'gv-timed-field' }, input, el('span', { class: 'gv-set-unit' }, unit));
+  };
+
+  /* A run logs the distance you covered; the clock supplies the time on its
+     own when the interval ends, so there is no minutes box here. */
+  if (entry.distance) {
+    row.append(field('distance_km', 'km', 'km', 'Distance in kilometres'));
+  } else {
+    row.append(field('reps', 'reps', '×', 'Reps'));
+    if (entry.weighted) row.append(field('weight_kg', 'kg', 'kg', 'Weight in kilograms'));
+  }
+  if (iv.target) row.append(el('div', { class: 'gv-timed-target' }, `target ${iv.target}`));
+  return row;
 }
 
 /* ---------- completion state ---------- */

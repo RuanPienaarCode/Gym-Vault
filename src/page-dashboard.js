@@ -8,7 +8,19 @@ const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
 const { workoutDates, weekStreak, countInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
 const { itemSets, isRestDay } = require('./plan-parse');
+const { equipmentFor } = require('./equipment');
 const { PlanPickerModal } = require('./modals');
+
+/* The kit today's session needs, as chips under the prescription. Nothing
+   when it's all bodyweight — "No equipment" is worth saying on the setup
+   screen you're about to act on, but it is clutter on a dashboard. */
+function kitChips(ctx, day) {
+  const kit = equipmentFor(ctx.data.exercises, ((day && day.items) || []).map(it => it.exercise));
+  if (!kit.length) return null;
+  return el('div', { class: 'gv-chips gv-today-kit' },
+    el('span', { class: 'gv-kicker gv-today-kit-label' }, 'Bring'),
+    ...kit.map(item => el('span', { class: 'gv-tag' }, item.label)));
+}
 
 function render(ctx, root) {
   const { data, settings } = ctx;
@@ -79,6 +91,8 @@ function render(ctx, root) {
         el('b', {}, it.sets != null ? `${it.sets} × ${it.target}` : it.target || '')));
     }
     hero.append(rx);
+    const kit = kitChips(ctx, day);
+    if (kit) hero.append(kit);
 
     const setsTotal = day.items.reduce((n, it) => n + itemSets(it), 0);
     const slab = el('div', { class: 'gv-hero-action' });

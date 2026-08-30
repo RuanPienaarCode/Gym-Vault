@@ -7,6 +7,7 @@
 const { el, ico, prose, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { addItem, removeItemAt } = require('./plan-parse');
+const { equipmentFor, equipmentSummary, planExerciseNames } = require('./equipment');
 const { FormModal, ConfirmModal } = require('./modals');
 
 function render(ctx, root) {
@@ -39,6 +40,10 @@ function render(ctx, root) {
           active ? el('span', { class: 'gv-badge' }, 'active') : ''),
         el('div', { class: 'gv-plan-meta' },
           `${days.length} day${days.length === 1 ? '' : 's'} / week · ${days.reduce((n, d) => n + d.items.length, 0)} exercises`),
+        /* What the whole plan asks you to own, so you can tell at a glance
+           whether it fits the kit you actually have. */
+        el('div', { class: 'gv-plan-kit' }, ico('dumbbell'),
+          el('span', {}, equipmentSummary(data.exercises, planExerciseNames(p)))),
         el('div', { class: 'gv-plan-days' },
           ...days.map(d => el('span', { class: 'gv-tag' }, `${d.weekday} · ${d.name}`)))),
       el('div', { class: 'gv-card-actions' }, ico('chevron-right', 'gv-dim')));
@@ -83,6 +88,11 @@ function renderDetail(ctx, root, plan) {
       el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startGuided(plan, day) },
         ico('play'), el('span', {}, 'Start'))));
     if (day.notes.length) card.append(prose(day.notes, { class: 'gv-day-note', preview: 1 }));
+    const kit = equipmentFor(ctx.data.exercises, day.items.map(it => it.exercise));
+    if (kit.length) {
+      card.append(el('div', { class: 'gv-chips gv-day-kit' },
+        ...kit.map(item => el('span', { class: 'gv-tag' }, item.label))));
+    }
     const ul = el('div', { class: 'gv-day-items' });
     day.items.forEach((it, idx) => {
       ul.append(el('div', { class: 'gv-day-item' },

@@ -6,6 +6,12 @@ desktop and mobile.
 
 - **Today** — what's on the plan today, week strip, streak, goal snapshot,
   one tap into a live workout-logging screen.
+- **Guided sessions** — pick *reps* (one set at a time, you set the pace) or a
+  *timed circuit* that runs the session on the clock for however long you
+  have, with an optional warm-up, cool-down, shuffled order, "next up"
+  transitions and a spoken countdown into each interval. Both write to the
+  same session, so you can drop to the plain log screen and back without
+  losing anything. Every plan and day also shows the equipment it needs.
 - **Exercises** — searchable library with muscle-group filters and your best
   set per exercise. Each exercise opens a detail page: how-to steps (the note
   body, rendered as markdown), an image or video, your bests and recent sets.
@@ -52,9 +58,20 @@ from the command palette.
 exercises, a training plan, goals and a profile note. Nothing you already have
 is overwritten, and you can re-run it any time from Settings → *Starter files*.
 
-**Train.** *Today* shows what's scheduled. Tap **Start**, tick each set as you
-finish it, and enter reps, weight, time or distance. Your session is saved to
-`Gym/Workouts/` when you're done.
+**Train.** *Today* shows what's scheduled. Tap **Start** and choose how you
+want to be guided:
+
+- **Reps** — one set at a time, at your pace. Tap to count reps, hold to time
+  a plank, tick it off and move on.
+- **Timed circuit** — say how long you have and the app builds a circuit to
+  fit it, looping the day's exercises and counting each one down. Warm-up,
+  cool-down, shuffled order and between-exercise transitions are switches on
+  the same screen, and it tells you up front how many rounds you'll get.
+
+Either way the session is saved to `Gym/Workouts/` when you're done, and you
+can switch to the plain log screen mid-session without losing a thing. Warm-up
+and cool-down are guidance and are deliberately **not** logged — the plan note
+stays the record of what the session actually was.
 
 **Make it yours.** Everything is a note you can edit by hand. A plan is just
 `## Day name (mon)` headings with `- Exercise | 4 x 8-12` lines underneath, so
@@ -86,6 +103,18 @@ The plugin touches the network only when you ask it to, and only for these:
   have configured.
 - Exercise notes may reference a remote image or video URL, which your vault
   loads when you open that exercise. Use the offline download to stop that.
+- **The music button** in a guided session opens Spotify or Apple Music in a
+  new window — only when you tap it, and only to the app or playlist you
+  chose yourself. See *Music* below.
+
+**Music.** Optional, off until you set it up. Settings → *Music app* adds a
+button in guided sessions, and Settings → *Playlists* lets you save Spotify or
+Apple Music share links to start from that button. Tapping it opens a link in
+a new window — your music app if it's installed, that service's web player
+otherwise. Nothing about your training is sent with it, no music service is
+contacted unless you tap the button, and the plugin never reads what you are
+playing. The share token Spotify appends to a copied link (`?si=…`) identifies
+whoever shared it and is stripped before the link is saved.
 
 **Clipboard.** The Export page's *Copy* button writes the export you are
 looking at to the clipboard. The plugin never reads the clipboard.

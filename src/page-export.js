@@ -6,7 +6,7 @@
    Gym/Exports/ (always works, and on iOS the note can then go out through
    Obsidian's own share sheet). */
 
-const { el, ico, clickableCard } = require('./dom');
+const { el, ico, clickableCard, toggleRow } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
 const { buildSummary, buildCsv, buildJson } = require('./export');
 
@@ -78,9 +78,9 @@ function render(ctx, root) {
   /* What to include — health markers off by default and clearly labelled. */
   root.append(el('div', { class: 'gv-section-title' }, ico('user'), el('span', {}, 'Include')));
   const toggles = el('div', { class: 'gv-card-list' });
-  toggles.append(toggleRow(ctx, 'Body measurements', 'Weight, waist, body fat and the rest of the body log.',
+  toggles.append(optionRow(ctx, 'Body measurements', 'Weight, waist, body fat and the rest of the body log.',
     ui.includeBody, v => { ui.includeBody = v; if (!v) ui.includeHealth = false; }));
-  toggles.append(toggleRow(ctx, 'Health markers', 'Blood pressure, cholesterol and glucose. Off by default — this is medical information.',
+  toggles.append(optionRow(ctx, 'Health markers', 'Blood pressure, cholesterol and glucose. Off by default — this is medical information.',
     ui.includeHealth, v => { ui.includeHealth = v; if (v) ui.includeBody = true; }));
   root.append(toggles);
 
@@ -121,19 +121,10 @@ function render(ctx, root) {
     'Saved exports land in Gym/Exports. On a phone, open that note and use Obsidian’s share button to send it on.'));
 }
 
-/* A switch, not a button: this row toggles one thing on/off rather than
-   activating an action, so it carries role="switch" + aria-checked. The
-   accessible name lives on the row (aria-label) since the row is the whole
-   hit target and the switch glyph is now purely decorative. */
-function toggleRow(ctx, name, desc, value, onChange) {
-  const row = clickableCard(
-    { class: `gv-card gv-optrow${value ? ' on' : ''}`, role: 'switch', 'aria-checked': value ? 'true' : 'false', 'aria-label': name },
-    () => { onChange(!value); ctx.rerender(); },
-    el('div', { class: 'gv-optrow-main' },
-      el('div', { class: 'gv-optrow-name' }, name),
-      el('div', { class: 'gv-optrow-desc' }, desc)),
-    el('span', { class: `gv-switch${value ? ' on' : ''}`, 'aria-hidden': 'true' }));
-  return row;
-}
+/* The switch row itself now lives in dom.js — the guided-session setup
+   screen needs the identical control, and two hand-rolled copies of a
+   role="switch" row is exactly how the two drift apart. */
+const optionRow = (ctx, name, desc, value, onChange) =>
+  toggleRow(name, desc, value, next => { onChange(next); ctx.rerender(); });
 
 module.exports = { render };

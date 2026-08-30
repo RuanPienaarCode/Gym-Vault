@@ -80,6 +80,38 @@ function clickableCard(attrs, onActivate, ...kids) {
   return node;
 }
 
+/* A labelled on/off row — the shape both the export options and the guided-
+   session setup screen need.
+
+   A switch, not a button: the row toggles one thing on/off rather than
+   activating an action, so it carries role="switch" + aria-checked. The
+   accessible name lives on the ROW (aria-label) because the row is the whole
+   hit target; the switch glyph itself is decorative. `onChange(next)` gets
+   the value it is being moved TO — callers re-render themselves, since this
+   module knows nothing about the app controller.
+
+   `disabled` renders the row inert and unfocusable but still readable, for a
+   toggle that has nothing to act on (a warm-up with no mobility exercises in
+   the library). It carries its own explanation in `desc` — a dead control
+   with no reason given is worse than no control. */
+function toggleRow(name, desc, value, onChange, opts = {}) {
+  const on = !!value;
+  const cls = `gv-card gv-optrow${on ? ' on' : ''}${opts.disabled ? ' gv-optrow-off' : ''}`;
+  const body = [
+    el('div', { class: 'gv-optrow-main' },
+      el('div', { class: 'gv-optrow-name' }, name),
+      desc ? el('div', { class: 'gv-optrow-desc' }, desc) : ''),
+    el('span', { class: `gv-switch${on ? ' on' : ''}`, 'aria-hidden': 'true' }),
+  ];
+  if (opts.disabled) {
+    return el('div', { class: cls, 'aria-disabled': 'true' }, ...body);
+  }
+  return clickableCard(
+    { class: cls, role: 'switch', 'aria-checked': on ? 'true' : 'false', 'aria-label': name },
+    () => onChange(!on),
+    ...body);
+}
+
 /* Display formatting for numbers that may be null ("no data" ≠ 0). */
 const fmt = (v, suffix) => (v === null || v === undefined || v === '' ? '—' : `${v}${suffix || ''}`);
 
@@ -335,4 +367,4 @@ function prose(lines, opts = {}) {
   return wrap;
 }
 
-module.exports = { el, ico, clickableCard, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose };
+module.exports = { el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose };

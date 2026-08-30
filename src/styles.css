@@ -1608,6 +1608,189 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 .gv-app.gv-narrow .gv-tile-ico .gv-ico svg { width: 18px; height: 18px; }
 
 /* ============================================================================
+   EQUIPMENT — the `equipment` frontmatter every exercise note has always
+   carried, finally on screen. Reading register everywhere it appears (plan
+   list, plan detail, dashboard): it is information you scan before you move,
+   not something you press. Reuses .gv-chips/.gv-tag wholesale.
+   ============================================================================ */
+
+.gv-plan-kit {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px; font-size: 12px; color: var(--gv-ink-dim);
+}
+.gv-plan-kit .gv-ico svg { width: 13px; height: 13px; }
+.gv-day-kit { margin: 10px 0 0; }
+.gv-today-kit { align-items: center; margin: 12px 0 0; }
+.gv-today-kit-label { margin-right: 2px; }
+
+/* ============================================================================
+   GUIDED SETUP — page-session-setup.js. The one screen between "Get after
+   it" and the session. Reading register (it is a form, not a live set), with
+   the single acting-register flood reserved for the Start button, which is
+   .gv-btn-go and already carries it.
+   ============================================================================ */
+
+.gv-setup-lede { margin: -4px 0 16px; }
+.gv-setup-kit { margin: 0 0 18px; }
+.gv-setup-kit-chips { margin: 8px 0 0; }
+.gv-setup-kit-none {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 6px; font-size: 13px; color: var(--gv-ink-dim);
+}
+.gv-setup-kit-none .gv-ico svg { width: 15px; height: 15px; }
+
+/* A disabled option row stays fully readable — only the switch reads as
+   inert. Dimming the whole row would drop the very sentence that explains
+   why it cannot be switched on.
+
+   The two themes need DIFFERENT amounts of dimming, and reusing one value
+   was a real bug: the switch's border is near-black ink on white in light
+   mode, where 0.4 still reads clearly, but --gv-line-2 (#39452a) on
+   --gv-surface (#171c10) in dark mode — already a low-contrast pairing —
+   blends away to nothing at 0.4. "Inert" has to still mean "visible". */
+.gv-app .gv-optrow-off { cursor: default; }
+.gv-app .gv-optrow-off:hover { background: var(--gv-surface); }
+.gv-optrow-off .gv-switch { opacity: 0.45; }
+.theme-dark .gv-app .gv-optrow-off .gv-switch { opacity: 0.8; }
+
+.gv-setup-dial { margin: 4px 0 18px; }
+.gv-dial-row { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.gv-app .gv-dial-step {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px;
+  border: 2px solid var(--gv-ink);
+  background: var(--gv-surface);
+  color: var(--gv-ink);
+}
+.theme-dark .gv-app .gv-dial-step { border-color: var(--gv-line-2); }
+.gv-app .gv-dial-step:hover { background: var(--gv-lime-ghost); }
+.gv-dial-step .gv-ico svg { width: 22px; height: 22px; }
+.gv-dial-readout { min-width: 116px; text-align: center; }
+.gv-dial-value {
+  font-family: var(--gv-display);
+  font-size: clamp(54px, 17vw, 80px); line-height: 0.9;
+  color: var(--gv-lime-deep);
+  font-variant-numeric: tabular-nums;
+}
+.theme-dark .gv-app .gv-dial-value { color: var(--gv-lime); }
+.gv-dial-unit {
+  margin-top: 4px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gv-ink-dim);
+}
+/* THE ONE NEW RULE THAT MUST CARRY .gv-app, and the only one in this file's
+   new blocks that matches a native element: app.css ships
+   `input[type='range'] { width: 100px; height: var(--slider-track-height) }`
+   at (0,1,1), which beats a lone `.gv-dial-range` at (0,1,0) — unscoped, the
+   dial rendered as Obsidian's own 100px-wide hairline instead of the
+   full-width control this screen is laid out around. `.gv-app` takes it to
+   (0,2,0) and wins.
+
+   The height is the TOUCH TARGET, not the visual track: the input's own
+   background is cleared and the runnable-track pseudo-element carries the
+   look, so a 44px hit area does not render as a 44px slab. `accent-color`
+   is deliberately absent — app.css already sets -webkit-appearance:none and
+   paints its own thumb, so accent-color would be inert on every iOS version,
+   not merely below 15.4. Painting the pseudo-elements is what actually
+   works. */
+.gv-app .gv-dial-range {
+  width: 100%; height: 44px; margin-top: 8px;
+  -webkit-appearance: none;
+  background: transparent;
+}
+.gv-app .gv-dial-range::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 6px;
+  background: var(--gv-line);
+}
+.theme-dark .gv-app .gv-dial-range::-webkit-slider-runnable-track { background: var(--gv-line-2); }
+.gv-app .gv-dial-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px; height: 28px;
+  /* (track 6px − thumb 28px) / 2 — centres the thumb on the track. */
+  margin-top: -11px;
+  border-radius: 50%;
+  border: 2px solid var(--gv-ink);
+  background: var(--gv-lime);
+  box-shadow: none;
+}
+.theme-dark .gv-app .gv-dial-range::-webkit-slider-thumb { border-color: var(--gv-line-2); }
+
+.gv-app .gv-setup-music { width: 100%; text-align: left; }
+/* Deliberately its own class rather than .gv-microcopy — the Editorial skin
+   hides microcopy, and this line carries the answer, not a flourish. */
+.gv-setup-preview {
+  margin: 16px 0 4px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--gv-ink-dim);
+}
+.gv-setup-start { margin-top: 6px; }
+
+/* ============================================================================
+   TIMED SESSION — page-session.js's third renderer. Acting register, same
+   as the set-by-set screen above: the countdown is the whole screen and the
+   ONE lime flood is the pause button, under the thumb. No new hex.
+   ============================================================================ */
+
+.gv-timed { align-items: center; text-align: center; }
+.gv-timed-dial {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: min(72vw, 236px);
+  margin: 6px auto 14px;
+}
+.gv-count-ring { display: block; width: 100%; height: auto; }
+.gv-count-ring-track { fill: none; stroke: var(--gv-line); stroke-width: 9; }
+.theme-dark .gv-app .gv-count-ring-track { stroke: var(--gv-line-2); }
+.gv-count-ring-fill {
+  fill: none; stroke: var(--gv-lime); stroke-width: 9; stroke-linecap: butt;
+  transition: stroke-dasharray 0.2s linear;
+}
+@media (prefers-reduced-motion: reduce) { .gv-count-ring-fill { transition: none; } }
+.gv-timed-count {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--gv-display);
+  font-size: clamp(54px, 19vw, 92px); line-height: 1;
+  color: var(--gv-ink);
+  font-variant-numeric: tabular-nums;
+}
+/* A transition is a breather, not a set — it reads quieter than the work
+   interval it leads into, so the two are never mistaken for each other at a
+   glance from across a mat. */
+.gv-timed-transition .gv-timed-count { color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-timed-transition .gv-timed-count { color: var(--gv-lime); }
+
+.gv-timed-figures {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 12px; margin: 0 0 12px;
+}
+.gv-timed-field { display: flex; align-items: center; gap: 4px; }
+.gv-app .gv-timed-input { width: 84px; text-align: center; }
+.gv-timed-target {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--gv-ink-dim);
+}
+
+.gv-timed-controls {
+  display: flex; align-items: center; justify-content: center;
+  gap: 22px; margin: 4px 0 8px;
+}
+.gv-app .gv-timed-play {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  width: 76px; height: 76px;
+  border: 2px solid var(--gv-ink);
+  background: var(--gv-lime);
+  color: var(--gv-ink-fixed);
+}
+.gv-app .gv-timed-play:hover { background: var(--gv-lime-hi); }
+.gv-timed-play .gv-ico svg { width: 30px; height: 30px; }
+
+body.is-phone .gv-app .gv-timed-dial { width: min(64vw, 196px); margin: 2px auto 10px; }
+body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
+
+/* ============================================================================
    ACCENT PALETTES — settings › Accent color. Each block ONLY re-points the
    --gv-lime* tokens (names kept for history; read them as "accent"). The
    deep value is the one used as small text on white, so it must hold AA —

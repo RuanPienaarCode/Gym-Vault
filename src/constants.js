@@ -11,10 +11,36 @@ const DEFAULT_SETTINGS = {
   skin: 'floor',         // keys of SKINS
   accent: 'lime',        // keys of ACCENTS
   musicApp: 'none',      // keys of MUSIC_APPS — 'none' hides the guided-view button
+  /* Saved music links: [{name, url}]. The url is a share link the user
+     pasted; music-link.js parses it at open time (never trusts a stored
+     scheme) and settings-tab refuses anything it cannot parse. */
+  playlists: [],
+  /* Last-used guided-session setup, so a regular taps straight through the
+     setup screen. FLAT KEYS ON PURPOSE: loadSettings() is a shallow
+     Object.assign over DEFAULT_SETTINGS, so a nested `guide` object saved by
+     an older version would replace the default wholesale and every key added
+     later would arrive undefined. Flat keys each fall back on their own. */
+  guideMode: 'reps',       // 'reps' (set-by-set, the original) | 'timed' (interval circuit)
+  guideMinutes: 30,
+  guideWarmup: false,
+  guideCooldown: false,
+  guideShuffle: false,
+  guideTransitions: true,
   /* Raw base of a plan library repo (see RuanPienaarCode/gym_plans). Any
      repo with the same shape — plans.json + plans/ + exercises/ — works. */
   planRepo: 'https://raw.githubusercontent.com/RuanPienaarCode/gym_plans/main',
 };
+
+/* How a guided session is played — [key, name, description]. Keys are what
+   `guideMode` stores. Two genuinely different sessions, not a display
+   preference: see page-session-setup.js. */
+const GUIDE_MODES = [
+  ['reps', 'Reps', 'One set at a time. You decide when each one is done.'],
+  ['timed', 'Timed circuit', 'The clock runs the session. Hands free, eyes up.'],
+];
+
+/* The duration dial's range and step, in minutes. */
+const GUIDE_MINUTES = { min: 5, max: 90, step: 5 };
 
 /* Selectable styles. Each key maps to a gv-skin-<key> class on the app root;
    the skin blocks live at the END of src/styles.css so they win ties. */
@@ -102,5 +128,6 @@ const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forea
 
 module.exports = {
   VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS, MUSIC_APPS,
+  GUIDE_MODES, GUIDE_MINUTES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

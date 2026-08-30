@@ -2,6 +2,7 @@
 
 const { PluginSettingTab, Setting, Notice } = require('obsidian');
 const { SKINS, ACCENTS, MUSIC_APPS } = require('./constants');
+const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 
 class GymSettingTab extends PluginSettingTab {
@@ -76,6 +77,8 @@ class GymSettingTab extends PluginSettingTab {
           });
       });
 
+    this.renderPlaylists(c);
+
     new Setting(c)
       .setName('Open on startup')
       .setDesc('Open the gym view when Obsidian launches.')
@@ -146,6 +149,71 @@ class GymSettingTab extends PluginSettingTab {
           } catch (e) {
             new Notice(`Gym: setup failed (${e.message || e})`, 6000);
           }
+        }));
+  }
+
+  /* Saved music links, offered in guided sessions and on the setup screen.
+
+     A link is validated HERE, at the point of entry, and refused if
+     music-link.js cannot parse it — the alternative is storing it and having
+     the button do nothing months later, mid-session, with no clue why. An
+     already-stored link that no longer parses (a hand-edited settings file,
+     a sync from an older version) is shown with its problem stated rather
+     than quietly disappearing, because it does quietly disappear from the
+     pickers and that would otherwise be inexplicable. */
+  renderPlaylists(c) {
+    const list = Array.isArray(this.plugin.settings.playlists) ? this.plugin.settings.playlists : [];
+
+    new Setting(c)
+      .setName('Playlists')
+      .setDesc('Saved Spotify or Apple Music links, offered alongside the music button in a guided session. Paste the share link — "Copy link to playlist" in Spotify, "Share → Copy Link" in Apple Music.')
+      .setHeading();
+
+    const save = async () => {
+      await this.plugin.saveSettings();
+      this.plugin.refreshViews();
+      this.display();
+    };
+
+    list.forEach((pl, i) => {
+      const target = parseMusicTarget(pl && pl.url);
+      const row = new Setting(c).setName((pl && pl.name) || 'Untitled');
+      row.setDesc(target
+        ? `${appLabel(target.app)}${target.kind ? ` · ${target.kind}` : ''}`
+        : 'This link can no longer be opened, so it is not offered in sessions. Remove it and paste the share link again.');
+      row.addExtraButton(b => b
+        .setIcon('trash-2')
+        .setTooltip('Remove')
+        .onClick(async () => { list.splice(i, 1); this.plugin.settings.playlists = list; await save(); }));
+    });
+
+    if (!list.length) {
+      new Setting(c).setDesc('Nothing saved yet — the music button still opens the app you picked above.');
+    }
+
+    /* Name and link get a row each rather than sharing one: two text inputs
+       plus a button in a single Setting's control area is unusable on a
+       phone, which is where a playlist actually gets added. */
+    let draftName = '';
+    let draftUrl = '';
+    new Setting(c)
+      .setName('Add a playlist')
+      .setDesc('What you want to call it.')
+      .addText(t => t.setPlaceholder('Name').onChange(v => { draftName = v; }));
+    new Setting(c)
+      .setDesc('The share link.')
+      .addText(t => t.setPlaceholder('https://open.spotify.com/playlist/…').onChange(v => { draftUrl = v; }))
+      .addButton(b => b
+        .setButtonText('Add')
+        .onClick(async () => {
+          const name = draftName.trim();
+          if (!name) { new Notice('Gym: give the playlist a name.', 5000); return; }
+          if (!isMusicUrl(draftUrl)) {
+            new Notice('Gym: that is not a Spotify or Apple Music link. Copy the share link from the app and paste it here.', 7000);
+            return;
+          }
+          this.plugin.settings.playlists = list.concat([{ name, url: draftUrl.trim() }]);
+          await save();
         }));
   }
 }

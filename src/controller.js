@@ -17,6 +17,7 @@ const pages = {
   browse: require('./page-browse'),
   log: require('./page-log'),
   exercise: require('./page-exercise-detail'),
+  setup: require('./page-session-setup'),
   session: require('./page-session'),
 };
 
@@ -47,7 +48,10 @@ function mountApp(view) {
        draft itself stays on logDraft, per ONE DRAFT, TWO VIEWS. pageCleanup
        is a one-shot teardown any page can register (wake lock, confetti rAF)
        that ctx.nav runs the moment the page actually changes. */
-    state: { page: 'dashboard', params: {}, logDraft: null, session: null, pageCleanup: null },
+    /* setup/setupUi: the pending {plan, day} and the choices being made on
+       the setup screen — deliberately NOT a draft. Nothing exists until
+       Start, so backing out of setup leaves the vault untouched. */
+    state: { page: 'dashboard', params: {}, logDraft: null, session: null, setup: null, setupUi: null, pageCleanup: null },
     _interval: null,
     /* Set by ctx.nav() only (never by a plain ctx.rerender() from local UI
        state — ticking a set, toggling a switch — which must NOT steal focus
@@ -145,9 +149,26 @@ function mountApp(view) {
     ctx.state.session = null;
     ctx.nav('session');
   };
+  /* Starting a session goes through the setup screen (page-session-setup.js):
+     it asks how you want to be guided and for how long, then builds the draft
+     itself. It deliberately does NOT create a draft here — half the point of
+     that screen is that backing out of it costs nothing.
+
+     NAMES, not object references. The user can sit on the setup screen for a
+     minute, and any vault change in that window (an iCloud sync landing, an
+     edit in another pane) fires ctx.reload(), which replaces ctx.data
+     wholesale — a held reference would then be a snapshot of a plan that no
+     longer exists, and the session would be built from it. The index is kept
+     only as a fallback for the pathological case of two days sharing a name. */
   ctx.startGuided = (plan, day) => {
-    pages.log.startDraft(ctx, plan, day);
-    ctx.enterGuided();
+    const dayIndex = plan && day ? plan.model.days.indexOf(day) : -1;
+    ctx.state.setup = {
+      plan: plan ? plan.name : null,
+      day: day ? day.name : null,
+      dayIndex,
+    };
+    ctx.state.setupUi = null;
+    ctx.nav('setup');
   };
 
   /* A page may register one interval (the log clock); it's cleared on every
@@ -286,7 +307,7 @@ function mountApp(view) {
 
   function renderNavState() {
     if (!navEl) return;
-    const current = ctx.state.page === 'log' || ctx.state.page === 'session' ? 'dashboard'
+    const current = ctx.state.page === 'log' || ctx.state.page === 'session' || ctx.state.page === 'setup' ? 'dashboard'
       : ctx.state.page === 'exercise' ? 'exercises'
       : ctx.state.page;
     const buttons = [

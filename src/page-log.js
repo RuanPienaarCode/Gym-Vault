@@ -10,9 +10,21 @@ const { targetFirstNumber, targetWeight, targetIsDuration, itemSets } = require(
 const { FormModal, ConfirmModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
 
-function startDraft(ctx, plan, day) {
+/* `opts.setsPerEntry` (an array, one count per day item) overrides the plan's
+   prescribed set count. A TIMED guided session needs it: the schedule decides
+   how many rounds fit the time you asked for, and that is what the draft must
+   hold — give every entry the plan's 3 sets when the clock only ever plays 2
+   and the log fills with empty sets nothing scheduled. A count of 0 still
+   makes one set, because an entry with no sets is unreachable. */
+function startDraft(ctx, plan, day, opts) {
+  const perEntry = (opts && opts.setsPerEntry) || null;
   const entries = [];
-  if (day) for (const it of day.items) entries.push(makeEntry(ctx, it.exercise, itemSets(it), it.target));
+  if (day) {
+    day.items.forEach((it, i) => {
+      const n = perEntry && Number.isFinite(perEntry[i]) ? perEntry[i] : itemSets(it);
+      entries.push(makeEntry(ctx, it.exercise, n, it.target));
+    });
+  }
   ctx.state.logDraft = {
     date: todayISO(),
     plan: plan ? plan.name : '',
@@ -257,11 +269,18 @@ function buildRows(draft) {
           note: '', distance_km: String(set.distance_km ?? '').trim(),
         });
       } else {
+        /* seconds is written whenever the set HAS them, not only for
+           duration entries. For every pre-existing path this changes
+           nothing — makeEntry leaves seconds empty on a reps entry and no
+           screen ever filled it. What it buys: a timed circuit (see
+           timed-plan.js) measures real time on a rep exercise too, so a
+           push-up interval can log "15 reps, 45 s" instead of throwing away
+           the one figure the clock actually knew. */
         rows.push({
           exercise: entry.exercise, set: n,
           reps: entry.duration ? '' : String(set.reps).trim(),
           weight_kg: entry.duration ? '' : String(set.weight_kg).trim(),
-          seconds: entry.duration ? String(set.seconds).trim() : '',
+          seconds: String(set.seconds ?? '').trim(),
           note: '', distance_km: '',
         });
       }
