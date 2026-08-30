@@ -116,6 +116,8 @@ Gym/
                         # (only the table's lines are rewritten — headings and
                         #  prose you write around it are left alone)
   Exercises/<name>.md   # frontmatter: type, muscles, equipment, unit
+                        # subfolders are read too, but the NAME must be unique:
+                        # plans and goals refer to exercises by name
   Plans/<name>.md       # day sections + exercise lines (see above)
   Goals/<name>.md       # frontmatter: metric, exercise, target, deadline
   Workouts/<date> <day>.md  # frontmatter + a table of logged sets

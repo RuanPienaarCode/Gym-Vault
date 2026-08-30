@@ -30,8 +30,14 @@ function vaultFile(ctx, value, sourcePath) {
 }
 
 function render(ctx, root) {
-  const name = ctx.state.params && ctx.state.params.exercise;
-  const ex = ctx.data.exercises.find(e => e.name === name);
+  const params = ctx.state.params || {};
+  const name = params.exercise;
+  /* Path first: it identifies the FILE, and two exercise notes in different
+     subfolders can share a name. Name is the fallback — plans, goals and
+     logged rows all reference exercises by name (that is the file format,
+     and it is hand-editable), so a name-only link must still resolve. */
+  const ex = (params.path && ctx.data.exercises.find(e => e.file.path === params.path))
+    || ctx.data.exercises.find(e => sameName(e.name, name));
   if (!ex) { ctx.nav('exercises'); return; }
 
   /* Toolbar */

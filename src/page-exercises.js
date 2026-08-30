@@ -21,6 +21,21 @@ function render(ctx, root) {
   bar.append(title, search, addBtn);
   root.append(bar);
 
+  /* Two notes sharing a basename are genuinely ambiguous and only the user
+     can resolve it: plans, goals and logged rows all reference an exercise
+     BY NAME, so "Bench" in a plan cannot be pointed at one of two files.
+     Each note is now reachable from its own card (nav carries the path), but
+     the clash still has to be said out loud rather than silently picking the
+     first match — which is what it used to do. */
+  if (data.duplicateExercises && data.duplicateExercises.length) {
+    const paths = data.duplicateExercises;
+    root.append(el('div', { class: 'gv-warn-line' },
+      ico('triangle-alert'),
+      el('span', {}, `${paths.length === 1 ? '1 exercise shares' : `${paths.length} exercises share`} a name with another note `
+        + `(${paths.slice(0, 3).join(', ')}${paths.length > 3 ? ', …' : ''}). `
+        + 'Plans and goals reference exercises by name, so rename one to be sure which is used.')));
+  }
+
   const chips = el('div', { class: 'gv-chips' });
   const allChip = el('button', { class: `gv-chip${ui.muscle === '' ? ' on' : ''}`, type: 'button' }, 'all');
   allChip.addEventListener('click', () => { ui.muscle = ''; ctx.rerender(); });
@@ -66,7 +81,10 @@ function card(ctx, ex, idx) {
     .filter(Boolean).join(' · ');
   const c = clickableCard(
     { class: 'gv-ex-card', 'aria-label': `Open ${ex.name}` },
-    () => ctx.nav('exercise', { exercise: ex.name }),
+    /* Carry the PATH as well as the name. readNotesIn walks subfolders, so
+       two notes can share a basename; name alone always resolved to the
+       first and left the other permanently unreachable. */
+    () => ctx.nav('exercise', { exercise: ex.name, path: ex.file.path }),
     el('span', { class: 'gv-ex-idx' }, String(idx + 1).padStart(2, '0')),
     el('div', { class: 'gv-ex-main' },
       el('span', { class: 'gv-ex-name' }, ex.name),

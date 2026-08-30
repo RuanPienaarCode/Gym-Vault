@@ -66,7 +66,11 @@ function render(ctx, root) {
     el('div', { class: 'gv-logtop-lead' },
       back,
       el('div', {},
-        el('div', { class: 'gv-logtop-title' }, draft.day || 'Freestyle session'),
+        /* A real heading, not a styled div: this is the page's title, and
+           without it the log page had none at all — nothing for a screen
+           reader's rotor to land on, and ctx.nav's focus-move silently
+           no-opped here. */
+        el('h2', { class: 'gv-logtop-title' }, draft.day || 'Freestyle session'),
         el('div', { class: 'gv-logtop-sub' }, [draft.plan, fmtShort(draft.date)].filter(Boolean).join(' · ')))),
     guidedBtn,
     el('div', { class: 'gv-log-clock' }, ico('timer'), el('span', { class: 'gv-log-elapsed' }, elapsed(draft)))));

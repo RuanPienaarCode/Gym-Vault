@@ -93,6 +93,7 @@
   letter-spacing: -0.005em;
 }
 .gv-kicker {
+  margin: 0;                 /* .gv-session-rest-title renders this as an <h2> */
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -216,10 +217,12 @@
    its visible counter ticks every second, and marking THAT live would spam a
    screen reader once a second.
 
-   `clip: rect()` rather than `clip-path`: the community-plugin review linter
-   flags clip-path as only partially supported, and css-guards.test.cjs
-   tripwires it. `clip` is deprecated in favour of it but is universally
-   supported, including on the iOS 15 floor this plugin still targets.
+   `clip: rect()` rather than the newer clipping property: the review linter
+   flags that one as only partially supported and css-guards.test.cjs
+   tripwires it, so its name is deliberately not written here either — a
+   reviewer grepping the shipped stylesheet should find no hit at all.
+   `clip` is deprecated in its favour but is universally supported,
+   including on the iOS 15 floor this plugin still targets.
    Not `display:none` or `visibility:hidden` — both remove the element from
    the accessibility tree, which defeats the entire point. */
 .gv-app .gv-sr-only {
@@ -459,6 +462,26 @@
 .theme-dark .gv-app .gv-section-title .gv-ico { color: var(--gv-lime); }
 .gv-section-title .gv-ico svg { width: 16px; height: 16px; }
 .gv-section-title-inline { font-family: var(--gv-display); font-size: 15px; text-transform: uppercase; }
+
+/* A problem the user has to resolve, not an empty state. Distinguished from
+   .gv-empty-line by a solid warning border rather than a dashed neutral one —
+   dashed reads as "nothing here yet", which is the opposite of the message. */
+.gv-app .gv-warn-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  margin: 10px 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gv-ink);
+  background: var(--gv-lime-ghost);
+  border: 2px solid var(--gv-lime-deep);
+  border-radius: 8px;
+}
+.gv-app .gv-warn-line .gv-ico { flex: 0 0 auto; color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-warn-line { border-color: var(--gv-lime); }
+.theme-dark .gv-app .gv-warn-line .gv-ico { color: var(--gv-lime); }
 
 .gv-empty-line {
   padding: 26px 16px;
@@ -1115,7 +1138,9 @@
 .gv-logtop-lead { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .gv-app .gv-logtop .gv-icon-btn { background: transparent; border-color: rgba(245, 247, 239, 0.4); color: var(--gv-lime-hi); }
 .theme-dark .gv-app .gv-logtop .gv-icon-btn { border-color: rgba(16, 20, 11, 0.4); color: var(--gv-lime-deep); }
-.gv-logtop-title { font-family: var(--gv-display); font-size: clamp(20px, 6vw, 26px); text-transform: uppercase; line-height: 0.95; }
+/* margin:0 because these are <h2> now, not divs — Obsidian's app.css puts a
+   default margin on bare headings and it would push the layout around. */
+.gv-logtop-title { font-family: var(--gv-display); font-size: clamp(20px, 6vw, 26px); text-transform: uppercase; line-height: 0.95; margin: 0; }
 .gv-logtop-sub { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gv-lime-hi); margin-top: 5px; }
 .theme-dark .gv-app .gv-logtop-sub { color: var(--gv-lime-deep); }
 .gv-log-clock { display: flex; align-items: center; gap: 6px; font-family: var(--gv-display); font-size: 20px; color: var(--gv-lime-hi); white-space: nowrap; }

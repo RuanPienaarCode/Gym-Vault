@@ -574,7 +574,10 @@ function renderRest(ctx, root, draft, sess) {
 
   root.append(topBar(ctx, draft, null));
   root.append(el('div', { class: 'gv-session-rest' },
-    el('div', { class: 'gv-kicker' }, 'Rest'),
+    /* The rest phase is a whole route with no other title — a heading here
+       is what tells a screen-reader user the session moved on, and what
+       ctx.nav's focus-move needs to find. */
+    el('h2', { class: 'gv-kicker gv-session-rest-title' }, 'Rest'),
     el('div', { class: 'gv-session-rest-clock-wrap' }, ico('timer'), elapsedEl),
     callouts,
     nextLabel,

@@ -502,27 +502,32 @@ function makeIo(plugin) {
     const replaceable = v => { const l = listOfMedia(v); return !l.length || l.every(isSeedMediaUrl); };
     const sameList = (a, b) => JSON.stringify(listOfMedia(a)) === JSON.stringify(listOfMedia(b));
     let patched = 0;
+    /* Match by BASENAME across the whole tree, not by a constructed
+       top-level path: readNotesIn walks subfolders, so a user who filed
+       their exercises under Push/ and Pull/ got no media refresh at all. */
+    const notes = await readNotesIn(paths.exercises());
     for (const seedEx of SEED_EXERCISES) {
-      const path = `${paths.exercises()}/${safeName(seedEx.name)}.md`;
-      const f = v.getFileByPath(path);
-      if (!f) continue;
-      const { fm, body } = parseFrontmatter(await v.cachedRead(f));
-      let changed = false;
-      const next = { ...fm };
-      if (seedEx.image && replaceable(fm.image) && !sameList(fm.image, seedEx.image)) { next.image = seedEx.image; changed = true; }
-      if (seedEx.video && replaceable(fm.video) && (fm.video || '') !== seedEx.video) { next.video = seedEx.video; changed = true; }
-      if (!changed) continue;
-      /* Append each attribution/caveat line at most ONCE — gate on the
-         line itself, not a proxy string, or a note that already carries a
-         "Photos show…" caveat gains a duplicate on the next media change. */
-      let nextBody = body;
-      for (const line of (seedEx.note || '').split('\n')) {
-        if ((line.indexOf('wger.de') >= 0 || /^(Photos|Media) show/.test(line)) && nextBody.indexOf(line) < 0) {
-          nextBody = nextBody.replace(/\s*$/, '') + '\n\n' + line + '\n';
+      const wanted = safeName(seedEx.name).toLowerCase();
+      for (const f of notes.filter(n => n.basename.toLowerCase() === wanted)) {
+        const path = f.path;
+        const { fm, body } = parseFrontmatter(await v.cachedRead(f));
+        let changed = false;
+        const next = { ...fm };
+        if (seedEx.image && replaceable(fm.image) && !sameList(fm.image, seedEx.image)) { next.image = seedEx.image; changed = true; }
+        if (seedEx.video && replaceable(fm.video) && (fm.video || '') !== seedEx.video) { next.video = seedEx.video; changed = true; }
+        if (!changed) continue;
+        /* Append each attribution/caveat line at most ONCE — gate on the
+           line itself, not a proxy string, or a note that already carries a
+           "Photos show…" caveat gains a duplicate on the next media change. */
+        let nextBody = body;
+        for (const line of (seedEx.note || '').split('\n')) {
+          if ((line.indexOf('wger.de') >= 0 || /^(Photos|Media) show/.test(line)) && nextBody.indexOf(line) < 0) {
+            nextBody = nextBody.replace(/\s*$/, '') + '\n\n' + line + '\n';
+          }
         }
+        await writeFile(path, serializeFrontmatter(next) + '\n' + nextBody);
+        patched++;
       }
-      await writeFile(path, serializeFrontmatter(next) + '\n' + nextBody);
-      patched++;
     }
     return patched;
   }
