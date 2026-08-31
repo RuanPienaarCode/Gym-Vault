@@ -969,6 +969,16 @@
 .gv-optrow { display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: -1px; }
 .gv-optrow:hover { background: var(--gv-lime-ghost); }
 .gv-optrow.on { box-shadow: inset 4px 0 0 var(--gv-lime); }
+/* Most option rows are divs (clickableCard), but the music row is a real
+   <button> — and app.css styles the bare element with BOTH `white-space:
+   nowrap` (which every child inherits, so the description cannot wrap and
+   runs straight off the right edge of a phone) and a fixed
+   `height: var(--input-height)` (which crops the row the moment the
+   description does wrap). One row needs both undone; a div row is unchanged
+   by either. Same trap as .gv-chunk-head, and the same warning applies: a
+   harness that does not load app.css wraps happily and reports a false
+   pass. */
+.gv-app .gv-optrow { white-space: normal; height: auto; }
 .gv-optrow-main { flex: 1 1 auto; min-width: 0; }
 .gv-optrow-name { font-size: 14px; font-weight: 700; }
 .gv-optrow-desc { font-size: 12px; color: var(--gv-ink-dim); margin-top: 3px; line-height: 1.45; }

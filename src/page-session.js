@@ -30,7 +30,12 @@ const timedPlan = require('./timed-plan');
 const FLASH_MS = 180;
 const HOLD_CHECKPOINT_S = 15;
 const MEDIA_CYCLE_MS = 1100; // time each frame holds before crossfading to the next
-const MEDIA_MAX_FRAMES = 2; // guided view only ever animates start->finish, never the detail page's extras
+/* Most notes hold a start/finish pair, so 2 was the whole animation. Notes
+   sourced from a real photo SEQUENCE (the burpee and the kettlebell front
+   squat carry four frames each) animate properly at 4 — and a note with two
+   frames is unchanged, because slice() takes what is there. Beyond four the
+   cycle outlasts a working set and starts reading as a slideshow. */
+const MEDIA_MAX_FRAMES = 4;
 
 function render(ctx, root) {
   const draft = ctx.state.logDraft;
