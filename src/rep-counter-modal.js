@@ -174,8 +174,11 @@ class RepCounterModal extends Modal {
          renders exactly as it always did. */
       this._meter = attachFillMeter(this.zone, this.target);
       /* The detonation the meter charges towards; fired once by the
-         _targetHit guard in commitRep. */
-      this._powerup = this._meter ? attachPowerUp(this.zone) : null;
+         _targetHit guard in commitRep. The freestyle counter can be aimed
+         at reps or seconds — the badge names whichever was reached. */
+      this._powerup = this._meter
+        ? attachPowerUp(this.zone, this.target && this.target.kind === 'seconds' ? 'Time reached' : 'Reps reached')
+        : null;
       if (this.target) {
         this.zone.append(el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(this.target)}`));
       }

@@ -460,7 +460,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const meter = attachFillMeter(zone, target);
   /* The detonation the meter charges towards — only exists when the meter
      does, and fires once via markHit's own guard. */
-  const powerUp = meter ? attachPowerUp(zone) : null;
+  const powerUp = meter ? attachPowerUp(zone, 'Reps reached') : null;
   /* "TARGET 15 REPS", not "of 15 reps". The label sits under a giant
      numeral, and a fragment starting with "of" reads as the tail of a
      sentence whose head is a digit — fine in prose, wrong as a standalone
@@ -630,8 +630,9 @@ function durationBody(ctx, draft, sess, entry, set) {
   const target = counterTarget.targetFromEntry(entry);
   const meter = attachFillMeter(zone, target);
   /* A hold's target moment gets the same detonation a rep target does —
-     the clock reaching the goal is no less of a reward than a tap. */
-  const powerUp = meter ? attachPowerUp(zone) : null;
+     the clock reaching the goal is no less of a reward than a tap. A hold
+     is not reps, so the badge says what was actually reached. */
+  const powerUp = meter ? attachPowerUp(zone, 'Time reached') : null;
   if (target) zone.append(el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(target)}`));
 
   const currentSeconds = () => (hold.running ? Math.max(0, (Date.now() - hold.startedAt) / 1000) : hold.frozenSeconds);

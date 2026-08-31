@@ -231,7 +231,7 @@ function punch(node, count) {
 function attachPowerUp(zone, word) {
   const burst = el('span', { class: 'gv-rc-pu-burst' });
   const wave = el('span', { class: 'gv-rc-pu-wave' });
-  const label = el('span', { class: 'gv-rc-pu-label gv-display' }, word || 'Target met');
+  const label = el('span', { class: 'gv-rc-pu-label gv-display' }, word || 'Reps reached');
   const layer = el('div', { class: 'gv-rc-powerup', 'aria-hidden': 'true' }, burst, wave, label);
   zone.append(layer);
   return {
