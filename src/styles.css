@@ -354,6 +354,12 @@
 .theme-dark .gv-app .gv-icon-btn { border-color: var(--gv-line-2); }
 .gv-app .gv-icon-btn:hover { background: var(--gv-lime-ghost); }
 .gv-icon-btn-small { width: 28px; height: 28px; border-width: 1px; }
+/* A latched icon button — motion counting is ON. Filled rather than merely
+   tinted, because this one is read at arm's length from the floor, and
+   because `aria-pressed` alone tells a screen reader but not an eye. */
+.gv-app .gv-icon-btn-on { background: var(--gv-ink); color: var(--gv-lime); }
+.gv-app .gv-icon-btn-on:hover { background: var(--gv-ink); }
+.theme-dark .gv-app .gv-icon-btn-on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-icon-btn-small .gv-ico svg { width: 13px; height: 13px; }
 
 .gv-toolbar {
@@ -1391,6 +1397,21 @@
   pointer-events: none;
 }
 .gv-rc-zone.gv-rc-flash .gv-rc-count { color: var(--gv-lime); }
+
+/* One quiet line under the count saying what is doing the counting. Empty in
+   tap mode — the tap zone does not need to announce itself — so it must not
+   reserve space it is not using. */
+.gv-rc-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+  text-align: center;
+  padding: 0 16px;
+}
+.gv-rc-hint:empty { display: none; }
 
 /* ---------- guided session (src/page-session.js) ----------
    A second renderer over the SAME draft page-log.js edits — deliberately

@@ -13,6 +13,7 @@
    record/goal tallies) lives on ctx.state.session — a fresh object every
    time guided mode is (re-)entered via ctx.enterGuided(). */
 
+const { Notice } = require('obsidian');
 const { el, ico, clear, fmtSeconds } = require('./dom');
 const { todayISO } = require('./dates');
 const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
@@ -21,6 +22,7 @@ const records = require('./records');
 const confetti = require('./confetti');
 const { createCounter, tap, undo } = require('./rep-counter');
 const { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone } = require('./rep-counter-shared');
+const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const { buildRows, finishSession } = require('./page-log');
 const { nextFrameIndex } = require('./media-cycle');
@@ -49,6 +51,10 @@ function render(ctx, root) {
       restStartedAt: null,
       muted: false,
       counter: null, counterFor: null,
+      /* Motion counting is per-SESSION, not per-render: the toggle must
+         survive the re-render that every completed set causes. stopMotion is
+         the live subscription's teardown, replaced on each render. */
+      motionOn: false, stopMotion: null,
       hold: null, holdFor: null,
       workoutsAtStart: ctx.data.workouts, // snapshot: never includes THIS session's own rows (they aren't saved until Finish)
       metGoals: new Set(),
@@ -87,6 +93,7 @@ function render(ctx, root) {
     if (sess.wakeLock) { sess.wakeLock.release(); sess.wakeLock = null; }
     if (sess.confettiStop) { sess.confettiStop(); sess.confettiStop = null; }
     if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
+    if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
     cancelSpeech();
     ctx.state.session = null;
   };
@@ -266,6 +273,63 @@ function guidedImageBlock(sess, ex, frames) {
   return wrap;
 }
 
+/* The guided view's motion toggle. Unlike the modal's, the ON/OFF state
+   lives on `sess` so it survives the re-render that every completed set
+   triggers — a counter that switched itself back to tap mode between set 2
+   and set 3 would be worse than never offering motion at all. The subscription
+   itself is torn down and restarted by that re-render, which is cheap and
+   keeps this out of the page-cleanup slot the wake lock owns.
+
+   The click IS the user gesture iOS demands for requestPermission(); nothing
+   here may await before startMotionCounter is called. */
+function motionButton(sess, onRep, hintEl) {
+  const btn = el('button', {
+    class: `gv-icon-btn${sess.motionOn ? ' gv-icon-btn-on' : ''}`, type: 'button',
+    'aria-pressed': sess.motionOn ? 'true' : 'false',
+    'aria-label': motionAvailable()
+      ? (sess.motionOn ? 'Stop counting from movement' : 'Count reps from movement')
+      : 'No motion sensor on this device',
+  }, ico('activity'));
+  if (!motionAvailable()) { btn.disabled = true; return btn; }
+
+  const stop = () => {
+    if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
+  };
+  const sync = () => {
+    btn.classList.toggle('gv-icon-btn-on', !!sess.motionOn);
+    btn.setAttribute('aria-pressed', sess.motionOn ? 'true' : 'false');
+    btn.setAttribute('aria-label', sess.motionOn ? 'Stop counting from movement' : 'Count reps from movement');
+    if (hintEl) hintEl.textContent = sess.motionOn ? 'Counting your movement — taps still work' : '';
+  };
+  const begin = () => {
+    startMotionCounter({
+      onRep,
+      onStatus: status => {
+        if (status === 'listening') return;
+        sess.motionOn = false;
+        stop();
+        sync();
+        new Notice(status === 'denied'
+          ? 'Gym: motion access was declined — counting by tap instead. Enable Motion & Orientation for Obsidian in iOS Settings to use it.'
+          : 'Gym: this device has no motion sensor available — counting by tap instead.', 6000);
+      },
+    }).then(fn => { if (sess.motionOn) sess.stopMotion = fn; else fn(); });
+  };
+
+  /* A re-render lands here with motion already ON and no live subscription
+     (the previous render's was torn down with its DOM). Pick it back up. */
+  if (sess.motionOn && !sess.stopMotion) begin();
+
+  btn.addEventListener('click', () => {
+    if (sess.motionOn) { sess.motionOn = false; stop(); sync(); return; }
+    sess.motionOn = true;
+    sync();
+    if (hintEl) hintEl.textContent = 'Asking for the motion sensor…';
+    begin();
+  });
+  return btn;
+}
+
 function muteButton(sess, onToggle) {
   const speechOk = speechAvailable();
   const btn = el('button', {
@@ -300,18 +364,27 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const zone = el('div', { class: 'gv-rc-zone gv-session-zone', role: 'button', tabindex: '0', 'aria-label': `Tap to count a rep for ${entry.exercise}` }, countEl);
 
   let flashTimer = null;
-  const registerTap = () => {
-    const now = Date.now();
-    const result = tap(sess.counter, now);
-    sess.counter = result.state;
-    if (!result.counted) return;
+  const showRep = () => {
     countEl.textContent = String(sess.counter.count);
     zone.classList.add('gv-rc-flash');
     if (flashTimer) window.clearTimeout(flashTimer);
     flashTimer = window.setTimeout(() => { zone.classList.remove('gv-rc-flash'); flashTimer = null; }, FLASH_MS);
     if (!sess.muted) speak(sess.counter.count);
   };
+  const registerTap = () => {
+    const result = tap(sess.counter, Date.now());
+    sess.counter = result.state;
+    if (!result.counted) return;
+    showRep();
+  };
+  /* Motion-detected reps bypass the tap debounce — motion-count.js runs its
+     own refractory window, and stacking the two would drop any rep landing in
+     the gap between them. */
+  const registerMotionRep = () => { sess.counter = tap(sess.counter, Date.now(), 0).state; showRep(); };
   attachTapZone(zone, registerTap);
+
+  const hintEl = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' }, sess.motionOn ? 'Counting your movement — taps still work' : '');
+  zone.append(hintEl);
 
   const undoBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': 'Undo last rep' },
     ico('minus'), el('span', {}, '1'));
@@ -320,7 +393,8 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
   doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }));
 
-  const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(sess), undoBtn, doneBtn);
+  const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' },
+    motionButton(sess, registerMotionRep, hintEl), muteButton(sess), undoBtn, doneBtn);
   return el('div', { class: 'gv-session-body' }, extraTop || '', zone, bar);
 }
 
