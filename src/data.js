@@ -219,7 +219,7 @@ function makeIo(plugin) {
   async function createExercise(ex) {
     await ensureFolder(paths.exercises());
     const path = `${paths.exercises()}/${safeName(ex.name)}.md`;
-    const fm = { type: ex.type, muscles: ex.muscles, equipment: ex.equipment, unit: ex.unit, image: ex.image, video: ex.video };
+    const fm = { type: ex.type, muscles: ex.muscles, equipment: ex.equipment, unit: ex.unit, motion_sensitivity: ex.motion_sensitivity, image: ex.image, video: ex.video };
     return writeIfAbsent(path, serializeFrontmatter(fm) + '\n' + (ex.note ? ex.note + '\n' : ''));
   }
 

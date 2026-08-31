@@ -8,10 +8,11 @@
    this module owns only its own DOM and the modal chrome. */
 
 const { Modal } = require('obsidian');
-const { el, ico, clear } = require('./dom');
+const { el, ico, clear, segmented } = require('./dom');
 const { createCounter, tap, undo } = require('./rep-counter');
 const { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone } = require('./rep-counter-shared');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
+const { sensitivityKey } = require('./motion-count');
 const { Notice } = require('obsidian');
 
 const FLASH_MS = 180;
@@ -28,6 +29,13 @@ class RepCounterModal extends Modal {
     this.skin = opts.skin || 'floor';
     this.accent = opts.accent || 'lime';
     this.onDone = typeof opts.onDone === 'function' ? opts.onDone : () => {};
+    /* The exercise's own motion sensitivity, and the way back to the note it
+       came from. Sensitivity is a property of the MOVEMENT, not of the app —
+       a sit-up double-bumps the accelerometer whoever is doing it — so the
+       value lives on the exercise note and a change here is remembered for
+       next time rather than for this set only. */
+    this.sensitivity = sensitivityKey(opts.sensitivity);
+    this.onSensitivity = typeof opts.onSensitivity === 'function' ? opts.onSensitivity : () => {};
 
     this.state = createCounter();
     this.muted = false;
@@ -98,7 +106,10 @@ class RepCounterModal extends Modal {
        mode it is empty rather than telling you to tap the thing you are
        already looking at. */
     this.hintEl = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' }, '');
-    this.zone = el('div', { class: 'gv-rc-zone', role: 'button', tabindex: '0', 'aria-label': 'Tap to count a rep' }, this.countEl, this.hintEl);
+    /* Sensitivity only appears while motion is running: in tap mode it would
+       be a control over nothing. */
+    this.sensEl = el('div', { class: 'gv-rc-sens' });
+    this.zone = el('div', { class: 'gv-rc-zone', role: 'button', tabindex: '0', 'aria-label': 'Tap to count a rep' }, this.countEl, this.hintEl, this.sensEl);
     this._detachTapZone = attachTapZone(this.zone, () => this.registerTap());
 
     c.append(bar, this.zone);
@@ -148,11 +159,23 @@ class RepCounterModal extends Modal {
   }
 
   toggleMotion() {
-    if (this.motion) { this.stopMotion(); this.syncMotionButton(); this.setHint(''); return; }
+    if (this.motion) {
+      this.stopMotion();
+      this.syncMotionButton();
+      this.renderSensitivity();
+      this.setHint('');
+      return;
+    }
     this.motion = true;
     this.syncMotionButton();
+    this.renderSensitivity();
     this.setHint('Asking for the motion sensor…');
+    this.beginMotion();
+  }
+
+  beginMotion() {
     startMotionCounter({
+      sensitivity: this.sensitivity,
       onRep: () => this.registerMotionRep(),
       onStatus: status => {
         if (status === 'listening') { this.setHint('Counting your movement — taps still work'); return; }
@@ -160,6 +183,7 @@ class RepCounterModal extends Modal {
            rather than leaving a dead toggle lit, and say why once. */
         this.motion = false;
         this.syncMotionButton();
+        this.renderSensitivity();
         this.setHint('');
         new Notice(status === 'denied'
           ? 'Gym: motion access was declined — counting by tap instead. Enable Motion & Orientation for Obsidian in iOS Settings to use it.'
@@ -178,6 +202,36 @@ class RepCounterModal extends Modal {
   }
 
   setHint(text) { if (this.hintEl) this.hintEl.textContent = text; }
+
+  /* Rebuild the sensitivity picker. Empty when motion is off — see sensEl. */
+  renderSensitivity() {
+    if (!this.sensEl) return;
+    clear(this.sensEl);
+    if (!this.motion) return;
+    this.sensEl.append(segmented(
+      [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']],
+      this.sensitivity,
+      value => this.pickSensitivity(value),
+      { label: 'Sensitivity' },
+    ));
+  }
+
+  /* A change restarts the detector rather than adjusting it in place: the
+     thresholds are baked into the detector's state at creation, and half a
+     set counted at one sensitivity and half at another is a count nobody can
+     interpret afterwards. The reps already banked are kept — only the
+     detection restarts. */
+  pickSensitivity(value) {
+    this.sensitivity = sensitivityKey(value);
+    this.renderSensitivity();
+    try { this.onSensitivity(this.sensitivity); } catch (e) { console.error('gym-vault sensitivity', e); }
+    if (!this.motion) return;
+    this.stopMotion();
+    this.motion = true;
+    this.syncMotionButton();
+    this.setHint('Restarting at ' + this.sensitivity + ' sensitivity…');
+    this.beginMotion();
+  }
 
   syncMotionButton() {
     if (!this.motionBtn) return;

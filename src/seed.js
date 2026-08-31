@@ -100,7 +100,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** flat back, hips don\'t sag. Sub in side planks now and then.',
     ].join('\n') },
-  { name: 'Romanian Deadlift', type: 'strength', muscles: ['hamstrings', 'glutes', 'back'], equipment: 'dumbbells', unit: 'kg',
+  { name: 'Romanian Deadlift', type: 'strength', muscles: ['hamstrings', 'glutes', 'back'], equipment: 'dumbbells', unit: 'kg', motion_sensitivity: 'low',
     image: IMG('Romanian_Deadlift'),
     video: WGER('exercise-video/507/307e7276-a14d-4ea0-b579-f5b0dbc6f5af.MOV'),
     note: [
@@ -131,7 +131,7 @@ const SEED_EXERCISES = [
       '',
       'Photos show the kettlebell version — the counterweight actually makes it EASIER; same pattern without it.',
     ].join('\n') },
-  { name: 'Toes-to-bar Ladder', type: 'skill', muscles: ['core', 'forearms'], equipment: 'bar', unit: 'reps',
+  { name: 'Toes-to-bar Ladder', type: 'skill', muscles: ['core', 'forearms'], equipment: 'bar', unit: 'reps', motion_sensitivity: 'low',
     image: IMG('Hanging_Leg_Raise'),
     note: [
       '1. Hang from the bar, shoulders engaged, body still.',
@@ -159,7 +159,7 @@ const SEED_EXERCISES = [
 
   /* ---- Added 27 Aug 2026: the warm-up and prehab moves the plan already
      names, a vertical-press track, and hinge/grip/lateral-core gaps. ---- */
-  { name: 'Scapular Pull-ups', type: 'skill', muscles: ['back', 'shoulders'], equipment: 'bar', unit: 'reps',
+  { name: 'Scapular Pull-ups', type: 'skill', muscles: ['back', 'shoulders'], equipment: 'bar', unit: 'reps', motion_sensitivity: 'high',
     image: IMG('Scapular_Pull-Up'),
     note: [
       '1. Hang from the bar with completely straight arms.',
@@ -168,7 +168,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** already in your warm-up — this is what teaches the lats to switch on before the first real pull-up.',
     ].join('\n') },
-  { name: 'Band Pull-Aparts', type: 'mobility', muscles: ['shoulders', 'back'], equipment: 'band', unit: 'reps',
+  { name: 'Band Pull-Aparts', type: 'mobility', muscles: ['shoulders', 'back'], equipment: 'band', unit: 'reps', motion_sensitivity: 'high',
     image: IMG('Band_Pull_Apart'),
     note: [
       '1. Hold a band at shoulder width, arms straight out in front of you.',
@@ -196,7 +196,7 @@ const SEED_EXERCISES = [
       '',
       'Photos show the knee-raise version — same step; add the knee drive at the top if you want it.',
     ].join('\n') },
-  { name: 'Dead Bug', type: 'skill', muscles: ['core'], equipment: 'bodyweight', unit: 'reps',
+  { name: 'Dead Bug', type: 'skill', muscles: ['core'], equipment: 'bodyweight', unit: 'reps', motion_sensitivity: 'low',
     image: IMG('Dead_Bug'),
     note: [
       '1. On your back, arms straight up, knees bent at 90 degrees over the hips.',
@@ -249,7 +249,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** the counterweight out front makes depth easier — it doubles as an ankle and hip mobility drill while still loading the legs.',
     ].join('\n') },
-  { name: 'Kettlebell Swing', type: 'strength', muscles: ['hamstrings', 'glutes', 'back'], equipment: 'kettlebell', unit: 'kg',
+  { name: 'Kettlebell Swing', type: 'strength', muscles: ['hamstrings', 'glutes', 'back'], equipment: 'kettlebell', unit: 'kg', motion_sensitivity: 'low',
     image: IMG('One-Arm_Kettlebell_Swings'),
     note: [
       '1. Hinge at the hips and hike the bell back between your legs.',
@@ -260,7 +260,7 @@ const SEED_EXERCISES = [
       '',
       'Photos show the one-arm version — two hands is the identical hinge.',
     ].join('\n') },
-  { name: 'Single-leg Glute Bridge', type: 'strength', muscles: ['glutes', 'hamstrings'], equipment: 'bodyweight', unit: 'reps',
+  { name: 'Single-leg Glute Bridge', type: 'strength', muscles: ['glutes', 'hamstrings'], equipment: 'bodyweight', unit: 'reps', motion_sensitivity: 'low',
     image: IMG('Single_Leg_Glute_Bridge'),
     note: [
       '1. On your back, one foot planted, the other leg held straight out.',
@@ -280,7 +280,7 @@ const SEED_EXERCISES = [
       '',
       'Photos show the forward/walking version — the bottom position is the same.',
     ].join('\n') },
-  { name: 'Calf Raises', type: 'strength', muscles: ['calves'], equipment: 'bodyweight', unit: 'reps',
+  { name: 'Calf Raises', type: 'strength', muscles: ['calves'], equipment: 'bodyweight', unit: 'reps', motion_sensitivity: 'high',
     image: IMG('Calf_Raise_On_A_Dumbbell'),
     note: [
       '1. Stand with the balls of your feet on a step, heels hanging free.',
@@ -297,7 +297,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** the lateral half of the plank; your plank note already says to sub these in. Good for the hips and the ITB.',
     ].join('\n') },
-  { name: 'Hanging Knee Raise', type: 'skill', muscles: ['core', 'forearms'], equipment: 'bar', unit: 'reps',
+  { name: 'Hanging Knee Raise', type: 'skill', muscles: ['core', 'forearms'], equipment: 'bar', unit: 'reps', motion_sensitivity: 'low',
     note: [
       '1. Hang from the bar, shoulders engaged, body still.',
       '2. Raise both knees toward your chest without swinging.',
@@ -314,7 +314,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** grip strength that feeds straight back into dead hangs, pull-ups and eventually the false grip.',
     ].join('\n') },
-  { name: 'Band Face Pulls', type: 'mobility', muscles: ['shoulders', 'back'], equipment: 'band', unit: 'reps',
+  { name: 'Band Face Pulls', type: 'mobility', muscles: ['shoulders', 'back'], equipment: 'band', unit: 'reps', motion_sensitivity: 'high',
     image: IMG('Face_Pull'),
     note: [
       '1. Anchor a band at about face height.',
@@ -404,7 +404,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** the loadable row. Inverted rows are limited by bodyweight — this one keeps getting heavier, which is what a growing back needs.',
     ].join('\n') },
-  { name: 'Dumbbell Curl', type: 'strength', muscles: ['biceps'], equipment: 'dumbbells', unit: 'kg',
+  { name: 'Dumbbell Curl', type: 'strength', muscles: ['biceps'], equipment: 'dumbbells', unit: 'kg', motion_sensitivity: 'high',
     image: IMG('Dumbbell_Bicep_Curl'),
     note: [
       '1. Stand tall, arms at your sides, palms forward.',
@@ -413,7 +413,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** direct arm work supports pulling volume; a stronger biceps makes chin-ups and the muscle-up transition easier.',
     ].join('\n') },
-  { name: 'Hammer Curls', type: 'strength', muscles: ['biceps', 'forearms'], equipment: 'dumbbells', unit: 'kg',
+  { name: 'Hammer Curls', type: 'strength', muscles: ['biceps', 'forearms'], equipment: 'dumbbells', unit: 'kg', motion_sensitivity: 'high',
     image: IMG('Hammer_Curls'),
     note: [
       '1. Same as a curl, but palms face each other the whole way (thumbs up).',
@@ -422,7 +422,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** hits the brachialis and forearm — grip carryover to dead hangs and the false grip.',
     ].join('\n') },
-  { name: 'Overhead Triceps Extension', type: 'strength', muscles: ['triceps'], equipment: 'dumbbells', unit: 'kg',
+  { name: 'Overhead Triceps Extension', type: 'strength', muscles: ['triceps'], equipment: 'dumbbells', unit: 'kg', motion_sensitivity: 'high',
     image: IMG('Seated_Triceps_Press'),
     note: [
       '1. Hold one dumbbell overhead in both hands.',
@@ -431,7 +431,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** the lockout strength that finishes a dip and a muscle-up.',
     ].join('\n') },
-  { name: 'Lateral Raise', type: 'strength', muscles: ['shoulders'], equipment: 'dumbbells', unit: 'kg',
+  { name: 'Lateral Raise', type: 'strength', muscles: ['shoulders'], equipment: 'dumbbells', unit: 'kg', motion_sensitivity: 'high',
     image: IMG('Side_Lateral_Raise'),
     note: [
       '1. Stand tall, light dumbbells at your sides, a soft bend in the elbows.',
@@ -440,7 +440,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** go lighter than feels right. This one is about the side delt, not the weight — the 6kg bell or a light dumbbell is plenty.',
     ].join('\n') },
-  { name: 'Reverse Flyes', type: 'strength', muscles: ['shoulders', 'back'], equipment: 'dumbbells', unit: 'kg',
+  { name: 'Reverse Flyes', type: 'strength', muscles: ['shoulders', 'back'], equipment: 'dumbbells', unit: 'kg', motion_sensitivity: 'high',
     image: IMG('Reverse_Flyes'),
     note: [
       '1. Hinge forward, back flat, light dumbbells hanging straight down.',
@@ -487,7 +487,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** thoracic and hamstring mobility under load. Light bell, no rushing — this is the one that keeps a long spine moving well.',
     ].join('\n') },
-  { name: 'Kettlebell Halo', type: 'mobility', muscles: ['shoulders', 'core'], equipment: 'kettlebell', unit: 'reps',
+  { name: 'Kettlebell Halo', type: 'mobility', muscles: ['shoulders', 'core'], equipment: 'kettlebell', unit: 'reps', motion_sensitivity: 'high',
     note: [
       '1. Hold the bell upside down by the horns at chest height.',
       '2. Circle it slowly around your head, close to it, keeping the ribs down.',
@@ -637,7 +637,7 @@ const SEED_EXERCISES = [
       '',
       '**Cue:** gentle rotation for a back that spends the week hanging, pressing and running in one plane.',
     ].join('\n') },
-  { name: 'Shoulder Circles', type: 'mobility', muscles: ['shoulders'], equipment: 'bodyweight', unit: 'reps',
+  { name: 'Shoulder Circles', type: 'mobility', muscles: ['shoulders'], equipment: 'bodyweight', unit: 'reps', motion_sensitivity: 'high',
     image: IMG('Round_The_World_Shoulder_Stretch'),
     note: [
       '1. Arms out to the sides, draw slow full circles — small building to large.',

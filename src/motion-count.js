@@ -45,10 +45,11 @@ const SLOW_TAU_S = 1.6;
    two or three "reps" before the set has started. */
 const WARMUP_MS = 1200;
 
-/* The floor on time between reps. Deliberately close to the tap counter's
-   700ms debounce and for the same reason: a human rep of any of these
-   movements takes longer than this, so anything faster is the signal
-   ringing, not a person. */
+/* The floor on time between reps at NORMAL sensitivity. Deliberately close to
+   the tap counter's 700ms debounce and for the same reason: a human rep of
+   any of these movements takes longer than this, so anything faster is the
+   signal ringing, not a person. Each sensitivity step carries its own value —
+   see SENSITIVITY. */
 const REFRACTORY_MS = 650;
 
 /* A sample gap longer than this means the stream stalled — the app was
@@ -70,18 +71,45 @@ const THRESHOLD_FRACTION = 0.4;
    tenth one. */
 const PEAK_TAU_S = 6;
 
-/* Sensitivity multiplies the threshold's inverse: HIGH means a lower bar and
-   more reps counted, LOW means the opposite. Exposed as named steps because
-   "1.4" means nothing to someone standing under a pull-up bar. */
-const SENSITIVITY = { low: 0.7, normal: 1, high: 1.4 };
+/* Sensitivity is TWO numbers, not one, because the two ways a rep count goes
+   wrong are different problems.
+
+   `scale` divides the threshold: HIGH means a lower bar and more reps
+   counted, LOW means the opposite. That is the fix for a movement whose
+   signal is too small to reach the bar (or an over-eager one that keeps
+   crossing it).
+
+   `refractoryMs` is the fix for the OTHER failure, and it is the one that
+   bites on sit-ups: a trunk movement reverses direction twice per rep, so
+   the accelerometer sees two oscillations for every one sit-up and counts
+   double. Raising the threshold does not help — both oscillations are real
+   and both are large. Demanding a longer gap between reps does, because no
+   one does two genuine sit-ups in a second.
+
+   Named steps rather than numbers, because "1.4" means nothing to someone
+   standing under a pull-up bar. */
+const SENSITIVITY = {
+  low: { scale: 0.7, refractoryMs: 1200 },
+  normal: { scale: 1, refractoryMs: REFRACTORY_MS },
+  high: { scale: 1.4, refractoryMs: 450 },
+};
+
+/* Read a sensitivity off whatever the caller has — an exercise note's
+   `motion_sensitivity` frontmatter, a settings value, a raw string. Anything
+   unrecognised (missing, misspelt, a number someone typed) falls back to
+   normal rather than throwing, because this value arrives from a text file a
+   human edits. */
+function sensitivityKey(value) {
+  const k = String(value == null ? '' : value).trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(SENSITIVITY, k) ? k : 'normal';
+}
 
 function createMotionDetector(opts) {
   const o = opts || {};
-  const sens = typeof o.sensitivity === 'number'
-    ? o.sensitivity
-    : (SENSITIVITY[o.sensitivity] || SENSITIVITY.normal);
+  const step = SENSITIVITY[sensitivityKey(o.sensitivity)];
   return {
-    sensitivity: sens,
+    sensitivity: step.scale,
+    refractoryMs: step.refractoryMs,
     /* null until the first sample — the averages seed FROM it rather than
        from zero, so the detector does not spend its warm-up climbing out of
        a hole 9.8 deep. */
@@ -153,7 +181,7 @@ function feedSample(state, t, mag) {
      re-arms without counting. */
   if (s >= threshold) {
     next.phase = 'ready';
-    if (t - state.lastRepAt < REFRACTORY_MS) return { state: next, counted: false };
+    if (t - state.lastRepAt < (state.refractoryMs || REFRACTORY_MS)) return { state: next, counted: false };
     next.lastRepAt = t;
     next.count = state.count + 1;
     return { state: next, counted: true };
@@ -178,6 +206,6 @@ function isWarmingUp(state, t) {
 }
 
 module.exports = {
-  createMotionDetector, feedSample, currentThreshold, isWarmingUp,
+  createMotionDetector, feedSample, currentThreshold, isWarmingUp, sensitivityKey,
   SENSITIVITY, WARMUP_MS, REFRACTORY_MS, MIN_THRESHOLD, MAX_THRESHOLD, STALL_MS,
 };

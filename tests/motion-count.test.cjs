@@ -152,7 +152,23 @@ function still(ms, jitter, baseline) {
   assert.ok(currentThreshold(fresh('high')) < currentThreshold(fresh('normal')));
   assert.ok(currentThreshold(fresh('normal')) < currentThreshold(fresh('low')));
   assert.strictEqual(currentThreshold(fresh('normal')), MIN_THRESHOLD);
-  assert.strictEqual(SENSITIVITY.normal, 1);
+  assert.strictEqual(SENSITIVITY.normal.scale, 1);
+}
+
+/* THE SIT-UP PROBLEM, which is what sensitivity exists for.
+
+   A trunk movement reverses direction twice in one rep, so the accelerometer
+   sees TWO oscillations per sit-up and the detector — which counts one rep
+   per oscillation — doubles the count. Raising the threshold cannot fix it:
+   both oscillations are real and both are large. The longer refractory window
+   at LOW sensitivity is the fix, and this is the test that says so. */
+{
+  const perOsc = 1000; // two of these per rep = a ~2s sit-up
+  const doubled = [...still(1500, 0.05), ...reps(16, 3, perOsc), ...still(800, 0.05)];
+  const atNormal = run(createMotionDetector(), doubled).counted;
+  const atLow = run(createMotionDetector({ sensitivity: 'low' }), doubled).counted;
+  assert.strictEqual(atNormal, 16, 'normal counts every oscillation — 8 sit-ups read as 16');
+  assert.strictEqual(atLow, 8, 'low sensitivity collapses the double-bump back to 8 real reps');
 }
 
 /* A signal too weak for the default catches at high sensitivity. That is the

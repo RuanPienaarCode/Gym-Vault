@@ -83,7 +83,15 @@ function attachTapZone(zone, onTap) {
   let activeTouchId = null;
   let touchGuardUntil = 0;
 
+  /* The zone is a container, and it now contains real controls (the
+     sensitivity picker). A press that starts ON one of those is that
+     control's press, not a rep — without this guard, changing sensitivity
+     mid-set silently adds a rep every time you touch it. Same rule
+     clickableCard() applies for the same reason. */
+  const nested = e => !!(e.target && e.target.closest && e.target.closest('button'));
+
   const onTouchStart = e => {
+    if (nested(e)) return;
     e.preventDefault(); // stop scroll/rubber-band under a full-screen tap zone
     if (activeTouchId !== null) return; // a gesture is already down — ignore extra fingers
     if (!e.changedTouches || e.changedTouches.length === 0) return;
@@ -99,11 +107,13 @@ function attachTapZone(zone, onTap) {
   };
   const onMouseDown = e => {
     if (e.button !== 0) return;
+    if (nested(e)) return;
     if (Date.now() < touchGuardUntil) return; // real touch's synthetic mousedown echo
     onTap();
   };
   const onKeydown = e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (nested(e)) return; // Enter on the sensitivity picker picks; it does not count
     e.preventDefault();
     onTap();
   };

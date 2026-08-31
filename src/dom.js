@@ -367,4 +367,30 @@ function prose(lines, opts = {}) {
   return wrap;
 }
 
-module.exports = { el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose };
+
+/* A small segmented picker: one row of buttons, exactly one pressed. Used by
+   the counters' sensitivity control, where a dropdown would be the wrong
+   shape entirely — the thing is operated mid-set, at arm's length, by someone
+   who wants to see all three choices and the current one at a glance.
+
+   `options` is [[value, label], …]; `onPick(value)` fires only when the
+   selection actually CHANGES, so a caller can restart an expensive
+   subscription in it without guarding against a no-op re-tap. */
+function segmented(options, current, onPick, opts) {
+  const o = opts || {};
+  const wrap = el('div', { class: `gv-segmented${o.class ? ' ' + o.class : ''}`, role: 'radiogroup' },
+    ...(o.label ? [el('span', { class: 'gv-segmented-label' }, o.label)] : []));
+  for (const [value, label] of options) {
+    const on = value === current;
+    const b = el('button', {
+      class: `gv-segmented-btn${on ? ' on' : ''}`, type: 'button',
+      role: 'radio', 'aria-checked': on ? 'true' : 'false',
+    }, label);
+    b.addEventListener('click', () => { if (value !== current) onPick(value); });
+    wrap.append(b);
+  }
+  return wrap;
+}
+
+module.exports = { el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented
+};

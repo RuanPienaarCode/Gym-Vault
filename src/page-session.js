@@ -14,7 +14,7 @@
    time guided mode is (re-)entered via ctx.enterGuided(). */
 
 const { Notice } = require('obsidian');
-const { el, ico, clear, fmtSeconds } = require('./dom');
+const { el, ico, clear, fmtSeconds, segmented } = require('./dom');
 const { todayISO } = require('./dates');
 const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
 const flow = require('./session-flow');
@@ -23,6 +23,7 @@ const confetti = require('./confetti');
 const { createCounter, tap, undo } = require('./rep-counter');
 const { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone } = require('./rep-counter-shared');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
+const { sensitivityKey } = require('./motion-count');
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const { buildRows, finishSession } = require('./page-log');
 const { nextFrameIndex } = require('./media-cycle');
@@ -282,7 +283,22 @@ function guidedImageBlock(sess, ex, frames) {
 
    The click IS the user gesture iOS demands for requestPermission(); nothing
    here may await before startMotionCounter is called. */
-function motionButton(sess, onRep, hintEl) {
+/* The exercise note is the home of `motion_sensitivity`, so the picker reads
+   from it and writes back to it: a value corrected once during a set is right
+   the next time that exercise comes round, in any plan, on any screen. */
+function exerciseSensitivity(ctx, name) {
+  const ex = findExercise(ctx, name);
+  return sensitivityKey(ex && ex.fm ? ex.fm.motion_sensitivity : null);
+}
+
+function saveExerciseSensitivity(ctx, name, value) {
+  const ex = findExercise(ctx, name);
+  if (!ex || !ex.file) return; // a plan line with no note behind it — nothing to write to
+  ex.fm.motion_sensitivity = value;
+  Promise.resolve(ctx.io.saveExercise(ex)).catch(e => console.error('gym-vault sensitivity', e));
+}
+
+function motionButton(ctx, sess, entry, onRep, hintEl, sensEl) {
   const btn = el('button', {
     class: `gv-icon-btn${sess.motionOn ? ' gv-icon-btn-on' : ''}`, type: 'button',
     'aria-pressed': sess.motionOn ? 'true' : 'false',
@@ -295,15 +311,37 @@ function motionButton(sess, onRep, hintEl) {
   const stop = () => {
     if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
   };
+  let sensitivity = exerciseSensitivity(ctx, entry.exercise);
   const sync = () => {
     btn.classList.toggle('gv-icon-btn-on', !!sess.motionOn);
     btn.setAttribute('aria-pressed', sess.motionOn ? 'true' : 'false');
     btn.setAttribute('aria-label', sess.motionOn ? 'Stop counting from movement' : 'Count reps from movement');
     if (hintEl) hintEl.textContent = sess.motionOn ? 'Counting your movement — taps still work' : '';
+    if (!sensEl) return;
+    clear(sensEl);
+    if (!sess.motionOn) return;
+    sensEl.append(segmented(
+      [['low', 'Low'], ['normal', 'Normal'], ['high', 'High']],
+      sensitivity,
+      value => {
+        sensitivity = sensitivityKey(value);
+        saveExerciseSensitivity(ctx, entry.exercise, sensitivity);
+        sync();
+        /* Restart rather than retune: the thresholds are baked into the
+           detector at creation, and half a set counted each way is a number
+           nobody can interpret afterwards. Reps already banked stay. */
+        if (!sess.motionOn) return;
+        stop();
+        if (hintEl) hintEl.textContent = 'Restarting at ' + sensitivity + ' sensitivity…';
+        begin();
+      },
+      { label: 'Sensitivity' },
+    ));
   };
   const begin = () => {
     startMotionCounter({
       onRep,
+      sensitivity,
       onStatus: status => {
         if (status === 'listening') return;
         sess.motionOn = false;
@@ -384,7 +422,8 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   attachTapZone(zone, registerTap);
 
   const hintEl = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' }, sess.motionOn ? 'Counting your movement — taps still work' : '');
-  zone.append(hintEl);
+  const sensEl = el('div', { class: 'gv-rc-sens' });
+  zone.append(hintEl, sensEl);
 
   const undoBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': 'Undo last rep' },
     ico('minus'), el('span', {}, '1'));
@@ -394,7 +433,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }));
 
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' },
-    motionButton(sess, registerMotionRep, hintEl), muteButton(sess), undoBtn, doneBtn);
+    motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl), muteButton(sess), undoBtn, doneBtn);
   return el('div', { class: 'gv-session-body' }, extraTop || '', zone, bar);
 }
 

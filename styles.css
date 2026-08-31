@@ -1426,6 +1426,47 @@
 }
 .gv-rc-hint:empty { display: none; }
 
+/* The sensitivity picker under the count. Buttons big enough to hit while
+   breathing hard, and laid out as one row that wraps rather than shrinking
+   the targets on a narrow phone. */
+.gv-rc-sens { margin-top: 10px; display: flex; justify-content: center; }
+.gv-rc-sens:empty { display: none; }
+.gv-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.gv-segmented-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+  margin-right: 2px;
+}
+.gv-app .gv-segmented-btn {
+  /* app.css owns the bare `button` element: nowrap and a fixed height that
+     crops anything taller. Both are undone here for the same reason
+     .gv-optrow does it — see that rule. */
+  white-space: normal;
+  height: auto;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 2px solid var(--gv-ink);
+  background: var(--gv-surface);
+  color: var(--gv-ink);
+  font-family: var(--gv-display);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.theme-dark .gv-app .gv-segmented-btn { border-color: var(--gv-line-2); }
+.gv-app .gv-segmented-btn.on { background: var(--gv-ink); color: var(--gv-lime); }
+.theme-dark .gv-app .gv-segmented-btn.on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
+
 /* ---------- guided session (src/page-session.js) ----------
    A second renderer over the SAME draft page-log.js edits — deliberately
    acting-register regardless of the chosen skin, same precedent as the rep

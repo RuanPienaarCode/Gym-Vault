@@ -207,10 +207,20 @@ function setRow(ctx, entry, set, si) {
 function counterBtn(ctx, entry, set) {
   const b = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `Tap-count reps for ${entry.exercise}` }, ico('repeat-2'));
   b.addEventListener('click', () => {
+    /* Motion sensitivity belongs to the movement, so it is read from and
+       written back to the exercise note — the same value the guided view
+       uses, not a second copy that can disagree with it. */
+    const ex = ctx.data.exercises.find(e => sameName(e.name, entry.exercise));
     new RepCounterModal(ctx.app, {
       exerciseName: entry.exercise,
       skin: ctx.settings.skin,
       accent: ctx.settings.accent,
+      sensitivity: ex && ex.fm ? ex.fm.motion_sensitivity : null,
+      onSensitivity: value => {
+        if (!ex || !ex.file) return;
+        ex.fm.motion_sensitivity = value;
+        Promise.resolve(ctx.io.saveExercise(ex)).catch(e => console.error('gym-vault sensitivity', e));
+      },
       onDone: count => {
         set.reps = String(count);
         set.touched = true;
