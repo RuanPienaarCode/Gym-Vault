@@ -179,3 +179,142 @@ assert.ok(!targetIsDuration('8-12'));
 }
 
 console.log('plan grammar OK');
+
+/* ============================================================================
+   EDITING A PLAN — reorder and re-prescribe, without eating the author's own
+   words.
+
+   The plan note is the source of truth and it holds hand-written coaching
+   prose interleaved with the exercise lines. Every guard below exists
+   because the cheap implementation of "move this exercise down" is to move
+   its LINE, and that quietly drags an exercise across a note, rewriting what
+   the note appears to be about.
+   ============================================================================ */
+
+const { moveItem, updateItem } = require('../src/plan-parse');
+
+const EDIT_BODY = [
+  'Nine exercises, back to back.',
+  '',
+  '## The Circuit (any)',
+  '',
+  'Rest between exercises only as long as it takes to get into position.',
+  '',
+  '- Push-ups | 1 x 15',
+  '- Bodywweight Squat | 1 x 25',
+  '',
+  'Keep the plank honest — stop when the hips drop.',
+  '',
+  '- Plank | 1 x 45s',
+  '- Tricep Dips | 1 x 15',
+  '',
+].join('\n');
+
+/* ---- reordering ---- */
+{
+  const m = parsePlanBody(EDIT_BODY);
+  const day = m.days[0];
+  assert.deepStrictEqual(day.items.map(i => i.exercise),
+    ['Push-ups', 'Bodywweight Squat', 'Plank', 'Tricep Dips']);
+
+  assert.strictEqual(moveItem(day, 0, 1), 1, 'moving returns the new index');
+  assert.deepStrictEqual(day.items.map(i => i.exercise),
+    ['Bodywweight Squat', 'Push-ups', 'Plank', 'Tricep Dips']);
+
+  const out = serializePlanBody(m);
+
+  /* THE POINT: the author's two prose lines are still there, still in the
+     same places, and the blank-line shape is unchanged. */
+  assert.ok(out.includes('Rest between exercises only as long as it takes to get into position.'),
+    'the day note must survive a reorder');
+  assert.ok(out.includes('Keep the plank honest — stop when the hips drop.'),
+    'a note BETWEEN two exercises must survive a reorder');
+  assert.ok(out.includes('Nine exercises, back to back.'), 'the plan intro must survive');
+
+  /* The note stays between the second and third exercise slots — it did not
+     travel with the exercise that moved. */
+  const lines = out.split('\n').filter(l => l.trim() !== '');
+  const noteAt = lines.indexOf('Keep the plank honest — stop when the hips drop.');
+  const plankAt = lines.findIndex(l => l.startsWith('- Plank'));
+  const pushAt = lines.findIndex(l => l.startsWith('- Push-ups'));
+  assert.ok(pushAt < noteAt && noteAt < plankAt, 'the note must stay where it was written');
+
+  /* Exactly the two moved lines differ from the original — nothing else in
+     the file was rewritten. */
+  const before = EDIT_BODY.split('\n').filter(l => l.trim() !== '');
+  const changed = lines.filter((l, i) => l !== before[i]);
+  assert.strictEqual(changed.length, 2, `a swap must change exactly two lines, changed: ${JSON.stringify(changed)}`);
+}
+
+/* Moving off either end is a no-op, not a wrap-around and not a crash — the
+   buttons are disabled at the ends, but a keyboard repeat must not slip
+   past them. */
+{
+  const day = parsePlanBody(EDIT_BODY).days[0];
+  const names = day.items.map(i => i.exercise);
+  assert.strictEqual(moveItem(day, 0, -1), 0);
+  assert.strictEqual(moveItem(day, 3, 1), 3);
+  assert.strictEqual(moveItem(day, -1, 1), -1);
+  assert.strictEqual(moveItem(day, 99, -1), 99);
+  assert.deepStrictEqual(day.items.map(i => i.exercise), names, 'a refused move must change nothing');
+}
+
+/* Up then down returns the file to exactly what it was. */
+{
+  const m = parsePlanBody(EDIT_BODY);
+  moveItem(m.days[0], 2, -1);
+  moveItem(m.days[0], 1, 1);
+  assert.strictEqual(serializePlanBody(m), serializePlanBody(parsePlanBody(EDIT_BODY)),
+    'moving an item down and back must be a round trip');
+}
+
+/* ---- re-prescribing ---- */
+{
+  const m = parsePlanBody(EDIT_BODY);
+  const day = m.days[0];
+
+  updateItem(day, 0, { sets: 3, target: '20' });
+  assert.strictEqual(serializePlanBody(m).includes('- Push-ups | 3 x 20'), true);
+
+  /* Sets cleared reverts to a bare target line — which itemSets() reads as
+     the default. `- Push-ups | 12` and `- Push-ups | 3 x 12` are genuinely
+     different lines and both must be writable. */
+  updateItem(day, 0, { sets: '' });
+  assert.strictEqual(day.items[0].sets, null);
+  assert.ok(serializePlanBody(m).includes('- Push-ups | 20'), 'no set count writes a bare target');
+
+  /* Garbage and zero clear the count rather than writing "0 x 20", which
+     would parse back as a day with no sets in it. */
+  for (const bad of ['abc', '0', '-2', null, undefined]) {
+    updateItem(day, 0, { sets: bad });
+    assert.strictEqual(day.items[0].sets, null, `sets ${JSON.stringify(bad)} must clear, not write a broken line`);
+  }
+
+  /* A target cleared entirely leaves just the exercise. */
+  updateItem(day, 0, { sets: '', target: '' });
+  assert.ok(serializePlanBody(m).includes('- Push-ups\n'), 'an empty prescription writes the exercise alone');
+
+  /* THE NAME IS NOT EDITABLE HERE. Plans, goals and every logged row
+     reference an exercise by name, so a rename would orphan its history —
+     updateItem must ignore an exercise key even if a caller passes one. */
+  updateItem(day, 1, { exercise: 'Something else', target: '30' });
+  assert.strictEqual(day.items[1].exercise, 'Bodywweight Squat', 'updateItem must never rename an exercise');
+
+  assert.strictEqual(updateItem(day, 99, { target: 'x' }), null, 'a missing index returns null, not a throw');
+}
+
+/* An edit still round-trips through the parser: what was written reads back
+   as the same model. */
+{
+  const m = parsePlanBody(EDIT_BODY);
+  updateItem(m.days[0], 2, { sets: 2, target: '60s' });
+  moveItem(m.days[0], 3, -1);
+  const reparsed = parsePlanBody(serializePlanBody(m));
+  assert.deepStrictEqual(
+    reparsed.days[0].items.map(i => `${i.exercise}|${i.sets}|${i.target}`),
+    m.days[0].items.map(i => `${i.exercise}|${i.sets}|${i.target}`),
+    'an edited plan must reparse to the same items',
+  );
+}
+
+console.log('plan editing OK (reorder keeps the author\'s prose in place; prescriptions round-trip; no renames)');

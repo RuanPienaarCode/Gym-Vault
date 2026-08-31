@@ -21,7 +21,9 @@ const flow = require('./session-flow');
 const records = require('./records');
 const confetti = require('./confetti');
 const { createCounter, tap, undo } = require('./rep-counter');
-const { holdWakeLock, attachTapZone, typeCountButton } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, attachFillMeter, punch, typeCountButton } = require('./rep-counter-shared');
+const counterTarget = require('./counter-target');
+const { helpButton } = require('./explainer');
 const sound = require('./sound');
 const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
@@ -61,7 +63,19 @@ function render(ctx, root) {
       hold: null, holdFor: null,
       workoutsAtStart: ctx.data.workouts, // snapshot: never includes THIS session's own rows (they aren't saved until Finish)
       metGoals: new Set(),
-      recordCount: 0,
+      /* [{key, exercise, kind, val, prev}] — every best broken this session,
+         with what it beat.
+
+         sess.records IS the count — there is no separate recordCount. There
+         was, and it incremented on every record INCLUDING beating the same
+         best twice in one session, which sess.records deliberately collapses
+         into one row. Two figures derived by different rules, in the same
+         object, three lines apart. */
+      /* false until the user taps Start on the first set. The count-in is
+         gated on it so a session never begins counting on the navigation
+         that got here. */
+      started: false,
+      records: [],
       goalCount: 0,
       confettiStop: null,
       completionCelebrated: false,
@@ -204,6 +218,20 @@ function renderActive(ctx, root, draft, sess) {
      Not for distance sets: there is nothing to get into position for when
      the interaction is typing two numbers, and counting someone in to a text
      field is theatre. */
+  /* THE FIRST SET WAITS FOR YOU. Tapping "Start session" on the setup screen
+     navigates here, and counting in from that tap means the 3, 2, 1 burns
+     while you are still putting the phone down or walking to the mat. So the
+     first set of a session gets an explicit gate; everything after it flows
+     from the rest screen's Next, which is already a deliberate tap in the
+     right place at the right moment.
+
+     It also earns its keep on iOS: this tap is a fresh user gesture
+     immediately before the first thing that makes a noise. */
+  if (!entry.distance && !sess.started) {
+    root.append(startGate(ctx, sess, entry, setIndex));
+    return;
+  }
+
   const countInKey = setKey(sess.pos);
   if (!entry.distance && sess.countedIn !== countInKey) {
     /* Stop any count-in already running before starting another. This screen
@@ -244,6 +272,24 @@ function renderActive(ctx, root, draft, sess) {
   else if (entry.duration) root.append(durationBody(ctx, draft, sess, entry, set));
   else if (entry.weighted) root.append(weightedBody(ctx, draft, sess, entry, set));
   else root.append(repsBody(ctx, draft, sess, entry, set));
+}
+
+/* "Ready?" — the one tap that begins a session, before any clock runs. */
+function startGate(ctx, sess, entry, setIndex) {
+  const go = el('button', { class: 'gv-btn-go', type: 'button' }, 'Start');
+  go.addEventListener('click', () => {
+    /* The gesture iOS wants, spent on the stack that leads straight into the
+       count-in's first spoken number. */
+    sound.unlock();
+    sess.started = true;
+    ctx.rerender();
+  });
+  return el('div', { class: 'gv-session-body gv-session-startgate' },
+    el('div', { class: 'gv-kicker' }, `First up · set ${setIndex + 1} of ${entry.sets.length}`),
+    el('div', { class: 'gv-startgate-name' }, entry.exercise),
+    entry.target ? el('div', { class: 'gv-session-target' }, entry.target) : '',
+    el('div', { class: 'gv-hero-action gv-session-nextwrap' }, go),
+    el('p', { class: 'gv-microcopy' }, `Counts you in from ${countdown.GATE_FROM}.`));
 }
 
 function exerciseBlock(ctx, sess, entry) {
@@ -463,12 +509,31 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const countEl = el('div', { class: 'gv-rc-count gv-session-count', 'aria-live': 'polite', 'aria-atomic': 'true' }, String(sess.counter.count));
   const zone = el('div', { class: 'gv-rc-zone gv-session-zone', role: 'button', tabindex: '0', 'aria-label': `Tap to count a rep for ${entry.exercise}` }, countEl);
 
+  /* The plan already said what this set is for, so nothing has to be asked:
+     "4 x 12" fills towards 12. An open-ended line ("submax") gets no meter
+     at all rather than an empty one that never fills. */
+  const target = counterTarget.targetFromEntry(entry);
+  const meter = attachFillMeter(zone, target);
+  const targetEl = target
+    ? el('div', { class: 'gv-rc-target' }, `of ${counterTarget.describeTarget(target)}`)
+    : '';
+
   let flashTimer = null;
+  /* Fires once, when the target is first met — not on every rep past it.
+     Beating your own target is the moment worth marking; the eight reps
+     after it are not eight more moments. */
+  const markHit = () => {
+    if (sess.targetHitFor === setKey(sess.pos)) return;
+    sess.targetHitFor = setKey(sess.pos);
+    if (!sess.muted) sound.cue('go', 'target', ctx.settings);
+  };
   const showRep = () => {
     countEl.textContent = String(sess.counter.count);
+    punch(countEl);
     zone.classList.add('gv-rc-flash');
     if (flashTimer) window.clearTimeout(flashTimer);
     flashTimer = window.setTimeout(() => { zone.classList.remove('gv-rc-flash'); flashTimer = null; }, FLASH_MS);
+    if (meter && meter.set(sess.counter.count) === 'done') markHit();
     if (!sess.muted) sound.announce(sess.counter.count, ctx.settings);
   };
   const registerTap = () => {
@@ -485,11 +550,19 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
 
   const hintEl = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' }, sess.motionOn ? 'Counting your movement — taps still work' : '');
   const sensEl = el('div', { class: 'gv-rc-sens' });
-  zone.append(hintEl, sensEl);
+  zone.append(targetEl, hintEl, sensEl);
+  /* Catches up a counter that already has reps on it — resuming a set, or a
+     re-render after a typed count — so the bar is never behind the number
+     above it. */
+  if (meter) meter.set(sess.counter.count);
 
   const undoBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': 'Undo last rep' },
     ico('minus'), el('span', {}, '1'));
-  undoBtn.addEventListener('click', () => { sess.counter = undo(sess.counter); countEl.textContent = String(sess.counter.count); });
+  undoBtn.addEventListener('click', () => {
+    sess.counter = undo(sess.counter);
+    countEl.textContent = String(sess.counter.count);
+    if (meter) meter.set(sess.counter.count);
+  });
 
   /* Typed counts are for the sets the sensor and the taps both missed — a
      machine you cannot put the phone on, a set you counted in your head.
@@ -499,15 +572,22 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const typeBtn = typeCountButton(countEl, {
     label: `Reps for ${entry.exercise}`,
     get: () => sess.counter.count,
-    set: n => { sess.counter = { count: n, lastTapAt: sess.counter.lastTapAt }; },
+    set: n => {
+      sess.counter = { count: n, lastTapAt: sess.counter.lastTapAt };
+      if (meter) meter.set(n);
+    },
   });
 
   const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
   doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }));
 
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' },
-    motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl), muteButton(ctx, sess), typeBtn, undoBtn, doneBtn);
-  return el('div', { class: 'gv-session-body' }, extraTop || '', zone, bar);
+    motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl), muteButton(ctx, sess),
+    helpButton(() => body), typeBtn, undoBtn, doneBtn);
+  /* The sheet hosts on the BODY, not the zone: it has to cover the controls
+     as well, or the ? stays visible under its own explanation. */
+  const body = el('div', { class: 'gv-session-body gv-xp-host' }, extraTop || '', zone, bar);
+  return body;
 }
 
 function lastWeightForExercise(ctx, name) {
@@ -542,7 +622,7 @@ function weightedBody(ctx, draft, sess, entry, set) {
 function durationBody(ctx, draft, sess, entry, set) {
   if (!sess.hold || sess.holdFor !== setKey(sess.pos)) {
     const prefilled = parseFloat(set.seconds);
-    sess.hold = { running: false, startedAt: null, frozenSeconds: Number.isFinite(prefilled) ? prefilled : 0, lastAnnounced: -1, lastLiveAnnounced: -1 };
+    sess.hold = { running: false, startedAt: null, frozenSeconds: Number.isFinite(prefilled) ? prefilled : 0, lastAnnounced: -1, lastLiveAnnounced: -1, targetHit: false };
     sess.holdFor = setKey(sess.pos);
   }
   const hold = sess.hold;
@@ -562,6 +642,12 @@ function durationBody(ctx, draft, sess, entry, set) {
      toggle — a screen-reader user isn't necessarily using it). Needs
      .gv-sr-only (visually-hidden-but-AT-visible) in styles.css. */
   const checkpointEl = el('div', { class: 'gv-sr-only', 'aria-live': 'polite', 'aria-atomic': 'true' });
+
+  /* A hold fills against the CLOCK, not against taps — same meter, same
+     stages, driven by the tick below. "3 x 45s" fills towards 45. */
+  const target = counterTarget.targetFromEntry(entry);
+  const meter = attachFillMeter(zone, target);
+  if (target) zone.append(el('div', { class: 'gv-rc-target' }, `of ${counterTarget.describeTarget(target)}`));
 
   const currentSeconds = () => (hold.running ? Math.max(0, (Date.now() - hold.startedAt) / 1000) : hold.frozenSeconds);
 
@@ -588,6 +674,12 @@ function durationBody(ctx, draft, sess, entry, set) {
     if (!hold.running) return;
     const secs = currentSeconds();
     countEl.textContent = fmtSeconds(secs);
+    if (meter && meter.set(secs) === 'done' && hold.targetHit !== true) {
+      /* Once, at the moment the hold reaches its target — the seconds after
+         it are bonus, not a second announcement. */
+      hold.targetHit = true;
+      if (!sess.muted) sound.cue('go', 'target', ctx.settings);
+    }
     const whole = Math.floor(secs);
     const atCheckpoint = whole > 0 && whole % HOLD_CHECKPOINT_S === 0;
     if (atCheckpoint && whole !== hold.lastLiveAnnounced) {
@@ -679,6 +771,21 @@ function describeRecord(kind, val, prev) {
   return '';
 }
 
+/* BY HOW MUCH — the number the completion screen leads with, because "21
+   reps" only means something next to "was 14". Rounded to one decimal: a
+   2.5kg jump is real, a 2.4999999999 one is a float artifact.
+
+   Same three-kind switch as describeRecord, deliberately extending it rather
+   than starting a fourth formatter somewhere else. */
+function describeMargin(kind, val, prev) {
+  const d = Math.round((parseFloat(val) - parseFloat(prev)) * 10) / 10;
+  if (!Number.isFinite(d)) return '';
+  if (kind === 'reps') return `+${d} rep${d === 1 ? '' : 's'}`;
+  if (kind === 'weight') return `+${d} kg`;
+  if (kind === 'seconds') return `+${fmtSeconds(d)}`;
+  return '';
+}
+
 /* Newly-met goals since the session started: compares the goal's progress
    using ONLY history from before this session (sess.workoutsAtStart) against
    history PLUS everything completed in this draft so far — a synthetic,
@@ -747,7 +854,20 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
       const prev = records.previousBest(sess.workoutsAtStart, entry.exercise, kind);
       const val = valueForKind(set, kind);
       if (records.isRecord(prev, val)) {
-        sess.recordCount++;
+        /* Keep the DETAIL, not just the tally. The completion screen used to
+           print "2 records broken" because that was all that survived to it —
+           the exercise, the figure and the margin were all computed here and
+           thrown away one line later.
+
+           Keyed by exercise+kind so beating the same best twice in one
+           session shows ONE row against the real previous best, not two rows
+           racing each other. previousBest already reads from
+           sess.workoutsAtStart for exactly this reason; the display has to
+           honour the same snapshot rule or it would contradict it. */
+        const key = `${entry.exercise}/${kind}`;
+        const existing = sess.records.find(r => r.key === key);
+        if (existing) existing.val = val;
+        else sess.records.push({ key, exercise: entry.exercise, kind, val, prev });
         callouts.push(`NEW BEST · ${describeRecord(kind, val, prev)}`);
         celebrate(ctx, sess, 'record', 'new record');
       }
@@ -976,7 +1096,14 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
      every second: a live region that fires once a second is noise, not help
      (same rule as the hold timer's checkpoint region above). */
   const live = el('div', { class: 'gv-sr-only', 'aria-live': 'assertive', 'aria-atomic': 'true' });
-  const dial = el('div', { class: 'gv-timed-dial' }, ring.svg, digits);
+  /* Urgency lives on the dial as an attribute, not as a class toggle per
+     tick: one attribute write when the BAND changes, and the stylesheet owns
+     every colour. Bands rather than a continuous gradient because the point
+     is to be readable at arm's length mid-set — a colour creeping by one
+     percent a tick tells you nothing, a colour that changes tells you the
+     interval is nearly out. */
+  const dial = el('div', { class: 'gv-timed-dial', 'data-urgency': 'calm' }, ring.svg, digits);
+  let urgency = 'calm';
   body.append(dial);
 
   /* Rep and weight boxes for a work interval that has them. A timer cannot
@@ -1035,7 +1162,13 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
     const elapsed = timedElapsed(tp);
     const remaining = Math.max(0, iv.seconds - elapsed);
     digits.textContent = String(Math.ceil(remaining));
-    ring.set(iv.seconds ? remaining / iv.seconds : 0);
+    const left = iv.seconds ? remaining / iv.seconds : 0;
+    ring.set(left);
+    /* Under 40% it warms; under 15% it goes urgent and the digits get a
+       heartbeat. Both thresholds are on the FRACTION, not on seconds, so a
+       20-second interval and a 3-minute one feel the same shape. */
+    const band = left <= 0.15 ? 'urgent' : left <= 0.4 ? 'warn' : 'calm';
+    if (band !== urgency) { urgency = band; dial.setAttribute('data-urgency', band); }
     if (schedule.totalSeconds) {
       top.fill.style.width = `${Math.min(100, ((totalBefore + elapsed) / schedule.totalSeconds) * 100).toFixed(1)}%`;
     }
@@ -1106,9 +1239,22 @@ function renderComplete(ctx, root, draft, sess) {
   let doneSets = 0;
   for (const entry of draft.entries) for (const set of entry.sets) if (setCounts(set)) doneSets++;
 
+  const broken = sess.records || [];
   const wins = [];
-  if (sess.recordCount) wins.push(`${sess.recordCount} record${sess.recordCount === 1 ? '' : 's'} broken`);
+  if (broken.length) wins.push(`${broken.length} record${broken.length === 1 ? '' : 's'} broken`);
   if (sess.goalCount) wins.push(`${sess.goalCount} goal${sess.goalCount === 1 ? '' : 's'} hit`);
+
+  /* The records themselves, not just how many. Each row leads with the
+     MARGIN — "+3 reps" is the thing you did; "21" is only the number it
+     landed on, and it means nothing without the 18 underneath it. */
+  const recordList = broken.length
+    ? el('div', { class: 'gv-card-list gv-session-records' },
+        ...broken.map(r => el('div', { class: 'gv-card gv-recrow' },
+          el('div', { class: 'gv-recrow-main' },
+            el('div', { class: 'gv-recrow-name' }, r.exercise),
+            el('div', { class: 'gv-recrow-was' }, describeRecord(r.kind, r.val, r.prev))),
+          el('div', { class: 'gv-recrow-margin' }, describeMargin(r.kind, r.val, r.prev)))))
+    : '';
 
   /* Celebration stays scarce on purpose (editorial register) — an ordinary
      session finishing is calm, never a confetti burst; fires once even if
@@ -1122,6 +1268,7 @@ function renderComplete(ctx, root, draft, sess) {
     el('div', { class: 'gv-session-complete-ico' }, ico('trophy')),
     el('h2', { class: 'gv-display gv-session-complete-title' }, 'Session done'),
     wins.length ? el('div', { class: 'gv-session-wins' }, wins.join(' · ')) : '',
+    recordList,
     el('div', { class: 'gv-tiles gv-session-complete-tiles' },
       tile(ico('check'), String(doneSets), 'sets done'),
       tile(ico('timer'), `${totalMin} min`, 'elapsed')),

@@ -17,6 +17,7 @@ const pages = {
   browse: require('./page-browse'),
   log: require('./page-log'),
   exercise: require('./page-exercise-detail'),
+  records: require('./page-records'),
   setup: require('./page-session-setup'),
   session: require('./page-session'),
 };

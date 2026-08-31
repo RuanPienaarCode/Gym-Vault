@@ -12,7 +12,9 @@
 const { Modal } = require('obsidian');
 const { el, ico, clear, segmented } = require('./dom');
 const { createCounter, tap, undo } = require('./rep-counter');
-const { holdWakeLock, attachTapZone, typeCountButton } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, attachFillMeter, punch, typeCountButton } = require('./rep-counter-shared');
+const counterTarget = require('./counter-target');
+const { helpButton } = require('./explainer');
 const sound = require('./sound');
 const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
@@ -57,10 +59,17 @@ class RepCounterModal extends Modal {
     this.motion = false;
     this._stopMotion = null;
     this._stopCountIn = null;
+    /* What this count is FOR. null is open-ended — a real choice, offered
+       first on the picker, not a missing value. Set once, before the
+       counter arms, and never afterwards: a target that could move
+       mid-set would make the fill bar meaningless. */
+    this.target = null;
+    this._meter = null;
   }
 
   onOpen() {
     this.modalEl.addClass('gv-app');
+    this.contentEl.addClass('gv-xp-host');
     this.modalEl.addClass('gv-repcounter-modal');
     this.modalEl.addClass(`gv-skin-${this.skin}`);
     this.modalEl.addClass(`gv-accent-${this.accent}`);
@@ -96,7 +105,11 @@ class RepCounterModal extends Modal {
 
     const undoBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': 'Undo last rep' },
       ico('minus'), el('span', {}, '1'));
-    undoBtn.addEventListener('click', () => { this.state = undo(this.state); this.renderCount(); });
+    undoBtn.addEventListener('click', () => {
+      this.state = undo(this.state);
+      this.renderCount();
+      if (this._meter) this._meter.set(this.state.count);
+    });
 
     const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
     doneBtn.addEventListener('click', () => { this._committed = true; this.close(); });
@@ -104,7 +117,8 @@ class RepCounterModal extends Modal {
     const cancelBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Cancel' }, ico('x'));
     cancelBtn.addEventListener('click', () => { this._committed = false; this.close(); });
 
-    const controls = el('div', { class: 'gv-rc-controls' }, this.motionBtn, this.muteBtn, undoBtn, doneBtn, cancelBtn);
+    const controls = el('div', { class: 'gv-rc-controls' },
+      this.motionBtn, this.muteBtn, helpButton(() => this.contentEl), undoBtn, doneBtn, cancelBtn);
     const bar = el('div', { class: 'gv-rc-bar' }, label, controls);
 
     /* aria-live so a screen-reader user hears each new count — speech
@@ -125,7 +139,10 @@ class RepCounterModal extends Modal {
     const typeBtn = typeCountButton(this.countEl, {
       label: 'Reps',
       get: () => this.state.count,
-      set: n => { this.state = { count: n, lastTapAt: this.state.lastTapAt }; },
+      set: n => {
+        this.state = { count: n, lastTapAt: this.state.lastTapAt };
+        if (this._meter) this._meter.set(n);
+      },
     });
     controls.insertBefore(typeBtn, undoBtn);
 
@@ -134,26 +151,96 @@ class RepCounterModal extends Modal {
 
     c.append(bar);
 
-    /* BEFORE the count-in starts, not after: onOpen runs in the stack of
-       whatever opened the modal — a ribbon click, a command, a button —
-       which is the user gesture iOS wants before this page may make a
-       sound, and the count-in speaks "3" off a timer a fraction of a second
-       later, by which time that stack is gone. */
+    /* BEFORE anything can make a sound: onOpen runs in the stack of whatever
+       opened the modal — a ribbon click, a command, a button — which is the
+       user gesture iOS wants, and both the count-in and the counter speak
+       off timers a fraction of a second later, by which time that stack is
+       gone. */
     sound.unlock();
 
     /* Undo and Type act on a count that does not exist yet, and Type edits
-       the count element IN PLACE — which is still detached during the
-       count-in, so its number box would open somewhere nobody can see. Both
-       come back the moment the zone does. */
+       the count element IN PLACE — which is still detached until the zone
+       is attached, so its number box would open somewhere nobody can see.
+       Both come back with the zone. */
     typeBtn.disabled = true;
     undoBtn.disabled = true;
 
+    this._armZone = () => {
+      typeBtn.disabled = false;
+      undoBtn.disabled = false;
+      /* The meter is built HERE, not in onOpen, because it needs the target
+         the picker has just chosen. Open-ended returns null and the zone
+         renders exactly as it always did. */
+      this._meter = attachFillMeter(this.zone, this.target);
+      if (this.target) {
+        this.zone.append(el('div', { class: 'gv-rc-target' }, `of ${counterTarget.describeTarget(this.target)}`));
+      }
+      c.append(this.zone);
+      this.zone.focus();
+    };
+
+    /* THREE STEPS, ONE TAP EACH: what are you going for, 3-2-1, count.
+       The picker's tap is also what starts the countdown, so choosing costs
+       nothing extra — and "Just count" is first, so the person who does not
+       want a target is not made to answer a question. */
+    this.renderTargetStep(c, () => this.startCountIn(c));
+
+    this._wakeLock = holdWakeLock();
+  }
+
+  /* "What are you going for?" — the step before the counter. Reps only:
+     this modal counts taps, and offering a time target would promise a
+     stopwatch it does not have (guided duration sets are where a timed hold
+     lives). */
+  renderTargetStep(c, onChosen) {
+    const choose = target => {
+      this.target = target;
+      step.remove();
+      onChosen();
+    };
+
+    const chips = el('div', { class: 'gv-chips gv-rc-targetchips' });
+    for (const n of counterTarget.QUICK_REPS) {
+      const b = el('button', { class: 'gv-chip', type: 'button' }, String(n));
+      b.addEventListener('click', () => choose(counterTarget.makeTarget('reps', n)));
+      chips.append(b);
+    }
+
+    const custom = el('input', {
+      class: 'gv-set-input gv-rc-targetinput', type: 'number', inputmode: 'numeric', min: '1', step: '1',
+      placeholder: 'or type it', 'aria-label': 'Rep target',
+    });
+    const go = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Set'));
+    /* An unreadable or empty box is open-ended, not zero — makeTarget already
+       collapses every bad value to null, so this cannot produce a target of
+       nothing that then fills instantly. */
+    go.addEventListener('click', () => choose(counterTarget.makeTarget('reps', custom.value)));
+    custom.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      choose(counterTarget.makeTarget('reps', custom.value));
+    });
+
+    const open = el('button', { class: 'gv-btn gv-btn-ghost gv-rc-targetopen', type: 'button' },
+      ico('infinity'), el('span', {}, 'Just count'));
+    open.addEventListener('click', () => choose(null));
+
+    const step = el('div', { class: 'gv-rc-targetstep' },
+      el('h2', { class: 'gv-kicker gv-rc-targettitle' }, this.exerciseName || 'Freestyle'),
+      el('div', { class: 'gv-rc-targetask' }, 'How many?'),
+      chips,
+      el('div', { class: 'gv-rc-targetcustom' }, custom, go),
+      open);
+    c.append(step);
+    return step;
+  }
+
+  startCountIn(c) {
     /* Count in before the zone arms — same 3, 2, 1, Begin the guided screen
        uses, from the same module. Without it the first tap of a set is the
-       one that puts the phone on the floor, and every count starts at one
-       rep behind. The zone is held back rather than covered: a tap zone
-       under an overlay is a tap zone that will eventually be tapped
-       through. */
+       one that puts the phone on the floor, and every count starts a rep
+       behind. The zone is held back rather than covered: a tap zone under an
+       overlay is a tap zone that will eventually be tapped through. */
     this._stopCountIn = countdown.runCountIn(c, {
       label: this.exerciseName || 'Freestyle',
       muted: this.muted,
@@ -163,14 +250,9 @@ class RepCounterModal extends Modal {
         if (!this.contentEl.isConnected) return; // modal closed mid-count
         const gate = this.contentEl.querySelector('.gv-countin');
         if (gate) gate.remove();
-        c.append(this.zone);
-        typeBtn.disabled = false;
-        undoBtn.disabled = false;
-        this.zone.focus();
+        this._armZone();
       },
     });
-
-    this._wakeLock = holdWakeLock();
   }
 
   onClose() {
@@ -211,7 +293,14 @@ class RepCounterModal extends Modal {
 
   commitRep() {
     this.renderCount();
+    punch(this.countEl);
     this.flash();
+    if (this._meter && this._meter.set(this.state.count) === 'done' && !this._targetHit) {
+      /* Once, at the moment the target is met. The reps after it are bonus,
+         not a second announcement. */
+      this._targetHit = true;
+      if (!this.muted) sound.cue('go', 'target', this.settings);
+    }
     if (!this.muted) sound.announce(this.state.count, this.settings);
   }
 

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Fill meter harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif}
+  .frame{border:1px solid #bbb;background:#fff;width:390px}
+  .frame .gv-app{display:flex;flex-direction:column;min-height:520px}
+  button.go{font:inherit;padding:7px 12px;margin:0 6px 8px 0;cursor:pointer}
+  pre{background:#fff;border:1px solid #ccc;padding:8px;font-size:12px;max-width:390px;margin-top:10px}
+</style></head>
+<body>
+  <button class="go" id="tap">tap (+1)</button>
+  <button class="go" id="reset">reset</button>
+  <button class="go" id="jump">jump to 11</button>
+  <div class="frame"><div class="gv-app gv-narrow gv-skin-floor gv-accent-lime" id="host"></div></div>
+  <pre id="log">—</pre>
+<script src="bundle.js"></script>
+<script>
+  const shared = window.__shared, T = window.__target;
+  const host = document.getElementById('host'), log = document.getElementById('log');
+  const target = T.makeTarget('reps', 12);
+  let count = 0;
+  const countEl = document.createElement('div');
+  countEl.className = 'gv-rc-count gv-session-count'; countEl.textContent = '0';
+  const zone = document.createElement('div');
+  zone.className = 'gv-rc-zone gv-session-zone'; zone.setAttribute('role','button'); zone.tabIndex = 0;
+  zone.append(countEl);
+  const tEl = document.createElement('div');
+  tEl.className = 'gv-rc-target'; tEl.textContent = 'of ' + T.describeTarget(target);
+  zone.append(tEl);
+  const meter = shared.attachFillMeter(zone, target);
+  host.append(zone);
+  const show = () => {
+    countEl.textContent = String(count);
+    const stage = meter.set(count);
+    log.textContent = 'count ' + count + '  fraction ' + T.fillFraction(count, target).toFixed(3) +
+      '  stage ' + stage + '  --gv-fill ' + zone.style.getPropertyValue('--gv-fill');
+  };
+  document.getElementById('tap').addEventListener('click', () => { count++; show(); });
+  document.getElementById('reset').addEventListener('click', () => { count = 0; show(); });
+  document.getElementById('jump').addEventListener('click', () => { count = 11; show(); });
+  show();
+  window.__set = n => { count = n; show(); };
+  window.__zone = zone;
+</script>
+</body></html>

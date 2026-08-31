@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Streak flame harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif}
+  .frame{border:1px solid #bbb;background:#fff;width:390px;margin-bottom:10px;padding:6px 14px}
+  pre{background:#fff;border:1px solid #ccc;padding:8px;font-size:12px;max-width:520px}
+</style></head>
+<body>
+  <div id="hosts"></div>
+  <pre id="log">—</pre>
+<script src="bundle.js"></script>
+<script>
+  const F = window.__flame, hosts = document.getElementById('hosts');
+  const rows = [];
+  for (const n of [0, 1, 3, 6, 12, 30]) {
+    const d = document.createElement('div');
+    d.className = 'frame';
+    const app = document.createElement('div');
+    app.className = 'gv-app gv-narrow gv-skin-floor gv-accent-lime';
+    app.append(F.streakFlame(n));
+    d.append(app);
+    hosts.append(d);
+    rows.push({ n, ...F.flameStyle(n) });
+  }
+  document.getElementById('log').textContent = rows.map(r =>
+    `streak ${String(r.n).padStart(2)}  intensity ${r.intensity.toFixed(3)}  scale ${r.scale}  flicker ${r.flickerMs}ms`).join('\n');
+</script>
+</body></html>

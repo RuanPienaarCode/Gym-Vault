@@ -19,9 +19,19 @@
 
 const sound = require('./sound');
 
-/* "3, 2, 1" — the last three seconds. Long enough to get into position,
-   short enough that nobody taps past it. */
+/* TWO NUMBERS, BECAUSE THEY ARE TWO DIFFERENT THINGS.
+
+   COUNT_IN_FROM is the tail of a RUNNING CLOCK — the last seconds of a timed
+   interval, counted out as it expires. Three is right there: the interval
+   itself has been running, you already know it is nearly over, and five
+   seconds of talking between short intervals is chatter.
+
+   GATE_FROM is the count-in before a set STARTS from nothing. Three proved
+   too quick in use — it is not long enough to get down onto the floor and
+   set your hands — so the gate counts from five. Same sequence, same voice,
+   same word at zero; only the runway is longer. */
 const COUNT_IN_FROM = 3;
+const GATE_FROM = 5;
 /* Faster than once a second so the ring sweeps rather than jerks. Every
    spoken/shown number is gated on whole seconds regardless, so the extra
    ticks cost nothing but arithmetic. */
@@ -95,7 +105,7 @@ function countdownRing(size) {
    a set. */
 function runCountIn(host, opts) {
   const o = opts || {};
-  const from = o.from == null ? COUNT_IN_FROM : o.from;
+  const from = o.from == null ? GATE_FROM : o.from;
   const done = typeof o.onDone === 'function' ? o.onDone : () => {};
 
   let finished = false;
@@ -187,4 +197,4 @@ function runCountIn(host, opts) {
   };
 }
 
-module.exports = { COUNT_IN_FROM, TICK_MS, GO_WORD, GO_HOLD_MS, countInNumber, countdownRing, runCountIn };
+module.exports = { COUNT_IN_FROM, GATE_FROM, TICK_MS, GO_WORD, GO_HOLD_MS, countInNumber, countdownRing, runCountIn };

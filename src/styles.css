@@ -1434,11 +1434,342 @@ body.is-phone .gv-app .gv-page {
 }
 .gv-rc-zone.gv-rc-flash { background: var(--gv-lime-ghost); }
 
+/* ---------- 01 PUNCH — the count landing (design/counter-animations.html)
+   The acting surface's own confirmation: the thumb needs to know the rep
+   registered, and it needs to know in under 100ms. Overshoot to 1.34, dip
+   under, settle — the dip is what makes it read as a hit rather than a
+   zoom.
+
+   transform and colour only, so nothing here triggers layout while someone
+   is doing push-ups. The shockwave is a pseudo-element on the count so it
+   cannot take a tap away from the zone. */
+.gv-rc-count { will-change: transform; }
+.gv-rc-count.gv-punch { animation: gv-punch 380ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+@keyframes gv-punch {
+  0%   { transform: scale(1);    color: var(--gv-ink); }
+  22%  { transform: scale(1.34); color: var(--gv-lime-deep); }
+  55%  { transform: scale(0.95); }
+  100% { transform: scale(1);    color: var(--gv-ink); }
+}
+/* Dark theme flips the accent: lime-deep is a dark green and disappears
+   against a dark ground, which would make the punch land invisibly. */
+.theme-dark .gv-app .gv-rc-count.gv-punch { animation-name: gv-punch-dark; }
+@keyframes gv-punch-dark {
+  0%   { transform: scale(1);    color: var(--gv-ink); }
+  22%  { transform: scale(1.34); color: var(--gv-lime-hi); }
+  55%  { transform: scale(0.95); }
+  100% { transform: scale(1);    color: var(--gv-ink); }
+}
+
+.gv-rc-count::after {
+  content: '';
+  position: absolute; top: 50%; left: 50%;
+  width: 128px; height: 128px; margin: -64px 0 0 -64px;
+  border: 2px solid var(--gv-lime); border-radius: 50%;
+  opacity: 0; pointer-events: none;
+}
+.gv-rc-count.gv-punch::after { animation: gv-shock 620ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes gv-shock {
+  0%   { transform: scale(0.62); opacity: 0.9; border-width: 6px; }
+  100% { transform: scale(1.5);  opacity: 0;   border-width: 1px; }
+}
+
+/* Reduced motion collapses the punch rather than removing it: the state
+   change still has to land, because a counter that silently stops
+   acknowledging taps is worse than one that does it quietly. */
+@media (prefers-reduced-motion: reduce) {
+  .gv-rc-count.gv-punch { animation-duration: 1ms; }
+  .gv-rc-count.gv-punch::after { animation: none; }
+}
+
+/* ---------- 08 REST/INTERVAL TIMER — urgency in the colour ----------
+   The timed circuit's clock, carrying how much is left in something you can
+   read at arm's length without focusing on the digits. Three bands, set as
+   an attribute by the tick (page-session.js) only when the band CHANGES.
+
+   Colour is the whole treatment for the warn band; the urgent band adds a
+   heartbeat on the digits. Nothing animates layout, and the heartbeat is a
+   transform so it stays on the compositor while a session runs. */
+.gv-timed-dial[data-urgency="warn"] .gv-count-ring-fill { stroke: var(--gv-lime-hi); }
+.gv-timed-dial[data-urgency="urgent"] .gv-count-ring-fill { stroke: var(--gv-danger); }
+.gv-timed-dial[data-urgency="urgent"] .gv-timed-count {
+  color: var(--gv-danger);
+  animation: gv-heartbeat 900ms ease-in-out infinite;
+}
+@keyframes gv-heartbeat {
+  0%, 100% { transform: scale(1); }
+  14%      { transform: scale(1.09); }
+  28%      { transform: scale(1); }
+  42%      { transform: scale(1.06); }
+  56%      { transform: scale(1); }
+}
+/* The COLOUR still carries the urgency under reduced motion — it is the
+   information. Only the beat stops. */
+@media (prefers-reduced-motion: reduce) {
+  .gv-timed-dial[data-urgency="urgent"] .gv-timed-count { animation: none; }
+}
+
+/* ---------- 10 STREAK FLAME — intensity carries the number ----------
+   Scale and flicker rate both come from the count (streak-flame.js), so the
+   drawing is the reading and the digit confirms it. */
+.gv-streak { display: flex; align-items: center; gap: 16px; margin: 14px 0 4px; }
+.gv-streak-flame {
+  position: relative; width: 74px; height: 90px; flex: 0 0 auto;
+  display: flex; align-items: flex-end; justify-content: center;
+  /* streak-flame.js writes the value-driven scale here. Bottom origin so a
+     bigger flame grows UP from the same baseline rather than off-centre. */
+  transform-origin: 50% 100%;
+}
+.gv-streak-svg { display: block; width: 56px; height: 76px; transform-origin: 50% 100%; }
+.gv-streak-outer { fill: #f97316; }
+.gv-streak-inner { fill: #fef3c7; }
+/* Unlit: a streak of zero is a real state with something to say, so the
+   flame stays (the layout must not jump the week one starts) and goes cold
+   rather than disappearing. */
+.gv-streak-svg:not(.lit) .gv-streak-outer { fill: var(--gv-line); }
+.gv-streak-svg:not(.lit) .gv-streak-inner { fill: var(--gv-bg); }
+.gv-streak-svg.lit { animation: gv-flicker 460ms ease-in-out infinite alternate; }
+@keyframes gv-flicker {
+  0%   { transform: scale(1, 1)       translateX(0); }
+  50%  { transform: scale(0.95, 1.06) translateX(-1px); }
+  100% { transform: scale(1.05, 0.96) translateX(1px); }
+}
+.gv-streak-num { font-family: var(--gv-display); font-size: 60px; line-height: 1; }
+.gv-streak-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+/* The flame's SIZE still scales under reduced motion — that is the reading,
+   and removing it would remove the information. Only the flicker stops. */
+@media (prefers-reduced-motion: reduce) {
+  .gv-streak-svg.lit { animation: none; }
+}
+
+/* ---------- the fill meter (rep-counter-shared.js attachFillMeter) ----------
+   The zone charging up towards a target: a flood rising from the bottom,
+   getting hotter as it approaches. Only ever present when there IS a target
+   — attachFillMeter returns null otherwise and nothing below applies, so an
+   open-ended count looks exactly as it did before.
+
+   ::before, not a child element: the zone is the tap target, and a real node
+   inside it is one more thing that can swallow a press (the same reason
+   .gv-rc-count is pointer-events:none). A pseudo-element cannot be hit at
+   all.
+
+   `transform: scaleY()` off a bottom origin rather than animating `height`:
+   height is a layout property and re-lays the flex column on every rep,
+   which on a phone mid-set is exactly where dropped frames come from.
+   scaleY runs on the compositor. --gv-fill is the ONLY thing JS writes. */
+/* `z-index: 0` is not decoration — it makes the zone a stacking context, so
+   the flood below can sit at z-index:-1: painted after the zone's own
+   background but before its content, with no rule needed on the children.
+   The obvious alternative (flood at z-index:0, `> *` at z-index:1) needs
+   `position` on every child to make z-index apply, and that rule then
+   CLOBBERS position:absolute on any child that has it — which is exactly
+   what happened to .gv-rc-target here: it flowed inline beside the count
+   instead of sitting under it. */
+.gv-rc-zone[data-fill] { position: relative; z-index: 0; overflow: hidden; }
+.gv-rc-zone[data-fill]::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 100%;
+  transform-origin: bottom center;
+  transform: scaleY(var(--gv-fill, 0));
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background-color 320ms ease;
+  background: var(--gv-lime-ghost);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* The escalation. Ghost while it is early, the real accent once past
+   halfway, full flood at the target — one lime flood per screen is the house
+   rule, and this screen spends it here. */
+.gv-rc-zone[data-fill="hot"]::before { background: var(--gv-lime-ghost); }
+.gv-rc-zone[data-fill="peak"]::before { background: var(--gv-lime-hi); opacity: 0.55; }
+.gv-rc-zone[data-fill="done"]::before { background: var(--gv-lime); opacity: 0.75; }
+
+/* At the target the whole zone pulses once. `animation` on the pseudo-
+   element, so it cannot fight the flash class on the zone itself. */
+@keyframes gv-fill-hit {
+  0% { opacity: 0.75; }
+  40% { opacity: 1; }
+  100% { opacity: 0.75; }
+}
+.gv-rc-zone[data-fill="done"]::before { animation: gv-fill-hit 620ms ease-out 1; }
+
+/* The count reads against the flood once it is dark enough to need it. */
+.gv-rc-zone[data-fill="done"] .gv-rc-count { color: var(--gv-ink-fixed); }
+
+/* What you are filling towards, under the number. */
+.gv-rc-target {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 58px;
+  text-align: center;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gv-ink-dim);
+  pointer-events: none;
+}
+.gv-rc-zone[data-fill="done"] .gv-rc-target { color: var(--gv-ink-fixed); }
+
+/* The first-set start gate — one tap before any clock runs. */
+.gv-session-startgate {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; text-align: center; padding: 20px;
+}
+.gv-startgate-name { font-family: var(--gv-display); font-size: clamp(32px, 11vw, 56px); line-height: 1.02; }
+.gv-session-startgate .gv-hero-action { width: 100%; }
+
+/* Records broken this session, on the completion screen. The MARGIN is the
+   loud half — it is the thing you did — and the figure it beat sits under
+   the exercise name in the quiet half. */
+.gv-session-records { margin: 14px 0; text-align: left; }
+.gv-recrow { display: flex; align-items: center; gap: 12px; }
+.gv-recrow-main { flex: 1 1 auto; min-width: 0; }
+.gv-recrow-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gv-recrow-was { font-size: 12px; color: var(--gv-ink-dim); }
+.gv-recrow-margin {
+  flex: 0 0 auto;
+  font-family: var(--gv-display); font-size: 22px; line-height: 1;
+  color: var(--gv-lime-deep);
+}
+
+/* A labelled filter row on the plans list. The label is part of the row, not
+   a heading above it, so two rows stack without doubling the vertical space
+   a phone has to scroll past. */
+.gv-facet { align-items: center; }
+.gv-facet-label {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gv-ink-dim); margin-right: 2px;
+}
+
+/* An exercise line in plan edit mode. Wraps to two rows on a phone rather
+   than shrinking the number boxes — a set count you cannot read is worse
+   than one on its own line. */
+.gv-edititem { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gv-edititem-name { flex: 1 1 100%; font-weight: 700; }
+.gv-edititem-rx { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.gv-app .gv-edititem-sets { width: 56px; text-align: center; flex: 0 0 auto; }
+.gv-app .gv-edititem-target { flex: 1 1 auto; min-width: 0; text-align: left; }
+.gv-edititem-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.gv-edititem-actions .gv-icon-btn[disabled] { opacity: 0.3; cursor: default; }
+
+/* The progression list on an exercise page: when it moved, to what, from
+   what. Three columns so the dates line up and the eye can run down them. */
+.gv-progress-row { display: flex; align-items: baseline; gap: 10px; }
+.gv-progress-when { flex: 0 0 auto; min-width: 72px; font-size: 12px; color: var(--gv-ink-dim); }
+.gv-progress-val { flex: 0 0 auto; font-weight: 800; }
+.gv-progress-prev { flex: 1 1 auto; text-align: right; font-size: 12px; color: var(--gv-ink-dim); }
+
+/* ---------- the explainer sheet (explainer.js) ----------
+   Covers its host rather than replacing it, so the counter is still there
+   when the sheet closes. The host carries .gv-xp-host purely to be a
+   positioning context — the sheet is absolute, and without it the sheet
+   would anchor to the page and cover the nav bar too. */
+.gv-xp-host { position: relative; }
+.gv-xp {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 5;
+  display: flex; flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--gv-bg);
+  -webkit-overflow-scrolling: touch;
+}
+.gv-xp-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gv-xp-kicker { margin: 0; }
+.gv-xp-cards { display: flex; flex-direction: column; gap: 12px; }
+.gv-xp-card { border: 1px solid var(--gv-line); padding: 12px 14px; }
+.gv-xp-art { display: flex; justify-content: center; }
+.gv-xp-svg { width: 100%; max-width: 190px; height: auto; }
+.gv-xp-title { margin: 6px 0 2px; font-size: 15px; }
+.gv-xp-body { margin: 0; font-size: 13px; line-height: 1.5; color: var(--gv-ink-dim); }
+.gv-xp-foot { margin: 0; font-size: 12px; color: var(--gv-ink-dim); }
+
+/* Two columns only in a WIDE PANE — keyed on the absence of .gv-narrow, not
+   on a media query. A media query reads the WINDOW, so a 390px plugin pane
+   docked in a 1600px desktop window would take the two-column branch and
+   squeeze both drawings into 180px each. Same reason the nav keys on
+   .gv-narrow (see the narrow-panes section): the pane's width is the only
+   width that matters here, and controller.js's ResizeObserver is what
+   measures it. */
+.gv-app:not(.gv-narrow) .gv-xp-cards { flex-direction: row; }
+.gv-app:not(.gv-narrow) .gv-xp-card { flex: 1 1 0; }
+
+.gv-xp-phone { fill: var(--gv-bg); stroke: var(--gv-ink); stroke-width: 2.5; }
+.gv-xp-screen { fill: var(--gv-lime-ghost); stroke: none; }
+.gv-xp-speaker { fill: var(--gv-ink); }
+.gv-xp-arm { stroke: var(--gv-ink); stroke-width: 2.5; stroke-linecap: round; }
+.gv-xp-finger { fill: var(--gv-ink); }
+.gv-xp-ripple { fill: none; stroke: var(--gv-lime-deep); stroke-width: 2.5; opacity: 0; }
+.gv-xp-arrow { fill: none; stroke: var(--gv-lime-deep); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+@keyframes gv-xp-tap {
+  0%, 100% { transform: translateY(0); }
+  38% { transform: translateY(22px); }
+  58% { transform: translateY(22px); }
+}
+@keyframes gv-xp-ripple {
+  0%, 34% { opacity: 0; transform: scale(0.4); }
+  46% { opacity: 1; transform: scale(0.9); }
+  70%, 100% { opacity: 0; transform: scale(1.9); }
+}
+@keyframes gv-xp-rock {
+  0%, 100% { transform: translate(42px, 13px) rotate(-11deg); }
+  50% { transform: translate(42px, 13px) rotate(11deg); }
+}
+.gv-xp-hand { animation: gv-xp-tap 2.2s ease-in-out infinite; }
+/* transform-box/transform-origin so the ripple scales about its own centre
+   rather than the SVG's origin — without it the circle flies off-frame. */
+.gv-xp-ripple { transform-box: fill-box; transform-origin: center; animation: gv-xp-ripple 2.2s ease-out infinite; }
+.gv-xp-tilt { transform-box: fill-box; transform-origin: center; animation: gv-xp-rock 2.6s ease-in-out infinite; }
+
+/* Reduced motion: the drawings hold still. They were built to read frozen —
+   the tilt has an arrow each way, the tap has its ripple — so nothing is
+   lost but the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .gv-xp-hand, .gv-xp-ripple, .gv-xp-tilt { animation: none; }
+  .gv-xp-ripple { opacity: 1; }
+}
+
+/* ---------- "how many?" — the freestyle counter's first step ----------
+   One question, one tap. "Just count" sits last but is the escape hatch for
+   anyone who does not want to answer it. */
+.gv-rc-targetstep {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 20px; text-align: center;
+}
+.gv-rc-targettitle { margin: 0; color: var(--gv-ink-dim); }
+.gv-rc-targetask { font-family: var(--gv-display); font-size: clamp(30px, 10vw, 46px); line-height: 1; }
+.gv-app .gv-rc-targetchips { justify-content: center; }
+/* Chips are the primary path here, not a filter — bigger than the exercise
+   list's, and thumb-sized. */
+.gv-rc-targetstep .gv-chip { min-width: 58px; min-height: 48px; font-size: 15px; }
+.gv-rc-targetcustom { display: flex; align-items: center; gap: 8px; }
+.gv-app .gv-rc-targetinput { width: 118px; text-align: center; }
+.gv-app .gv-rc-targetopen { margin-top: 4px; }
+
+/* Reduced motion: the meter still fills — it is information, not decoration,
+   and removing it would remove the answer to "how far am I". What goes is
+   the sweep and the pulse: the bar STEPS to its new height. */
+@media (prefers-reduced-motion: reduce) {
+  .gv-rc-zone[data-fill]::before { transition: none; animation: none; }
+}
+
 .gv-rc-count {
   font-family: var(--gv-display);
   font-size: clamp(120px, 42vw, 320px);
   line-height: 1;
   color: var(--gv-ink);
+  /* Positioning context for the punch shockwave (::after, above). Without
+     it the ring anchors to the nearest positioned ancestor — the zone — and
+     lands off-centre from the number it is supposed to be radiating from. */
+  position: relative;
   transition: color 120ms ease;
   /* The zone (not the digits) is the tap target — a giant number must not
      steal the hit area it sits in front of. */
@@ -1859,6 +2190,24 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   text-transform: uppercase; color: var(--gv-ink-dim);
 }
 .gv-setup-start { margin-top: 6px; }
+
+/* Today's set counts, one row per exercise. The stepper sits right, thumb
+   height, with the number between the two controls so it reads as one
+   object rather than a label with buttons near it. */
+.gv-setsrow { display: flex; align-items: center; gap: 12px; }
+.gv-setsrow-main { flex: 1 1 auto; min-width: 0; }
+.gv-setsrow-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gv-setsrow-target { font-size: 12px; color: var(--gv-ink-dim); }
+.gv-setsrow-target:empty { display: none; }
+.gv-setsrow-stepper { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.gv-setsrow-n {
+  font-family: var(--gv-display); font-size: 22px; line-height: 1;
+  min-width: 30px; text-align: center;
+}
+/* A count that differs from the plan says so — a number changed two sessions
+   ago and forgotten must not quietly become the programme in someone's head. */
+.gv-setsrow.changed .gv-setsrow-n { color: var(--gv-lime-deep); }
+.gv-setsrow.changed { border-color: var(--gv-lime); }
 
 /* ============================================================================
    TIMED SESSION — page-session.js's third renderer. Acting register, same

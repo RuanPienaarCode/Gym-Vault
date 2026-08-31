@@ -66,9 +66,32 @@ function uiState(ctx) {
       shuffle: !!s.guideShuffle,
       transitions: s.guideTransitions !== false,
       seed: Date.now(),
+      /* Per-exercise SET overrides for this session only, keyed by the day
+         item's index. Deliberately not persisted and deliberately not
+         written back to the plan: "three rounds today because my shoulder
+         is sore" is a fact about today, not an edit to the programme. The
+         plan note stays the source of truth; editing it is a different
+         action on a different screen. */
+      sets: {},
     };
   }
   return ctx.state.setupUi;
+}
+
+/* HOW MANY SETS OF THIS EXERCISE TODAY — the one answer, used by the
+   stepper, the preview line, and the draft that Start actually builds.
+
+   Split out the moment there was more than one caller. The preview saying
+   "9 sets" while the session hands you 12 is precisely the "two figures
+   derived by different rules" failure this codebase keeps finding, and a
+   preview is the one place it would go unnoticed longest. */
+function setsForItem(ui, item, index) {
+  const override = ui && ui.sets ? ui.sets[index] : null;
+  return override == null ? itemSets(item) : override;
+}
+
+function setsPerEntryFor(day, ui) {
+  return ((day && day.items) || []).map((it, i) => setsForItem(ui, it, i));
 }
 
 function unitOf(ctx, name) {
@@ -169,6 +192,16 @@ function render(ctx, root) {
 
   root.append(equipmentBlock(ctx, day));
 
+  /* Reps mode only. In a timed circuit the CLOCK decides how many rounds
+     fit, so a set count typed here would be overwritten by the schedule the
+     moment it was built — offering it would be offering a control that does
+     nothing. */
+  /* Assigned below, once the preview element exists. The stepper is built
+     before it and needs to poke it, so the indirection is the cheap way to
+     keep both in one render pass. */
+  let refreshPreview = () => {};
+  if (ui.mode === 'reps') root.append(setsBlock(ctx, day, ui, () => refreshPreview()));
+
   /* How you want to be guided. */
   root.append(el('div', { class: 'gv-section-title' }, ico('play'), el('span', {}, 'Guide')));
   const modes = el('div', { class: 'gv-card-list' });
@@ -201,6 +234,7 @@ function render(ctx, root) {
     preview.append(previewText(ctx, day, ui));
     start.textContent = ui.mode === 'timed' ? `Start ${ui.minutes} minutes` : 'Start session';
   };
+  refreshPreview = refresh;
 
   if (ui.mode === 'timed') {
     root.append(minutesBlock(ctx, ui, refresh));
@@ -218,6 +252,60 @@ function render(ctx, root) {
 
   start.addEventListener('click', () => beginSession(ctx, plan, day, ui));
   root.append(el('div', { class: 'gv-hero-action gv-setup-start' }, start));
+}
+
+/* Today's set counts, per exercise, before anything is created.
+
+   Nothing here writes to disk and nothing exists until Start — same promise
+   the rest of this screen makes. The numbers ride into startDraft as
+   `setsPerEntry`, which is the mechanism the timed schedule already uses, so
+   there is ONE path from "how many sets" to a draft rather than two. */
+function setsBlock(ctx, day, ui, onChange) {
+  const items = (day && day.items) || [];
+  if (!items.length) return el('div', {});
+
+  const wrap = el('div', {});
+  wrap.append(el('div', { class: 'gv-section-title' }, ico('list'), el('span', {}, 'Sets')));
+
+  const list = el('div', { class: 'gv-card-list' });
+  items.forEach((it, i) => {
+    const planned = itemSets(it);
+    const countEl = el('span', { class: 'gv-setsrow-n', 'aria-live': 'polite' });
+    const draw = () => {
+      const n = setsForItem(ui, it, i);
+      countEl.textContent = String(n);
+      /* Say so when today differs from the programme, so a number changed
+         two sessions ago and forgotten cannot quietly become the new normal
+         in someone's head. */
+      row.classList.toggle('changed', n !== planned);
+      minus.disabled = n <= 1;
+    };
+    const step = delta => {
+      const now = setsForItem(ui, it, i);
+      /* One set is the floor: zero sets is not a lighter session, it is a
+         missing exercise, and skipping one already has its own control
+         inside the session. Ten is a ceiling against a stuck thumb. */
+      ui.sets[i] = Math.max(1, Math.min(10, now + delta));
+      draw();
+      /* The preview quotes the total, so it has to move with the stepper —
+         otherwise the line under the button contradicts the button. */
+      if (onChange) onChange();
+    };
+    const minus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `One fewer set of ${it.exercise}` }, ico('minus'));
+    minus.addEventListener('click', () => step(-1));
+    const plus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `One more set of ${it.exercise}` }, ico('plus'));
+    plus.addEventListener('click', () => step(1));
+
+    const row = el('div', { class: 'gv-card gv-setsrow' },
+      el('div', { class: 'gv-setsrow-main' },
+        el('div', { class: 'gv-setsrow-name' }, it.exercise),
+        el('div', { class: 'gv-setsrow-target' }, it.target || '')),
+      el('div', { class: 'gv-setsrow-stepper' }, minus, countEl, plus));
+    draw();
+    list.append(row);
+  });
+  wrap.append(list);
+  return wrap;
 }
 
 /* The Sworkit "Equipment" tile, and the first thing this app has ever done
@@ -311,7 +399,7 @@ function previewText(ctx, day, ui) {
   const count = ((day && day.items) || []).length;
   if (!count) return 'Nothing on this day yet — add an exercise to the plan first.';
   if (ui.mode !== 'timed') {
-    const sets = day.items.reduce((n, it) => n + itemSets(it), 0);
+    const sets = setsPerEntryFor(day, ui).reduce((n, v) => n + v, 0);
     return `${count} exercise${count === 1 ? '' : 's'} · ${sets} sets · you set the pace`;
   }
   const schedule = scheduleFor(ctx, day, ui);
@@ -367,7 +455,10 @@ function beginSession(ctx, plan, day, ui) {
        design. */
     ctx.state.logDraft.timed = schedule;
   } else {
-    startDraft(ctx, plan, day);
+    /* Today's overrides, resolved against the plan for anything untouched.
+       An empty object still produces a full array rather than undefined, so
+       startDraft takes one code path whether or not anything was changed. */
+    startDraft(ctx, plan, day, { setsPerEntry: setsPerEntryFor(day, ui) });
   }
   ctx.state.setup = null;
   ctx.enterGuided();

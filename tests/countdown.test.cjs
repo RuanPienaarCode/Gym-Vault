@@ -57,7 +57,25 @@ assert.strictEqual(countdown.countInNumber(9, 5), null);
 
 /* ---------- the shared constants ---------- */
 
-assert.strictEqual(countdown.COUNT_IN_FROM, 3);
+/* Two runways, deliberately different. The clock tail stays at three — an
+   interval that has been running does not need five seconds of warning. The
+   GATE counts from five, because three was not long enough to get down onto
+   the floor and set your hands. */
+assert.strictEqual(countdown.COUNT_IN_FROM, 3, 'the timed-interval tail');
+assert.strictEqual(countdown.GATE_FROM, 5, 'the pre-set gate');
+assert.ok(countdown.GATE_FROM > countdown.COUNT_IN_FROM,
+  'a set starting from nothing needs a longer runway than a clock already running out');
+
+/* The gate's default really is GATE_FROM — a caller that passes no `from`
+   must get five, not three. */
+{
+  const seen = new Set();
+  for (let t = countdown.GATE_FROM; t > 0; t -= 0.05) {
+    const n = countdown.countInNumber(t, countdown.GATE_FROM);
+    if (n !== null) seen.add(n);
+  }
+  assert.deepStrictEqual([...seen].sort((a, b) => b - a), [5, 4, 3, 2, 1]);
+}
 assert.ok(countdown.TICK_MS < 1000, 'the ring must tick faster than once a second, or it jerks');
 assert.ok(1000 % countdown.TICK_MS === 0, 'a tick that does not divide a second makes the numbers land unevenly');
 assert.ok(typeof countdown.GO_WORD === 'string' && countdown.GO_WORD.length,

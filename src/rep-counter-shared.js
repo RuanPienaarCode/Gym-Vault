@@ -14,6 +14,7 @@
    kept using it. */
 
 const { el, ico } = require('./dom');
+const { fillFraction, fillStage } = require('./counter-target');
 
 /* A touch gesture that gets preventDefault()'d can still leave a browser's
    ~300ms touch->mouse compatibility window primed on some engines; this
@@ -125,6 +126,64 @@ function attachTapZone(zone, onTap) {
   };
 }
 
+/* ---------- the punch ---------- */
+
+/* Retrigger the landing animation on `node`. A CSS animation only replays
+   if the class actually goes away and comes back, and removing then adding
+   it in the same frame is coalesced by the style system into no change at
+   all — so the class is dropped, layout is READ to force a flush, and only
+   then re-added. Reading offsetWidth is the cheapest reliable flush and is
+   the standard idiom for exactly this.
+
+   Cheaper than it looks: one forced style recalc on a node that is about to
+   animate anyway, versus a rep that visibly does not register. */
+function punch(node) {
+  if (!node) return;
+  node.classList.remove('gv-punch');
+  void node.offsetWidth;
+  node.classList.add('gv-punch');
+}
+
+/* ---------- the fill meter ---------- */
+
+/* The tap zone charging up towards a target. Shared so the freestyle counter
+   and the guided set screen fill at the same rate, escalate at the same
+   points, and celebrate at the same moment — three things that would drift
+   apart within a release if each screen owned its own bar.
+
+   THE WHOLE THING IS TWO CSS CUSTOM PROPERTIES AND AN ATTRIBUTE. No
+   per-frame JS, no rAF loop: this runs while someone is doing push-ups with
+   the phone on the floor, and a JS animation competing with the tap handler
+   is how a rep gets dropped. The stylesheet owns every pixel; this owns only
+   "how full" and "which stage".
+
+   Returns null for an OPEN-ENDED counter (target === null) so callers can
+   skip the whole thing with one check — a progress bar with no destination
+   is a lie, and drawing an empty one that never fills is worse than drawing
+   nothing. */
+function attachFillMeter(zone, target) {
+  if (!target) return null;
+  let lastStage = null;
+
+  const set = count => {
+    const f = fillFraction(count, target);
+    const stage = fillStage(f);
+    /* Clamped HERE, not in fillFraction: the fraction has to stay honest
+       about overshoot for anything that wants to know by how much, but a
+       bar taller than its own track just paints outside the zone. */
+    zone.style.setProperty('--gv-fill', String(Math.min(1, f)));
+    if (stage !== lastStage) {
+      lastStage = stage;
+      zone.setAttribute('data-fill', stage);
+    }
+    return stage;
+  };
+
+  zone.setAttribute('data-fill', 'idle');
+  zone.style.setProperty('--gv-fill', '0');
+  return { set, target };
+}
+
 /* ---------- typing the count in by hand ---------- */
 
 /* "Type it" — set the count directly instead of tapping it out. Wired here
@@ -146,10 +205,14 @@ function typeCountButton(countEl, opts) {
   const get = typeof o.get === 'function' ? o.get : () => 0;
   const set = typeof o.set === 'function' ? o.set : () => {};
 
+  /* Icon only. The control bar already carries motion, mute, help, undo and
+     Done; a sixth with a word on it is the one that pushes the row into
+     wrapping on a phone. The aria-label carries the meaning that the missing
+     word would have. */
   const btn = el('button', {
-    class: 'gv-btn gv-btn-ghost gv-btn-small gv-rc-type', type: 'button',
-    'aria-label': o.label || 'Type the count',
-  }, ico('pencil'), el('span', {}, 'Type'));
+    class: 'gv-icon-btn gv-rc-type', type: 'button',
+    'aria-label': o.label ? `Type the count — ${o.label}` : 'Type the count',
+  }, ico('pencil'));
 
   btn.addEventListener('click', () => {
     if (countEl.querySelector('input')) return; // already editing
@@ -199,4 +262,4 @@ function typeCountButton(countEl, opts) {
   return btn;
 }
 
-module.exports = { holdWakeLock, attachTapZone, typeCountButton, TOUCH_MOUSE_GUARD_MS };
+module.exports = { holdWakeLock, attachTapZone, attachFillMeter, punch, typeCountButton, TOUCH_MOUSE_GUARD_MS };

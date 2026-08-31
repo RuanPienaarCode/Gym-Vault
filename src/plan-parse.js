@@ -131,6 +131,59 @@ function removeItemAt(day, idx) {
   }
 }
 
+/* Move an item up (-1) or down (+1) in the day's order. Returns the item's
+   new index, or the old one when it could not move.
+
+   IT SWAPS THE ITEMS, NOT THE LINES. `parts` interleaves items with the
+   author's own prose — a warm-up note, a cue, a blank line — and that prose
+   is positional commentary about the day, not a caption bolted to the
+   exercise below it. Swapping the two `item` references leaves every note
+   exactly where it was written and every other line untouched, so
+   serialization changes precisely two lines. Moving the PART instead would
+   drag an exercise across a note and quietly rewrite what that note appears
+   to be about. */
+function moveItem(day, idx, delta) {
+  const items = (day && day.items) || [];
+  const to = idx + delta;
+  if (idx < 0 || idx >= items.length || to < 0 || to >= items.length) return idx;
+
+  const a = items[idx], b = items[to];
+  items[idx] = b;
+  items[to] = a;
+
+  if (day.parts) {
+    const pa = day.parts.findIndex(p => p.kind === 'item' && p.item === a);
+    const pb = day.parts.findIndex(p => p.kind === 'item' && p.item === b);
+    if (pa >= 0 && pb >= 0) { day.parts[pa].item = b; day.parts[pb].item = a; }
+  }
+  return to;
+}
+
+/* Change what a line PRESCRIBES — sets, and the target string ("12", "45s",
+   "5 @ 60kg"). Never the exercise NAME: plans, goals and every logged row
+   reference an exercise by name, so renaming one here would silently orphan
+   its history. Renaming is a different, larger operation and does not belong
+   on an edit toggle.
+
+   Mutates the item in place, which is what `parts` is already holding a
+   reference to — so the serializer picks it up with no second bookkeeping
+   step to forget. */
+function updateItem(day, idx, patch) {
+  const item = (day && day.items) ? day.items[idx] : null;
+  if (!item) return null;
+  if (patch && Object.prototype.hasOwnProperty.call(patch, 'sets')) {
+    const n = parseInt(patch.sets, 10);
+    /* null means "no count given", which itemSets() reads as the default of
+       3 — a distinct and meaningful state from an explicit 3, because the
+       line stays written as `- Push-ups | 12` rather than `3 x 12`. */
+    item.sets = Number.isFinite(n) && n > 0 ? n : null;
+  }
+  if (patch && Object.prototype.hasOwnProperty.call(patch, 'target')) {
+    item.target = String(patch.target == null ? '' : patch.target).trim();
+  }
+  return item;
+}
+
 /* A day whose NAME says rest/recovery is not a session to attack — the
    dashboard renders it calmly and its items are suggestions, not a
    prescription. Named-based so it needs no schema change and a
@@ -165,6 +218,6 @@ function serializePlanBody(model) {
 }
 
 module.exports = {
-  parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, itemSets, isRestDay,
+  parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, moveItem, updateItem, itemSets, isRestDay,
   targetWeight, targetFirstNumber, targetIsDuration,
 };

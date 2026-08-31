@@ -1,0 +1,2013 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault — Counter &amp; Progress Animations</title>
+<style>
+/* ============================================================================
+   GYM VAULT — counter + progress animation catalogue
+   Palette and type registers lifted from src/styles.css ("Editorial Floor"),
+   so anything here drops into the plugin without a restyle.
+   Self-contained: no network, no build, no framework.
+   ============================================================================ */
+
+:root {
+  --gv-bg: #f5f7ef;
+  --gv-surface: #ffffff;
+  --gv-line: #e2e8d8;
+  --gv-line-2: #cfd9be;
+  --gv-ink: #141a0e;
+  --gv-ink-dim: #5b6551;
+  --gv-lime: #84cc16;
+  --gv-lime-hi: #a3e635;
+  --gv-lime-deep: #4d7c0f;
+  --gv-lime-ghost: #f4fbe8;
+  --gv-danger: #b91c1c;
+  --gv-amber: #d97706;
+  --gv-ink-fixed: #141a0e;
+  --gv-display: 'Anton', 'Avenir Next Condensed', 'Haettenschweiler', Impact, 'Arial Narrow', sans-serif;
+  --gv-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+html.theme-dark {
+  --gv-bg: #10140b;
+  --gv-surface: #171c10;
+  --gv-line: #2a3320;
+  --gv-line-2: #39452a;
+  --gv-ink: #eef3e6;
+  --gv-ink-dim: #9aa48c;
+  --gv-lime-ghost: #1d2712;
+  --gv-danger: #f87171;
+  --gv-amber: #fbbf24;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--gv-bg);
+  color: var(--gv-ink);
+  font-family: var(--gv-body);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+.gv-display {
+  font-family: var(--gv-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: -0.005em;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ---------- masthead ---------- */
+.masthead {
+  border-bottom: 2px solid var(--gv-ink);
+  padding: 40px 0 20px;
+  margin-bottom: 8px;
+}
+.kicker {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gv-ink-dim); margin: 0 0 10px;
+}
+h1 { font-size: clamp(38px, 8vw, 76px); margin: 0 0 14px; }
+.lede { max-width: 62ch; color: var(--gv-ink-dim); font-size: 15px; margin: 0 0 22px; }
+
+/* ---------- controls ---------- */
+.controls {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 0;
+  background: var(--gv-bg);
+  border-bottom: 1px solid var(--gv-line);
+  margin-bottom: 28px;
+}
+.ctrl-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--gv-ink-dim);
+}
+.btn {
+  font-family: inherit; font-size: 12px; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 9px 15px; cursor: pointer;
+  background: var(--gv-surface); color: var(--gv-ink);
+  border: 2px solid var(--gv-ink); border-radius: 0;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+.btn:hover { background: var(--gv-lime-ghost); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 3px solid var(--gv-lime-deep); outline-offset: 2px; }
+.btn.primary { background: var(--gv-lime); color: var(--gv-ink-fixed); }
+.btn.primary:hover { background: var(--gv-lime-hi); }
+
+input[type="range"] { accent-color: var(--gv-lime-deep); width: 150px; }
+.val {
+  font-family: var(--gv-display); font-size: 22px;
+  min-width: 3.2ch; text-align: right; color: var(--gv-ink);
+}
+
+/* ---------- card grid ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 22px;
+}
+.card {
+  display: flex; flex-direction: column;
+  background: var(--gv-surface);
+  border: 1px solid var(--gv-line);
+}
+.card-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--gv-line); }
+.card-num {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
+  color: var(--gv-lime-deep); text-transform: uppercase;
+}
+html.theme-dark .card-num { color: var(--gv-lime-hi); }
+.card-title { font-size: 26px; margin: 4px 0 6px; }
+.card-sub { font-size: 12.5px; color: var(--gv-ink-dim); margin: 0; }
+.stage {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; padding: 26px 18px; min-height: 180px;
+  overflow: hidden;
+}
+.card-foot {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 12px 18px; border-top: 1px solid var(--gv-line);
+  background: var(--gv-bg);
+}
+.card-foot .btn { padding: 7px 12px; font-size: 11px; }
+.tag {
+  margin-left: auto;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gv-ink-dim); border: 1px solid var(--gv-line-2); padding: 4px 7px;
+}
+.caption {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--gv-ink-dim); text-align: center;
+}
+
+/* ============================================================================
+   01 — PUNCH COUNTER
+   The rep number takes a hit on every increment. Scale overshoot + lime
+   flash + a shockwave ring that leaves the number's own footprint.
+   ========================================================================== */
+.punch-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 168px; height: 168px; }
+.punch-ring {
+  position: absolute; top: 50%; left: 50%; width: 128px; height: 128px;
+  margin: -64px 0 0 -64px;
+  border: 2px solid var(--gv-lime); border-radius: 50%;
+  opacity: 0; pointer-events: none;
+}
+.punch-ring.go { animation: gv-shock 620ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes gv-shock {
+  0%   { transform: scale(0.62); opacity: 0.9; border-width: 6px; }
+  100% { transform: scale(1.5);  opacity: 0;   border-width: 1px; }
+}
+.punch-num {
+  font-family: var(--gv-display);
+  font-size: 92px; line-height: 1; color: var(--gv-ink);
+  will-change: transform;
+}
+.punch-num.go { animation: gv-punch 380ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+@keyframes gv-punch {
+  0%   { transform: scale(1);    color: var(--gv-ink); }
+  22%  { transform: scale(1.34); color: var(--gv-lime-deep); }
+  55%  { transform: scale(0.95); }
+  100% { transform: scale(1);    color: var(--gv-ink); }
+}
+html.theme-dark .punch-num.go { animation-name: gv-punch-dark; }
+@keyframes gv-punch-dark {
+  0%   { transform: scale(1);    color: var(--gv-ink); }
+  22%  { transform: scale(1.34); color: var(--gv-lime-hi); }
+  55%  { transform: scale(0.95); }
+  100% { transform: scale(1);    color: var(--gv-ink); }
+}
+
+/* ============================================================================
+   02 — ODOMETER ROLL
+   Each digit is a 0-9 strip behind a 1em window. Columns are staggered
+   right-to-left so the number "settles" instead of snapping.
+   ========================================================================== */
+.odo {
+  display: flex; align-items: flex-end;
+  font-family: var(--gv-display); font-size: 62px; line-height: 1;
+  color: var(--gv-ink);
+}
+.od-col { display: block; height: 1em; overflow: hidden; }
+.od-strip {
+  display: flex; flex-direction: column;
+  transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.od-d { display: block; height: 1em; line-height: 1; text-align: center; }
+.od-sep { display: block; }
+.odo-unit {
+  font-family: var(--gv-body); font-size: 15px; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gv-ink-dim); align-self: flex-end; padding: 0 0 8px 8px;
+}
+
+/* ============================================================================
+   03 — COUNT-UP + RULE WIPE
+   Eased ramp (easeOutExpo) with a lime rule that wipes in underneath as the
+   number lands. The quiet one — for reading surfaces.
+   ========================================================================== */
+.rampbox { text-align: center; }
+.ramp-num { font-family: var(--gv-display); font-size: 64px; line-height: 1; }
+.ramp-rule {
+  height: 6px; background: var(--gv-lime); margin-top: 10px;
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ramp-rule.go { transform: scaleX(1); }
+
+/* ============================================================================
+   04 — ENERGY BAR (segmented charge)
+   12 cells fill left-to-right on a stagger, each popping as it lands, and a
+   shimmer sweeps the charged region once the last cell is in.
+   ========================================================================== */
+.energy { width: 100%; max-width: 280px; }
+.energy-cells {
+  position: relative; display: flex; gap: 3px;
+  padding: 4px; border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.energy-cell {
+  flex: 1 1 0; height: 30px;
+  background: var(--gv-line);
+  transform-origin: center bottom;
+}
+html.theme-dark .energy-cell { background: var(--gv-line-2); }
+.energy-cell.on { background: var(--gv-lime); animation: gv-cell 300ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+.energy-cell.on.hot { background: var(--gv-lime-hi); }
+@keyframes gv-cell {
+  0%   { transform: scaleY(0.25); opacity: 0.4; }
+  60%  { transform: scaleY(1.14); opacity: 1; }
+  100% { transform: scaleY(1); }
+}
+.energy-sweep {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 34%;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.75) 50%, rgba(255,255,255,0) 100%);
+  opacity: 0; pointer-events: none;
+}
+.energy-sweep.go { animation: gv-sweep 780ms ease-out; }
+@keyframes gv-sweep {
+  0%   { transform: translateX(-120%); opacity: 0; }
+  25%  { opacity: 0.95; }
+  100% { transform: translateX(340%);  opacity: 0; }
+}
+.energy-meta { display: flex; justify-content: space-between; margin-top: 8px; }
+
+/* ============================================================================
+   05 — FLAME BAR
+   Heat gradient fill, flame licks riding the leading edge, embers peeling
+   off it. Lick count and height scale with the value, so 30% smoulders and
+   95% roars — the animation carries information, not just decoration.
+   ========================================================================== */
+.flamebar { width: 100%; max-width: 290px; }
+.fb-track {
+  position: relative; height: 26px;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+  overflow: visible;
+}
+.fb-clip { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; }
+.fb-fill {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0;
+  background: linear-gradient(90deg, var(--gv-lime-deep) 0%, var(--gv-lime) 45%, var(--gv-amber) 78%, #ea580c 100%);
+  transition: width 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fb-edge {
+  position: absolute; top: -22px; bottom: -4px; left: 0; width: 46px;
+  margin-left: -23px; pointer-events: none;
+  transition: left 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fb-lick {
+  position: absolute; bottom: 4px; left: 50%; width: 13px; height: 26px;
+  margin-left: -6.5px;
+  background: radial-gradient(ellipse at 50% 85%, #fde68a 0%, var(--gv-amber) 38%, #ea580c 68%, rgba(234,88,12,0) 100%);
+  border-radius: 50% 50% 42% 42% / 66% 66% 34% 34%;
+  opacity: 0;
+  animation: gv-lick 780ms ease-out infinite;
+}
+@keyframes gv-lick {
+  0%   { transform: translate(0, 4px) scale(0.55, 0.45); opacity: 0; }
+  22%  { opacity: 0.95; }
+  100% { transform: translate(var(--dx, 0px), -20px) scale(0.28, 1.5); opacity: 0; }
+}
+.fb-ember {
+  position: absolute; bottom: 8px; left: 50%; width: 4px; height: 4px;
+  border-radius: 50%; background: var(--gv-amber); opacity: 0;
+  animation: gv-ember 1500ms ease-out infinite;
+}
+@keyframes gv-ember {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0; }
+  18%  { opacity: 1; }
+  100% { transform: translate(var(--dx, 6px), -34px) scale(0.15); opacity: 0; }
+}
+.flame-meta { display: flex; justify-content: space-between; margin-top: 10px; }
+
+/* ============================================================================
+   06 — POWER-UP BAR
+   Charges, then detonates: rays, shockwave, and a slammed LEVEL UP label.
+   Reserve it for something genuinely rare (a PR, a completed goal) —
+   fire it on every set and it stops meaning anything.
+   ========================================================================== */
+.powerup { position: relative; width: 100%; max-width: 290px; }
+.pu-track {
+  position: relative; height: 22px; overflow: hidden;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.pu-fill {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0;
+  background: var(--gv-lime);
+  transition: width 1250ms cubic-bezier(0.33, 0, 0.15, 1);
+}
+.pu-fill.full { background: var(--gv-lime-hi); }
+.pu-pulse {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%);
+  opacity: 0;
+}
+.pu-fill.charging .pu-pulse { animation: gv-pu-pulse 900ms ease-in-out infinite; }
+@keyframes gv-pu-pulse {
+  0%   { transform: translateX(-100%); opacity: 0.1; }
+  50%  { opacity: 0.85; }
+  100% { transform: translateX(100%);  opacity: 0.1; }
+}
+.pu-burst {
+  position: absolute; top: 50%; left: 50%; width: 220px; height: 220px;
+  margin: -110px 0 0 -110px; pointer-events: none; opacity: 0;
+  background: repeating-conic-gradient(var(--gv-lime-hi) 0deg 5deg, rgba(0,0,0,0) 5deg 17deg);
+  -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,0) 26%, #000 42%, rgba(0,0,0,0) 72%);
+  mask-image: radial-gradient(circle, rgba(0,0,0,0) 26%, #000 42%, rgba(0,0,0,0) 72%);
+}
+.pu-burst.go { animation: gv-rays 720ms ease-out; }
+@keyframes gv-rays {
+  0%   { transform: scale(0.35) rotate(0deg);  opacity: 0.95; }
+  100% { transform: scale(1.35) rotate(28deg); opacity: 0; }
+}
+.pu-wave {
+  position: absolute; top: 50%; left: 50%; width: 120px; height: 120px;
+  margin: -60px 0 0 -60px; border: 3px solid var(--gv-lime-deep);
+  border-radius: 50%;             /* a ring reads as a shockwave; the rotated
+                                     square read as a stray box */
+  pointer-events: none; opacity: 0;
+}
+html.theme-dark .pu-wave { border-color: var(--gv-lime-hi); }
+.pu-wave.go { animation: gv-wave 640ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes gv-wave {
+  0%   { transform: scale(0.4); opacity: 0.9; border-width: 5px; }
+  100% { transform: scale(1.9); opacity: 0;   border-width: 1px; }
+}
+.pu-label {
+  font-family: var(--gv-display); font-size: 30px; letter-spacing: 0.03em;
+  text-transform: uppercase; color: var(--gv-lime-deep);
+  opacity: 0; transform: scale(1.9);
+}
+html.theme-dark .pu-label { color: var(--gv-lime-hi); }
+.pu-label.go { animation: gv-slam 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes gv-slam {
+  0%   { opacity: 0; transform: scale(2.1); }
+  38%  { opacity: 1; transform: scale(0.92); }
+  52%  { transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ============================================================================
+   07 — RING COUNTER
+   The plugin already ships .gv-count-ring; this is that ring with a sweep
+   ease, a centre count-up and a landing pop.
+   ========================================================================== */
+.ringbox { position: relative; width: 172px; }
+.ring-svg { display: block; width: 100%; height: auto; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--gv-line); stroke-width: 9; }
+html.theme-dark .ring-track { stroke: var(--gv-line-2); }
+.ring-fill {
+  fill: none; stroke: var(--gv-lime); stroke-width: 9; stroke-linecap: butt;
+  transition: stroke-dashoffset 1200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ring-fill.done { stroke: var(--gv-lime-hi); }
+.ring-centre {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.ring-num { font-family: var(--gv-display); font-size: 52px; line-height: 1; }
+.ring-num.pop { animation: gv-punch 420ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+.ring-sub {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 4px;
+}
+
+/* ============================================================================
+   08 — REST TIMER (depleting)
+   Drains right-to-left, and the colour carries the urgency: ink while
+   there's time, amber under 40%, danger + heartbeat under 15%.
+   ========================================================================== */
+.rest { width: 100%; max-width: 290px; }
+.rest-num { font-family: var(--gv-display); font-size: 46px; line-height: 1; text-align: center; }
+.rest-track {
+  height: 14px; margin-top: 10px; overflow: hidden;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.rest-fill {
+  height: 100%; width: 100%; background: var(--gv-ink);
+  transform-origin: left center;
+}
+.rest.warn .rest-fill { background: var(--gv-amber); }
+.rest.warn .rest-num  { color: var(--gv-amber); }
+.rest.crit .rest-fill { background: var(--gv-danger); }
+.rest.crit .rest-num  { color: var(--gv-danger); animation: gv-beat 1s ease-in-out infinite; }
+@keyframes gv-beat {
+  0%, 100% { transform: scale(1); }
+  14%      { transform: scale(1.16); }
+  28%      { transform: scale(1); }
+}
+
+/* ============================================================================
+   09 — SET PIPS
+   Discrete progress. Each completed set overshoots in and floods lime;
+   the tick strokes itself on afterwards.
+   ========================================================================== */
+.pips { display: flex; gap: 10px; }
+.pip {
+  position: relative; width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+  font-family: var(--gv-display); font-size: 19px; color: var(--gv-ink-dim);
+}
+.pip.done { background: var(--gv-lime); color: var(--gv-ink-fixed); animation: gv-pip 420ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+@keyframes gv-pip {
+  0%   { transform: scale(0.55) rotate(-9deg); }
+  58%  { transform: scale(1.18) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.pip-tick { width: 20px; height: 20px; stroke: var(--gv-ink-fixed); stroke-width: 3.4; fill: none; stroke-linecap: square; }
+.pip-tick path { stroke-dasharray: 26; stroke-dashoffset: 26; }
+.pip.done .pip-tick path { animation: gv-tick 280ms ease-out 160ms forwards; }
+@keyframes gv-tick { to { stroke-dashoffset: 0; } }
+
+/* ============================================================================
+   10 — STREAK FLAME
+   The glyph scales and flickers harder as the streak grows: 3 days is a
+   candle, 30 is a bonfire. Same component, value-driven intensity.
+   ========================================================================== */
+.streak { display: flex; align-items: center; gap: 16px; }
+.streak-flame { position: relative; width: 74px; height: 90px; display: flex; align-items: flex-end; justify-content: center; }
+.streak-svg { display: block; transform-origin: 50% 100%; }
+.streak-svg.lit { animation: gv-flicker 460ms ease-in-out infinite alternate; }
+@keyframes gv-flicker {
+  0%   { transform: scale(1, 1)       translateX(0); }
+  50%  { transform: scale(0.95, 1.06) translateX(-1px); }
+  100% { transform: scale(1.05, 0.96) translateX(1px); }
+}
+.streak-num { font-family: var(--gv-display); font-size: 60px; line-height: 1; }
+.streak-label { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gv-ink-dim); }
+
+
+/* ============================================================================
+   01B — GHOST PUNCH
+   The outgoing value doesn't vanish, it peels off as a lime outline while the
+   new one drops in. Reads as momentum: at speed you see a short trail of
+   where the count has been.
+   ========================================================================== */
+.ghost-wrap {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: 168px; height: 150px;
+}
+.ghost-out, .ghost-num {
+  position: absolute; font-family: var(--gv-display);
+  font-size: 88px; line-height: 1;
+}
+.ghost-out {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--gv-lime);
+  opacity: 0; pointer-events: none;
+}
+.ghost-out.go { animation: gv-ghost 620ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes gv-ghost {
+  0%   { transform: translateY(0) scale(1);       opacity: 0.85; }
+  100% { transform: translateY(-46px) scale(1.5); opacity: 0; }
+}
+.ghost-num { color: var(--gv-ink); }
+.ghost-num.go { animation: gv-drop 420ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+@keyframes gv-drop {
+  0%   { transform: translateY(-34px) scale(0.8); opacity: 0; }
+  55%  { transform: translateY(3px) scale(1.08);  opacity: 1; }
+  100% { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+/* ============================================================================
+   01C — FLIP PUNCH (split-flap)
+   Mechanical rather than athletic. Two stacked faces hinge on the X axis, so
+   the count reads like a departure board — the most "countery" of the three,
+   and the one that survives being watched for a hundred reps.
+   ========================================================================== */
+.flip {
+  position: relative; width: 118px; height: 132px;
+  -webkit-perspective: 420px; perspective: 420px;
+}
+.flip-face {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--gv-display); font-size: 84px; line-height: 1;
+  color: var(--gv-ink);
+  background: var(--gv-surface);
+  border: 2px solid var(--gv-ink);
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+  -webkit-transform-origin: 50% 50%; transform-origin: 50% 50%;
+}
+/* the hinge line — sells it as one physical card, not two divs */
+.flip-face::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%;
+  height: 2px; margin-top: -1px; background: var(--gv-line);
+}
+.flip-old.go { animation: gv-flip-out 320ms cubic-bezier(0.4, 0, 0.7, 0.4) forwards; }
+@keyframes gv-flip-out {
+  0%   { -webkit-transform: rotateX(0deg);   transform: rotateX(0deg);   opacity: 1; }
+  100% { -webkit-transform: rotateX(-92deg); transform: rotateX(-92deg); opacity: 0.25; }
+}
+.flip-new { opacity: 0; }
+.flip-new.go { animation: gv-flip-in 360ms cubic-bezier(0.2, 0.8, 0.3, 1.15) 250ms forwards; }
+@keyframes gv-flip-in {
+  0%   { -webkit-transform: rotateX(92deg); transform: rotateX(92deg); opacity: 0.25; }
+  100% { -webkit-transform: rotateX(0deg);  transform: rotateX(0deg);  opacity: 1; }
+}
+
+/* ============================================================================
+   06B — OVERLOAD
+   The bar that has somewhere to go after 100%. Lime to the cap, then a
+   hatched amber-to-red overload zone climbs over it. The only honest way to
+   render "112% of your previous best" without lying about the scale.
+   ========================================================================== */
+.overload { width: 100%; max-width: 290px; }
+.ol-track {
+  position: relative; height: 24px; overflow: hidden;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.ol-cap {
+  position: absolute; top: 0; bottom: 0; left: 72%; width: 2px;
+  background: var(--gv-ink); opacity: 0.35; z-index: 3;
+}
+.ol-fill {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0;
+  background: var(--gv-lime);
+  transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ol-over {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0; z-index: 2;
+  background-color: #ea580c;
+  background-image: repeating-linear-gradient(45deg,
+    rgba(255,255,255,0.42) 0px, rgba(255,255,255,0.42) 6px,
+    rgba(255,255,255,0) 6px,   rgba(255,255,255,0) 12px);
+  background-size: 34px 34px;
+  transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1) 850ms;
+}
+.ol-over.run { animation: gv-hatch 700ms linear infinite; }
+@keyframes gv-hatch { to { background-position: 34px 0; } }
+.ol-tag {
+  display: inline-block; margin-top: 9px; padding: 3px 8px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  color: #fff; background: #ea580c; opacity: 0;
+}
+.ol-tag.go { animation: gv-tagin 400ms cubic-bezier(0.22, 1.4, 0.36, 1) 1600ms forwards, gv-tagpulse 1.1s ease-in-out 2s infinite; }
+@keyframes gv-tagin {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gv-tagpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+.ol-meta { display: flex; justify-content: space-between; margin-top: 8px; }
+
+/* ============================================================================
+   06C — TIER BAR (XP wrap)
+   Fills, flashes at the cap, snaps back to empty and ticks the badge. The
+   transition is killed for the reset frame — animating the wrap backwards is
+   what makes cheap XP bars look broken.
+   ========================================================================== */
+.tier { width: 100%; max-width: 290px; }
+.tier-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.tier-badge {
+  display: flex; align-items: baseline; gap: 5px;
+  padding: 3px 9px; border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.tier-badge-k { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gv-ink-dim); }
+.tier-badge-n { font-family: var(--gv-display); font-size: 22px; line-height: 1; }
+.tier-badge.pop { animation: gv-pip 460ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+.tier-track {
+  position: relative; height: 20px; overflow: hidden;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.tier-fill {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0;
+  background: var(--gv-lime);
+  transition: width 760ms cubic-bezier(0.33, 0, 0.15, 1);
+}
+.tier-fill.snap { transition: none; }        /* the wrap frame — never animate it */
+.tier-flash {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  background: var(--gv-lime-hi); opacity: 0; pointer-events: none;
+}
+.tier-flash.go { animation: gv-flash 260ms ease-out; }
+@keyframes gv-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+
+/* ============================================================================
+   06D — LIGHTNING CHARGE
+   The bolt jitters harder the fuller the bar gets, then an arc rips across
+   at the cap. Electric where 06 is explosive — better for a bar that charges
+   over a whole session rather than firing once.
+   ========================================================================== */
+.bolt-wrap { width: 100%; max-width: 290px; display: flex; align-items: center; gap: 12px; }
+.bolt-svg { flex: 0 0 auto; display: block; }
+.bolt-svg path { fill: var(--gv-line-2); transition: fill 200ms linear; }
+.bolt-svg.live path { fill: var(--gv-amber); }
+.bolt-svg.live { animation: gv-jitter 140ms steps(2, end) infinite; }
+@keyframes gv-jitter {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  50%  { transform: translate(-1px, 1px) rotate(-2.5deg); }
+  100% { transform: translate(1px, -1px) rotate(2.5deg); }
+}
+.bolt-svg.charged path { fill: var(--gv-amber); }   /* charged, jitter stopped */
+.bolt-svg.zap path { fill: #fde68a; }
+.bolt-svg.zap { animation: gv-zap 520ms ease-out; }
+@keyframes gv-zap {
+  0%   { transform: scale(1.9) rotate(-8deg); }
+  40%  { transform: scale(0.92) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.bolt-track {
+  position: relative; flex: 1 1 auto; height: 20px; overflow: hidden;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.bolt-fill {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0;
+  background: linear-gradient(90deg, var(--gv-lime) 0%, var(--gv-amber) 100%);
+  transition: width 1400ms cubic-bezier(0.45, 0, 0.2, 1);
+}
+.bolt-arc {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 46%;
+  background: linear-gradient(90deg, rgba(253,230,138,0) 0%, #fffbe8 50%, rgba(253,230,138,0) 100%);
+  opacity: 0; pointer-events: none;
+}
+.bolt-arc.go { animation: gv-arc 420ms ease-out; }
+@keyframes gv-arc {
+  0%   { transform: translateX(-110%); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: translateX(330%);  opacity: 0; }
+}
+
+/* ============================================================================
+   06E — CHEVRON CORE
+   Directional power. Seven chevrons load in sequence, then all seven flash in
+   unison at the cap — the unison beat is what makes it feel charged rather
+   than merely filled.
+   ========================================================================== */
+.core { width: 100%; max-width: 290px; }
+.core-row { display: flex; gap: 4px; }
+.core-seg {
+  flex: 1 1 0; height: 34px;
+  background: var(--gv-line);
+  -webkit-clip-path: polygon(0 0, 76% 0, 100% 50%, 76% 100%, 0 100%);
+  clip-path: polygon(0 0, 76% 0, 100% 50%, 76% 100%, 0 100%);
+  transform-origin: left center;
+}
+html.theme-dark .core-seg { background: var(--gv-line-2); }
+.core-seg.on { background: var(--gv-lime); animation: gv-chev 340ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+@keyframes gv-chev {
+  0%   { transform: translateX(-14px) scaleX(0.5); opacity: 0.2; }
+  62%  { transform: translateX(3px) scaleX(1.07);  opacity: 1; }
+  100% { transform: translateX(0) scaleX(1); }
+}
+.core-seg.surge { animation: gv-surge 420ms ease-out; }
+@keyframes gv-surge {
+  0%   { background: var(--gv-lime-hi); transform: scaleY(1.28); }
+  100% { background: var(--gv-lime);    transform: scaleY(1); }
+}
+.core-meta { display: flex; justify-content: space-between; margin-top: 9px; }
+
+
+/* ============================================================================
+   11 — OVERDRIVE  (loading + energy + flame, fire ascension at full)
+   All four states live in one bar: a hatched indeterminate load underneath,
+   an energy gradient with cell ticks over it, flames on the leading edge, and
+   at 100% the whole thing erupts — aura, full-width flame wall, white-hot
+   core, sparks, and a shake. The shake is 1.5px: any more and the number
+   beside it becomes unreadable, which is the point at which spectacle has
+   started costing information.
+   ========================================================================== */
+.sj { position: relative; width: 100%; max-width: 290px; }
+.sj.max { animation: gv-shake 90ms steps(2, end) infinite; }
+@keyframes gv-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(-1.5px, 1px); }
+  50%      { transform: translate(1.5px, -1px); }
+  75%      { transform: translate(-1px, -1.5px); }
+}
+.sj-aura {
+  position: absolute; top: -34px; right: -26px; bottom: -34px; left: -26px;
+  background: radial-gradient(ellipse at 50% 55%,
+    rgba(254,240,138,0.9) 0%, rgba(251,146,60,0.5) 36%, rgba(251,146,60,0) 70%);
+  opacity: 0; pointer-events: none;
+  -webkit-filter: blur(7px); filter: blur(7px);
+}
+.sj.max .sj-aura { animation: gv-aura 880ms ease-in-out infinite alternate; }
+@keyframes gv-aura {
+  0%   { opacity: 0.5; transform: scale(0.93); }
+  100% { opacity: 1;   transform: scale(1.07); }
+}
+.sj-track {
+  position: relative; height: 28px; overflow: hidden;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.sj-load {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  background-image: repeating-linear-gradient(45deg,
+    rgba(91,101,81,0.16) 0px, rgba(91,101,81,0.16) 8px,
+    rgba(0,0,0,0) 8px, rgba(0,0,0,0) 16px);
+  background-size: 22.7px 22.7px;
+  animation: gv-load 620ms linear infinite;
+  transition: opacity 300ms linear;
+}
+@keyframes gv-load { to { background-position: 22.7px 0; } }
+.sj-fill {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 0;
+  background: linear-gradient(90deg, #65a30d 0%, var(--gv-lime) 28%,
+                              #facc15 60%, #f97316 84%, #ef4444 100%);
+  transition: width 1500ms cubic-bezier(0.4, 0, 0.15, 1);
+}
+/* cell ticks — the "energy bar" reading, without a second element per cell */
+.sj-cells {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  background-image: repeating-linear-gradient(90deg,
+    rgba(20,26,14,0.3) 0px, rgba(20,26,14,0.3) 2px,
+    rgba(0,0,0,0) 2px, rgba(0,0,0,0) 22px);
+}
+.sj-core {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  background: #fffbe8; opacity: 0; pointer-events: none;
+}
+.sj.max .sj-core { animation: gv-core 380ms ease-in-out infinite alternate; }
+@keyframes gv-core { 0% { opacity: 0; } 100% { opacity: 0.42; } }
+.sj-edge {
+  position: absolute; top: -24px; bottom: 2px; left: 0; width: 46px;
+  margin-left: -23px; pointer-events: none;
+  transition: left 1500ms cubic-bezier(0.4, 0, 0.15, 1);
+}
+.sj-wall {
+  position: absolute; top: -40px; bottom: 4px; left: 0; right: 0;
+  pointer-events: none;
+}
+.sj-lick {
+  position: absolute; bottom: 0; width: 14px; margin-left: -7px;
+  background: radial-gradient(ellipse at 50% 85%, #fffbe8 0%, #fde68a 26%,
+                              #f97316 60%, rgba(249,115,22,0) 100%);
+  border-radius: 50% 50% 42% 42% / 66% 66% 34% 34%;
+  opacity: 0;
+  animation: gv-lick 760ms ease-out infinite;
+}
+.sj-sparks { position: absolute; top: 0; bottom: 0; left: 0; right: 0; pointer-events: none; }
+.sj-spark {
+  position: absolute; bottom: 10px; width: 4px; height: 4px;
+  border-radius: 50%; background: #fde68a; opacity: 0;
+  animation: gv-ember 1400ms ease-out infinite;
+}
+.sj-meta { display: flex; justify-content: space-between; margin-top: 10px; }
+.sj-label {
+  font-family: var(--gv-display); font-size: 30px; letter-spacing: 0.04em;
+  text-transform: uppercase; color: #ea580c; opacity: 0;
+}
+html.theme-dark .sj-label { color: #fbbf24; }
+.sj-label.go { animation: gv-slam 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ============================================================================
+   12 — ASCENSION  (loading + energy + flame, ELECTRIC ascension at full)
+   Same four states, opposite temperature. Discrete cells charge with flame on
+   the leading cell; at full the core goes white-cyan, arcs rip across it and
+   an aura ring pulses out. Runs alongside 11 as a genuine A/B — fire reads
+   as effort, electric reads as capability, and which one is right depends on
+   what the bar is measuring.
+   ========================================================================== */
+.asc { position: relative; width: 100%; max-width: 290px; }
+.asc.max { animation: gv-shake 80ms steps(2, end) infinite; }
+.asc-aura {
+  position: absolute; top: -32px; right: -26px; bottom: -32px; left: -26px;
+  background: radial-gradient(ellipse at 50% 50%,
+    rgba(224,252,255,0.95) 0%, rgba(34,211,238,0.5) 34%, rgba(34,211,238,0) 70%);
+  opacity: 0; pointer-events: none;
+  -webkit-filter: blur(7px); filter: blur(7px);
+}
+.asc.max .asc-aura { animation: gv-aura 760ms ease-in-out infinite alternate; }
+.asc-ring {
+  position: absolute; top: 50%; left: 50%; width: 130px; height: 130px;
+  margin: -65px 0 0 -65px; border: 3px solid #67e8f9; border-radius: 50%;
+  opacity: 0; pointer-events: none;
+}
+.asc.max .asc-ring { animation: gv-ascring 1100ms ease-out infinite; }
+@keyframes gv-ascring {
+  0%   { transform: scale(0.45); opacity: 0.85; border-width: 4px; }
+  100% { transform: scale(2.5);  opacity: 0;    border-width: 1px; }
+}
+.asc-cells {
+  position: relative; display: flex; gap: 3px;
+  padding: 4px; border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+/* the indeterminate load, sitting under the cells while charging */
+.asc-load {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  background-image: repeating-linear-gradient(45deg,
+    rgba(91,101,81,0.15) 0px, rgba(91,101,81,0.15) 8px,
+    rgba(0,0,0,0) 8px, rgba(0,0,0,0) 16px);
+  background-size: 22.7px 22.7px;
+  animation: gv-load 620ms linear infinite;
+  transition: opacity 300ms linear;
+}
+.asc-cell {
+  position: relative; z-index: 1;
+  flex: 1 1 0; height: 34px; background: var(--gv-line);
+  transform-origin: center bottom;
+}
+html.theme-dark .asc-cell { background: var(--gv-line-2); }
+.asc-cell.on { background: var(--gv-lime); animation: gv-cell 300ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+.asc.max .asc-cell.on {
+  background: #ecfeff;
+  box-shadow: 0 0 9px rgba(103,232,249,0.95);
+  animation: gv-ascflick 260ms steps(2, end) infinite;
+}
+@keyframes gv-ascflick {
+  0%   { background: #ecfeff; }
+  100% { background: #a5f3fc; }
+}
+.asc-edge { position: absolute; top: -22px; bottom: 4px; left: 0; width: 40px; margin-left: -20px; pointer-events: none; z-index: 2; }
+.asc-bolts {
+  position: absolute; top: -14px; right: -8px; bottom: -14px; left: -8px;
+  opacity: 0; pointer-events: none; z-index: 3;
+}
+.asc.max .asc-bolts { opacity: 1; }
+.asc-bolt { stroke: #ecfeff; stroke-width: 2.2; fill: none; opacity: 0; }
+.asc.max .asc-bolt { animation: gv-boltflick 700ms steps(1, end) infinite; }
+.asc.max .asc-bolt:nth-child(2) { animation-delay: 230ms; }
+.asc.max .asc-bolt:nth-child(3) { animation-delay: 460ms; }
+@keyframes gv-boltflick {
+  0%   { opacity: 1; }
+  14%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+.asc-meta { display: flex; justify-content: space-between; margin-top: 10px; }
+.asc-label {
+  font-family: var(--gv-display); font-size: 30px; letter-spacing: 0.04em;
+  text-transform: uppercase; color: #0e7490; opacity: 0;
+}
+html.theme-dark .asc-label { color: #67e8f9; }
+.asc-label.go { animation: gv-slam 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ---------- notes block ---------- */
+.notes {
+  margin-top: 46px; padding: 26px 26px 30px;
+  border: 2px solid var(--gv-ink); background: var(--gv-surface);
+}
+.notes h2 { font-family: var(--gv-display); text-transform: uppercase; font-size: 30px; margin: 0 0 14px; }
+.notes h3 { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin: 22px 0 8px; color: var(--gv-lime-deep); }
+html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
+.notes p, .notes li { font-size: 14px; color: var(--gv-ink-dim); }
+.notes li { margin-bottom: 7px; }
+.notes code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+  background: var(--gv-lime-ghost); color: var(--gv-ink); padding: 1px 5px;
+  border: 1px solid var(--gv-line);
+}
+.notes table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.notes th, .notes td {
+  text-align: left; padding: 8px 10px; font-size: 13px;
+  border-bottom: 1px solid var(--gv-line); vertical-align: top;
+}
+.notes th {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--gv-ink-dim);
+  border-bottom: 2px solid var(--gv-ink);
+}
+.notes td:first-child { font-weight: 700; color: var(--gv-ink); white-space: nowrap; }
+
+/* ---------- reduced motion: keep the state change, drop the theatre ------- */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  .fb-lick, .fb-ember, .pu-pulse { display: none; }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">Gym Vault · design exploration</p>
+    <h1 class="gv-display">Counters that hit back</h1>
+    <p class="lede">
+      Eighteen animation treatments for counters and progress bars, in the Editorial Floor
+      palette and type registers so they drop into the plugin without a restyle.
+      Every one is CSS transforms and opacity only, guarded for reduced motion, and
+      safe on the iOS&nbsp;15 WebKit floor. Pick per surface — the loud ones lose their
+      meaning if everything is loud.
+    </p>
+  </header>
+
+  <div class="controls">
+    <button class="btn primary" id="play-all">▶ Play all</button>
+    <span class="ctrl-label">Value</span>
+    <input type="range" id="value" min="0" max="100" value="78" aria-label="Progress value">
+    <span class="val" id="value-out">78</span>
+    <button class="btn" id="theme">Dark theme</button>
+  </div>
+
+  <div class="grid">
+
+    <!-- 01 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">01 · Counter</span>
+        <h2 class="card-title gv-display">Punch counter</h2>
+        <p class="card-sub">Every increment lands a hit — overshoot, lime flash, shockwave. The tap target's own feedback, so the thumb never wonders whether the rep registered.</p>
+      </div>
+      <div class="stage">
+        <div class="punch-wrap">
+          <div class="punch-ring" id="punch-ring"></div>
+          <div class="punch-num" id="punch-num">0</div>
+        </div>
+        <p class="caption">rep-counter.js · tap to count</p>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="punch">+1 rep</button>
+        <button class="btn" data-play="punch-run">Run set</button>
+        <span class="tag">iOS 15 safe</span>
+      </div>
+    </section>
+
+    <!-- 01B -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">01B · Counter</span>
+        <h2 class="card-title gv-display">Ghost punch</h2>
+        <p class="card-sub">The outgoing value peels off as a lime outline while the new one drops in. At speed you get a short trail of where the count has been — momentum you can see without reading the number.</p>
+      </div>
+      <div class="stage">
+        <div class="ghost-wrap">
+          <div class="ghost-out" id="ghost-out"></div>
+          <div class="ghost-num" id="ghost-num">0</div>
+        </div>
+        <p class="caption">rep-counter.js · fast sets</p>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="ghost">+1 rep</button>
+        <button class="btn" data-play="ghost-run">Run set</button>
+        <span class="tag">Momentum</span>
+      </div>
+    </section>
+
+    <!-- 01C -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">01C · Counter</span>
+        <h2 class="card-title gv-display">Flip punch</h2>
+        <p class="card-sub">Mechanical rather than athletic — two faces hinge on the X axis like a departure board. The one of the three that survives being stared at for a hundred reps without grating.</p>
+      </div>
+      <div class="stage">
+        <div class="flip" id="flip">
+          <div class="flip-face flip-old" id="flip-old">0</div>
+          <div class="flip-face flip-new" id="flip-new">0</div>
+        </div>
+        <p class="caption">rep-counter.js · long sets</p>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="flip">+1 rep</button>
+        <button class="btn" data-play="flip-run">Run set</button>
+        <span class="tag">Low fatigue</span>
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">02 · Counter</span>
+        <h2 class="card-title gv-display">Odometer roll</h2>
+        <p class="card-sub">Digit strips roll into place on a right-to-left stagger, so the total settles rather than snapping. For big derived numbers on reading surfaces.</p>
+      </div>
+      <div class="stage">
+        <div style="display:flex;align-items:flex-end">
+          <div class="odo" id="odo"></div>
+          <span class="odo-unit">kg</span>
+        </div>
+        <p class="caption">Dashboard · total volume</p>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="odo">Replay</button>
+        <span class="tag">Quiet</span>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">03 · Counter</span>
+        <h2 class="card-title gv-display">Count-up rule</h2>
+        <p class="card-sub">An easeOutExpo ramp with a lime rule wiping in beneath it. The most restrained option — it reads as typesetting, not gamification.</p>
+      </div>
+      <div class="stage">
+        <div class="rampbox">
+          <div class="ramp-num gv-display" id="ramp-num">0</div>
+          <div class="ramp-rule" id="ramp-rule"></div>
+        </div>
+        <p class="caption">Session summary · reps completed</p>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="ramp">Replay</button>
+        <span class="tag">Quiet</span>
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">04 · Progress</span>
+        <h2 class="card-title gv-display">Energy bar</h2>
+        <p class="card-sub">Twelve cells charge on a stagger, each popping as it lands, and a shimmer sweeps the charged region once the last one is in. Discrete progress that still feels continuous.</p>
+      </div>
+      <div class="stage">
+        <div class="energy">
+          <div class="energy-cells" id="energy-cells">
+            <div class="energy-sweep" id="energy-sweep"></div>
+          </div>
+          <div class="energy-meta">
+            <span class="caption">Weekly volume</span>
+            <span class="caption" id="energy-pct">0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="energy">Charge</button>
+        <span class="tag">Value-driven</span>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">05 · Progress</span>
+        <h2 class="card-title gv-display">Flame bar</h2>
+        <p class="card-sub">Heat gradient, licks riding the leading edge, embers peeling off. Lick count and height scale with the value — 30% smoulders, 95% roars — so the fire <em>is</em> the reading.</p>
+      </div>
+      <div class="stage">
+        <div class="flamebar">
+          <div class="fb-track">
+            <div class="fb-clip"><div class="fb-fill" id="fb-fill"></div></div>
+            <div class="fb-edge" id="fb-edge"></div>
+          </div>
+          <div class="flame-meta">
+            <span class="caption">Streak heat</span>
+            <span class="caption" id="fb-pct">0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="flame">Ignite</button>
+        <span class="tag">Value-driven</span>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">06 · Progress</span>
+        <h2 class="card-title gv-display">Power-up</h2>
+        <p class="card-sub">Charges with a travelling pulse, then detonates — rays, shockwave, slammed label. Save it for something genuinely rare; fire it every set and it stops meaning anything.</p>
+      </div>
+      <div class="stage">
+        <div class="powerup">
+          <div class="pu-burst" id="pu-burst"></div>
+          <div class="pu-wave" id="pu-wave"></div>
+          <div class="pu-track">
+            <div class="pu-fill" id="pu-fill"><div class="pu-pulse"></div></div>
+          </div>
+        </div>
+        <div class="pu-label" id="pu-label">Level up</div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="powerup">Charge &amp; fire</button>
+        <span class="tag">Rare events only</span>
+      </div>
+    </section>
+
+    <!-- 06B -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">06B · Progress</span>
+        <h2 class="card-title gv-display">Overload</h2>
+        <p class="card-sub">The bar that has somewhere to go after 100%. Lime to the cap, then a hatched overload zone climbs over it — the only honest way to draw "112% of your previous best" without lying about the scale.</p>
+      </div>
+      <div class="stage">
+        <div class="overload">
+          <div class="ol-track">
+            <div class="ol-fill" id="ol-fill"></div>
+            <div class="ol-over" id="ol-over"></div>
+            <div class="ol-cap"></div>
+          </div>
+          <div class="ol-meta">
+            <span class="caption">vs. best squat set</span>
+            <span class="caption" id="ol-pct">0%</span>
+          </div>
+          <span class="ol-tag" id="ol-tag">Overload</span>
+        </div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="overload">Replay</button>
+        <span class="tag">Beats a PR</span>
+      </div>
+    </section>
+
+    <!-- 06C -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">06C · Progress</span>
+        <h2 class="card-title gv-display">Tier bar</h2>
+        <p class="card-sub">Fills, flashes at the cap, snaps back and ticks the badge. The reset frame runs with transitions killed — animating the wrap backwards is what makes cheap XP bars look broken.</p>
+      </div>
+      <div class="stage">
+        <div class="tier">
+          <div class="tier-head">
+            <span class="caption">Training level</span>
+            <span class="tier-badge" id="tier-badge">
+              <span class="tier-badge-k">Lvl</span>
+              <span class="tier-badge-n gv-display" id="tier-n">1</span>
+            </span>
+          </div>
+          <div class="tier-track">
+            <div class="tier-fill" id="tier-fill"></div>
+            <div class="tier-flash" id="tier-flash"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="tier">Replay</button>
+        <span class="tag">Multi-lap</span>
+      </div>
+    </section>
+
+    <!-- 06D -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">06D · Progress</span>
+        <h2 class="card-title gv-display">Lightning charge</h2>
+        <p class="card-sub">The bolt jitters harder the fuller the bar gets, then an arc rips across at the cap. Electric where 06 is explosive — better for a bar that charges across a whole session than one that fires once.</p>
+      </div>
+      <div class="stage">
+        <div class="bolt-wrap">
+          <svg class="bolt-svg" id="bolt-svg" width="26" height="38" viewBox="0 0 26 38" role="img" aria-label="Charge bolt">
+            <path d="M15 0 L2 21 H11 L8 38 L24 15 H14 Z"></path>
+          </svg>
+          <div class="bolt-track">
+            <div class="bolt-fill" id="bolt-fill"></div>
+            <div class="bolt-arc" id="bolt-arc"></div>
+          </div>
+        </div>
+        <p class="caption">Session charge · builds across every set</p>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="bolt">Charge</button>
+        <span class="tag">Slow build</span>
+      </div>
+    </section>
+
+    <!-- 06E -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">06E · Progress</span>
+        <h2 class="card-title gv-display">Chevron core</h2>
+        <p class="card-sub">Directional power. Seven chevrons load in sequence, then all seven surge in unison at the cap — the unison beat is what makes it read as charged rather than merely filled.</p>
+      </div>
+      <div class="stage">
+        <div class="core">
+          <div class="core-row" id="core-row"></div>
+          <div class="core-meta">
+            <span class="caption">Power core</span>
+            <span class="caption" id="core-pct">0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="core">Charge</button>
+        <span class="tag">Directional</span>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">11 · Combined</span>
+        <h2 class="card-title gv-display">Overdrive</h2>
+        <p class="card-sub">All four states in one bar: hatched load underneath, energy gradient with cell ticks over it, flames on the leading edge — and at 100% the whole thing erupts. Aura, full-width flame wall, white-hot core, sparks, shake.</p>
+      </div>
+      <div class="stage">
+        <div class="sj" id="sj">
+          <div class="sj-aura"></div>
+          <div class="sj-track">
+            <div class="sj-load" id="sj-load"></div>
+            <div class="sj-fill" id="sj-fill"><div class="sj-cells"></div></div>
+            <div class="sj-core"></div>
+          </div>
+          <div class="sj-edge" id="sj-edge"></div>
+          <div class="sj-wall" id="sj-wall"></div>
+          <div class="sj-sparks" id="sj-sparks"></div>
+          <div class="sj-meta">
+            <span class="caption">Session output</span>
+            <span class="caption" id="sj-pct">0%</span>
+          </div>
+        </div>
+        <div class="sj-label" id="sj-label">Overdrive</div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="sj">Charge</button>
+        <button class="btn primary" data-play="sj-max">Go max</button>
+        <span class="tag">Fire</span>
+      </div>
+    </section>
+
+    <!-- 12 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">12 · Combined</span>
+        <h2 class="card-title gv-display">Ascension</h2>
+        <p class="card-sub">The same four states at the opposite temperature. Cells charge with flame on the leading cell; at full the core goes white-cyan, arcs rip across it and an aura ring pulses out. Run it against 11 — fire reads as effort, electric reads as capability.</p>
+      </div>
+      <div class="stage">
+        <div class="asc" id="asc">
+          <div class="asc-aura"></div>
+          <div class="asc-ring"></div>
+          <div class="asc-cells" id="asc-cells">
+            <div class="asc-load" id="asc-load"></div>
+          </div>
+          <div class="asc-edge" id="asc-edge"></div>
+          <svg class="asc-bolts" id="asc-bolts" viewBox="0 0 290 70" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="asc-bolt" points="4,40 46,20 78,46 124,16 168,44 214,18 258,42 286,24"></polyline>
+            <polyline class="asc-bolt" points="6,26 52,48 96,22 138,50 186,24 228,50 272,28"></polyline>
+            <polyline class="asc-bolt" points="10,52 58,30 104,54 150,28 196,52 242,30 284,50"></polyline>
+          </svg>
+          <div class="asc-meta">
+            <span class="caption">Power core</span>
+            <span class="caption" id="asc-pct">0%</span>
+          </div>
+        </div>
+        <div class="asc-label" id="asc-label">Ascended</div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="asc">Charge</button>
+        <button class="btn primary" data-play="asc-max">Go max</button>
+        <span class="tag">Electric</span>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">07 · Counter</span>
+        <h2 class="card-title gv-display">Ring counter</h2>
+        <p class="card-sub">The <code style="font-size:12px">.gv-count-ring</code> the plugin already ships, with a sweep ease, a synchronised centre count-up and a landing pop.</p>
+      </div>
+      <div class="stage">
+        <div class="ringbox">
+          <svg class="ring-svg" viewBox="0 0 120 120" role="img" aria-label="Circular progress ring">
+            <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+            <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="ring-centre">
+            <div class="ring-num gv-display" id="ring-num">0</div>
+            <div class="ring-sub">of 40 reps</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="ring">Replay</button>
+        <span class="tag">Timed circuits</span>
+      </div>
+    </section>
+
+    <!-- 08 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">08 · Progress</span>
+        <h2 class="card-title gv-display">Rest timer</h2>
+        <p class="card-sub">Drains right-to-left with the colour carrying urgency: ink while there's time, amber under 40%, danger plus a heartbeat under 15%. Readable from arm's length mid-set.</p>
+      </div>
+      <div class="stage">
+        <div class="rest" id="rest">
+          <div class="rest-num" id="rest-num">0:45</div>
+          <div class="rest-track"><div class="rest-fill" id="rest-fill"></div></div>
+        </div>
+        <p class="caption">countdown.js · rest between sets</p>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="rest">Start 8s</button>
+        <span class="tag">Colour = urgency</span>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">09 · Progress</span>
+        <h2 class="card-title gv-display">Set pips</h2>
+        <p class="card-sub">Discrete progress where the denominator is small enough to count at a glance. Each pip overshoots in, floods lime, then strokes its tick on.</p>
+      </div>
+      <div class="stage">
+        <div class="pips" id="pips"></div>
+        <p class="caption">page-session.js · sets completed</p>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="pips">Replay</button>
+        <span class="tag">Small denominators</span>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section class="card">
+      <div class="card-head">
+        <span class="card-num">10 · Counter</span>
+        <h2 class="card-title gv-display">Streak flame</h2>
+        <p class="card-sub">One component, value-driven intensity: three days is a candle, thirty is a bonfire. The flicker rate and scale both come off the count.</p>
+      </div>
+      <div class="stage">
+        <div class="streak">
+          <div class="streak-flame">
+            <svg class="streak-svg" id="streak-svg" width="56" height="76" viewBox="0 0 56 76" role="img" aria-label="Streak flame">
+              <path id="streak-outer" d="M28 4 C40 22 52 30 52 46 C52 62 41 72 28 72 C15 72 4 62 4 46 C4 32 14 28 20 16 C22 26 26 28 28 30 C30 24 28 14 28 4 Z" fill="#ea580c"></path>
+              <path id="streak-inner" d="M28 34 C35 44 40 48 40 55 C40 64 34 69 28 69 C22 69 16 64 16 55 C16 48 22 44 28 34 Z" fill="#fde68a"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="streak-num" id="streak-num">0</div>
+            <div class="streak-label">day streak</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <button class="btn" data-play="streak">Replay</button>
+        <span class="tag">Value-driven</span>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="notes">
+    <h2>Picking one</h2>
+    <p>
+      The catalogue is deliberately wider than what should ship. Two loud treatments on
+      one screen cancel each other out — the same failure mode the design's
+      "exactly ONE lime flood per screen" rule already guards against. Suggested split:
+    </p>
+    <table>
+      <thead><tr><th>Surface</th><th>Treatment</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Rep counter (tap)</td><td>01 / 01B / 01C</td><td>Acting surface — the thumb needs confirmation in under 100 ms. Punch for short heavy sets, Ghost when reps come fast enough to blur, Flip for anything long enough that a bouncing number starts to grate.</td></tr>
+        <tr><td>Timed circuit</td><td>07 Ring + 08 Rest</td><td>Already the shipped ring; the count-up and pop cost nothing extra.</td></tr>
+        <tr><td>Dashboard totals</td><td>02 Odometer or 03 Count-up</td><td>Reading surface. Motion should read as typesetting, not celebration.</td></tr>
+        <tr><td>Weekly target</td><td>04 Energy</td><td>Discrete cells make "3 sessions left" legible without a label.</td></tr>
+        <tr><td>Streak</td><td>05 Flame or 10 Streak flame</td><td>Intensity is value-driven, so the animation carries the number.</td></tr>
+        <tr><td>PR / goal hit</td><td>06 Power-up</td><td>Rare by definition. Rate-limit it in code, not by convention.</td></tr>
+        <tr><td>Beating a PR</td><td>06B Overload</td><td>The only one of these that can draw past 100% without lying about the scale.</td></tr>
+        <tr><td>Long-horizon goal</td><td>06C Tier</td><td>Progress with no natural ceiling — the badge carries the total, the bar carries the current lap.</td></tr>
+        <tr><td>Session-long charge</td><td>06D Lightning</td><td>Builds across a whole session rather than firing once, so it has to stay tolerable at 40% for an hour.</td></tr>
+        <tr><td>Directional / staged</td><td>06E Chevron core</td><td>When the order of the segments is part of the meaning.</td></tr>
+        <tr><td>Finishing a block</td><td>11 Overdrive or 12 Ascension</td><td>The loudest things here. One per app, at the one moment that earns it — fire and electric are an A/B, not a pair to ship together.</td></tr>
+        <tr><td>Sets in a session</td><td>09 Pips</td><td>Small denominators read better as objects than as a bar.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>On the loud ones</h3>
+    <p>
+      11 and 12 stack every technique in this file — indeterminate load, energy
+      cells, flames, then a full-bar ascension. That is the point of them and also
+      the warning: they cost roughly 30 concurrently animating nodes at max, they
+      shake the layout by 1.5px, and they read as a reward. A reward that fires
+      twice in a session is a decoration, and a decoration that shakes is a bug.
+      Gate them on something that genuinely happens rarely, and pick <em>one</em> —
+      fire and electric are the same idea at two temperatures, so running both
+      just tells the user the app has two ways of being excited.
+    </p>
+
+    <h3>Porting into the plugin</h3>
+    <ul>
+      <li>Build DOM with <code>dom.js</code>'s <code>el()</code> / <code>createEl</code>, never <code>innerHTML</code> — this file uses it only because it is a standalone page, and the plugin's review gate rejects it.</li>
+      <li>Every rule that colours a <code>&lt;button&gt;</code> needs the <code>.gv-app</code> ancestor to beat <code>app.css</code>'s <code>button:not(.clickable-icon)</code> at (0,1,1). The punch counter and the pips are both buttons in practice.</li>
+      <li>Dark-theme variants go on <code>.theme-dark .gv-app</code>, matching the existing token block.</li>
+    </ul>
+
+    <h3>iOS 15 WebKit floor</h3>
+    <ul>
+      <li>Everything here is transforms, opacity, gradients, <code>clip-path</code>-free overflow and SVG <code>stroke-dashoffset</code> — all supported on the real floor, not just <code>minAppVersion</code>.</li>
+      <li>Deliberately avoided: <code>@property</code> (16.4), <code>color-mix()</code> (16.2), <code>:has()</code> (15.4), <code>oklch</code>, and regex lookbehind anywhere near the bundle.</li>
+      <li><code>mask-image</code> on the power-up rays carries its <code>-webkit-</code> prefix; without it Safari 15 paints the full disc.</li>
+    </ul>
+
+    <h3>Motion budget</h3>
+    <ul>
+      <li>Only <code>transform</code> and <code>opacity</code> are animated, so nothing here triggers layout. Licks, embers and sparks are the only places with many concurrently animating nodes — capped at 7/6 on the flame bar and about 30 on 11 at max, and all are <code>display: none</code> under reduced motion.</li>
+      <li>Staggered fills (energy, pips, chevrons, ascension) run off one elapsed-time rAF driver rather than a chain of <code>setTimeout</code>s. A chain drifts under load and stretches to one step per second in a hidden tab, where timers clamp to 1s; the driver lands the sequence in the duration it claims and catches up in a single frame after a stall.</li>
+      <li><code>prefers-reduced-motion</code> collapses durations to ~0 rather than removing the effect, so the <em>state change</em> still lands. A counter that silently stops updating is worse than one that snaps.</li>
+      <li>Infinite animations (flame, pulse, heartbeat) must be torn down when the view closes, or they keep the compositor awake in a background leaf.</li>
+    </ul>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  /* Two clocks, two cancel functions. Keeping them in one map and calling
+     cancelAnimationFrame on a setTimeout id is a silent no-op — the old
+     chain keeps firing and fights the new one on every rapid replay. */
+  var raf = {};
+  var timer = {};
+
+  function restart(el, cls) {
+    if (!el) return;
+    el.classList.remove(cls);
+    void el.offsetWidth;            /* force reflow so the animation re-runs */
+    el.classList.add(cls);
+  }
+  function stop(key) {
+    if (raf[key]) { cancelAnimationFrame(raf[key]); raf[key] = null; }
+    if (timer[key]) { clearTimeout(timer[key]); timer[key] = null; }
+  }
+  function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+
+  function countTo(key, el, from, to, dur, fmt) {
+    stop(key);
+    var t0 = null;
+    fmt = fmt || function (n) { return String(n); };
+    function step(now) {
+      if (t0 === null) t0 = now;
+      var p = Math.min(1, (now - t0) / dur);
+      el.textContent = fmt(Math.round(from + (to - from) * easeOutExpo(p)));
+      if (p < 1) { raf[key] = requestAnimationFrame(step); } else { raf[key] = null; }
+    }
+    raf[key] = requestAnimationFrame(step);
+  }
+
+  /* Stagger N items on a clock, not on a chain. A chain of setTimeouts drifts
+     under load and stretches to N seconds flat when the tab is hidden (timers
+     clamp to 1s); driving off elapsed time means the sequence lands in the
+     duration it claims however coarsely it happens to tick, and catches up in
+     one frame if it falls behind. */
+  function stagger(key, n, stepMs, onStep, onDone) {
+    stop(key);
+    if (n <= 0) { if (onDone) onDone(); return; }
+    var t0 = null, done = 0;
+    function frame(now) {
+      if (t0 === null) t0 = now;
+      var want = Math.min(n, Math.floor((now - t0) / stepMs) + 1);
+      while (done < want) { onStep(done); done += 1; }
+      if (done < n) {
+        raf[key] = requestAnimationFrame(frame);
+      } else {
+        raf[key] = null;
+        if (onDone) onDone();
+      }
+    }
+    raf[key] = requestAnimationFrame(frame);
+  }
+
+  function thin(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  function val() { return Number($('value').value); }
+  function pctOf(max) { return Math.round(val() / 100 * max); }
+
+  /* ---------- 01 punch ------------------------------------------------- */
+  var punchCount = 0;
+  function punch() {
+    punchCount += 1;
+    $('punch-num').textContent = punchCount;
+    restart($('punch-num'), 'go');
+    restart($('punch-ring'), 'go');
+  }
+  function punchRun() {
+    stop('punchrun');
+    punchCount = 0;
+    $('punch-num').textContent = '0';
+    var n = 0, target = 8, last = 0;
+    function step(now) {
+      if (now - last > 340) { last = now; punch(); n += 1; }
+      if (n < target) { raf['punchrun'] = requestAnimationFrame(step); } else { raf['punchrun'] = null; }
+    }
+    raf['punchrun'] = requestAnimationFrame(step);
+  }
+
+  /* ---------- 02 odometer ---------------------------------------------- */
+  function odo() {
+    var host = $('odo');
+    var str = thin(Math.max(1, pctOf(24680)));
+    host.textContent = '';
+    var digitIndex = 0;
+    var digits = str.split('').filter(function (c) { return c >= '0' && c <= '9'; }).length;
+    str.split('').forEach(function (ch) {
+      if (ch >= '0' && ch <= '9') {
+        var col = document.createElement('span'); col.className = 'od-col';
+        var strip = document.createElement('span'); strip.className = 'od-strip';
+        for (var i = 0; i < 10; i++) {
+          var d = document.createElement('span'); d.className = 'od-d';
+          d.textContent = String(i); strip.appendChild(d);
+        }
+        col.appendChild(strip); host.appendChild(col);
+        /* right-most digit settles first — the number "lands" leftward */
+        strip.style.transitionDelay = ((digits - 1 - digitIndex) * 55) + 'ms';
+        var target = Number(ch); digitIndex += 1;
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            strip.style.transform = 'translateY(-' + (target * 10) + '%)';
+          });
+        });
+      } else {
+        var sep = document.createElement('span'); sep.className = 'od-sep';
+        sep.textContent = ch; host.appendChild(sep);
+      }
+    });
+  }
+
+  /* ---------- 03 count-up rule ----------------------------------------- */
+  function ramp() {
+    var rule = $('ramp-rule');
+    rule.classList.remove('go');
+    countTo('ramp', $('ramp-num'), 0, pctOf(184), 1100, thin);
+    requestAnimationFrame(function () { rule.classList.add('go'); });
+  }
+
+  /* ---------- 04 energy ------------------------------------------------ */
+  var CELLS = 12;
+  function buildEnergy() {
+    var host = $('energy-cells');
+    for (var i = 0; i < CELLS; i++) {
+      var c = document.createElement('div');
+      c.className = 'energy-cell';
+      host.appendChild(c);
+    }
+  }
+  function energy() {
+    stop('energy');
+    var cells = $('energy-cells').querySelectorAll('.energy-cell');
+    var on = Math.round(val() / 100 * CELLS);
+    for (var i = 0; i < cells.length; i++) { cells[i].className = 'energy-cell'; }
+    $('energy-pct').textContent = val() + '%';
+    stagger('energy', on, 65, function (i) {
+      cells[i].className = 'energy-cell on' + (i >= CELLS - 3 ? ' hot' : '');
+    }, function () {
+      if (on > 0) restart($('energy-sweep'), 'go');
+    });
+  }
+
+  /* ---------- 05 flame ------------------------------------------------- */
+  function flame() {
+    var v = val();
+    var edge = $('fb-edge');
+    $('fb-fill').style.width = '0%';
+    $('fb-pct').textContent = v + '%';
+    edge.textContent = '';
+
+    var licks = Math.max(0, Math.round(v / 100 * 7));
+    for (var i = 0; i < licks; i++) {
+      var l = document.createElement('div');
+      l.className = 'fb-lick';
+      l.style.left = (50 + (i - (licks - 1) / 2) * 11) + '%';
+      l.style.height = (14 + v * 0.18) + 'px';
+      l.style.setProperty('--dx', ((i % 3) - 1) * 4 + 'px');
+      l.style.animationDelay = (i * 95) + 'ms';
+      l.style.animationDuration = (700 + (i % 3) * 110) + 'ms';
+      edge.appendChild(l);
+    }
+    var embers = Math.round(v / 100 * 6);
+    for (var j = 0; j < embers; j++) {
+      var e = document.createElement('div');
+      e.className = 'fb-ember';
+      e.style.left = (46 + (j % 4) * 5) + '%';
+      e.style.setProperty('--dx', (((j % 5) - 2) * 7) + 'px');
+      e.style.animationDelay = (j * 210) + 'ms';
+      e.style.animationDuration = (1300 + (j % 3) * 260) + 'ms';
+      edge.appendChild(e);
+    }
+    requestAnimationFrame(function () {
+      $('fb-fill').style.width = v + '%';
+      edge.style.left = v + '%';
+    });
+  }
+
+  /* ---------- 06 power-up ---------------------------------------------- */
+  function powerup() {
+    stop('pu');
+    var fill = $('pu-fill'), label = $('pu-label');
+    label.classList.remove('go');
+    fill.className = 'pu-fill';
+    fill.style.width = '0%';
+    requestAnimationFrame(function () {
+      fill.className = 'pu-fill charging';
+      fill.style.width = '100%';
+    });
+    timer['pu'] = setTimeout(function () {
+      fill.className = 'pu-fill full';
+      restart($('pu-burst'), 'go');
+      restart($('pu-wave'), 'go');
+      restart(label, 'go');
+      timer['pu'] = null;
+    }, 1300);
+  }
+
+  /* ---------- 07 ring -------------------------------------------------- */
+  var C = 2 * Math.PI * 52;
+  function ring() {
+    stop('ringpop');
+    var fill = $('ring-fill');
+    fill.setAttribute('stroke-dasharray', C);
+    fill.style.strokeDashoffset = C;
+    fill.classList.remove('done');
+    var target = pctOf(40);
+    requestAnimationFrame(function () {
+      fill.style.strokeDashoffset = C * (1 - val() / 100);
+    });
+    countTo('ring', $('ring-num'), 0, target, 1200);
+    timer['ringpop'] = setTimeout(function () {
+      if (val() >= 100) fill.classList.add('done');
+      restart($('ring-num'), 'pop');
+      timer['ringpop'] = null;
+    }, 1220);
+  }
+
+  /* ---------- 08 rest timer -------------------------------------------- */
+  function rest() {
+    stop('rest');
+    var box = $('rest'), fill = $('rest-fill'), num = $('rest-num');
+    var total = 8000, t0 = null;
+    box.classList.remove('warn', 'crit');
+    fill.style.transform = 'scaleX(1)';
+    function step(now) {
+      if (t0 === null) t0 = now;
+      var left = Math.max(0, 1 - (now - t0) / total);
+      fill.style.transform = 'scaleX(' + left + ')';
+      var secs = Math.ceil(left * 45);
+      num.textContent = Math.floor(secs / 60) + ':' + (secs % 60 < 10 ? '0' : '') + (secs % 60);
+      box.classList.toggle('warn', left <= 0.4 && left > 0.15);
+      box.classList.toggle('crit', left <= 0.15);
+      if (left > 0) { raf['rest'] = requestAnimationFrame(step); } else { raf['rest'] = null; }
+    }
+    raf['rest'] = requestAnimationFrame(step);
+  }
+
+  /* ---------- 09 pips -------------------------------------------------- */
+  var PIPS = 5;
+  function buildPips() {
+    var host = $('pips');
+    for (var i = 0; i < PIPS; i++) {
+      var p = document.createElement('div');
+      p.className = 'pip';
+      p.setAttribute('data-n', String(i + 1));
+      p.textContent = String(i + 1);
+      host.appendChild(p);
+    }
+  }
+  function pips() {
+    stop('pips');
+    var all = $('pips').querySelectorAll('.pip');
+    var done = Math.round(val() / 100 * PIPS);
+    for (var i = 0; i < all.length; i++) {
+      all[i].className = 'pip';
+      all[i].textContent = all[i].getAttribute('data-n');
+    }
+    stagger('pips', done, 170, function (k) {
+      var pip = all[k];
+      pip.textContent = '';
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'pip-tick');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M4 12.5 L9.5 18 L20 6');
+      svg.appendChild(path);
+      pip.appendChild(svg);
+      pip.classList.add('done');
+    });
+  }
+
+  /* ---------- 10 streak flame ------------------------------------------ */
+  function streak() {
+    var days = Math.max(1, pctOf(47));
+    countTo('streak', $('streak-num'), 0, days, 900);
+    var svg = $('streak-svg');
+    var scale = Math.min(1.25, 0.6 + days / 60);
+    svg.style.transform = 'scale(' + scale.toFixed(3) + ')';
+    svg.classList.remove('lit');
+    void svg.offsetWidth;
+    svg.style.animationDuration = Math.max(200, 560 - days * 7) + 'ms';
+    svg.classList.add('lit');
+    /* cooler flame for a young streak, white-hot for a long one */
+    $('streak-outer').setAttribute('fill', days > 30 ? '#f97316' : days > 12 ? '#ea580c' : '#c2410c');
+    $('streak-inner').setAttribute('fill', days > 20 ? '#fef3c7' : '#fbbf24');
+  }
+
+
+  /* ---------- 01B ghost punch ------------------------------------------ */
+  var ghostCount = 0;
+  function ghost() {
+    var out = $('ghost-out'), num = $('ghost-num');
+    out.textContent = String(ghostCount);
+    ghostCount += 1;
+    num.textContent = String(ghostCount);
+    restart(out, 'go');
+    restart(num, 'go');
+  }
+  function ghostRun() {
+    stop('ghostrun');
+    ghostCount = 0;
+    $('ghost-num').textContent = '0';
+    $('ghost-out').textContent = '';
+    var n = 0, last = 0;
+    function step(now) {
+      if (now - last > 300) { last = now; ghost(); n += 1; }
+      if (n < 8) { raf['ghostrun'] = requestAnimationFrame(step); } else { raf['ghostrun'] = null; }
+    }
+    raf['ghostrun'] = requestAnimationFrame(step);
+  }
+
+  /* ---------- 01C flip punch ------------------------------------------- */
+  var flipCount = 0;
+  function flipOne() {
+    var oldF = $('flip-old'), newF = $('flip-new');
+    oldF.textContent = String(flipCount);
+    flipCount += 1;
+    newF.textContent = String(flipCount);
+    restart(oldF, 'go');
+    restart(newF, 'go');
+  }
+  function flipRun() {
+    stop('fliprun');
+    flipCount = 0;
+    $('flip-old').textContent = '0';
+    $('flip-new').textContent = '0';
+    var n = 0, last = 0;
+    function step(now) {
+      if (now - last > 620) { last = now; flipOne(); n += 1; }
+      if (n < 6) { raf['fliprun'] = requestAnimationFrame(step); } else { raf['fliprun'] = null; }
+    }
+    raf['fliprun'] = requestAnimationFrame(step);
+  }
+
+  /* ---------- 06B overload ---------------------------------------------- */
+  /* The track spans 0-140% of the previous best; the cap hairline sits at
+     100/140 = 71.43%, which is where .ol-over has to start or the hatching
+     paints over the lime and the two-zone reading is lost. */
+  var OL_MAX = 140, OL_CAP = 100 / OL_MAX * 100;
+  function overload() {
+    stop('ol');
+    var fill = $('ol-fill'), over = $('ol-over'), tag = $('ol-tag');
+    var pct = Math.max(1, Math.round(val() / 100 * OL_MAX));
+    tag.classList.remove('go');
+    over.classList.remove('run');
+    over.style.left = OL_CAP + '%';
+    fill.style.width = '0%';
+    over.style.width = '0%';
+    $('ol-pct').textContent = pct + '%';
+    requestAnimationFrame(function () {
+      fill.style.width = (Math.min(pct, 100) / OL_MAX * 100) + '%';
+      over.style.width = (Math.max(0, pct - 100) / OL_MAX * 100) + '%';
+    });
+    if (pct > 100) {
+      over.classList.add('run');
+      tag.classList.add('go');
+    }
+  }
+
+  /* ---------- 06C tier bar ---------------------------------------------- */
+  function tier() {
+    stop('tier');
+    var fill = $('tier-fill'), flash = $('tier-flash'),
+        badge = $('tier-badge'), n = $('tier-n');
+    var laps = Math.max(0, Math.round(val() / 100 * 3));
+    var lvl = 1, i = 0;
+    n.textContent = '1';
+    fill.classList.add('snap');
+    fill.style.width = '0%';
+    function lap() {
+      if (i >= laps) {
+        fill.classList.remove('snap');
+        requestAnimationFrame(function () { fill.style.width = (18 + val() % 45) + '%'; });
+        timer['tier'] = null;
+        return;
+      }
+      fill.classList.remove('snap');
+      requestAnimationFrame(function () { fill.style.width = '100%'; });
+      timer['tier'] = setTimeout(function () {
+        restart(flash, 'go');
+        lvl += 1;
+        n.textContent = String(lvl);
+        restart(badge, 'pop');
+        fill.classList.add('snap');       /* the wrap frame — no transition */
+        fill.style.width = '0%';
+        i += 1;
+        timer['tier'] = setTimeout(lap, 240);
+      }, 820);
+    }
+    /* let the .snap reset paint before the first lap animates out of it */
+    timer['tier'] = setTimeout(lap, 40);
+  }
+
+  /* ---------- 06D lightning charge -------------------------------------- */
+  function bolt() {
+    stop('bolt');
+    var fill = $('bolt-fill'), svg = $('bolt-svg'), arc = $('bolt-arc');
+    /* SVG elements have an SVGAnimatedString .className — assigning to it is
+       a silent no-op, so class changes here go through setAttribute. */
+    svg.setAttribute('class', 'bolt-svg');
+    fill.style.width = '0%';
+    requestAnimationFrame(function () {
+      svg.setAttribute('class', 'bolt-svg live');
+      fill.style.width = val() + '%';
+    });
+    timer['bolt'] = setTimeout(function () {
+      if (val() >= 98) {
+        svg.setAttribute('class', 'bolt-svg zap charged');
+        restart(arc, 'go');
+      } else {
+        svg.setAttribute('class', 'bolt-svg charged');
+      }
+      timer['bolt'] = null;
+    }, 1450);
+  }
+
+  /* ---------- 06E chevron core ------------------------------------------ */
+  var CORE = 7;
+  function buildCore() {
+    var host = $('core-row');
+    for (var i = 0; i < CORE; i++) {
+      var c = document.createElement('div');
+      c.className = 'core-seg';
+      host.appendChild(c);
+    }
+  }
+  function core() {
+    stop('core');
+    var segs = $('core-row').querySelectorAll('.core-seg');
+    var on = Math.round(val() / 100 * CORE);
+    $('core-pct').textContent = val() + '%';
+    for (var i = 0; i < segs.length; i++) { segs[i].className = 'core-seg'; }
+    stagger('core', on, 80, function (k) {
+      segs[k].className = 'core-seg on';
+    }, function () {
+      if (on !== CORE) return;
+      /* unison beat — this is what separates "charged" from "filled" */
+      timer['core'] = setTimeout(function () {
+        for (var j = 0; j < segs.length; j++) { segs[j].className = 'core-seg on surge'; }
+        timer['core'] = null;
+      }, 110);
+    });
+  }
+
+
+  /* ---------- 11/12 shared particle builders ---------------------------- */
+  /* `clustered` packs the children around the leading edge (a travelling
+     flame); otherwise they spread across the parent (the full-width wall). */
+  function buildLicks(host, n, cls, h, clustered) {
+    host.textContent = '';
+    for (var i = 0; i < n; i++) {
+      var l = document.createElement('div');
+      l.className = cls;
+      l.style.left = clustered
+        ? (50 + (i - (n - 1) / 2) * 11) + '%'
+        : (n === 1 ? 50 : (i / (n - 1)) * 100) + '%';
+      l.style.height = h + 'px';
+      l.style.setProperty('--dx', ((i % 3) - 1) * 5 + 'px');
+      l.style.animationDelay = (i * 62) + 'ms';
+      l.style.animationDuration = (620 + (i % 4) * 130) + 'ms';
+      host.appendChild(l);
+    }
+  }
+  function buildSparks(host, n, cls) {
+    host.textContent = '';
+    for (var i = 0; i < n; i++) {
+      var e = document.createElement('div');
+      e.className = cls;
+      e.style.left = ((i / n) * 100) + '%';
+      e.style.setProperty('--dx', (((i % 5) - 2) * 9) + 'px');
+      e.style.animationDelay = (i * 105) + 'ms';
+      e.style.animationDuration = (1150 + (i % 3) * 300) + 'ms';
+      host.appendChild(e);
+    }
+  }
+
+  /* ---------- 11 overdrive ---------------------------------------------- */
+  function overdrive(force) {
+    stop('sj');
+    var v = (force === true) ? 100 : val();
+    var wrap = $('sj'), fill = $('sj-fill'), edge = $('sj-edge'),
+        wall = $('sj-wall'), sparks = $('sj-sparks'), label = $('sj-label'),
+        load = $('sj-load');
+    wrap.classList.remove('max');
+    label.classList.remove('go');
+    wall.textContent = ''; sparks.textContent = '';
+    fill.style.width = '0%';
+    load.style.opacity = '1';
+    $('sj-pct').textContent = v + '%';
+    buildLicks(edge, Math.max(1, Math.round(v / 100 * 6)), 'sj-lick', 14 + v * 0.16, true);
+    requestAnimationFrame(function () {
+      fill.style.width = v + '%';
+      edge.style.left = v + '%';
+    });
+    timer['sj'] = setTimeout(function () {
+      if (v >= 100) {
+        wrap.classList.add('max');
+        load.style.opacity = '0';      /* nothing left to load */
+        edge.textContent = '';         /* the wall replaces the edge flame */
+        buildLicks(wall, 15, 'sj-lick', 38, false);
+        buildSparks(sparks, 12, 'sj-spark');
+        restart(label, 'go');
+      }
+      timer['sj'] = null;
+    }, 1540);
+  }
+
+  /* ---------- 12 ascension ---------------------------------------------- */
+  var ASC = 14;
+  function buildAsc() {
+    var host = $('asc-cells');
+    for (var i = 0; i < ASC; i++) {
+      var c = document.createElement('div');
+      c.className = 'asc-cell';
+      host.appendChild(c);
+    }
+  }
+  function ascend(force) {
+    stop('asc');
+    var v = (force === true) ? 100 : val();
+    var wrap = $('asc'), cells = $('asc-cells').querySelectorAll('.asc-cell'),
+        label = $('asc-label'), edge = $('asc-edge'), load = $('asc-load');
+    var on = Math.round(v / 100 * ASC);
+    wrap.classList.remove('max');
+    label.classList.remove('go');
+    load.style.opacity = '1';
+    $('asc-pct').textContent = v + '%';
+    for (var i = 0; i < cells.length; i++) { cells[i].className = 'asc-cell'; }
+    edge.textContent = '';
+    stagger('asc', on, 72, function (k) {
+      cells[k].className = 'asc-cell on';
+    }, function () {
+      if (on >= ASC) {
+        wrap.classList.add('max');
+        load.style.opacity = '0';
+        edge.textContent = '';
+        restart(label, 'go');
+      } else if (on > 0) {
+        /* flame rides the last charged cell while it is still filling */
+        edge.style.left = ((on / ASC) * 100) + '%';
+        buildLicks(edge, 3, 'sj-lick', 20, true);
+      }
+    });
+  }
+
+  /* ---------- wiring ---------------------------------------------------- */
+  var demos = {
+    'punch': punch, 'punch-run': punchRun,
+    'ghost': ghost, 'ghost-run': ghostRun,
+    'flip': flipOne, 'flip-run': flipRun,
+    'odo': odo, 'ramp': ramp,
+    'energy': energy, 'flame': flame, 'powerup': powerup,
+    'overload': overload, 'tier': tier, 'bolt': bolt, 'core': core,
+    'ring': ring, 'rest': rest, 'pips': pips, 'streak': streak,
+    'sj': function () { overdrive(false); }, 'sj-max': function () { overdrive(true); },
+    'asc': function () { ascend(false); },   'asc-max': function () { ascend(true); }
+  };
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest ? ev.target.closest('[data-play]') : null;
+    if (!t) return;
+    var fn = demos[t.getAttribute('data-play')];
+    if (fn) fn();
+  });
+
+  $('value').addEventListener('input', function () {
+    $('value-out').textContent = $('value').value;
+  });
+  $('value').addEventListener('change', playAll);
+
+  $('theme').addEventListener('click', function () {
+    var dark = document.documentElement.classList.toggle('theme-dark');
+    $('theme').textContent = dark ? 'Light theme' : 'Dark theme';
+  });
+
+  function playAll() {
+    var order = ['punch-run', 'ghost-run', 'flip-run', 'odo', 'ramp', 'energy',
+                 'flame', 'overload', 'tier', 'bolt', 'core', 'sj', 'asc',
+                 'ring', 'pips', 'streak'];
+    order.forEach(function (k, i) { setTimeout(demos[k], i * 110); });
+  }
+  $('play-all').addEventListener('click', function () { playAll(); powerup(); rest(); });
+
+  buildEnergy();
+  buildPips();
+  buildCore();
+  buildAsc();
+  setTimeout(playAll, 260);
+})();
+</script>
+</body>
+</html>

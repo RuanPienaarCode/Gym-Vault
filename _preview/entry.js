@@ -48,3 +48,13 @@ window.__countdown = require('../src/countdown');
    exactly what a node test cannot see. */
 window.__shared = require('../src/rep-counter-shared');
 window.__repcounter = require('../src/rep-counter');
+
+/* counter-target.js, for _preview/fill.html — the meter is transform,
+   pseudo-elements and stage attributes, none of which node can see. */
+window.__target = require('../src/counter-target');
+
+/* explainer.js, for _preview/explainer.html — inline SVG plus CSS keyframes,
+   which only a browser can actually draw. */
+window.__explainer = require('../src/explainer');
+
+window.__flame = require('../src/streak-flame');

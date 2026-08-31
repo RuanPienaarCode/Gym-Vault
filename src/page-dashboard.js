@@ -7,6 +7,7 @@ const { el, ico, fmt, fmtSeconds, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
 const { workoutDates, weekStreak, countInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
+const { streakFlame } = require('./streak-flame');
 const { itemSets, isRestDay } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
 const { PlanPickerModal } = require('./modals');
@@ -164,8 +165,16 @@ function render(ctx, root) {
   /* Stats — oversized numerals on the hairline grid. */
   const streak = weekStreak(dates, settings.weekStart, today);
   const thisWeek = countInWeek(dates, today, settings.weekStart);
+
+  /* The streak comes OUT of the tile grid and becomes a drawing, because it
+     is the one figure here whose size means something: a flame that is
+     bigger and faster at eleven weeks than at two says the thing the digit
+     alone cannot. Every other tile is a reading surface and stays flat —
+     two loud treatments on one screen cancel each other out, which is the
+     same rule as the one lime flood per screen. */
+  root.append(streakFlame(streak));
+
   const tiles = el('div', { class: 'gv-tiles' },
-    tile(ico('flame'), fmt(streak), 'week streak'),
     tile(ico('calendar-days'), fmt(thisWeek), 'this week'),
     tile(ico('dumbbell'), fmt(dates.length), 'total sessions'),
     tile(ico('history'), last && last.fm.date ? fmtShort(last.fm.date) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session'),

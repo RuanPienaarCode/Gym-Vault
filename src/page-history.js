@@ -3,7 +3,8 @@
 
 const { el, ico, fmtSeconds, clickableCard } = require('./dom');
 const { todayISO, addDays, startOfWeek, fmtShort, monthLabel, weekdayKey } = require('./dates');
-const { workoutDates, workoutDate, sessionVolume, sessionSets } = require('./stats');
+const { workoutDates, workoutDate, weekStreak, sessionVolume, sessionSets } = require('./stats');
+const { streakFlame } = require('./streak-flame');
 const { ConfirmModal } = require('./modals');
 
 const HEAT_WEEKS = 16;
@@ -18,7 +19,11 @@ function render(ctx, root) {
     el('h2', { class: 'gv-toolbar-title' }, 'History'),
     /* Count DATED sessions, via the same workoutDate() rule the dashboard
        and the export use — this line reported a third, different figure. */
-    el('div', { class: 'gv-dim' }, `${counted} session${counted === 1 ? '' : 's'}`)));
+    el('div', { class: 'gv-dim' }, `${counted} session${counted === 1 ? '' : 's'}`),
+    /* Records hang off History rather than taking a seventh nav tab — see
+       page-records.js's header for why the bar stays at six. */
+    el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => ctx.nav('records') },
+      ico('trophy'), el('span', {}, 'Records'))));
 
   /* Heat grid: HEAT_WEEKS columns × 7 rows, current week last. */
   const heat = el('div', { class: 'gv-heat', role: 'img', 'aria-label': `Workout activity, last ${HEAT_WEEKS} weeks` });
@@ -34,6 +39,11 @@ function render(ctx, root) {
     heat.append(col);
   }
   root.append(el('div', { class: 'gv-heat-wrap' }, heat));
+
+  /* The same flame the dashboard shows, from the same weekStreak call — one
+     figure, one component, so the two pages cannot disagree about how long
+     the streak is or how hot it should look. */
+  root.append(streakFlame(weekStreak([...dates], settings.weekStart, today)));
 
   if (!data.workouts.length) {
     root.append(el('div', { class: 'gv-empty-line' }, 'Nothing logged yet — your first session will land here.'));

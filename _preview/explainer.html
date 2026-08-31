@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Explainer harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif}
+  .frame{border:1px solid #bbb;background:#fff;width:390px}
+  .frame .gv-app{display:flex;flex-direction:column;min-height:620px}
+  .gv-xp-host{flex:1 1 auto}
+</style></head>
+<body>
+  <div class="frame"><div class="gv-app gv-narrow gv-skin-floor gv-accent-lime">
+    <div class="gv-session-body gv-xp-host" id="host"></div>
+  </div></div>
+<script src="bundle.js"></script>
+<script>
+  window.__explainer.openExplainer(document.getElementById('host'));
+</script>
+</body></html>

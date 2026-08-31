@@ -6,8 +6,9 @@
 
 const { el, ico, prose, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
-const { addItem, removeItemAt } = require('./plan-parse');
-const { equipmentFor, equipmentSummary, planExerciseNames } = require('./equipment');
+const { addItem, removeItemAt, moveItem, updateItem } = require('./plan-parse');
+const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
+const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
 
 function render(ctx, root) {
@@ -27,8 +28,47 @@ function render(ctx, root) {
     root.append(el('div', { class: 'gv-empty-line' }, 'No plans yet — create one, or run setup from Settings.'));
     return;
   }
-  const list = el('div', { class: 'gv-card-list' });
+
+  /* Two filters: what you need to own, and what it works.
+
+     Both are DERIVED from the plan's exercises rather than stored on the
+     plan — an exercise note is the only place equipment and muscles live,
+     and a copy on the plan would be a second answer that goes stale the
+     moment a note is edited. Same chip pattern, and the same "only offer
+     values actually in use" rule, as the exercise library: a vault with
+     three plans must not render fourteen dead chips. */
+  const ui = ctx.state.plansListUi || (ctx.state.plansListUi = { kit: '', focus: '' });
+  const facets = new Map();
   for (const p of data.plans) {
+    const names = planExerciseNames(p);
+    facets.set(p.name, {
+      kit: new Set(equipmentKeys(data.exercises, names)),
+      focus: new Set(musclesOfPlan(data.exercises, names)),
+    });
+  }
+  const matches = p => {
+    const f = facets.get(p.name);
+    return (!ui.kit || (f && f.kit.has(ui.kit))) && (!ui.focus || (f && f.focus.has(ui.focus)));
+  };
+
+  const usedKit = new Set(), usedFocus = new Set();
+  for (const f of facets.values()) {
+    for (const k of f.kit) usedKit.add(k);
+    for (const m of f.focus) usedFocus.add(m);
+  }
+  if (usedKit.size > 1) root.append(facetChips(ctx, 'Equipment', [...usedKit], k => labelFor(k), () => ui.kit, v => { ui.kit = v; }));
+  if (usedFocus.size > 1) {
+    root.append(facetChips(ctx, 'Focus', MUSCLE_GROUPS.filter(m => usedFocus.has(m)), m => m, () => ui.focus, v => { ui.focus = v; }));
+  }
+
+  const shown = data.plans.filter(matches);
+  if (!shown.length) {
+    root.append(el('div', { class: 'gv-empty-line' }, 'No plan matches both filters — clear one to widen the search.'));
+    return;
+  }
+
+  const list = el('div', { class: 'gv-card-list' });
+  for (const p of shown) {
     const active = String(p.fm.active) === 'true';
     const days = p.model.days;
     const c = clickableCard(
@@ -52,6 +92,38 @@ function render(ctx, root) {
   root.append(list);
 }
 
+/* Every muscle group a plan's exercises name, from the exercise notes —
+   the only place that fact is recorded. */
+function musclesOfPlan(exercises, names) {
+  const out = new Set();
+  for (const n of names) {
+    const ex = exercises.find(e => e.name === n || (e.name || '').toLowerCase() === String(n).toLowerCase());
+    if (!ex || !ex.fm) continue;
+    const m = ex.fm.muscles;
+    for (const g of Array.isArray(m) ? m : m ? [m] : []) out.add(g);
+  }
+  return out;
+}
+
+/* One labelled chip row. `get`/`set` rather than a bound value so the two
+   rows share one implementation without either owning the other's state. */
+function facetChips(ctx, label, values, labelOf, get, set) {
+  const row = el('div', { class: 'gv-chips gv-facet' });
+  row.append(el('span', { class: 'gv-facet-label' }, label));
+  const all = el('button', { class: `gv-chip${get() === '' ? ' on' : ''}`, type: 'button' }, 'all');
+  all.addEventListener('click', () => { set(''); ctx.rerender(); });
+  row.append(all);
+  for (const v of values) {
+    const c = el('button', { class: `gv-chip${get() === v ? ' on' : ''}`, type: 'button' }, labelOf(v));
+    /* Tapping the active chip clears it — the same toggle the exercise
+       library uses, so a filter is never a trap you have to hunt for the
+       way out of. */
+    c.addEventListener('click', () => { set(get() === v ? '' : v); ctx.rerender(); });
+    row.append(c);
+  }
+  return row;
+}
+
 function renderDetail(ctx, root, plan) {
   const active = String(plan.fm.active) === 'true';
 
@@ -68,8 +140,22 @@ function renderDetail(ctx, root, plan) {
   } else {
     actions.append(el('span', { class: 'gv-badge' }, 'active'));
   }
+  /* EDIT MODE is a view state, not a draft. Every change writes to the note
+     the moment it is made — there is no Save button and nothing accumulates
+     unsaved, because a half-finished plan edit lost to a vault sync would be
+     worse than an extra write. The toggle only changes what controls are on
+     screen. */
+  const editing = !!(ctx.state.plansUi && ctx.state.plansUi.editing);
+  actions.append(el('button', {
+    class: `gv-btn ${editing ? '' : 'gv-btn-ghost'}`, type: 'button',
+    'aria-pressed': editing ? 'true' : 'false',
+    onclick: () => {
+      ctx.state.plansUi = { editing: !editing };
+      ctx.rerender();
+    },
+  }, ico(editing ? 'check' : 'pencil'), el('span', {}, editing ? 'Done' : 'Edit')));
   actions.append(el('button', { class: 'gv-btn gv-btn-ghost', type: 'button', onclick: () => ctx.openFile(plan.file) },
-    ico('pencil'), el('span', {}, 'Open note')));
+    ico('file-text'), el('span', {}, 'Open note')));
   bar.append(actions);
   root.append(bar);
 
@@ -95,10 +181,12 @@ function renderDetail(ctx, root, plan) {
     }
     const ul = el('div', { class: 'gv-day-items' });
     day.items.forEach((it, idx) => {
-      ul.append(el('div', { class: 'gv-day-item' },
-        el('span', { class: 'gv-day-item-name' }, it.exercise),
-        el('span', { class: 'gv-day-item-rx' }, it.sets != null ? `${it.sets} × ${it.target}` : it.target),
-        removeItemBtn(ctx, plan, day, idx)));
+      ul.append(editing
+        ? editableItem(ctx, plan, day, it, idx)
+        : el('div', { class: 'gv-day-item' },
+            el('span', { class: 'gv-day-item-name' }, it.exercise),
+            el('span', { class: 'gv-day-item-rx' }, it.sets != null ? `${it.sets} × ${it.target}` : it.target),
+            removeItemBtn(ctx, plan, day, idx)));
     });
     ul.append(el('button', { class: 'gv-add-line', type: 'button', onclick: () => openAddItem(ctx, plan, day) },
       ico('plus'), el('span', {}, 'Add exercise')));
@@ -132,6 +220,62 @@ function renderDetail(ctx, root, plan) {
       }).open(),
     }, ico('trash-2'), el('span', {}, 'Delete plan')));
   root.append(foot);
+}
+
+/* One exercise line, in edit mode: sets, target, move up, move down, remove.
+
+   THE NAME IS NOT EDITABLE. Plans, goals and every logged row reference an
+   exercise BY NAME, so renaming one here would orphan its whole history
+   without saying so. Removing and re-adding is the deliberate, visible way
+   to change which exercise a line is.
+
+   Writes on `change`, not on every keystroke: `input` would save (and then
+   reload the whole plan out from under the field) between "1" and "12". */
+function editableItem(ctx, plan, day, it, idx) {
+  const save = async () => {
+    await ctx.io.savePlan(plan);
+    ctx.reload();
+  };
+
+  const setsInput = el('input', {
+    class: 'gv-set-input gv-edititem-sets', type: 'number', inputmode: 'numeric', min: '1', step: '1',
+    value: it.sets == null ? '' : String(it.sets), placeholder: '3',
+    'aria-label': `Sets of ${it.exercise}`,
+  });
+  setsInput.addEventListener('change', () => {
+    updateItem(day, idx, { sets: setsInput.value });
+    save();
+  });
+
+  const targetInput = el('input', {
+    class: 'gv-set-input gv-edititem-target', type: 'text',
+    value: it.target || '', placeholder: 'reps, 45s, 5 @ 60kg',
+    'aria-label': `Prescription for ${it.exercise}`,
+  });
+  targetInput.addEventListener('change', () => {
+    updateItem(day, idx, { target: targetInput.value });
+    save();
+  });
+
+  const move = delta => async () => {
+    const to = moveItem(day, idx, delta);
+    if (to === idx) return; // already at the end — nothing was written
+    await save();
+  };
+  const up = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `Move ${it.exercise} up` }, ico('chevron-up'));
+  up.addEventListener('click', move(-1));
+  up.disabled = idx === 0;
+  const down = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `Move ${it.exercise} down` }, ico('chevron-down'));
+  down.addEventListener('click', move(1));
+  down.disabled = idx === day.items.length - 1;
+
+  return el('div', { class: 'gv-day-item gv-edititem' },
+    el('div', { class: 'gv-edititem-name' }, it.exercise),
+    el('div', { class: 'gv-edititem-rx' },
+      setsInput,
+      el('span', { class: 'gv-set-unit' }, '×'),
+      targetInput),
+    el('div', { class: 'gv-edititem-actions' }, up, down, removeItemBtn(ctx, plan, day, idx)));
 }
 
 function removeItemBtn(ctx, plan, day, idx) {

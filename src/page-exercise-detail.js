@@ -14,9 +14,20 @@ const { MarkdownRenderer } = require('obsidian');
 const { el, ico, fmt, fmtSeconds } = require('./dom');
 const { exerciseBests, epley1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
+const { recordHistory, KINDS } = require('./records');
 const { editExercise } = require('./page-exercises');
 
 const isUrl = v => /^https?:\/\//i.test(v || '');
+
+const KIND_TITLE = { reps: 'Best reps', weight: 'Best weight', seconds: 'Longest hold' };
+
+/* One record figure in its own unit. Same shape page-records.js uses, and
+   fmtSeconds either way, so a hold reads identically on both screens. */
+function kindFigure(kind, value) {
+  if (kind === 'seconds') return fmtSeconds(value);
+  if (kind === 'weight') return `${value} kg`;
+  return String(value);
+}
 /* A URL the <video> tag can play directly (vs. a page link like YouTube). */
 const isDirectVideo = v => /\.(mp4|m4v|mov|webm)(\?|#|$)/i.test(v || '');
 
@@ -85,6 +96,41 @@ function render(ctx, root) {
         orm !== null
           ? tile(ico('chart-line'), `${orm} kg`, 'est. 1RM')
           : tile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last done')));
+
+  /* THE PROGRESSION — every time a best moved, oldest first.
+
+     Not the same thing as "Recent" below it: recent sets are what you did,
+     this is only the sets that changed what you are capable of. A tile says
+     you can do 21; this says you went 10, 14, 21, and when.
+
+     Values come from records.recordHistory, which the guard suite pins to
+     agree with the exerciseBests tiles directly above — the two figures
+     sitting on one screen is exactly where a disagreement would show. */
+  if (!isRun) {
+    const progress = [];
+    for (const kind of KINDS) {
+      const history = recordHistory(ctx.data.workouts, ex.name, kind);
+      /* One entry is a baseline, not a progression — there is nothing to
+         show a line about. */
+      if (history.length < 2) continue;
+      progress.push({ kind, history });
+    }
+    if (progress.length) {
+      root.append(el('div', { class: 'gv-section-title' }, ico('trending-up'), el('span', {}, 'Progression')));
+      const wrap = el('div', { class: 'gv-card gv-progress' });
+      for (const { kind, history } of progress) {
+        wrap.append(el('div', { class: 'gv-set-ex' }, KIND_TITLE[kind]));
+        for (const step of history) {
+          wrap.append(el('div', { class: 'gv-set-row gv-progress-row' },
+            el('span', { class: 'gv-progress-when' }, step.date ? fmtShort(step.date) : '—'),
+            el('span', { class: 'gv-progress-val' }, kindFigure(kind, step.value)),
+            el('span', { class: 'gv-progress-prev' },
+              step.prev === null ? 'first logged' : `was ${kindFigure(kind, step.prev)}`)));
+        }
+      }
+      root.append(wrap);
+    }
+  }
 
   /* How-to (note body as markdown) */
   const body = (ex.body || '').trim();
