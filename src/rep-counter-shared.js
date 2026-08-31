@@ -15,6 +15,7 @@
 
 const { el, ico } = require('./dom');
 const { fillFraction, fillStage } = require('./counter-target');
+const countdown = require('./countdown');
 
 /* A touch gesture that gets preventDefault()'d can still leave a browser's
    ~300ms touch->mouse compatibility window primed on some engines; this
@@ -126,6 +127,75 @@ function attachTapZone(zone, onTap) {
   };
 }
 
+/* ---------- counting in, inside the counter ---------- */
+
+/* Runs the count-in IN THE COUNTER'S OWN DISPLAY rather than on a screen of
+   its own. The zone, the target line and the controls are all on screen the
+   whole time; only the big numeral is borrowed, showing 5, 4, 3, 2, 1 and
+   then the word, before handing back to the rep count at 0.
+
+   It replaced a full-bleed ring-and-numeral gate that stood in FRONT of the
+   counter. That gate put the countdown somewhere the counter was not, so the
+   thing you were about to use only appeared once the counting had finished —
+   and on a phone the eye had to travel from where the number was to where
+   the number would be.
+
+   Shared by both counters so they cannot drift. The caller supplies the
+   nodes and what to do when it hands over; the timing, the sound and the
+   skip all live in countdown.js.
+
+   Returns {armed, skip, stop}. `armed()` is what a tap handler checks: while
+   it is false a tap SKIPS the count-in instead of counting a rep — the tap
+   that says "I'm ready" must not also become rep one. */
+function attachCountIn(zone, countEl, opts) {
+  const o = opts || {};
+  let armed = false;
+
+  /* assertive, not polite: this is a five-second window, and an
+     announcement that queues up and arrives after "Begin" is worse than
+     none at all. Its own node, ungated by the app's mute — a screen-reader
+     user is not listening to the app's voice. */
+  const live = el('div', { class: 'gv-sr-only', 'aria-live': 'assertive', 'aria-atomic': 'true' });
+  zone.append(live);
+
+  const restore = () => {
+    countEl.classList.remove('gv-rc-countin', 'gv-rc-countin-go');
+    zone.classList.remove('gv-rc-arming');
+  };
+
+  countEl.classList.add('gv-rc-countin');
+  zone.classList.add('gv-rc-arming');
+  countEl.textContent = String(o.from == null ? countdown.GATE_FROM : o.from);
+  if (o.hintEl) o.hintEl.textContent = 'Tap to start now';
+
+  const seq = countdown.startCountIn({
+    from: o.from,
+    muted: o.muted,
+    settings: o.settings,
+    onNumber: n => {
+      countEl.textContent = String(n);
+      live.textContent = String(n);
+    },
+    onGo: () => {
+      countEl.textContent = countdown.GO_WORD;
+      countEl.classList.add('gv-rc-countin-go');
+      live.textContent = countdown.GO_WORD;
+    },
+    onDone: () => {
+      armed = true;
+      restore();
+      if (o.hintEl) o.hintEl.textContent = o.hint || '';
+      if (o.onDone) o.onDone();
+    },
+  });
+
+  return {
+    armed: () => armed,
+    skip: () => seq.skip(),
+    stop: () => { seq.stop(); restore(); },
+  };
+}
+
 /* ---------- the punch ---------- */
 
 /* Retrigger the landing animation on `node`. A CSS animation only replays
@@ -137,11 +207,40 @@ function attachTapZone(zone, onTap) {
 
    Cheaper than it looks: one forced style recalc on a node that is about to
    animate anyway, versus a rep that visibly does not register. */
-function punch(node) {
+function punch(node, count) {
   if (!node) return;
-  node.classList.remove('gv-punch');
+  /* Every 5th rep lands visibly harder. A long set needs a cadence — a row
+     of identical bounces stops registering as reward somewhere around rep
+     eight, and the bigger beat gives the thumb something to reach for. */
+  const big = typeof count === 'number' && count > 0 && count % 5 === 0;
+  node.classList.remove('gv-punch', 'gv-punch-big');
   void node.offsetWidth;
-  node.classList.add('gv-punch');
+  node.classList.add(big ? 'gv-punch-big' : 'gv-punch');
+}
+
+/* ---------- the power-up (06, design/counter-animations.html) ---------- */
+
+/* The detonation for the moment the target is met: rays, a shockwave ring
+   and a slammed word, fired ONCE by the same guards that already rate-limit
+   the target sound cue. The fill meter is the charging half; this is the
+   payoff — the reward moment the whole set has been building towards.
+
+   Built hidden and fired by class, so nothing is created mid-set. The layer
+   is aria-hidden (the sound cue and the count already carry the moment) and
+   pointer-events:none so it can never swallow a tap. */
+function attachPowerUp(zone, word) {
+  const burst = el('span', { class: 'gv-rc-pu-burst' });
+  const wave = el('span', { class: 'gv-rc-pu-wave' });
+  const label = el('span', { class: 'gv-rc-pu-label gv-display' }, word || 'Target met');
+  const layer = el('div', { class: 'gv-rc-powerup', 'aria-hidden': 'true' }, burst, wave, label);
+  zone.append(layer);
+  return {
+    fire() {
+      for (const n of [burst, wave, label]) n.classList.remove('go');
+      void layer.offsetWidth;
+      for (const n of [burst, wave, label]) n.classList.add('go');
+    },
+  };
 }
 
 /* ---------- the fill meter ---------- */
@@ -262,4 +361,4 @@ function typeCountButton(countEl, opts) {
   return btn;
 }
 
-module.exports = { holdWakeLock, attachTapZone, attachFillMeter, punch, typeCountButton, TOUCH_MOUSE_GUARD_MS };
+module.exports = { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton, TOUCH_MOUSE_GUARD_MS };

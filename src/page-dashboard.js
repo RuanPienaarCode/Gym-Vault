@@ -172,12 +172,18 @@ function render(ctx, root) {
      alone cannot. Every other tile is a reading surface and stays flat —
      two loud treatments on one screen cancel each other out, which is the
      same rule as the one lime flood per screen. */
-  root.append(streakFlame(streak));
+  /* "weeks in a row" spelled out, because the tile below it counts SESSIONS
+     this week and in an ordinary week both figures are 1. Two 1s stacked
+     with near-identical labels read as the same number printed twice; the
+     labels have to do the work the digits cannot. */
+  root.append(streakFlame(streak, { label: streak === 1 ? 'week in a row' : 'weeks in a row' }));
 
+  /* Three tiles in a two-column grid leaves a hole, and an empty cell reads
+     as a figure that failed to load. The last-session tile spans instead. */
   const tiles = el('div', { class: 'gv-tiles' },
-    tile(ico('calendar-days'), fmt(thisWeek), 'this week'),
-    tile(ico('dumbbell'), fmt(dates.length), 'total sessions'),
-    tile(ico('history'), last && last.fm.date ? fmtShort(last.fm.date) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session'),
+    tile(ico('calendar-days'), fmt(thisWeek), 'sessions this week'),
+    tile(ico('dumbbell'), fmt(dates.length), 'sessions all time'),
+    tile(ico('history'), last && last.fm.date ? fmtShort(last.fm.date) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session', 'gv-tile-wide'),
   );
   root.append(tiles);
 
@@ -218,8 +224,8 @@ function dayShort(day) {
   return first.slice(0, 3).toUpperCase();
 }
 
-function tile(icon, big, label) {
-  return el('div', { class: 'gv-tile' },
+function tile(icon, big, label, extraClass) {
+  return el('div', { class: `gv-tile${extraClass ? ` ${extraClass}` : ''}` },
     el('div', { class: 'gv-tile-ico' }, icon),
     el('div', { class: 'gv-tile-big' }, big),
     el('div', { class: 'gv-tile-label' }, label));

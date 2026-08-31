@@ -4,7 +4,8 @@
 <style>
   body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif}
   .frame{border:1px solid #bbb;background:#fff;width:390px}
-  .frame .gv-app{display:flex;flex-direction:column;min-height:520px}
+  .frame .gv-app{display:flex;flex-direction:column;min-height:420px}
+  .frame .gv-rc-zone{min-height:300px}
   button.go{font:inherit;padding:7px 12px;margin:0 6px 8px 0;cursor:pointer}
   pre{background:#fff;border:1px solid #ccc;padding:8px;font-size:12px;max-width:390px;margin-top:10px}
 </style></head>
@@ -13,6 +14,8 @@
   <button class="go" id="reset">reset</button>
   <button class="go" id="jump">jump to 11</button>
   <div class="frame"><div class="gv-app gv-narrow gv-skin-floor gv-accent-lime" id="host"></div></div>
+  <button class="go" id="peak">jump to 10 (peak)</button>
+  <button class="go" id="done">jump to 12 (done)</button>
   <pre id="log">—</pre>
 <script src="bundle.js"></script>
 <script>
@@ -29,16 +32,22 @@
   tEl.className = 'gv-rc-target'; tEl.textContent = 'of ' + T.describeTarget(target);
   zone.append(tEl);
   const meter = shared.attachFillMeter(zone, target);
+  const powerUp = shared.attachPowerUp(zone);
+  let targetHit = false;
   host.append(zone);
   const show = () => {
     countEl.textContent = String(count);
     const stage = meter.set(count);
+    if (stage === 'done' && !targetHit) { targetHit = true; powerUp.fire(); }
+    if (count === 0) targetHit = false;
     log.textContent = 'count ' + count + '  fraction ' + T.fillFraction(count, target).toFixed(3) +
       '  stage ' + stage + '  --gv-fill ' + zone.style.getPropertyValue('--gv-fill');
   };
-  document.getElementById('tap').addEventListener('click', () => { count++; show(); });
+  document.getElementById('tap').addEventListener('click', () => { count++; shared.punch(countEl, count); show(); });
   document.getElementById('reset').addEventListener('click', () => { count = 0; show(); });
   document.getElementById('jump').addEventListener('click', () => { count = 11; show(); });
+  document.getElementById('peak').addEventListener('click', () => { count = 10; show(); });
+  document.getElementById('done').addEventListener('click', () => { count = 12; show(); });
   show();
   window.__set = n => { count = n; show(); };
   window.__zone = zone;

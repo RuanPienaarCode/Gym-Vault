@@ -104,7 +104,7 @@ function streakFlame(count, opts) {
     wrap,
     el('div', { class: 'gv-streak-read' },
       el('div', { class: 'gv-streak-num' }, String(n)),
-      el('div', { class: 'gv-streak-label' }, o.label || (n === 1 ? 'week streak' : 'week streak'))),
+      el('div', { class: 'gv-streak-label' }, o.label || 'week streak')),
   );
 }
 

@@ -187,6 +187,41 @@ html.theme-dark .punch-num.go { animation-name: gv-punch-dark; }
   55%  { transform: scale(0.95); }
   100% { transform: scale(1);    color: var(--gv-ink); }
 }
+/* milestone hit — every 5th rep lands harder, so a set has a cadence */
+.punch-num.go-big { animation: gv-punch-big 480ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+@keyframes gv-punch-big {
+  0%   { transform: scale(1);    color: var(--gv-ink); }
+  20%  { transform: scale(1.58); color: var(--gv-lime-deep); }
+  52%  { transform: scale(0.9); }
+  100% { transform: scale(1);    color: var(--gv-ink); }
+}
+html.theme-dark .punch-num.go-big { animation-name: gv-punch-big-dark; }
+@keyframes gv-punch-big-dark {
+  0%   { transform: scale(1);    color: var(--gv-ink); }
+  20%  { transform: scale(1.58); color: var(--gv-lime-hi); }
+  52%  { transform: scale(0.9); }
+  100% { transform: scale(1);    color: var(--gv-ink); }
+}
+.punch-ring.big.go { animation: gv-shock-big 720ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes gv-shock-big {
+  0%   { transform: scale(0.55); opacity: 1; border-width: 7px; }
+  100% { transform: scale(2.05); opacity: 0; border-width: 1px; }
+}
+/* alternating micro-tilt on a wrapper, so it composes with the scale punch
+   without duplicating every keyframe for the dark theme */
+.punch-tilt { will-change: transform; }
+.punch-tilt.tl { animation: gv-tilt-l 380ms ease-out; }
+.punch-tilt.tr { animation: gv-tilt-r 380ms ease-out; }
+@keyframes gv-tilt-l {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(-2.4deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes gv-tilt-r {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(2.4deg); }
+  100% { transform: rotate(0deg); }
+}
 
 /* ============================================================================
    02 — ODOMETER ROLL
@@ -201,7 +236,7 @@ html.theme-dark .punch-num.go { animation-name: gv-punch-dark; }
 .od-col { display: block; height: 1em; overflow: hidden; }
 .od-strip {
   display: flex; flex-direction: column;
-  transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* transition is set inline per column — duration scales with roll distance */
 }
 .od-d { display: block; height: 1em; line-height: 1; text-align: center; }
 .od-sep { display: block; }
@@ -407,24 +442,45 @@ html.theme-dark .ring-track { stroke: var(--gv-line-2); }
    there's time, amber under 40%, danger + heartbeat under 15%.
    ========================================================================== */
 .rest { width: 100%; max-width: 290px; }
-.rest-num { font-family: var(--gv-display); font-size: 46px; line-height: 1; text-align: center; }
+.rest-num {
+  font-family: var(--gv-display); font-size: 46px; line-height: 1; text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition: color 250ms linear;
+}
 .rest-track {
-  height: 14px; margin-top: 10px; overflow: hidden;
+  position: relative; height: 14px; margin-top: 10px; overflow: hidden;
   border: 2px solid var(--gv-ink); background: var(--gv-surface);
 }
 .rest-fill {
   height: 100%; width: 100%; background: var(--gv-ink);
   transform-origin: left center;
+  transition: background 250ms linear;
 }
 .rest.warn .rest-fill { background: var(--gv-amber); }
 .rest.warn .rest-num  { color: var(--gv-amber); }
 .rest.crit .rest-fill { background: var(--gv-danger); }
-.rest.crit .rest-num  { color: var(--gv-danger); animation: gv-beat 1s ease-in-out infinite; }
-@keyframes gv-beat {
-  0%, 100% { transform: scale(1); }
-  14%      { transform: scale(1.16); }
-  28%      { transform: scale(1); }
+.rest.crit .rest-num  { color: var(--gv-danger); }
+/* the last seconds punch on the second boundary — synced to the countdown,
+   where a free-running heartbeat just wobbles beside it */
+.rest-num.tick { animation: gv-ticknum 300ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+@keyframes gv-ticknum {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.24); }
+  100% { transform: scale(1); }
 }
+.rest-flash {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  background: var(--gv-lime-hi); opacity: 0; pointer-events: none;
+}
+.rest-flash.go { animation: gv-flash 420ms ease-out; }
+.rest-go {
+  height: 34px; margin-top: 10px; text-align: center;
+  font-family: var(--gv-display); font-size: 32px; line-height: 34px;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--gv-lime-deep); opacity: 0;
+}
+html.theme-dark .rest-go { color: var(--gv-lime-hi); }
+.rest-go.go { animation: gv-slam 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 /* ============================================================================
    09 — SET PIPS
@@ -488,8 +544,8 @@ html.theme-dark .ring-track { stroke: var(--gv-line-2); }
 }
 .ghost-out.go { animation: gv-ghost 620ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes gv-ghost {
-  0%   { transform: translateY(0) scale(1);       opacity: 0.85; }
-  100% { transform: translateY(-46px) scale(1.5); opacity: 0; }
+  0%   { transform: translate(0, 0) scale(1);                   opacity: 0.85; }
+  100% { transform: translate(var(--gx, 0px), -46px) scale(1.5); opacity: 0; }
 }
 .ghost-num { color: var(--gv-ink); }
 .ghost-num.go { animation: gv-drop 420ms cubic-bezier(0.22, 1.4, 0.36, 1); }
@@ -925,12 +981,14 @@ html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
       <div class="card-head">
         <span class="card-num">01 · Counter</span>
         <h2 class="card-title gv-display">Punch counter</h2>
-        <p class="card-sub">Every increment lands a hit — overshoot, lime flash, shockwave. The tap target's own feedback, so the thumb never wonders whether the rep registered.</p>
+        <p class="card-sub">Every increment lands a hit — overshoot, lime flash, shockwave, with an alternating micro-tilt so fast sets have rhythm. Every 5th rep hits visibly harder, giving a long set a cadence you can feel without reading.</p>
       </div>
       <div class="stage">
         <div class="punch-wrap">
           <div class="punch-ring" id="punch-ring"></div>
-          <div class="punch-num" id="punch-num">0</div>
+          <div class="punch-tilt" id="punch-tilt">
+            <div class="punch-num" id="punch-num">0</div>
+          </div>
         </div>
         <p class="caption">rep-counter.js · tap to count</p>
       </div>
@@ -988,7 +1046,7 @@ html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
       <div class="card-head">
         <span class="card-num">02 · Counter</span>
         <h2 class="card-title gv-display">Odometer roll</h2>
-        <p class="card-sub">Digit strips roll into place on a right-to-left stagger, so the total settles rather than snapping. For big derived numbers on reading surfaces.</p>
+        <p class="card-sub">Digit wheels roll from the <em>previous</em> total to the new one — unchanged digits hold still, the units wheel takes a full extra revolution, and columns settle right-to-left. For big derived numbers on reading surfaces.</p>
       </div>
       <div class="stage">
         <div style="display:flex;align-items:flex-end">
@@ -1293,12 +1351,16 @@ html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
       <div class="card-head">
         <span class="card-num">08 · Progress</span>
         <h2 class="card-title gv-display">Rest timer</h2>
-        <p class="card-sub">Drains right-to-left with the colour carrying urgency: ink while there's time, amber under 40%, danger plus a heartbeat under 15%. Readable from arm's length mid-set.</p>
+        <p class="card-sub">Drains right-to-left with the colour carrying urgency: ink while there's time, amber, then danger. The final three seconds punch the number on each second boundary, and zero lands a lime flash and a slammed GO — a timer needs an ending, not just a fade.</p>
       </div>
       <div class="stage">
         <div class="rest" id="rest">
-          <div class="rest-num" id="rest-num">0:45</div>
-          <div class="rest-track"><div class="rest-fill" id="rest-fill"></div></div>
+          <div class="rest-num" id="rest-num">0:08</div>
+          <div class="rest-track">
+            <div class="rest-fill" id="rest-fill"></div>
+            <div class="rest-flash" id="rest-flash"></div>
+          </div>
+          <div class="rest-go" id="rest-go">Go</div>
         </div>
         <p class="caption">countdown.js · rest between sets</p>
       </div>
@@ -1410,7 +1472,7 @@ html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
       <li>Only <code>transform</code> and <code>opacity</code> are animated, so nothing here triggers layout. Licks, embers and sparks are the only places with many concurrently animating nodes — capped at 7/6 on the flame bar and about 30 on 11 at max, and all are <code>display: none</code> under reduced motion.</li>
       <li>Staggered fills (energy, pips, chevrons, ascension) run off one elapsed-time rAF driver rather than a chain of <code>setTimeout</code>s. A chain drifts under load and stretches to one step per second in a hidden tab, where timers clamp to 1s; the driver lands the sequence in the duration it claims and catches up in a single frame after a stall.</li>
       <li><code>prefers-reduced-motion</code> collapses durations to ~0 rather than removing the effect, so the <em>state change</em> still lands. A counter that silently stops updating is worse than one that snaps.</li>
-      <li>Infinite animations (flame, pulse, heartbeat) must be torn down when the view closes, or they keep the compositor awake in a background leaf.</li>
+      <li>Infinite animations (flame, pulse, flicker) must be torn down when the view closes, or they keep the compositor awake in a background leaf.</li>
     </ul>
   </section>
 
@@ -1483,9 +1545,16 @@ html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
   var punchCount = 0;
   function punch() {
     punchCount += 1;
-    $('punch-num').textContent = punchCount;
-    restart($('punch-num'), 'go');
-    restart($('punch-ring'), 'go');
+    var num = $('punch-num'), ring = $('punch-ring'), tilt = $('punch-tilt');
+    var milestone = punchCount % 5 === 0;
+    num.textContent = punchCount;
+    num.classList.remove('go', 'go-big');
+    tilt.classList.remove('tl', 'tr');
+    void num.offsetWidth;
+    num.classList.add(milestone ? 'go-big' : 'go');
+    tilt.classList.add(punchCount % 2 ? 'tl' : 'tr');
+    ring.classList.toggle('big', milestone);
+    restart(ring, 'go');
   }
   function punchRun() {
     stop('punchrun');
@@ -1500,27 +1569,51 @@ html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
   }
 
   /* ---------- 02 odometer ---------------------------------------------- */
+  /* A real odometer: wheels roll from the PREVIOUS value to the new one.
+     Each strip is 0-9 three times over, so a wheel can start anywhere in the
+     first band and roll forward through a full revolution without wrapping.
+     Unchanged high digits hold still; the units wheel always takes at least
+     one extra revolution — that spin is what sells the mechanism. */
+  var odoPrev = null;
   function odo() {
     var host = $('odo');
-    var str = thin(Math.max(1, pctOf(24680)));
+    var target = Math.max(1, pctOf(24680));
+    var str = thin(target);
+    var isDigit = function (c) { return c >= '0' && c <= '9'; };
+    var newDigits = str.split('').filter(isDigit);
+    var oldDigits = (odoPrev === null ? '' : thin(odoPrev)).split('').filter(isDigit);
+    while (oldDigits.length < newDigits.length) oldDigits.unshift('0');
+    if (oldDigits.length > newDigits.length) oldDigits = oldDigits.slice(oldDigits.length - newDigits.length);
+    odoPrev = target;
     host.textContent = '';
-    var digitIndex = 0;
-    var digits = str.split('').filter(function (c) { return c >= '0' && c <= '9'; }).length;
+    var n = newDigits.length, di = 0;
     str.split('').forEach(function (ch) {
-      if (ch >= '0' && ch <= '9') {
+      if (isDigit(ch)) {
+        var idx = di; di += 1;
+        var from = Number(oldDigits[idx]), to = Number(ch);
         var col = document.createElement('span'); col.className = 'od-col';
         var strip = document.createElement('span'); strip.className = 'od-strip';
-        for (var i = 0; i < 10; i++) {
+        for (var i = 0; i < 30; i++) {
           var d = document.createElement('span'); d.className = 'od-d';
-          d.textContent = String(i); strip.appendChild(d);
+          d.textContent = String(i % 10); strip.appendChild(d);
         }
+        var end = to >= from ? to : to + 10;
+        if (idx === n - 1 && end - from < 10) end += 10;
+        var dist = end - from;
+        strip.style.transition = 'none';
+        strip.style.transform = 'translateY(-' + from + 'em)';
         col.appendChild(strip); host.appendChild(col);
+        void strip.offsetWidth;
+        strip.style.transitionProperty = 'transform';
+        strip.style.transitionTimingFunction = 'cubic-bezier(0.16, 1, 0.3, 1)';
+        /* duration scales with roll distance, so a wheel moving one notch
+           doesn't crawl and a full spin doesn't blur */
+        strip.style.transitionDuration = Math.min(1600, 500 + dist * 70) + 'ms';
         /* right-most digit settles first — the number "lands" leftward */
-        strip.style.transitionDelay = ((digits - 1 - digitIndex) * 55) + 'ms';
-        var target = Number(ch); digitIndex += 1;
+        strip.style.transitionDelay = ((n - 1 - idx) * 45) + 'ms';
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            strip.style.transform = 'translateY(-' + (target * 10) + '%)';
+            strip.style.transform = 'translateY(-' + end + 'em)';
           });
         });
       } else {
@@ -1637,21 +1730,42 @@ html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
   }
 
   /* ---------- 08 rest timer -------------------------------------------- */
+  /* An honest 8 seconds: the digits show real remaining time, the last three
+     seconds punch the number on each second boundary, and zero lands a lime
+     flash and a slammed GO. The punch rides the second change, not a
+     free-running heartbeat — synced beats read as counting down. */
   function rest() {
     stop('rest');
-    var box = $('rest'), fill = $('rest-fill'), num = $('rest-num');
-    var total = 8000, t0 = null;
+    var box = $('rest'), fill = $('rest-fill'), num = $('rest-num'),
+        goEl = $('rest-go'), flash = $('rest-flash');
+    var total = 8000, t0 = null, lastSecs = null;
     box.classList.remove('warn', 'crit');
+    goEl.classList.remove('go');
+    num.classList.remove('tick');
     fill.style.transform = 'scaleX(1)';
+    function fmt(secs) {
+      return Math.floor(secs / 60) + ':' + (secs % 60 < 10 ? '0' : '') + (secs % 60);
+    }
     function step(now) {
       if (t0 === null) t0 = now;
       var left = Math.max(0, 1 - (now - t0) / total);
       fill.style.transform = 'scaleX(' + left + ')';
-      var secs = Math.ceil(left * 45);
-      num.textContent = Math.floor(secs / 60) + ':' + (secs % 60 < 10 ? '0' : '') + (secs % 60);
-      box.classList.toggle('warn', left <= 0.4 && left > 0.15);
-      box.classList.toggle('crit', left <= 0.15);
-      if (left > 0) { raf['rest'] = requestAnimationFrame(step); } else { raf['rest'] = null; }
+      var secs = Math.ceil(left * total / 1000);
+      if (secs !== lastSecs) {
+        lastSecs = secs;
+        num.textContent = fmt(secs);
+        if (secs > 0 && secs <= 3) restart(num, 'tick');
+      }
+      box.classList.toggle('warn', left <= 0.5 && left > 0.25);
+      box.classList.toggle('crit', left <= 0.25 && left > 0);
+      if (left > 0) {
+        raf['rest'] = requestAnimationFrame(step);
+      } else {
+        raf['rest'] = null;
+        box.classList.remove('warn', 'crit');
+        restart(flash, 'go');
+        restart(goEl, 'go');
+      }
     }
     raf['rest'] = requestAnimationFrame(step);
   }
@@ -1714,6 +1828,8 @@ html.theme-dark .notes h3 { color: var(--gv-lime-hi); }
     out.textContent = String(ghostCount);
     ghostCount += 1;
     num.textContent = String(ghostCount);
+    /* alternate the peel direction so a fast set leaves a real trail */
+    out.style.setProperty('--gx', (ghostCount % 2 ? -16 : 16) + 'px');
     restart(out, 'go');
     restart(num, 'go');
   }

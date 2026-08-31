@@ -87,114 +87,86 @@ function countdownRing(size) {
   };
 }
 
-/* THE GATE: a full-bleed count-in that runs, then hands over.
+/* THE SEQUENCER — headless. It owns the clock, the numbers, the sound, the
+   skip and the teardown; the CALLER owns every pixel.
+
+   It used to own its own pixels too: a full-bleed screen with a ring and a
+   giant numeral that REPLACED the counter, counted down, and then handed
+   over. That put the countdown somewhere the counter was not, so the thing
+   you were about to use appeared only once the count was finished. Now the
+   counter is on screen the whole time and the numbers land in ITS display,
+   which is where you are already looking.
 
    opts:
-     from      seconds to count from (default 3)
-     label     what this is a count-in TO ("Push-ups · set 2 of 3")
+     from      seconds to count from (default GATE_FROM)
      muted     this session's mute toggle — silences the app's own voice,
-               never the aria-live region (a screen-reader user is not
-               using the app's speech, and must not lose the cue with it)
+               never a caller's aria-live (a screen-reader user is not using
+               the app's speech and must not lose the cue with it)
      settings  passed to sound.js for the mode and voice
-     onDone    called exactly once, whether it ran out or was skipped
+     onNumber(n)  a new whole second landed — show it
+     onGo()       the count reached zero; GO_WORD is the word
+     onDone()     hand over. Called EXACTLY ONCE, run out or skipped.
 
-   Returns a cancel function. Cancelling does NOT call onDone — that is for
-   teardown (leaving the page mid-count), which is a different thing from
-   skipping. onDone firing exactly once is the invariant everything else here
-   is arranged around: it advances the screen, and advancing twice would eat
-   a set. */
-function runCountIn(host, opts) {
+   Returns {stop, skip}. `skip` is what a caller wires to a tap. `stop` is
+   teardown and does NOT call onDone — leaving the page mid-count is a
+   different thing from saying "now", and a stop that advanced the session
+   would advance one the user has walked away from. onDone firing exactly
+   once is the invariant everything here is arranged around: it arms the
+   counter, and arming twice would eat a set. */
+function startCountIn(opts) {
   const o = opts || {};
   const from = o.from == null ? GATE_FROM : o.from;
   const done = typeof o.onDone === 'function' ? o.onDone : () => {};
+  const onNumber = typeof o.onNumber === 'function' ? o.onNumber : () => {};
+  const onGo = typeof o.onGo === 'function' ? o.onGo : () => {};
 
   let finished = false;
   let timer = null;
-  /* The handoff timeout is held separately from the tick interval because it
-     outlives it: finish() clears the interval and THEN schedules this. A
-     teardown landing in that gap has to be able to cancel it, or onDone
-     fires against a session the user has already walked away from. */
+  /* Held separately from the tick interval because it outlives it: finish()
+     clears the interval and THEN schedules this. A teardown landing in that
+     gap has to be able to cancel it. */
   let handoff = null;
   const startedAt = Date.now();
   let lastShown = null;
-
-  const ring = countdownRing(220);
-  const numberEl = document.createElement('div');
-  numberEl.className = 'gv-countin-number';
-  numberEl.textContent = String(from);
-  /* assertive, not polite: this is a three-second window and a queued
-     announcement that arrives after "Begin" is worse than none. */
-  const live = document.createElement('div');
-  live.className = 'gv-sr-only';
-  live.setAttribute('aria-live', 'assertive');
-  live.setAttribute('aria-atomic', 'true');
-
-  const dial = document.createElement('div');
-  dial.className = 'gv-countin-dial';
-  dial.append(ring.svg, numberEl);
-
-  const labelEl = document.createElement('div');
-  labelEl.className = 'gv-countin-label';
-  labelEl.textContent = o.label || '';
-
-  const hint = document.createElement('div');
-  hint.className = 'gv-countin-hint';
-  hint.textContent = 'Tap to start now';
-
-  /* A real button, not a div with a listener: it has to be reachable by
-     keyboard and announce itself, and "skip the countdown" is exactly the
-     thing someone who cannot see the ring most wants to do. */
-  const wrap = document.createElement('button');
-  wrap.type = 'button';
-  wrap.className = 'gv-countin clickable-icon';
-  wrap.setAttribute('aria-label', `Counting in${o.label ? ` to ${o.label}` : ''}. Activate to start now.`);
-  wrap.append(labelEl, dial, hint, live);
 
   const finish = skipped => {
     if (finished) return;
     finished = true;
     if (timer) { window.clearInterval(timer); timer = null; }
     if (!skipped) {
-      live.textContent = GO_WORD;
+      onGo();
       if (!o.muted) sound.cue('go', GO_WORD, o.settings);
-      numberEl.textContent = GO_WORD;
-      numberEl.classList.add('gv-countin-go');
     }
-    /* One frame of "Begin" on screen before the set replaces it. Skipping
-       gets no such pause — a skip is someone saying "now", and making them
-       wait for a word they just dismissed would be its own small insult. */
+    /* One beat of "Begin" before the counter takes over. A SKIP gets no such
+       pause — a skip is someone saying "now", and making them wait for a
+       word they just dismissed would be its own small insult. */
     if (skipped) done();
     else handoff = window.setTimeout(() => { handoff = null; done(); }, GO_HOLD_MS);
   };
 
-  wrap.addEventListener('click', () => {
-    /* The click is also the user gesture iOS wants before this page may make
-       a sound — the count-in is often the first thing in a session that
-       tries to. Unlocking on a SKIP is not wasted: the set that follows will
-       be counting reps out loud. */
-    sound.unlock();
-    finish(true);
-  });
-
   timer = window.setInterval(() => {
     const remaining = from - (Date.now() - startedAt) / 1000;
-    ring.set(from ? Math.max(0, remaining) / from : 0);
     const n = countInNumber(remaining, from);
     if (n !== null && n !== lastShown) {
       lastShown = n;
-      numberEl.textContent = String(n);
-      live.textContent = String(n);
+      onNumber(n, from ? Math.max(0, remaining) / from : 0);
       if (!o.muted) sound.announce(n, o.settings);
     }
     if (remaining <= 0) finish(false);
   }, TICK_MS);
 
-  host.append(wrap);
-  return () => {
-    if (timer) { window.clearInterval(timer); timer = null; }
-    if (handoff) { window.clearTimeout(handoff); handoff = null; }
-    finished = true; // teardown, not a skip — onDone must not fire
+  return {
+    /* The tap that skips is also the user gesture iOS wants before this page
+       may make a sound — the count-in is often the first thing in a session
+       that tries to. Unlocking on a skip is not wasted: the set that follows
+       will be counting reps out loud. */
+    skip() { sound.unlock(); finish(true); },
+    stop() {
+      if (timer) { window.clearInterval(timer); timer = null; }
+      if (handoff) { window.clearTimeout(handoff); handoff = null; }
+      finished = true; // teardown, not a skip — onDone must not fire
+    },
   };
 }
 
-module.exports = { COUNT_IN_FROM, GATE_FROM, TICK_MS, GO_WORD, GO_HOLD_MS, countInNumber, countdownRing, runCountIn };
+module.exports = { COUNT_IN_FROM, GATE_FROM, TICK_MS, GO_WORD, GO_HOLD_MS, countInNumber, countdownRing, startCountIn };

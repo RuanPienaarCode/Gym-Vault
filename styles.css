@@ -44,6 +44,12 @@
   --gv-lime-deep: #4d7c0f;
   --gv-lime-ghost: #f4fbe8;
   --gv-danger: #b91c1c;
+  /* Fire, for the counter's flames and the streak flame. NOT an accent: the
+     accent palettes below re-point every --gv-lime* token, and a counter
+     whose flames turned magenta under the Punch accent would read as an
+     error state rather than as fire. Amber stays amber. */
+  --gv-amber: #d97706;
+  --gv-ember: #ea580c;
   /* Dim text sitting ON an accent flood (stats line in the action slab,
      target text in a log exercise bar). Re-pointed per accent below. */
   --gv-flood-dim: #2b3a12;
@@ -77,6 +83,9 @@
   --gv-ink-dim: #9aa48c;
   --gv-lime-ghost: #1d2712;
   --gv-danger: #f87171;
+  /* Brighter on a dark ground — the light-mode amber reads as brown here. */
+  --gv-amber: #fbbf24;
+  --gv-ember: #f97316;
 }
 
 /* Host-cascade override — see header comment. */
@@ -698,6 +707,11 @@ body.is-phone .gv-app .gv-page {
 .theme-dark .gv-app .gv-day.today .gv-day-dot { color: var(--gv-lime-deep); }
 
 /* Stats — oversized numerals on a hairline grid. */
+/* A tile that spans the row. Three tiles in a two-column grid otherwise
+   leave a hole, and an empty cell on a stats grid reads as a figure that
+   failed to load rather than as one that does not exist. */
+.gv-tile-wide { grid-column: 1 / -1; }
+
 .gv-tiles {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1434,6 +1448,12 @@ body.is-phone .gv-app .gv-page {
 .gv-rc-zone {
   flex: 1 1 auto;
   display: flex;
+  /* COLUMN, not row. The zone holds the count, the target line, the motion
+     hint and the sensitivity picker, and as a row they all sat on ONE line
+     beside a 120px numeral — the target label landed on top of the digit.
+     Everything in here was written expecting to stack (.gv-rc-hint and
+     .gv-rc-sens both carry margin-top, which does nothing in a row). */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: var(--gv-bg);
@@ -1487,12 +1507,36 @@ body.is-phone .gv-app .gv-page {
   100% { transform: scale(1.5);  opacity: 0;   border-width: 1px; }
 }
 
+/* THE MILESTONE BEAT: every 5th rep (rep-counter-shared.js punch()) lands
+   harder — bigger overshoot, wider shockwave. A long set gets a cadence of
+   small rewards with a bigger one to reach for, instead of a row of
+   identical bounces that stop registering around rep eight. */
+.gv-rc-count.gv-punch-big { animation: gv-punch-big 480ms cubic-bezier(0.22, 1.4, 0.36, 1); }
+@keyframes gv-punch-big {
+  0%   { transform: scale(1);    color: var(--gv-ink); }
+  20%  { transform: scale(1.58); color: var(--gv-lime-deep); }
+  52%  { transform: scale(0.9); }
+  100% { transform: scale(1);    color: var(--gv-ink); }
+}
+.theme-dark .gv-app .gv-rc-count.gv-punch-big { animation-name: gv-punch-big-dark; }
+@keyframes gv-punch-big-dark {
+  0%   { transform: scale(1);    color: var(--gv-ink); }
+  20%  { transform: scale(1.58); color: var(--gv-lime-hi); }
+  52%  { transform: scale(0.9); }
+  100% { transform: scale(1);    color: var(--gv-ink); }
+}
+.gv-rc-count.gv-punch-big::after { animation: gv-shock-big 720ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes gv-shock-big {
+  0%   { transform: scale(0.55); opacity: 1; border-width: 7px; }
+  100% { transform: scale(2.05); opacity: 0; border-width: 1px; }
+}
+
 /* Reduced motion collapses the punch rather than removing it: the state
    change still has to land, because a counter that silently stops
    acknowledging taps is worse than one that does it quietly. */
 @media (prefers-reduced-motion: reduce) {
-  .gv-rc-count.gv-punch { animation-duration: 1ms; }
-  .gv-rc-count.gv-punch::after { animation: none; }
+  .gv-rc-count.gv-punch, .gv-rc-count.gv-punch-big { animation-duration: 1ms; }
+  .gv-rc-count.gv-punch::after, .gv-rc-count.gv-punch-big::after { animation: none; }
 }
 
 /* ---------- 08 REST/INTERVAL TIMER — urgency in the colour ----------
@@ -1595,30 +1639,116 @@ body.is-phone .gv-app .gv-page {
   z-index: -1;
 }
 
-/* The escalation. Ghost while it is early, the real accent once past
-   halfway, full flood at the target — one lime flood per screen is the house
-   rule, and this screen spends it here. */
-.gv-rc-zone[data-fill="hot"]::before { background: var(--gv-lime-ghost); }
-.gv-rc-zone[data-fill="peak"]::before { background: var(--gv-lime-hi); opacity: 0.55; }
-.gv-rc-zone[data-fill="done"]::before { background: var(--gv-lime); opacity: 0.75; }
+/* THE ESCALATION. Four stages, each doing visibly more than the last,
+   because the whole point is that you can feel the target coming without
+   reading the number:
 
-/* At the target the whole zone pulses once. `animation` on the pseudo-
-   element, so it cannot fight the flash class on the zone itself. */
+     warm  a ghost tint. Under way, nothing more.
+     hot   the tint holds, and the flood starts breathing — a slow pulse.
+     peak  the accent proper, faster breathing, and the FIRST FLAMES appear
+           on the leading edge. This is the stretch that should feel urgent.
+     done  full flood, flames at full height, embers, and one hit pulse.
+
+   One lime flood per screen is the house rule, and this screen spends it
+   here. */
+.gv-rc-zone[data-fill="hot"]::before {
+  background: var(--gv-lime-ghost);
+  animation: gv-fill-breathe 1500ms ease-in-out infinite;
+}
+.gv-rc-zone[data-fill="peak"]::before {
+  background: var(--gv-lime-hi); opacity: 0.55;
+  animation: gv-fill-breathe 820ms ease-in-out infinite;
+}
+.gv-rc-zone[data-fill="done"]::before {
+  background: var(--gv-lime); opacity: 0.75;
+  animation: gv-fill-hit 620ms ease-out 1;
+}
+@keyframes gv-fill-breathe {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.13); }
+}
 @keyframes gv-fill-hit {
-  0% { opacity: 0.75; }
-  40% { opacity: 1; }
+  0%   { opacity: 0.75; }
+  40%  { opacity: 1; }
   100% { opacity: 0.75; }
 }
-.gv-rc-zone[data-fill="done"]::before { animation: gv-fill-hit 620ms ease-out 1; }
+
+/* ---------- 06 POWER-UP — the target detonation ----------
+   (design/counter-animations.html, the treatment the fill meter charges
+   towards.) The flood is the charging half; when the target is first met,
+   rep-counter-shared.js's attachPowerUp fires this ONCE: rays, a shockwave
+   ring, and a slammed word. It replaced the licks-and-embers fire layer —
+   a reward is a beat, not a weather system, and the fire read as decoration
+   where this reads as a payoff.
+
+   Everything is transform + opacity, pointer-events:none, and sits ABOVE
+   the flood but never permanently over the count — the label slams in and
+   fades back out, so the numeral is only briefly shared. */
+.gv-rc-powerup {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.gv-rc-pu-burst {
+  position: absolute; top: 50%; left: 50%;
+  width: 250px; height: 250px; margin: -125px 0 0 -125px;
+  opacity: 0;
+  background: repeating-conic-gradient(#fffbe8 0deg 5deg, rgba(0, 0, 0, 0) 5deg 17deg);
+  /* Without the -webkit- prefix Safari 15 paints the full disc. */
+  -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 0) 26%, #000 42%, rgba(0, 0, 0, 0) 72%);
+  mask-image: radial-gradient(circle, rgba(0, 0, 0, 0) 26%, #000 42%, rgba(0, 0, 0, 0) 72%);
+}
+.gv-rc-pu-burst.go { animation: gv-pu-rays 720ms ease-out; }
+@keyframes gv-pu-rays {
+  0%   { transform: scale(0.35) rotate(0deg);  opacity: 0.95; }
+  100% { transform: scale(1.35) rotate(28deg); opacity: 0; }
+}
+.gv-rc-pu-wave {
+  position: absolute; top: 50%; left: 50%;
+  width: 130px; height: 130px; margin: -65px 0 0 -65px;
+  border: 3px solid var(--gv-ink-fixed); border-radius: 50%;
+  opacity: 0;
+}
+.gv-rc-pu-wave.go { animation: gv-pu-wave 640ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes gv-pu-wave {
+  0%   { transform: scale(0.4); opacity: 0.9; border-width: 5px; }
+  100% { transform: scale(1.9); opacity: 0;   border-width: 1px; }
+}
+/* A stamped badge, not bare glyphs: the label slams in ON TOP of the giant
+   numeral, and at the moment it fires the flood behind both is lime — bare
+   ink letters over ink digits are illegible for exactly the beat that
+   matters. The ink plate wins against the digit AND the flood, in both
+   themes, and reads as a stamp of approval — which is what it is. */
+.gv-rc-pu-label {
+  position: relative;
+  padding: 4px 16px 6px;
+  font-size: clamp(24px, 6.5vw, 38px);
+  letter-spacing: 0.04em;
+  color: var(--gv-lime-hi);
+  background: var(--gv-ink-fixed);
+  opacity: 0;
+}
+.gv-rc-pu-label.go { animation: gv-pu-slam 1200ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes gv-pu-slam {
+  0%   { opacity: 0; transform: scale(2.1); }
+  24%  { opacity: 1; transform: scale(0.92); }
+  34%  { transform: scale(1.06); }
+  44%  { transform: scale(1); }
+  80%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
 
 /* The count reads against the flood once it is dark enough to need it. */
 .gv-rc-zone[data-fill="done"] .gv-rc-count { color: var(--gv-ink-fixed); }
 
-/* What you are filling towards, under the number. */
+/* What you are filling towards. IN FLOW, under the number — it was absolute
+   at a fixed offset from the zone's bottom, which works only if the zone is
+   tall. In the guided session it is not, and the label landed across the
+   digit. A flex column puts it where it belongs at any height. */
 .gv-rc-target {
-  position: absolute;
-  left: 0; right: 0;
-  bottom: 58px;
+  order: 2;
+  margin-top: 6px;
   text-align: center;
   font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--gv-ink-dim);
@@ -1767,16 +1897,30 @@ body.is-phone .gv-app .gv-page {
 .gv-app .gv-rc-targetinput { width: 118px; text-align: center; }
 .gv-app .gv-rc-targetopen { margin-top: 4px; }
 
-/* Reduced motion: the meter still fills — it is information, not decoration,
-   and removing it would remove the answer to "how far am I". What goes is
-   the sweep and the pulse: the bar STEPS to its new height. */
+/* Reduced motion: the fill still fills and still changes colour by stage —
+   that is the information. What goes is everything that moves on its own:
+   the breathing, the hit pulse, and the power-up's rays and shockwave. The
+   word swaps its slam for a plain fade rather than disappearing — the state
+   change ("target met") still has to land, and the sound cue may be muted. */
 @media (prefers-reduced-motion: reduce) {
   .gv-rc-zone[data-fill]::before { transition: none; animation: none; }
+  .gv-rc-pu-burst, .gv-rc-pu-wave { display: none; }
+  .gv-rc-pu-label.go { animation: gv-pu-fade 1400ms linear; }
+}
+@keyframes gv-pu-fade {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .gv-rc-count {
   font-family: var(--gv-display);
-  font-size: clamp(120px, 42vw, 320px);
+  /* Shrinkable: in a flex column inside a short guided-session zone, a
+     rigid 120px floor pushes the target line and the controls out of the
+     box. min() lets it give way on a short screen instead. */
+  flex: 0 1 auto;
+  font-size: clamp(64px, 34vw, 320px);
   line-height: 1;
   color: var(--gv-ink);
   /* Positioning context for the punch shockwave (::after, above). Without
@@ -2213,9 +2357,12 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 .gv-setsrow-target { font-size: 12px; color: var(--gv-ink-dim); }
 .gv-setsrow-target:empty { display: none; }
 .gv-setsrow-stepper { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.gv-setsrow-n {
-  font-family: var(--gv-display); font-size: 22px; line-height: 1;
-  min-width: 30px; text-align: center;
+.gv-setsrow-count { min-width: 42px; text-align: center; }
+.gv-setsrow-n { font-family: var(--gv-display); font-size: 22px; line-height: 1; }
+/* The unit under the figure, because the figure alone was read as reps. */
+.gv-setsrow-unit {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gv-ink-dim); margin-top: 1px;
 }
 /* A count that differs from the plan says so — a number changed two sessions
    ago and forgotten must not quietly become the programme in someone's head. */

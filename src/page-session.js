@@ -21,7 +21,7 @@ const flow = require('./session-flow');
 const records = require('./records');
 const confetti = require('./confetti');
 const { createCounter, tap, undo } = require('./rep-counter');
-const { holdWakeLock, attachTapZone, attachFillMeter, punch, typeCountButton } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton } = require('./rep-counter-shared');
 const counterTarget = require('./counter-target');
 const { helpButton } = require('./explainer');
 const sound = require('./sound');
@@ -205,69 +205,10 @@ function renderActive(ctx, root, draft, sess) {
   root.append(topBar(ctx, draft, extra));
   root.append(exerciseBlock(ctx, sess, entry));
 
-  /* COUNT IN FIRST — 3, 2, 1, Begin — so the first tap of the set is a rep
-     rather than the tap that got you into position.
-
-     Keyed by POSITION, not by a boolean: this screen re-renders for reasons
-     that have nothing to do with moving on (a mute toggle, switching motion
-     counting on, a typed weight), and a count-in that restarted on every one
-     of those would make the session unusable. Same setKey the counter and
-     the hold timer already use to decide whether their state still belongs
-     to the set on screen.
-
-     Not for distance sets: there is nothing to get into position for when
-     the interaction is typing two numbers, and counting someone in to a text
-     field is theatre. */
-  /* THE FIRST SET WAITS FOR YOU. Tapping "Start session" on the setup screen
-     navigates here, and counting in from that tap means the 3, 2, 1 burns
-     while you are still putting the phone down or walking to the mat. So the
-     first set of a session gets an explicit gate; everything after it flows
-     from the rest screen's Next, which is already a deliberate tap in the
-     right place at the right moment.
-
-     It also earns its keep on iOS: this tap is a fresh user gesture
-     immediately before the first thing that makes a noise. */
-  if (!entry.distance && !sess.started) {
-    root.append(startGate(ctx, sess, entry, setIndex));
-    return;
-  }
-
-  const countInKey = setKey(sess.pos);
-  if (!entry.distance && sess.countedIn !== countInKey) {
-    /* Stop any count-in already running before starting another. This screen
-       CAN re-render mid-count — the skip buttons and the exit button are in
-       the top bar above, and the vault watcher can force one at any moment —
-       and without this the old interval keeps ticking against a detached
-       node, so two countdowns speak over each other and the earlier one
-       advances the session a set behind the one on screen. */
-    if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
-    const stop = countdown.runCountIn(root, {
-      label: `${entry.exercise} · set ${setIndex + 1} of ${entry.sets.length}`,
-      muted: sess.muted,
-      settings: ctx.settings,
-      onDone: () => {
-        sess.countedIn = countInKey;
-        /* A hold is the one set where "Begin" has to MEAN something. The
-           reps counter arms and waits for you; a hold otherwise renders
-           "Tap to start the hold" — so the count-in would say Begin and
-           then nothing would begin, and you would lose the seconds between
-           reading the word and finding the button. durationBody consumes
-           this flag exactly once and starts its clock. */
-        if (entry.duration) sess.autoStartHold = countInKey;
-        ctx.rerender();
-      },
-    });
-    /* Leaving the page mid-count (nav, exit, a vault reload) must kill the
-       timer. pageCleanup is already claimed by the session as a whole, so
-       this chains onto sess rather than replacing it — the same slot the
-       media cycle uses. */
-    sess.stopCountIn = stop;
-    return;
-  }
-  /* Past the gate: the count-in has already cleared its own timer, so this
-     only drops the stale handle. */
-  sess.stopCountIn = null;
-
+  /* The count-in is NOT a screen of its own any more — it happens inside the
+     counter (see repsBody / durationBody, via attachCountIn). What used to be
+     here was a full-bleed ring that replaced the whole body, counted down,
+     and only then revealed the thing you were about to use. */
   if (entry.distance) root.append(distanceBody(ctx, draft, sess, entry, set));
   else if (entry.duration) root.append(durationBody(ctx, draft, sess, entry, set));
   else if (entry.weighted) root.append(weightedBody(ctx, draft, sess, entry, set));
@@ -284,10 +225,13 @@ function startGate(ctx, sess, entry, setIndex) {
     sess.started = true;
     ctx.rerender();
   });
+  /* NO EXERCISE NAME AND NO TARGET HERE. exerciseBlock() renders directly
+     above this — name, target and demonstration image — so repeating them
+     printed "Push-ups / 15" twice on one screen, once in the heading and
+     once in the gate. The gate's job is the position in the session and the
+     button; the exercise is already answered above it. */
   return el('div', { class: 'gv-session-body gv-session-startgate' },
-    el('div', { class: 'gv-kicker' }, `First up · set ${setIndex + 1} of ${entry.sets.length}`),
-    el('div', { class: 'gv-startgate-name' }, entry.exercise),
-    entry.target ? el('div', { class: 'gv-session-target' }, entry.target) : '',
+    el('div', { class: 'gv-kicker' }, `Set ${setIndex + 1} of ${entry.sets.length}`),
     el('div', { class: 'gv-hero-action gv-session-nextwrap' }, go),
     el('p', { class: 'gv-microcopy' }, `Counts you in from ${countdown.GATE_FROM}.`));
 }
@@ -514,8 +458,15 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      at all rather than an empty one that never fills. */
   const target = counterTarget.targetFromEntry(entry);
   const meter = attachFillMeter(zone, target);
+  /* The detonation the meter charges towards — only exists when the meter
+     does, and fires once via markHit's own guard. */
+  const powerUp = meter ? attachPowerUp(zone) : null;
+  /* "TARGET 15 REPS", not "of 15 reps". The label sits under a giant
+     numeral, and a fragment starting with "of" reads as the tail of a
+     sentence whose head is a digit — fine in prose, wrong as a standalone
+     line you glance at mid-set. Naming the thing is shorter AND clearer. */
   const targetEl = target
-    ? el('div', { class: 'gv-rc-target' }, `of ${counterTarget.describeTarget(target)}`)
+    ? el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(target)}`)
     : '';
 
   let flashTimer = null;
@@ -525,18 +476,24 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const markHit = () => {
     if (sess.targetHitFor === setKey(sess.pos)) return;
     sess.targetHitFor = setKey(sess.pos);
+    if (powerUp) powerUp.fire();
     if (!sess.muted) sound.cue('go', 'target', ctx.settings);
   };
   const showRep = () => {
     countEl.textContent = String(sess.counter.count);
-    punch(countEl);
+    punch(countEl, sess.counter.count);
     zone.classList.add('gv-rc-flash');
     if (flashTimer) window.clearTimeout(flashTimer);
     flashTimer = window.setTimeout(() => { zone.classList.remove('gv-rc-flash'); flashTimer = null; }, FLASH_MS);
     if (meter && meter.set(sess.counter.count) === 'done') markHit();
     if (!sess.muted) sound.announce(sess.counter.count, ctx.settings);
   };
+  /* THE TAP THAT SAYS "READY" IS NOT REP ONE. While the count-in is running
+     a tap skips it; only once armed does a tap count. Without this the
+     gesture that dismisses the countdown lands as the first rep and every
+     set starts one ahead. */
   const registerTap = () => {
+    if (countIn && !countIn.armed()) { countIn.skip(); return; }
     const result = tap(sess.counter, Date.now());
     sess.counter = result.state;
     if (!result.counted) return;
@@ -551,6 +508,31 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const hintEl = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' }, sess.motionOn ? 'Counting your movement — taps still work' : '');
   const sensEl = el('div', { class: 'gv-rc-sens' });
   zone.append(targetEl, hintEl, sensEl);
+
+  /* Count in, in the counter's own display. Keyed by POSITION so the screen
+     can re-render for any of the reasons it does — a mute toggle, motion
+     switched on, a typed weight — without restarting the count. Any
+     sequencer still running from a previous render of this same set is torn
+     down first, or two of them speak over each other and the earlier one
+     arms the counter behind the later. */
+  const countInKey = setKey(sess.pos);
+  let countIn = null;
+  if (sess.countedIn !== countInKey) {
+    if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
+    countIn = attachCountIn(zone, countEl, {
+      muted: sess.muted,
+      settings: ctx.settings,
+      hintEl,
+      hint: sess.motionOn ? 'Counting your movement — taps still work' : '',
+      onDone: () => {
+        sess.countedIn = countInKey;
+        countEl.textContent = String(sess.counter.count);
+      },
+    });
+    sess.stopCountIn = countIn.stop;
+  } else {
+    sess.stopCountIn = null;
+  }
   /* Catches up a counter that already has reps on it — resuming a set, or a
      re-render after a typed count — so the bar is never behind the number
      above it. */
@@ -647,9 +629,14 @@ function durationBody(ctx, draft, sess, entry, set) {
      stages, driven by the tick below. "3 x 45s" fills towards 45. */
   const target = counterTarget.targetFromEntry(entry);
   const meter = attachFillMeter(zone, target);
-  if (target) zone.append(el('div', { class: 'gv-rc-target' }, `of ${counterTarget.describeTarget(target)}`));
+  /* A hold's target moment gets the same detonation a rep target does —
+     the clock reaching the goal is no less of a reward than a tap. */
+  const powerUp = meter ? attachPowerUp(zone) : null;
+  if (target) zone.append(el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(target)}`));
 
   const currentSeconds = () => (hold.running ? Math.max(0, (Date.now() - hold.startedAt) / 1000) : hold.frozenSeconds);
+
+  let holdCountIn = null;
 
   const beginHold = () => {
     hold.running = true;
@@ -659,6 +646,7 @@ function durationBody(ctx, draft, sess, entry, set) {
   };
 
   const startStop = () => {
+    if (holdCountIn && !holdCountIn.armed()) { holdCountIn.skip(); return; }
     if (!hold.running) {
       beginHold();
     } else {
@@ -678,6 +666,7 @@ function durationBody(ctx, draft, sess, entry, set) {
       /* Once, at the moment the hold reaches its target — the seconds after
          it are bonus, not a second announcement. */
       hold.targetHit = true;
+      if (powerUp) powerUp.fire();
       if (!sess.muted) sound.cue('go', 'target', ctx.settings);
     }
     const whole = Math.floor(secs);
@@ -692,13 +681,31 @@ function durationBody(ctx, draft, sess, entry, set) {
     }
   }, 1000);
 
-  /* Consumed ONCE, and only for the set it was raised for. This function
-     runs on every render of a hold set (a mute toggle, a vault reload), and
-     a flag left set would restart the clock from zero each time — silently
-     discarding however long you had already held. */
-  if (sess.autoStartHold === setKey(sess.pos)) {
-    sess.autoStartHold = null;
-    if (!hold.running) beginHold();
+  /* Count in inside the clock's own display, then START it — "Begin" has to
+     mean something. The reps counter arms and waits for you; a hold that
+     said Begin and then sat there asking for a second tap would lose the
+     seconds between reading the word and finding the button.
+
+     Keyed by position for the same reason as the rep counter's: this
+     function runs again on every render of the set. */
+  const holdKey = setKey(sess.pos);
+  if (sess.countedIn !== holdKey) {
+    if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
+    const countIn = attachCountIn(zone, countEl, {
+      muted: sess.muted,
+      settings: ctx.settings,
+      onDone: () => {
+        sess.countedIn = holdKey;
+        countEl.textContent = fmtSeconds(hold.frozenSeconds || 0);
+        if (!hold.running) beginHold();
+      },
+    });
+    sess.stopCountIn = countIn.stop;
+    /* A tap during the count-in means "now", not "start the hold" — the
+       hold's own start is what onDone does a beat later. */
+    holdCountIn = countIn;
+  } else {
+    sess.stopCountIn = null;
   }
 
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(ctx, sess));

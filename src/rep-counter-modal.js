@@ -12,7 +12,7 @@
 const { Modal } = require('obsidian');
 const { el, ico, clear, segmented } = require('./dom');
 const { createCounter, tap, undo } = require('./rep-counter');
-const { holdWakeLock, attachTapZone, attachFillMeter, punch, typeCountButton } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, attachFillMeter, attachPowerUp, punch, typeCountButton } = require('./rep-counter-shared');
 const counterTarget = require('./counter-target');
 const { helpButton } = require('./explainer');
 const sound = require('./sound');
@@ -65,6 +65,7 @@ class RepCounterModal extends Modal {
        mid-set would make the fill bar meaningless. */
     this.target = null;
     this._meter = null;
+    this._powerup = null;
   }
 
   onOpen() {
@@ -172,8 +173,11 @@ class RepCounterModal extends Modal {
          the picker has just chosen. Open-ended returns null and the zone
          renders exactly as it always did. */
       this._meter = attachFillMeter(this.zone, this.target);
+      /* The detonation the meter charges towards; fired once by the
+         _targetHit guard in commitRep. */
+      this._powerup = this._meter ? attachPowerUp(this.zone) : null;
       if (this.target) {
-        this.zone.append(el('div', { class: 'gv-rc-target' }, `of ${counterTarget.describeTarget(this.target)}`));
+        this.zone.append(el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(this.target)}`));
       }
       c.append(this.zone);
       this.zone.focus();
@@ -293,12 +297,13 @@ class RepCounterModal extends Modal {
 
   commitRep() {
     this.renderCount();
-    punch(this.countEl);
+    punch(this.countEl, this.state.count);
     this.flash();
     if (this._meter && this._meter.set(this.state.count) === 'done' && !this._targetHit) {
       /* Once, at the moment the target is met. The reps after it are bonus,
          not a second announcement. */
       this._targetHit = true;
+      if (this._powerup) this._powerup.fire();
       if (!this.muted) sound.cue('go', 'target', this.settings);
     }
     if (!this.muted) sound.announce(this.state.count, this.settings);

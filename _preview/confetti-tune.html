@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confetti — feel check</title>
+<style>
+  /* Accent vars only, so the burst reads the same custom properties it reads
+     in the plugin. Everything else here is throwaway harness chrome. */
+  .gv-app { --gv-lime: #84cc16; --gv-lime-hi: #a3e635; --gv-lime-deep: #4d7c0f; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px;
+    background: #f5f7ef; color: #141a0e;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  p { margin: 0; max-width: 46ch; text-align: center; font-size: 13.5px; color: #5b6551; line-height: 1.55; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font: inherit; font-size: 13px; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 11px 18px; cursor: pointer; border-radius: 0;
+    border: 2px solid #141a0e; background: #fff; color: #141a0e;
+  }
+  button.go { background: #84cc16; }
+  button:active { transform: translateY(1px); }
+  .fps { font-size: 12px; color: #5b6551; font-variant-numeric: tabular-nums; }
+  /* Same rule as the plugin ships (src/styles.css) — the canvas must sit
+     fixed, inert and on top. */
+  .gv-confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
+</style>
+</head>
+<body>
+  <div class="gv-app" id="host">
+    <h1>Confetti feel check</h1>
+    <p>
+      This runs the real <code>src/confetti.js</code>, bundled unchanged — so what
+      you see here is exactly what a broken record will look like in the app.
+      Watch for the pop, then the fall.
+    </p>
+    <div class="row">
+      <button class="go" id="fire">Fire burst</button>
+      <button id="fire-top">From the callout</button>
+      <button id="stop">Stop</button>
+    </div>
+    <div class="fps" id="fps">measuring refresh rate…</div>
+  </div>
+
+<script src="confetti.bundle.js"></script>
+<script>
+(function () {
+  var host = document.getElementById('host');
+  var stopFn = null;
+  function fire(origin) {
+    if (stopFn) stopFn();
+    stopFn = GVConfetti.burst(host, origin ? { origin: origin } : undefined);
+  }
+  document.getElementById('fire').addEventListener('click', function () { fire(null); });
+  document.getElementById('fire-top').addEventListener('click', function () {
+    /* Roughly where the record callout sits on a phone. */
+    fire({ x: window.innerWidth / 2, y: window.innerHeight * 0.28 });
+  });
+  document.getElementById('stop').addEventListener('click', function () {
+    if (stopFn) { stopFn(); stopFn = null; }
+  });
+
+  /* The bug this change fixed was refresh-rate dependent, so the harness says
+     out loud what rate it is judging on. On a 120Hz panel the old build ran
+     this burst at double speed. */
+  var frames = 0, t0 = performance.now();
+  function tick(now) {
+    frames++;
+    if (now - t0 >= 1000) {
+      document.getElementById('fps').textContent =
+        'this display: ~' + Math.round(frames * 1000 / (now - t0)) + ' Hz';
+      frames = 0; t0 = now;
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  setTimeout(function () { fire(null); }, 400);
+})();
+</script>
+</body>
+</html>

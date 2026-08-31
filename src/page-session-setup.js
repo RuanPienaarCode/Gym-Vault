@@ -270,7 +270,7 @@ function setsBlock(ctx, day, ui, onChange) {
   const list = el('div', { class: 'gv-card-list' });
   items.forEach((it, i) => {
     const planned = itemSets(it);
-    const countEl = el('span', { class: 'gv-setsrow-n', 'aria-live': 'polite' });
+    const countEl = el('div', { class: 'gv-setsrow-n', 'aria-live': 'polite' });
     const draw = () => {
       const n = setsForItem(ui, it, i);
       countEl.textContent = String(n);
@@ -296,11 +296,20 @@ function setsBlock(ctx, day, ui, onChange) {
     const plus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `One more set of ${it.exercise}` }, ico('plus'));
     plus.addEventListener('click', () => step(1));
 
+    /* THE NUMBER HAS TO SAY WHAT IT IS. This row shipped as the exercise
+       name, a bare "15" underneath it, and a big lime stepper reading "5" —
+       and it was read as five reps of something, because the biggest,
+       brightest number on a row is the one taken as its subject. It is the
+       SET count; the 15 is the reps per set. Both now name their unit, and
+       the stepper carries a label of its own. */
     const row = el('div', { class: 'gv-card gv-setsrow' },
       el('div', { class: 'gv-setsrow-main' },
         el('div', { class: 'gv-setsrow-name' }, it.exercise),
-        el('div', { class: 'gv-setsrow-target' }, it.target || '')),
-      el('div', { class: 'gv-setsrow-stepper' }, minus, countEl, plus));
+        el('div', { class: 'gv-setsrow-target' }, it.target ? `${it.target} each set` : '')),
+      el('div', { class: 'gv-setsrow-stepper' },
+        minus,
+        el('div', { class: 'gv-setsrow-count' }, countEl, el('div', { class: 'gv-setsrow-unit' }, 'sets')),
+        plus));
     draw();
     list.append(row);
   });

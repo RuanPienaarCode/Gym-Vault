@@ -5,3 +5,4 @@ node_modules/
 # and _preview/*.html — regenerate with `npm run preview`).
 _preview/bundle.js
 _preview/gym.css
+_preview/confetti.bundle.js
