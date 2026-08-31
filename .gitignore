@@ -1,2 +1,7 @@
 node_modules/
 .DS_Store
+
+# Preview-harness build output (sources are _preview/{entry,obsidian-stub,build}.js
+# and _preview/*.html — regenerate with `npm run preview`).
+_preview/bundle.js
+_preview/gym.css

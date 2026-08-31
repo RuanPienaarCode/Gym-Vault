@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Nav harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;background:#e9e9e4;font-family:system-ui,sans-serif}
+  .lab{font:600 12px/1.6 system-ui;color:#555;padding:10px 12px 4px;letter-spacing:.05em;text-transform:uppercase}
+  .frame{border:1px solid #bbb;background:#fff;margin:0 12px 22px;overflow:hidden}
+  .frame > div{height:260px;display:flex;flex-direction:column}
+  #phone{width:390px}
+  #tablet{width:760px}
+  #wide{width:1180px;max-width:calc(100vw - 24px)}
+</style></head>
+<body>
+  <div class="lab">iPhone 390px — .gv-narrow (labels hidden, 26px icons)</div>
+  <div class="frame" id="phone"></div>
+  <div class="lab">760px pane — labels visible</div>
+  <div class="frame" id="tablet"></div>
+  <div class="lab">1180px pane — max-width cap</div>
+  <div class="frame" id="wide"></div>
+<script src="bundle.js"></script>
+<script>
+  // .gv-narrow is set by a ResizeObserver on the app root in controller.js;
+  // the harness applies the same class at the same threshold by hand.
+  const NARROW = 481; // controller.js:351 toggles .gv-narrow at width <= 480
+  for (const [id, active] of [['phone','dashboard'],['tablet','running'],['wide','plans']]) {
+    const host = document.getElementById(id);
+    window.__buildBar(host, active);
+    const app = host.querySelector('.gv-app');
+    if (host.getBoundingClientRect().width < NARROW) app.classList.add('gv-narrow');
+  }
+</script>
+</body></html>

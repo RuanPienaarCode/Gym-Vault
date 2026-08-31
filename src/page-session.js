@@ -21,7 +21,9 @@ const flow = require('./session-flow');
 const records = require('./records');
 const confetti = require('./confetti');
 const { createCounter, tap, undo } = require('./rep-counter');
-const { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, typeCountButton } = require('./rep-counter-shared');
+const sound = require('./sound');
+const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey } = require('./motion-count');
 const { resolveExerciseImages } = require('./page-exercise-detail');
@@ -94,8 +96,9 @@ function render(ctx, root) {
     if (sess.wakeLock) { sess.wakeLock.release(); sess.wakeLock = null; }
     if (sess.confettiStop) { sess.confettiStop(); sess.confettiStop = null; }
     if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
+    if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
     if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
-    cancelSpeech();
+    sound.cancel();
     ctx.state.session = null;
   };
   if (!sess.wakeLock) sess.wakeLock = holdWakeLock();
@@ -148,6 +151,11 @@ function topBar(ctx, draft, extra) {
 function resetActiveState(sess) {
   sess.counter = null; sess.counterFor = null;
   sess.hold = null; sess.holdFor = null;
+  /* countedIn is NOT cleared here. It is keyed by position, and every caller
+     of this function is moving to a DIFFERENT position — so the key stops
+     matching on its own, and the next set counts in. Clearing it as well
+     would be harmless today and wrong the first time something resets state
+     without moving. */
 }
 
 function setKey(pos) { return `${pos.entryIndex}:${pos.setIndex}`; }
@@ -182,6 +190,55 @@ function renderActive(ctx, root, draft, sess) {
 
   root.append(topBar(ctx, draft, extra));
   root.append(exerciseBlock(ctx, sess, entry));
+
+  /* COUNT IN FIRST — 3, 2, 1, Begin — so the first tap of the set is a rep
+     rather than the tap that got you into position.
+
+     Keyed by POSITION, not by a boolean: this screen re-renders for reasons
+     that have nothing to do with moving on (a mute toggle, switching motion
+     counting on, a typed weight), and a count-in that restarted on every one
+     of those would make the session unusable. Same setKey the counter and
+     the hold timer already use to decide whether their state still belongs
+     to the set on screen.
+
+     Not for distance sets: there is nothing to get into position for when
+     the interaction is typing two numbers, and counting someone in to a text
+     field is theatre. */
+  const countInKey = setKey(sess.pos);
+  if (!entry.distance && sess.countedIn !== countInKey) {
+    /* Stop any count-in already running before starting another. This screen
+       CAN re-render mid-count — the skip buttons and the exit button are in
+       the top bar above, and the vault watcher can force one at any moment —
+       and without this the old interval keeps ticking against a detached
+       node, so two countdowns speak over each other and the earlier one
+       advances the session a set behind the one on screen. */
+    if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
+    const stop = countdown.runCountIn(root, {
+      label: `${entry.exercise} · set ${setIndex + 1} of ${entry.sets.length}`,
+      muted: sess.muted,
+      settings: ctx.settings,
+      onDone: () => {
+        sess.countedIn = countInKey;
+        /* A hold is the one set where "Begin" has to MEAN something. The
+           reps counter arms and waits for you; a hold otherwise renders
+           "Tap to start the hold" — so the count-in would say Begin and
+           then nothing would begin, and you would lose the seconds between
+           reading the word and finding the button. durationBody consumes
+           this flag exactly once and starts its clock. */
+        if (entry.duration) sess.autoStartHold = countInKey;
+        ctx.rerender();
+      },
+    });
+    /* Leaving the page mid-count (nav, exit, a vault reload) must kill the
+       timer. pageCleanup is already claimed by the session as a whole, so
+       this chains onto sess rather than replacing it — the same slot the
+       media cycle uses. */
+    sess.stopCountIn = stop;
+    return;
+  }
+  /* Past the gate: the count-in has already cleared its own timer, so this
+     only drops the stale handle. */
+  sess.stopCountIn = null;
 
   if (entry.distance) root.append(distanceBody(ctx, draft, sess, entry, set));
   else if (entry.duration) root.append(durationBody(ctx, draft, sess, entry, set));
@@ -368,16 +425,21 @@ function motionButton(ctx, sess, entry, onRep, hintEl, sensEl) {
   return btn;
 }
 
-function muteButton(sess, onToggle) {
-  const speechOk = speechAvailable();
+/* Mute is "silence right now", for this session only — a different thing
+   from ctx.settings.soundMode, which is "when this app does speak, how". So
+   the button is disabled rather than hidden when the MODE is already silent:
+   there is nothing to mute, and a live-looking control that does nothing is
+   worse than a visibly inert one. */
+function muteButton(ctx, sess, onToggle) {
+  const canHear = sound.audible(ctx.settings);
   const btn = el('button', {
     class: 'gv-icon-btn', type: 'button',
-    'aria-label': speechOk ? (sess.muted ? 'Unmute count-back' : 'Mute count-back') : 'Speech not available on this device',
+    'aria-label': canHear ? (sess.muted ? 'Unmute count-back' : 'Mute count-back') : 'Count-back is off in settings',
   }, ico(sess.muted ? 'volume-x' : 'volume-2'));
-  if (!speechOk) btn.disabled = true;
+  if (!canHear) btn.disabled = true;
   btn.addEventListener('click', () => {
     sess.muted = !sess.muted;
-    if (sess.muted) cancelSpeech();
+    if (sess.muted) sound.cancel();
     clear(btn);
     btn.append(ico(sess.muted ? 'volume-x' : 'volume-2'));
     btn.setAttribute('aria-label', sess.muted ? 'Unmute count-back' : 'Mute count-back');
@@ -407,7 +469,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     zone.classList.add('gv-rc-flash');
     if (flashTimer) window.clearTimeout(flashTimer);
     flashTimer = window.setTimeout(() => { zone.classList.remove('gv-rc-flash'); flashTimer = null; }, FLASH_MS);
-    if (!sess.muted) speak(sess.counter.count);
+    if (!sess.muted) sound.announce(sess.counter.count, ctx.settings);
   };
   const registerTap = () => {
     const result = tap(sess.counter, Date.now());
@@ -429,11 +491,22 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     ico('minus'), el('span', {}, '1'));
   undoBtn.addEventListener('click', () => { sess.counter = undo(sess.counter); countEl.textContent = String(sess.counter.count); });
 
+  /* Typed counts are for the sets the sensor and the taps both missed — a
+     machine you cannot put the phone on, a set you counted in your head.
+     lastTapAt is carried through unchanged so typing does not open a fresh
+     debounce window that eats the next real tap, which is the same reason
+     undo() leaves it alone. */
+  const typeBtn = typeCountButton(countEl, {
+    label: `Reps for ${entry.exercise}`,
+    get: () => sess.counter.count,
+    set: n => { sess.counter = { count: n, lastTapAt: sess.counter.lastTapAt }; },
+  });
+
   const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
   doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }));
 
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' },
-    motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl), muteButton(sess), undoBtn, doneBtn);
+    motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl), muteButton(ctx, sess), typeBtn, undoBtn, doneBtn);
   return el('div', { class: 'gv-session-body' }, extraTop || '', zone, bar);
 }
 
@@ -492,12 +565,16 @@ function durationBody(ctx, draft, sess, entry, set) {
 
   const currentSeconds = () => (hold.running ? Math.max(0, (Date.now() - hold.startedAt) / 1000) : hold.frozenSeconds);
 
+  const beginHold = () => {
+    hold.running = true;
+    hold.startedAt = Date.now();
+    zone.setAttribute('aria-label', 'Tap to stop the hold');
+    zone.classList.add('gv-session-zone-live');
+  };
+
   const startStop = () => {
     if (!hold.running) {
-      hold.running = true;
-      hold.startedAt = Date.now();
-      zone.setAttribute('aria-label', 'Tap to stop the hold');
-      zone.classList.add('gv-session-zone-live');
+      beginHold();
     } else {
       const secs = Math.round(currentSeconds());
       hold.running = false;
@@ -519,11 +596,20 @@ function durationBody(ctx, draft, sess, entry, set) {
     }
     if (atCheckpoint && whole !== hold.lastAnnounced && !sess.muted) {
       hold.lastAnnounced = whole;
-      speak(whole);
+      sound.announce(whole, ctx.settings);
     }
   }, 1000);
 
-  const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(sess));
+  /* Consumed ONCE, and only for the set it was raised for. This function
+     runs on every render of a hold set (a mute toggle, a vault reload), and
+     a flag left set would restart the clock from zero each time — silently
+     discarding however long you had already held. */
+  if (sess.autoStartHold === setKey(sess.pos)) {
+    sess.autoStartHold = null;
+    if (!hold.running) beginHold();
+  }
+
+  const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(ctx, sess));
   return el('div', { class: 'gv-session-body' }, zone, checkpointEl, bar);
 }
 
@@ -615,12 +701,17 @@ function checkGoalReached(ctx, sess, draft) {
   return hits;
 }
 
-function celebrate(ctx, sess, spokenWords) {
+/* `cue` is a sound.js event kind ('record' | 'goal') or null for confetti
+   with no announcement. Not a plain string any more: a beep or a buzz cannot
+   say "new record", so the EVENT has to travel, not just the words — the
+   words are what the voice mode reads out, the kind is what the other modes
+   turn into their own shape. */
+function celebrate(ctx, sess, cueKind, words) {
   try {
     if (sess.confettiStop) sess.confettiStop();
     const host = ctx.view && ctx.view.contentEl;
     sess.confettiStop = confetti.burst(host);
-    if (!sess.muted && spokenWords) speak(spokenWords);
+    if (!sess.muted && cueKind) sound.cue(cueKind, words, ctx.settings);
   } catch (e) { console.error('gym-vault celebrate', e); }
 }
 
@@ -658,7 +749,7 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
       if (records.isRecord(prev, val)) {
         sess.recordCount++;
         callouts.push(`NEW BEST · ${describeRecord(kind, val, prev)}`);
-        celebrate(ctx, sess, 'new record');
+        celebrate(ctx, sess, 'record', 'new record');
       }
     }
   } catch (e) { console.error('gym-vault records', e); }
@@ -667,7 +758,7 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
     for (const g of checkGoalReached(ctx, sess, draft)) {
       sess.goalCount++;
       callouts.push(`GOAL HIT · ${g.name}`);
-      celebrate(ctx, sess, 'goal met');
+      celebrate(ctx, sess, 'goal', 'goal met');
     }
   } catch (e) { console.error('gym-vault goals', e); }
 
@@ -742,10 +833,10 @@ function renderRest(ctx, root, draft, sess) {
 
 /* Faster than once a second so the ring sweeps rather than jerks; the spoken
    count-in and the digits are both gated on whole seconds regardless, so the
-   extra ticks cost nothing but a little arithmetic. */
-const TICK_MS = 200;
-/* "3, 2, 1" over the last three seconds of every interval. */
-const COUNT_IN_FROM = 3;
+   extra ticks cost nothing but a little arithmetic. Both numbers come from
+   countdown.js — the set-by-set gate and this interval clock count in with
+   the same cadence because they are the same countdown. */
+const TICK_MS = countdown.TICK_MS;
 
 /* Elapsed is derived from a start stamp plus whatever was banked before the
    last pause, never accumulated tick by tick: a counter incremented on a
@@ -764,38 +855,6 @@ function startInterval(sess, index) {
   tp.paused = false;
   tp.spokenAt = null;
   tp.announcedFor = null;
-}
-
-/* A countdown ring. Decorative on purpose (aria-hidden): the seconds
-   themselves are in a real element beside it, and a screen reader gets the
-   meaningful moments from the live region in renderTimedInterval rather than
-   a per-tick stream of numbers. Built with createElementNS — no innerHTML,
-   same rule as dom.js. */
-function countdownRing(size) {
-  const NS = 'http://www.w3.org/2000/svg';
-  const r = (size - 12) / 2;
-  const circumference = 2 * Math.PI * r;
-  const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
-  svg.setAttribute('class', 'gv-count-ring');
-  svg.setAttribute('aria-hidden', 'true');
-  const arc = cls => {
-    const c = document.createElementNS(NS, 'circle');
-    c.setAttribute('cx', size / 2); c.setAttribute('cy', size / 2); c.setAttribute('r', r);
-    c.setAttribute('class', cls);
-    svg.appendChild(c);
-    return c;
-  };
-  arc('gv-count-ring-track');
-  const fill = arc('gv-count-ring-fill');
-  fill.setAttribute('transform', `rotate(-90 ${size / 2} ${size / 2})`);
-  return {
-    svg,
-    set(p) {
-      const clamped = Math.max(0, Math.min(1, p || 0));
-      fill.setAttribute('stroke-dasharray', `${(circumference * clamped).toFixed(2)} ${circumference.toFixed(2)}`);
-    },
-  };
 }
 
 /* What gets said out loud as an interval opens. A transition already names
@@ -860,13 +919,13 @@ function advanceTimed(ctx, draft, sess, opts) {
     }
   }
 
-  cancelSpeech();
+  sound.cancel();
   startInterval(sess, tp.index + 1);
   ctx.rerender();
 }
 
 function stepBack(ctx, sess) {
-  cancelSpeech();
+  sound.cancel();
   startInterval(sess, Math.max(0, sess.timed.index - 1));
   ctx.rerender();
 }
@@ -911,7 +970,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
      which is all exerciseBlock reads. */
   root.append(exerciseBlock(ctx, sess, entry || { exercise: iv.exercise, target: iv.target || '' }));
 
-  const ring = countdownRing(200);
+  const ring = countdown.countdownRing(200);
   const digits = el('div', { class: 'gv-timed-count' }, String(Math.ceil(iv.seconds)));
   /* Announced at the START of the interval and again over the count-in, not
      every second: a live region that fires once a second is noise, not help
@@ -940,7 +999,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   }, ico(tp.paused ? 'play' : 'pause'));
   playBtn.addEventListener('click', () => {
     if (tp.paused) { tp.startedAt = Date.now(); tp.paused = false; }
-    else { tp.bankedSeconds = timedElapsed(tp); tp.paused = true; cancelSpeech(); }
+    else { tp.bankedSeconds = timedElapsed(tp); tp.paused = true; sound.cancel(); }
     ctx.rerender();
   });
 
@@ -948,7 +1007,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   skipBtn.addEventListener('click', () => advanceTimed(ctx, draft, sess, { skip: true }));
 
   body.append(el('div', { class: 'gv-timed-controls' }, backBtn, playBtn, skipBtn));
-  body.append(el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(sess)));
+  body.append(el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(ctx, sess)));
 
   const callouts = (sess.pendingCallouts || []).length
     ? el('div', { class: 'gv-session-callouts' }, ...(sess.pendingCallouts || []).map(line => el('div', { class: 'gv-session-callout' }, line)))
@@ -964,7 +1023,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
     const words = announcementFor(schedule, tp.index);
     if (words) {
       live.textContent = `${words}, ${Math.round(iv.seconds)} seconds`;
-      if (!sess.muted) speak(words);
+      if (!sess.muted) sound.cue('begin', words, ctx.settings);
     } else {
       live.textContent = `${iv.exercise}, ${Math.round(iv.seconds)} seconds`;
     }
@@ -983,13 +1042,14 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
 
     if (tp.paused) return;
 
-    /* "3, 2, 1" into the next thing. Math.ceil means 3 is spoken as the
-       display flips to 3, which is where a human expects to hear it. */
-    const whole = Math.ceil(remaining);
-    if (whole >= 1 && whole <= COUNT_IN_FROM && whole !== tp.spokenAt) {
+    /* "3, 2, 1" into the next thing — countdown.countInNumber owns the
+       ceil-vs-floor rule so this clock and the set-by-set gate cannot come
+       to disagree about when 3 is 3. */
+    const whole = countdown.countInNumber(remaining);
+    if (whole !== null && whole !== tp.spokenAt) {
       tp.spokenAt = whole;
       live.textContent = String(whole);
-      if (!sess.muted) speak(whole);
+      if (!sess.muted) sound.announce(whole, ctx.settings);
     }
 
     if (remaining <= 0) advanceTimed(ctx, draft, sess);

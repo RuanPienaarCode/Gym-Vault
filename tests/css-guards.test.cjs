@@ -96,4 +96,36 @@ assert.ok(
   );
 }
 
-console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons; no linter-flagged features; wrapping button labels reset white-space)');
+/* GUARD 6: Obsidian mobile's floating navbar overlaps view content instead
+   of reserving space, so a bottom action needs --view-bottom-spacing
+   clearance to be tappable at all. That clearance belongs on .gv-page — the
+   ONE scroll container every page renders into — and nowhere else:
+
+     - on a single screen only, every OTHER screen's bottom control sits
+       under the navbar (this shipped: the session-setup Start button was
+       unreachable because the rule was on .gv-session-page alone);
+     - on .gv-page AND a descendant, the clearance is added twice inside
+       that descendant.
+
+   So: exactly one rule, and it is the .gv-page one. */
+{
+  const rules = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(m => /var\(\s*--view-bottom-spacing/.test(m[2]));
+  assert.strictEqual(
+    rules.length, 1,
+    'exactly one rule may claim --view-bottom-spacing clearance (nested claims stack); found: ' +
+    rules.map(r => r[1].trim()).join(' | '),
+  );
+  assert.match(
+    rules[0][1].trim(), /\.gv-page\s*$/,
+    'the --view-bottom-spacing clearance must sit on .gv-page, the scroll container every page ' +
+    `renders into — not on one screen. Found: ${rules[0][1].trim()}`,
+  );
+  assert.match(
+    rules[0][1].trim(), /body\.is-phone/,
+    'navbar clearance is a phone behaviour — keep it keyed on body.is-phone so tablets and ' +
+    'desktop do not gain dead space.',
+  );
+}
+
+console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons; no linter-flagged features; wrapping button labels reset white-space; one navbar-clearance rule, on .gv-page)');

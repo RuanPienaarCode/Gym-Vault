@@ -11,6 +11,15 @@ const DEFAULT_SETTINGS = {
   skin: 'floor',         // keys of SKINS
   accent: 'lime',        // keys of ACCENTS
   musicApp: 'none',      // keys of MUSIC_APPS — 'none' hides the guided-view button
+  /* How the app counts back at you. Keys of SOUND_MODES. The per-session
+     mute button is NOT this: mute means "silence right now", this means
+     "when you do make a noise, make THIS one". */
+  soundMode: 'voice',    // keys of SOUND_MODES
+  /* A voiceURI from speechSynthesis.getVoices(). '' means the device
+     default. Stored per-vault but resolved per-device: the voices on a
+     phone are not the voices on a desktop, so a URI that isn't installed
+     here falls back to the default rather than going silent. */
+  voiceURI: '',
   /* Saved music links: [{name, url}]. The url is a share link the user
      pasted; music-link.js parses it at open time (never trusts a stored
      scheme) and settings-tab refuses anything it cannot parse. */
@@ -67,6 +76,21 @@ const MUSIC_APPS = [
   ['none', 'None'],
   ['spotify', 'Spotify'],
   ['apple-music', 'Apple Music'],
+];
+
+/* How a rep count, a countdown or a record is announced — [key, name,
+   description]. Keys are what `soundMode` stores.
+
+   Every one of these is a real capability question on the device, not a
+   preference the app can simply honour: speech needs speechSynthesis, beeps
+   need WebAudio, vibration needs navigator.vibrate (which iOS WebKit does
+   NOT implement — it is Android-only in practice). sound.js owns the
+   probing and the fallback; this list is only the vocabulary. */
+const SOUND_MODES = [
+  ['voice', 'Voice', 'Counts each rep out loud, and says when you break a record.'],
+  ['beep', 'Beeps', 'A short tone per rep instead of a voice. Works where speech does not.'],
+  ['vibrate', 'Vibration', 'A buzz per rep, nothing audible. Android only — iOS does not allow it.'],
+  ['silent', 'Silent', 'No sound at all. The count is still on screen, and still read by a screen reader.'],
 ];
 
 /* Weekday keys in plan headings — `## Pull Priority (mon)`. Order is the
@@ -127,7 +151,7 @@ const GOAL_METRICS = [
 const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms', 'core', 'glutes', 'quads', 'hamstrings', 'calves', 'full body'];
 
 module.exports = {
-  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS, MUSIC_APPS,
+  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS, MUSIC_APPS, SOUND_MODES,
   GUIDE_MODES, GUIDE_MINUTES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

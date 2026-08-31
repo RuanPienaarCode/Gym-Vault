@@ -45,6 +45,7 @@ class GymPlugin extends Plugin {
           exerciseName: '',
           skin: this.settings.skin,
           accent: this.settings.accent,
+          settings: this.settings,
           onDone: count => new Notice(`Gym: counted ${count} rep${count === 1 ? '' : 's'}.`, 5000),
         }).open();
       },

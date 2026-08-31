@@ -3,14 +3,18 @@
    screen at the bottom of each rep. Exercise-agnostic: same counter serves
    push-ups (nose), sit-ups/squats (finger), or a freestyle count from the
    command palette. The counting rule itself lives in rep-counter.js, pure
-   and unit-tested; speech, wake-lock and the tap-zone wiring live in
+   and unit-tested; wake-lock and the tap-zone wiring live in
    rep-counter-shared.js (shared with the guided view's embedded counter);
-   this module owns only its own DOM and the modal chrome. */
+   how a rep is ANNOUNCED — voice, beep, buzz or nothing — lives in sound.js,
+   which the guided counter uses too so the two never sound different; this
+   module owns only its own DOM and the modal chrome. */
 
 const { Modal } = require('obsidian');
 const { el, ico, clear, segmented } = require('./dom');
 const { createCounter, tap, undo } = require('./rep-counter');
-const { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, typeCountButton } = require('./rep-counter-shared');
+const sound = require('./sound');
+const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey } = require('./motion-count');
 const { Notice } = require('obsidian');
@@ -18,7 +22,7 @@ const { Notice } = require('obsidian');
 const FLASH_MS = 180;
 
 class RepCounterModal extends Modal {
-  /* opts: { exerciseName, skin, accent, onDone(count) }. onDone fires only
+  /* opts: { exerciseName, skin, accent, settings, onDone(count) }. onDone fires only
      on the deliberate "Done" button — Cancel and any other dismissal
      (Escape, backdrop) discard the count silently, same as backing out of
      an unsaved form elsewhere in the app. */
@@ -28,6 +32,10 @@ class RepCounterModal extends Modal {
     this.exerciseName = opts.exerciseName || '';
     this.skin = opts.skin || 'floor';
     this.accent = opts.accent || 'lime';
+    /* The whole settings object, not a copy of soundMode: sound.js reads
+       both soundMode and voiceURI, and a modal holding a snapshot of one of
+       them is a modal that ignores the other. */
+    this.settings = opts.settings || {};
     this.onDone = typeof opts.onDone === 'function' ? opts.onDone : () => {};
     /* The exercise's own motion sensitivity, and the way back to the note it
        came from. Sensitivity is a property of the MOVEMENT, not of the app —
@@ -48,6 +56,7 @@ class RepCounterModal extends Modal {
        zone stays the default and this is the opt-in. */
     this.motion = false;
     this._stopMotion = null;
+    this._stopCountIn = null;
   }
 
   onOpen() {
@@ -59,15 +68,18 @@ class RepCounterModal extends Modal {
     const c = this.contentEl;
     const label = el('div', { class: 'gv-rc-label' }, this.exerciseName || 'Freestyle');
 
-    const speechOk = speechAvailable();
+    /* Nothing to mute when the mode is already silent (by choice, or
+       because this device can do none of the things that make a noise). A
+       control that silences silence is a control that lies. */
+    const canHear = sound.audible(this.settings);
     this.muteBtn = el('button', {
       class: 'gv-icon-btn', type: 'button',
-      'aria-label': speechOk ? 'Mute count-back' : 'Speech not available on this device',
+      'aria-label': canHear ? 'Mute count-back' : 'Count-back is off in settings',
     }, ico(this.muted ? 'volume-x' : 'volume-2'));
-    if (!speechOk) this.muteBtn.disabled = true;
+    if (!canHear) this.muteBtn.disabled = true;
     this.muteBtn.addEventListener('click', () => {
       this.muted = !this.muted;
-      if (this.muted) cancelSpeech();
+      if (this.muted) sound.cancel();
       this.syncMuteButton();
     });
 
@@ -92,12 +104,11 @@ class RepCounterModal extends Modal {
     const cancelBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Cancel' }, ico('x'));
     cancelBtn.addEventListener('click', () => { this._committed = false; this.close(); });
 
-    const bar = el('div', { class: 'gv-rc-bar' },
-      label,
-      el('div', { class: 'gv-rc-controls' }, this.motionBtn, this.muteBtn, undoBtn, doneBtn, cancelBtn));
+    const controls = el('div', { class: 'gv-rc-controls' }, this.motionBtn, this.muteBtn, undoBtn, doneBtn, cancelBtn);
+    const bar = el('div', { class: 'gv-rc-bar' }, label, controls);
 
     /* aria-live so a screen-reader user hears each new count — speech
-       synthesis (speak(), below) is a nicety, not a substitute: it's user-
+       synthesis (sound.announce, below) is a nicety, not a substitute: it's user-
        mutable, not available on every platform, and it FIGHTS the user's
        own screen reader rather than working with it. Announcements are
        naturally rate-limited by how fast a human can actually tap. */
@@ -109,18 +120,64 @@ class RepCounterModal extends Modal {
     /* Sensitivity only appears while motion is running: in tap mode it would
        be a control over nothing. */
     this.sensEl = el('div', { class: 'gv-rc-sens' });
+    /* Built after countEl because it edits it in place. lastTapAt rides
+       through unchanged — see the twin in page-session.js repsBody. */
+    const typeBtn = typeCountButton(this.countEl, {
+      label: 'Reps',
+      get: () => this.state.count,
+      set: n => { this.state = { count: n, lastTapAt: this.state.lastTapAt }; },
+    });
+    controls.insertBefore(typeBtn, undoBtn);
+
     this.zone = el('div', { class: 'gv-rc-zone', role: 'button', tabindex: '0', 'aria-label': 'Tap to count a rep' }, this.countEl, this.hintEl, this.sensEl);
     this._detachTapZone = attachTapZone(this.zone, () => this.registerTap());
 
-    c.append(bar, this.zone);
+    c.append(bar);
+
+    /* BEFORE the count-in starts, not after: onOpen runs in the stack of
+       whatever opened the modal — a ribbon click, a command, a button —
+       which is the user gesture iOS wants before this page may make a
+       sound, and the count-in speaks "3" off a timer a fraction of a second
+       later, by which time that stack is gone. */
+    sound.unlock();
+
+    /* Undo and Type act on a count that does not exist yet, and Type edits
+       the count element IN PLACE — which is still detached during the
+       count-in, so its number box would open somewhere nobody can see. Both
+       come back the moment the zone does. */
+    typeBtn.disabled = true;
+    undoBtn.disabled = true;
+
+    /* Count in before the zone arms — same 3, 2, 1, Begin the guided screen
+       uses, from the same module. Without it the first tap of a set is the
+       one that puts the phone on the floor, and every count starts at one
+       rep behind. The zone is held back rather than covered: a tap zone
+       under an overlay is a tap zone that will eventually be tapped
+       through. */
+    this._stopCountIn = countdown.runCountIn(c, {
+      label: this.exerciseName || 'Freestyle',
+      muted: this.muted,
+      settings: this.settings,
+      onDone: () => {
+        this._stopCountIn = null;
+        if (!this.contentEl.isConnected) return; // modal closed mid-count
+        const gate = this.contentEl.querySelector('.gv-countin');
+        if (gate) gate.remove();
+        c.append(this.zone);
+        typeBtn.disabled = false;
+        undoBtn.disabled = false;
+        this.zone.focus();
+      },
+    });
 
     this._wakeLock = holdWakeLock();
   }
 
   onClose() {
+    if (this._stopCountIn) { this._stopCountIn(); this._stopCountIn = null; }
     this.stopMotion();
     if (this._wakeLock) { this._wakeLock.release(); this._wakeLock = null; }
-    cancelSpeech();
+    sound.cancel();
     if (this._detachTapZone) { this._detachTapZone(); this._detachTapZone = null; }
     if (this._flashTimer) { window.clearTimeout(this._flashTimer); this._flashTimer = null; }
     this.contentEl.empty();
@@ -155,7 +212,7 @@ class RepCounterModal extends Modal {
   commitRep() {
     this.renderCount();
     this.flash();
-    if (!this.muted) speak(this.state.count);
+    if (!this.muted) sound.announce(this.state.count, this.settings);
   }
 
   toggleMotion() {

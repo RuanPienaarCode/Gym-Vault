@@ -26,7 +26,12 @@ const NAV = [
   { id: 'exercises', label: 'Exercises', icon: 'dumbbell' },
   { id: 'plans', label: 'Plans', icon: 'clipboard-list' },
   { id: 'goals', label: 'Goals', icon: 'target' },
-  { id: 'running', label: 'Running', icon: 'footprints', when: ctx => ctx.hasRunning() },
+  /* Running is ALWAYS here, even with no running data. It used to appear
+     only once a km-unit exercise existed, which meant the bar silently grew
+     from five tabs to six the first time a run was logged — a layout that
+     changes underneath you is worse than a tab you have not used yet, and
+     the page carries its own empty state either way. */
+  { id: 'running', label: 'Running', icon: 'footprints' },
   { id: 'history', label: 'History', icon: 'history' },
   /* place:'head' — utility destinations live top-right beside the logo, not
      in the main nav. Keeps the nav to six primary tabs, which is what makes
@@ -112,9 +117,6 @@ function mountApp(view) {
     }
     return out;
   };
-  /* The Running tab appears only once the vault actually holds running. */
-  ctx.hasRunning = () => !!ctx.data && ctx.data.exercises.some(e => (e.fm.unit || '') === 'km');
-
   ctx.openFile = file => { app.workspace.getLeaf('tab').openFile(file); };
 
   ctx.nav = (page, params) => {
@@ -238,12 +240,14 @@ function mountApp(view) {
       ctx.loadError = e.message || String(e);
     }
     syncChrome();
-    buildNav();          // the Running tab appears once running exists
+    buildNav();
     ctx.rerender();
   };
 
-  /* Rebuilt on every reload: conditional tabs (Running) appear as soon as
-     the data that justifies them exists. */
+  /* Rebuilt on every reload. Every NAV entry is unconditional today — the
+     `when` hook survives as the extension point for a tab that genuinely
+     only makes sense sometimes. Running used to use it; see NAV for why it
+     no longer does. */
   function buildNav() {
     if (!navEl) return;
     clear(navEl);
@@ -432,4 +436,7 @@ function renderSetup(ctx, root) {
   root.append(card);
 }
 
-module.exports = { mountApp };
+/* NAV is exported for the guard suite (tests/nav.test.cjs) and the preview
+   harness, which both need the real tab list rather than a copy of it — a
+   copied nav is a nav that silently stops matching the app. */
+module.exports = { mountApp, NAV };

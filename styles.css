@@ -280,11 +280,26 @@
   border-bottom: 2px solid var(--gv-ink);
 }
 .gv-nav::-webkit-scrollbar { display: none; }
+/* `flex: 1 1 auto` — the tabs divide the whole bar instead of huddling at
+   the left. Basis stays `auto` (not 0) on purpose: a 0-basis divides the row
+   perfectly evenly but then SHRINKS a button below its own label, and
+   `white-space: nowrap` means that text spills out of the button rather than
+   wrapping. Where even division actually matters — a phone, where
+   .gv-narrow has hidden every label — the content is one icon per button, so
+   `auto` and `0` give the same even row anyway.
+
+   max-width caps the stretch so six tabs across a very wide desktop pane
+   stop looking like a stretched banner. No `justify-content: center` on the
+   nav to soak up the leftover: centring a flex row that can also
+   `overflow-x: auto` puts the first item out of scroll reach. */
 .gv-app .gv-nav-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  max-width: 220px;
   gap: 7px;
-  padding: 9px 12px 10px;
+  padding: 10px 12px 11px;
   border: 0;
   background: transparent;
   color: var(--gv-ink-dim);
@@ -296,7 +311,7 @@
   white-space: nowrap;
   box-shadow: none;
 }
-.gv-nav-btn .gv-ico svg { width: 15px; height: 15px; }
+.gv-nav-btn .gv-ico svg { width: 20px; height: 20px; }
 .gv-app .gv-nav-btn:hover { color: var(--gv-ink); background: var(--gv-lime-ghost); }
 .gv-app .gv-nav-btn.on { background: var(--gv-ink); color: var(--gv-lime-hi); }
 .theme-dark .gv-app .gv-nav-btn.on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
@@ -309,6 +324,39 @@
      overridden above). Engines without env() drop only this line. */
   padding-bottom: calc(32px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
+}
+
+/* Obsidian mobile's floating navbar (the back/search/tabs pill) is
+   `position: fixed` and overlaps view content rather than reserving space
+   for it — the host itself computes exactly how much clearance that needs
+   in --view-bottom-spacing (app.css: `.is-phone.is-floating-nav,
+   .is-phone.auto-full-screen { --view-bottom-spacing: calc(safe-area-inset-
+   bottom - keyboard-height + navbar-height) }`; it's 0 when the navbar isn't
+   floating, so this is a no-op there). --touch-size-l (52px) is the navbar's
+   own height token, used here as the fallback for a host without the var —
+   the env() fallback branch restates the safe-area addition --view-bottom-
+   spacing would otherwise have folded in. Tablets/desktop never carry
+   body.is-phone, so they never see this extra padding.
+
+   ON .gv-page, THE SCROLL CONTAINER — deliberately not on any one screen.
+   This lived on .gv-session-page alone, which is a CHILD of .gv-page, so
+   guided mode cleared the navbar and every other page did not: the setup
+   screen's Start button sat underneath it, unreachable, which is the bug
+   this moved to fix. One declaration, every bottom action, no stacking
+   (a rule on both would add its clearance twice inside a session).
+
+   max() against the base padding is load-bearing, not belt-and-braces.
+   --view-bottom-spacing is 0 when the navbar is NOT floating, so the
+   clearance branch alone resolves to 12px there — LESS than the 32px the
+   base rule gives every other surface, i.e. this rule would have quietly
+   taken bottom padding away from phones it was meant to leave alone. The
+   floor makes it strictly additive: never less than the base, more when the
+   navbar is actually in the way. */
+body.is-phone .gv-app .gv-page {
+  padding-bottom: max(
+    calc(32px + env(safe-area-inset-bottom, 0px)),
+    calc(var(--view-bottom-spacing, calc(52px + env(safe-area-inset-bottom, 0px))) + 12px)
+  );
 }
 
 /* ---------- shared controls ---------- */
@@ -1411,6 +1459,35 @@
 }
 .gv-rc-zone.gv-rc-flash .gv-rc-count { color: var(--gv-lime); }
 
+/* "Type" swaps the giant count for a number box IN PLACE. It inherits the
+   display face and size so the screen does not lurch when it appears.
+
+   pointer-events: auto is LOAD-BEARING, not tidiness: .gv-rc-count above is
+   pointer-events:none so the digits cannot steal the tap zone's hit area,
+   and an input inheriting that is an input nobody can put a caret in — it
+   looks editable and simply refuses every tap. */
+.gv-app .gv-rc-typein {
+  pointer-events: auto;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 3px solid var(--gv-lime);
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--gv-display);
+  font-size: inherit;
+  line-height: 1;
+  color: var(--gv-ink);
+  text-align: center;
+  box-shadow: none;
+  -moz-appearance: textfield;
+}
+/* The spinners are unusable at this size and steal horizontal room from a
+   three-digit count. */
+.gv-app .gv-rc-typein::-webkit-outer-spin-button,
+.gv-app .gv-rc-typein::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
 /* One quiet line under the count saying what is doing the counting. Empty in
    tap mode — the tap zone does not need to announce itself — so it must not
    reserve space it is not using. */
@@ -1481,21 +1558,6 @@
    header/name/media/controls didn't need on a 390x844 phone, instead of
    everything stacking at natural size and shoving the controls off-screen. */
 .gv-session-page { display: flex; flex-direction: column; min-height: 100%; }
-
-/* Obsidian mobile's floating navbar (the back/search/tabs pill) is
-   `position: fixed` and overlaps view content rather than reserving space
-   for it — the host itself computes exactly how much clearance that needs
-   in --view-bottom-spacing (app.css: `.is-phone.is-floating-nav,
-   .is-phone.auto-full-screen { --view-bottom-spacing: calc(safe-area-inset-
-   bottom - keyboard-height + navbar-height) }`; it's 0 when the navbar isn't
-   floating, so this is a no-op there). --touch-size-l (52px) is the navbar's
-   own height token, used here as the fallback for a host without the var —
-   the env() fallback branch restates the safe-area addition --view-bottom-
-   spacing would otherwise have folded in. Tablets/desktop never carry
-   body.is-phone, so they never see this extra padding. */
-body.is-phone .gv-app .gv-session-page {
-  padding-bottom: calc(var(--view-bottom-spacing, calc(52px + env(safe-area-inset-bottom, 0px))) + 12px);
-}
 
 .gv-session-top { margin: 12px -18px 14px; padding: 0 18px 10px; border-bottom: 1px solid var(--gv-line); }
 body.is-phone .gv-app .gv-session-top { margin: 8px -18px 8px; padding: 0 18px 8px; }
@@ -1674,7 +1736,7 @@ body.is-mobile .gv-app .gv-nav-btn,
   justify-content: center;
 }
 body.is-mobile .gv-app .gv-nav-btn .gv-ico svg,
-.gv-app.gv-narrow .gv-nav-btn .gv-ico svg { width: 22px; height: 22px; }
+.gv-app.gv-narrow .gv-nav-btn .gv-ico svg { width: 26px; height: 26px; }
 
 body.is-mobile .gv-app .gv-icon-btn,
 .gv-app.gv-narrow .gv-icon-btn { width: 44px; height: 44px; }
@@ -1832,6 +1894,54 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   transition: stroke-dasharray 0.2s linear;
 }
 @media (prefers-reduced-motion: reduce) { .gv-count-ring-fill { transition: none; } }
+
+/* ---------- count-in gate (countdown.js runCountIn) ----------
+   The 3-2-1-Begin that stands in front of a set. It is a <button> because
+   tapping it skips ahead, which means app.css's own button chrome has to be
+   opted out of the usual way (.clickable-icon, added by dom.js's el() — this
+   node is built by hand in countdown.js, so it carries the class itself) and
+   `white-space` reset, since the label under it is allowed to wrap. */
+.gv-app .gv-countin {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 260px;
+  padding: 18px;
+  border: 0;
+  background: transparent;
+  color: var(--gv-ink);
+  cursor: pointer;
+  white-space: normal;
+  box-shadow: none;
+}
+.gv-countin-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gv-ink-dim); text-align: center;
+}
+.gv-countin-dial { position: relative; width: min(62vw, 220px); }
+.gv-countin-number {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--gv-display);
+  font-size: clamp(56px, 20vw, 96px); line-height: 1;
+  color: var(--gv-ink);
+}
+/* "Begin" is a word, not a digit — it cannot wear the digit's size and stay
+   inside the ring. */
+.gv-countin-number.gv-countin-go {
+  font-size: clamp(24px, 8vw, 40px);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  /* --gv-lime-deep, not --gv-lime: the accent at full strength is a flood
+     colour in this design and fails contrast as small text on the page
+     background. The deep variant is the one that reads. */
+  color: var(--gv-lime-deep);
+}
+.gv-countin-hint {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+
 .gv-timed-count {
   position: absolute; top: 0; right: 0; bottom: 0; left: 0;
   display: flex; align-items: center; justify-content: center;

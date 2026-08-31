@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault 0.7–0.9 — Feature plan</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --line:#2a2f3a;
+    --ink:#e7eaf0; --muted:#9aa3b2; --muted-2:#6f81a3;
+    --accent:#5b9dff; --accent-2:#7c5cff;
+    --crit:#f06464; --warn:#f5a524; --ok:#3ecf8e; --info:#5bb8ff;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --radius:12px; --maxw:1000px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(180deg,#0c0e12,var(--bg) 240px);color:var(--ink);
+    font-family:var(--sans);line-height:1.6;font-size:16px;padding-bottom:4rem}
+  main{max-width:var(--maxw);margin:0 auto;padding:48px 24px 96px}
+  a{color:var(--accent)}
+  header.hero{padding:8px 0 28px;border-bottom:1px solid var(--line);margin-bottom:36px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  h1{font-size:34px;line-height:1.15;margin:10px 0 8px;letter-spacing:-.02em}
+  h1 .accent{color:var(--accent-2)}
+  .lede{color:var(--muted);font-size:17px;max-width:74ch;margin:0}
+  h2{font-size:23px;margin:46px 0 14px;letter-spacing:-.01em;border-left:3px solid var(--accent);padding-left:.6rem}
+  h3{font-size:17px;margin:26px 0 8px;color:var(--muted)}
+  p{margin:10px 0} ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0}
+  .toc{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;list-style:none;padding:0}
+  .toc a{font-size:13px;color:var(--muted);text-decoration:none;border:1px solid var(--line);padding:5px 11px;border-radius:999px}
+  .toc a:hover{color:var(--ink);border-color:var(--accent)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin:16px 0}
+  code{font-family:var(--mono);font-size:.88em;background:#10131a;border:1px solid var(--line);padding:1px 6px;border-radius:6px}
+  pre{background:#10131a;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;overflow:auto;margin:12px 0;font-size:13.5px;line-height:1.55}
+  pre code{background:none;border:none;padding:0;font-size:inherit}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted-2);font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase}
+  a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .muted{color:var(--muted)} svg{display:block}
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted-2);font-size:13px}
+
+  .statwrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin:1rem 0}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:.9rem 1rem}
+  .stat .n{font-size:1.7rem;font-weight:700;line-height:1}
+  .stat .l{font-size:.78rem;color:var(--muted-2);text-transform:uppercase;letter-spacing:.06em;margin-top:.25rem}
+  .stat.crit .n{color:var(--crit)} .stat.warn .n{color:var(--warn)} .stat.ok .n{color:var(--ok)} .stat.info .n{color:var(--info)}
+
+  .callout{border-left:3px solid var(--accent);background:var(--panel-2);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:18px 0}
+  .callout.warn{border-left-color:var(--warn)} .callout.ok{border-left-color:var(--ok)} .callout.crit{border-left-color:var(--crit)}
+  .callout .t{font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .ico{width:20px;height:20px;flex:none}
+
+  .badge{display:inline-block;font-size:.68rem;font-weight:700;padding:.12rem .5rem;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  .b-crit{background:rgba(240,100,100,.16);color:var(--crit);border:1px solid rgba(240,100,100,.4)}
+  .b-warn{background:rgba(245,165,36,.15);color:var(--warn);border:1px solid rgba(245,165,36,.4)}
+  .b-ok{background:rgba(62,207,142,.13);color:var(--ok);border:1px solid rgba(62,207,142,.4)}
+  .b-info{background:rgba(91,184,255,.13);color:var(--info);border:1px solid rgba(91,184,255,.4)}
+
+  details.sev{background:var(--panel);border:1px solid var(--line);border-radius:11px;margin:.55rem 0;overflow:hidden}
+  details.sev[open]{border-color:var(--panel-2);background:var(--panel-2)}
+  details.sev>summary{cursor:pointer;list-style:none;padding:.75rem .9rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  details.sev>summary::-webkit-details-marker{display:none}
+  details.sev .tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:700;flex:none}
+  details.sev .ttl{font-weight:600;flex:1;min-width:180px}
+  details.sev .body{padding:.2rem .9rem 1rem}
+  details.sev .body h3{margin:.9rem 0 .3rem;font-size:.78rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-2)}
+  .path{font-family:var(--mono);font-size:.83rem;color:var(--accent-2);background:rgba(124,92,255,.1);padding:.05rem .35rem;border-radius:5px}
+
+  .phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.7rem;margin:1rem 0}
+  .phase{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1rem}
+  .phase .pn{font-size:.72rem;color:var(--accent);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  .phase h3{margin:.3rem 0 .5rem;font-size:1rem;color:var(--ink)}
+  .phase ul{margin:0;padding-left:1.1rem;font-size:.86rem;color:var(--muted)}
+  .badge.b-ship{background:rgba(62,207,142,.18);color:var(--ok);border:1px solid rgba(62,207,142,.55)}
+  .shipnote{border-left:3px solid var(--ok);background:rgba(62,207,142,.07);border-radius:0 var(--radius) var(--radius) 0;padding:12px 16px;margin:14px 0}
+  .shipnote strong{color:var(--ok)}
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:1rem 0;overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="eyebrow">Gym Vault · gym-app · plan</div>
+    <h1>Fourteen tickets, <span class="accent">four phases</span></h1>
+    <p class="lede">Your twelve requests, grounded in the code that exists today at v0.6.0, sliced into
+      tickets with explicit blocking edges. Each ticket names the files it touches, what makes it
+      genuinely done, and the trap it is most likely to fall into. Decisions you already made are
+      marked; decisions still open are collected at the end.</p>
+    <nav aria-label="Contents">
+      <ul class="toc">
+        <li><a href="#status">Status</a></li>
+        <li><a href="#shape">The shape</a></li>
+        <li><a href="#p0">Phase 0 · Quick wins</a></li>
+        <li><a href="#p1">Phase 1 · The counter</a></li>
+        <li><a href="#p2">Phase 2 · Records</a></li>
+        <li><a href="#p3">Phase 3 · Plans &amp; images</a></li>
+        <li><a href="#p4">Phase 4 · Running</a></li>
+        <li><a href="#open">Open decisions</a></li>
+        <li><a href="#rules">Standing rules</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section id="status">
+    <h2>Status — v0.7.0 shipped</h2>
+    <div class="shipnote">
+      <p style="margin:0 0 8px"><strong>Released 31 August 2026.</strong> Five of the fourteen tickets are
+        built, verified and out: T1, T2, T5, T6 and T7. Every one was checked in a real browser against
+        the real stylesheet, not just against a green test run — this suite renders no pages.</p>
+      <p style="margin:0" class="muted">Still open in Phase 1: <strong>T3</strong> (set a target first) and
+        <strong>T4</strong> (the power-up fill, which T3 blocks), and <strong>T8</strong> (the explainer
+        sheet). Phases 2–4 are untouched. The four open decisions at the bottom are still open.</p>
+    </div>
+    <p class="muted">Two things this release added that the plan did not ask for, both because the work
+      needed them: a browser preview harness under <span class="path">_preview/</span>
+      (<code>npm run preview</code>) so a layout can be verified at three pane widths without deploying,
+      and three new guard suites — <span class="path">tests/nav.test.cjs</span>,
+      <span class="path">tests/sound.test.cjs</span>, <span class="path">tests/countdown.test.cjs</span>.</p>
+  </section>
+
+  <section id="shape">
+    <h2>The shape</h2>
+
+    <div class="statwrap" role="img" aria-label="14 tickets across 4 phases, 3 releases, 1 unproven platform API">
+      <div class="stat info"><div class="n">14</div><div class="l">Tickets</div></div>
+      <div class="stat"><div class="n">4</div><div class="l">Phases</div></div>
+      <div class="stat ok"><div class="n">3</div><div class="l">Releases</div></div>
+      <div class="stat warn"><div class="n">1</div><div class="l">Unproven API</div></div>
+    </div>
+
+    <p>Your list splits cleanly into four bodies of work. Two are cosmetic and can ship this week.
+      One (the counter) is a single coherent redesign that must land together or not at all. One
+      (records) needs a data layer before any of its three screens. One (running) is a new subsystem
+      resting on a browser API nobody here has proven works inside Obsidian on iOS.</p>
+
+    <div class="phases">
+      <div class="phase">
+        <div class="pn">Phase 0 → v0.7.0</div>
+        <h3>Quick wins</h3>
+        <ul>
+          <li>T1 · Nav: bigger, full width, Run always</li>
+          <li>T2 · Start button under the iOS navbar</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="pn">Phase 1 → v0.7.0</div>
+        <h3>The counter</h3>
+        <ul>
+          <li>T3 · Set a target first</li>
+          <li>T4 · Power-up fill toward it</li>
+          <li>T5 · Type the reps in</li>
+          <li>T6 · 3·2·1 · Begin</li>
+          <li>T7 · Voice / beeps / buzz / silent</li>
+          <li>T8 · The explainer sheet</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="pn">Phase 2 → v0.8.0</div>
+        <h3>Records</h3>
+        <ul>
+          <li>T9 · Records data layer</li>
+          <li>T10 · Post-session records screen</li>
+          <li>T11 · Records page + history</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="pn">Phase 3 → v0.8.0</div>
+        <h3>Plans &amp; images</h3>
+        <ul>
+          <li>T12 · Filter plans by kit and focus</li>
+          <li>T13 · Exercise frame audit</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="pn">Phase 4 → v0.9.0</div>
+        <h3>Running</h3>
+        <ul>
+          <li>T14 · Run recorder with GPS</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Blocking edges</h3>
+    <div class="diagram">
+      <svg viewBox="0 0 940 250" width="940" height="250" role="img"
+           aria-label="Dependency graph. T3 blocks T4. T7 blocks T6. T9 blocks T10 and T11. T1, T2, T5, T8, T12, T13 and T14 are independent and can start immediately.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#5b9dff"/>
+          </marker>
+        </defs>
+        <g font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" fill="#e7eaf0">
+          <!-- free column -->
+          <text x="14" y="24" fill="#6f81a3" font-size="11" letter-spacing="1.4">START ANY TIME</text>
+          <g>
+            <rect x="10" y="36" width="188" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="24" y="58">T1 · Nav bar</text>
+            <rect x="10" y="78" width="188" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="24" y="100">T2 · Bottom padding</text>
+            <rect x="10" y="120" width="188" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="24" y="142">T5 · Manual reps</text>
+            <rect x="10" y="162" width="188" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="24" y="184">T8 · Explainer</text>
+            <rect x="10" y="204" width="188" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="24" y="226">T12 · Plan filters</text>
+          </g>
+
+          <!-- chains -->
+          <g>
+            <rect x="260" y="36" width="176" height="34" rx="8" fill="#171a21" stroke="#5b9dff"/>
+            <text x="274" y="58">T3 · Target first</text>
+            <line x1="440" y1="53" x2="500" y2="53" stroke="#5b9dff" stroke-width="2" marker-end="url(#ar)"/>
+            <rect x="506" y="36" width="196" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="520" y="58">T4 · Power-up fill</text>
+          </g>
+          <g>
+            <rect x="260" y="88" width="176" height="34" rx="8" fill="#171a21" stroke="#5b9dff"/>
+            <text x="274" y="110">T7 · Sound modes</text>
+            <line x1="440" y1="105" x2="500" y2="105" stroke="#5b9dff" stroke-width="2" marker-end="url(#ar)"/>
+            <rect x="506" y="88" width="196" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="520" y="110">T6 · 3·2·1 · Begin</text>
+          </g>
+          <g>
+            <rect x="260" y="140" width="176" height="34" rx="8" fill="#171a21" stroke="#5b9dff"/>
+            <text x="274" y="162">T9 · Records layer</text>
+            <line x1="440" y1="157" x2="500" y2="140" stroke="#5b9dff" stroke-width="2" marker-end="url(#ar)"/>
+            <line x1="440" y1="157" x2="500" y2="196" stroke="#5b9dff" stroke-width="2" marker-end="url(#ar)"/>
+            <rect x="506" y="123" width="196" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="520" y="145">T10 · Session records</text>
+            <rect x="506" y="179" width="196" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+            <text x="520" y="201">T11 · Records page</text>
+          </g>
+
+          <!-- risk column -->
+          <text x="760" y="24" fill="#6f81a3" font-size="11" letter-spacing="1.4">OWN TRACK</text>
+          <rect x="756" y="36" width="172" height="34" rx="8" fill="#1d212b" stroke="#2a2f3a"/>
+          <text x="770" y="58">T13 · Frame audit</text>
+          <rect x="756" y="88" width="172" height="60" rx="8" fill="#171a21" stroke="#f5a524"/>
+          <text x="770" y="112">T14 · Run + GPS</text>
+          <text x="770" y="132" font-size="11" fill="#f5a524">unproven platform API</text>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section id="p0">
+    <h2>Phase 0 · Quick wins</h2>
+    <p class="muted">Two small, self-contained changes. Neither touches logic; both are visible the
+      moment they deploy.</p>
+
+    <details class="sev" open>
+      <summary><span class="badge b-ship">shipped 0.7.0</span><span class="tid">T1</span><span class="ttl">Nav bar: bigger icons, full width, Run always visible</span><span class="badge b-ok">Small</span></summary>
+      <div class="body">
+        <h3>What exists</h3>
+        <p>Six tabs in <span class="path">src/controller.js</span> <code>NAV</code>: Today · Exercises ·
+          Plans · Goals · Running · History, with Profile, Export and Settings as head buttons
+          top-right. Running carries <code>when: ctx =&gt; ctx.hasRunning()</code>, so it is absent
+          until running data exists — which means the bar silently changes from five tabs to six.
+          Icons are 15&nbsp;px on desktop, 22&nbsp;px on narrow.</p>
+        <h3>Change</h3>
+        <ul>
+          <li>Drop the <code>when</code> guard on the Running entry so the tab count never shifts
+            under you. Verify <span class="path">src/page-running.js</span> renders a real empty
+            state with no run plan and no logged runs — it currently branches on <code>plan</code>
+            being null, so this is a check, not new code.</li>
+          <li><span class="path">src/styles.css</span> <code>.gv-nav</code>: <code>flex: 1 1 0</code>
+            on <code>.gv-nav-btn</code> so the six tabs divide the bar evenly edge to edge; bump the
+            icon to ~20&nbsp;px desktop / ~26&nbsp;px narrow.</li>
+        </ul>
+        <h3>Trap</h3>
+        <p>Full width on a wide desktop pane stretches six buttons across 1200&nbsp;px and looks
+          broken. Cap the bar with a <code>max-width</code> and centre it; full-bleed is a phone
+          behaviour, not a desktop one.</p>
+        <h3>Not doing</h3>
+        <p>You did not pick the Today → Home rename, and you did not pick moving Profile/Export into
+          the bar. Labels stay as they are; the utility buttons stay top-right.</p>
+        <h3>Done when</h3>
+        <p>A fresh vault with no running data shows six evenly-spaced tabs on an iPhone with no
+          horizontal scroll, and Run opens a page that explains itself rather than showing a blank.</p>
+      </div>
+    </details>
+
+    <details class="sev" open>
+      <summary><span class="badge b-ship">shipped 0.7.0</span><span class="tid">T2</span><span class="ttl">Start button hidden behind Obsidian's floating navbar</span><span class="badge b-ok">Small</span><span class="badge b-info">Root cause found</span></summary>
+      <div class="body">
+        <h3>Root cause</h3>
+        <p>This is already solved once, in the wrong place. <span class="path">src/styles.css:1483</span>
+          carries the correct rule — <code>body.is-phone .gv-app .gv-session-page { padding-bottom:
+          calc(var(--view-bottom-spacing, …) + 12px) }</code> — because Obsidian mobile's navbar is
+          <code>position: fixed</code> and overlaps view content instead of reserving space. But the
+          session <em>setup</em> screen renders into <span class="path">.gv-page</span>, which only
+          has <code>padding-bottom: calc(32px + env(safe-area-inset-bottom))</code> (line 297). The
+          safe-area inset does not account for the navbar, so the Start button lands underneath it.</p>
+        <h3>Change</h3>
+        <p>Extend the <code>--view-bottom-spacing</code> rule to cover <code>.gv-page</code>, not just
+          <code>.gv-session-page</code> — one declaration, both surfaces. Every page with a bottom
+          action benefits, not only setup.</p>
+        <h3>Trap</h3>
+        <p>Do not hard-code 52&nbsp;px. The host computes the exact clearance in
+          <code>--view-bottom-spacing</code> and it is 0 when the navbar is not floating; the existing
+          rule's fallback chain already handles a host without the variable. Copy that chain, do not
+          invent a second one.</p>
+        <h3>Done when</h3>
+        <p><span class="path">tests/css-guards.test.cjs</span> asserts <code>.gv-page</code> is covered
+          by the navbar-clearance rule, and Start is fully tappable on your iPhone at the bottom of a
+          long setup screen.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="p1">
+    <h2>Phase 1 · The counter</h2>
+    <p class="muted">Six tickets that together turn the counter from "a number that goes up" into a
+      set with a beginning, a target and an end. T3 must land before T4; T7 must land before T6.</p>
+
+    <details class="sev">
+      <summary><span class="tid">T3</span><span class="ttl">Set the target before the counter appears</span><span class="badge b-warn">Medium</span><span class="badge b-info">Blocks T4</span></summary>
+      <div class="body">
+        <h3>What exists</h3>
+        <p>Most of the parsing is already written. <span class="path">src/plan-parse.js</span> gives
+          <code>targetFirstNumber()</code> and <code>targetIsDuration()</code>, and
+          <span class="path">src/page-log.js</span> <code>makeEntry</code> already turns a plan line
+          like <code>4 x 12</code> into a prefilled <code>reps</code>. <code>startDraft</code> already
+          accepts <code>opts.setsPerEntry</code> to override the plan's set count — the timed mode
+          uses it today. The freestyle counter has no notion of a target at all.</p>
+        <h3>Change — both surfaces, as you chose</h3>
+        <ul>
+          <li><strong>New pure module</strong> <span class="path">src/counter-target.js</span>:
+            one function that resolves a target to <code>{kind: 'reps'|'seconds', value}</code> or
+            <code>null</code>, from either a plan target string (reusing plan-parse, never
+            re-parsing) or an explicit user entry. Unit-tested with no DOM.</li>
+          <li><strong>Freestyle</strong> (<span class="path">src/rep-counter-modal.js</span>): a first
+            step before the tap zone — reps or time, quick chips (8 · 10 · 12 · 15 · 20, 30s · 45s ·
+            60s), a free entry, and an explicit <em>open-ended</em> choice.</li>
+          <li><strong>Guided</strong> (<span class="path">src/page-session-setup.js</span>): a
+            per-exercise sets/target override, written through the existing
+            <code>setsPerEntry</code> path rather than a second mechanism.</li>
+        </ul>
+        <h3>Trap</h3>
+        <p>A target is a <em>prefill</em>, not a result. The codebase draws a hard line between a
+          prefilled figure and a measured one — see <code>set.touched</code>, and
+          <code>applyCompletion</code>'s <code>measured</code> flag, which exists precisely so a
+          timed circuit never claims a record for a number nobody watched you produce. A user-entered
+          target must not mark a set touched and must never become a logged figure on its own.</p>
+        <h3>Done when</h3>
+        <p>Opening the freestyle counter asks what you are going for, and answering it (or skipping
+          it) reaches the same tap zone that exists today with the target carried alongside.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="tid">T4</span><span class="ttl">Power-up / flame fill toward the target</span><span class="badge b-warn">Medium</span><span class="badge b-crit">Blocked by T3</span></summary>
+      <div class="body">
+        <h3>Change</h3>
+        <p>The tap zone gains an energy fill that rises with each rep or each second of a hold,
+          floods at 100&nbsp;%, and escalates visibly at the last few. Drive it from one CSS custom
+          property (<code>--gv-fill: 0..1</code>) set on the zone in <code>showRep()</code>, with the
+          animation entirely in <span class="path">src/styles.css</span> — compositor-driven
+          transitions, no per-frame JS loop.</p>
+        <h3>Traps</h3>
+        <ul>
+          <li><strong>No target, no bar.</strong> Open-ended sets keep today's flash. A progress bar
+            with no destination is a lie.</li>
+          <li><strong>Reduced motion.</strong> <code>confetti.prefersReducedMotion()</code> already
+            exists and is already honoured by the media cycle — reuse it. Under it, the fill steps
+            without animating.</li>
+          <li><strong>Overshoot.</strong> Reps past the target are a good thing, not an error state.
+            Decide what 130&nbsp;% looks like before building 100&nbsp;%.</li>
+          <li><strong>iOS 15 floor.</strong> Anything needing a newer CSS feature needs an
+            <code>@supports</code> guard, and per your own notes those guards do not silence the
+            community review linter — so prefer features that were already safe at the floor.</li>
+        </ul>
+        <h3>Done when</h3>
+        <p>A 12-rep target fills visibly and unmistakably across 12 taps on your phone, at 60&nbsp;fps,
+          with the screen awake, and does nothing distracting under reduced-motion.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="badge b-ship">shipped 0.7.0</span><span class="tid">T5</span><span class="ttl">Enter reps manually</span><span class="badge b-ok">Small</span></summary>
+      <div class="body">
+        <h3>Change</h3>
+        <p>A "Type it" button in the control bar (<code>.gv-rc-bar</code>) opening a numeric entry
+          that sets the count directly. Wire it once in
+          <span class="path">src/rep-counter-shared.js</span> so the freestyle modal and the guided
+          counter get the same button and the same rules — that module exists for exactly this
+          reason.</p>
+        <h3>Trap</h3>
+        <p>A typed count is <em>user-typed</em>, which the record logic already treats as trustworthy
+          via <code>typedByUser</code>. Setting the count must therefore also mark the set touched, or
+          you get a figure that saves but is never eligible for a record — one of the "two figures
+          derived by different rules" bugs this repo keeps producing.</p>
+        <h3>Done when</h3>
+        <p>Typing 15 mid-set and pressing Done logs 15, and beating a previous best of 12 that way
+          celebrates exactly as a tapped 15 would.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="badge b-ship">shipped 0.7.0</span><span class="tid">T6</span><span class="ttl">3 · 2 · 1 · Begin before a set starts</span><span class="badge b-ok">Small</span><span class="badge b-crit">Blocked by T7</span></summary>
+      <div class="body">
+        <h3>What exists</h3>
+        <p>Timed circuits already count down between intervals —
+          <code>countdownRing()</code> in <span class="path">src/page-session.js:774</span>, with
+          spoken 3-2-1 already wired at
+          <span class="path">src/page-session-setup.js:336</span>. There is already a countdown in
+          this app.</p>
+        <h3>Change</h3>
+        <p>Extract that ring into a shared helper and fire it in the two places you asked for:
+          set-by-set guided sets, and the freestyle tap counter. Tapping during the countdown skips
+          it. The word "Begin" appears on screen as well as being spoken, so it works muted.</p>
+        <h3>Trap</h3>
+        <p>Do <strong>not</strong> write a second countdown. Two countdowns that drift apart is the
+          same failure mode as two record calculations. One helper, three callers.</p>
+        <h3>Done when</h3>
+        <p>Entering a rep set counts 3-2-1-Begin before the zone arms, and the first tap after
+          "Begin" counts as rep 1 — not rep 0, not a swallowed tap.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="badge b-ship">shipped 0.7.0</span><span class="tid">T7</span><span class="ttl">Voice, beeps, buzz or silent</span><span class="badge b-warn">Medium</span><span class="badge b-info">Blocks T6</span></summary>
+      <div class="body">
+        <h3>Change</h3>
+        <p>New settings <code>soundMode: 'voice' | 'beep' | 'vibrate' | 'silent'</code> and
+          <code>voiceURI</code>, added as flat keys to <code>DEFAULT_SETTINGS</code> in
+          <span class="path">src/constants.js</span> — that file's own comment explains why nested
+          objects break the shallow settings merge.</p>
+        <p>New façade <span class="path">src/sound.js</span> with two entry points —
+          <code>announce(n)</code> for a rep or a hold checkpoint, <code>cue(kind)</code> for
+          begin / record / goal. Every existing <code>speak()</code> caller moves behind it:
+          <span class="path">src/rep-counter-shared.js</span>,
+          <span class="path">src/page-session.js</span> (reps, holds, timed intervals, celebrate),
+          <span class="path">src/rep-counter-modal.js</span>.</p>
+        <h3>Platform truths to design around</h3>
+        <ul>
+          <li><strong>Voices load late.</strong> <code>speechSynthesis.getVoices()</code> returns an
+            empty array on first call in several engines; the settings picker must listen for
+            <code>voiceschanged</code> and re-populate, not render an empty dropdown once.</li>
+          <li><strong>Voices are device-specific.</strong> A voice chosen on your iPhone will not
+            exist on your Mac. Store the URI, fall back to the default when it is missing, and say so
+            in the settings copy rather than silently going quiet.</li>
+          <li><strong>Beeps ship as code, not files.</strong> Synthesise with WebAudio — a short
+            oscillator burst. No audio assets in the bundle keeps the plugin small and the community
+            review clean.</li>
+          <li><strong>Vibration is Android-only in practice.</strong> iOS WebKit does not implement
+            <code>navigator.vibrate</code>. Offer the option only where the API exists, rather than
+            shipping a setting that does nothing on your own phone.</li>
+        </ul>
+        <h3>Trap</h3>
+        <p>The existing per-session mute button is not this setting. Mute means "silence right now";
+          the setting means "this is how I want to be told". Keep both, and keep the screen-reader
+          <code>aria-live</code> checkpoints ungated by either — the comment in
+          <code>durationBody</code> already explains why.</p>
+        <h3>Done when</h3>
+        <p>Each of the four modes is audibly (or palpably, or not) different on your phone, and
+          nothing crashes on a device where the chosen voice is absent.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="tid">T8</span><span class="ttl">The explainer: how tapping and motion work</span><span class="badge b-ok">Small</span></summary>
+      <div class="body">
+        <h3>Change</h3>
+        <p>As you chose: no automatic interruption. A "?" on both counters opens a sheet showing,
+          in inline animated SVG, a hand tapping the zone and a phone tilting up and down for motion
+          counting — plus one line each on the sensitivity picker and the mute button.</p>
+        <h3>Traps</h3>
+        <ul>
+          <li>Inline SVG only. No image files, no network — the app must explain itself offline.</li>
+          <li>Reduced motion shows static frames with captions, not a frozen animation.</li>
+          <li>No <code>innerHTML</code> — this repo builds SVG through the DOM helpers like everything
+            else.</li>
+        </ul>
+        <h3>Done when</h3>
+        <p>Someone who has never used the app can open the sheet from the counter and understand,
+          without reading a paragraph, that they tap the big area or tilt the phone.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="p2">
+    <h2>Phase 2 · Records</h2>
+    <p class="muted">You asked for all three: a post-session screen, a dedicated page, and per-exercise
+      history. All three read from one new data layer — that is T9, and it blocks the other two.</p>
+
+    <details class="sev">
+      <summary><span class="tid">T9</span><span class="ttl">Records data layer</span><span class="badge b-warn">Medium</span><span class="badge b-info">Blocks T10, T11</span></summary>
+      <div class="body">
+        <h3>What exists</h3>
+        <p><span class="path">src/records.js</span> answers one question — did this set beat the
+          previous best — and deliberately delegates the maxima to
+          <code>stats.exerciseBests</code>. Its header says why: two figures derived by different
+          rules is this codebase's recurring bug shape.</p>
+        <h3>Change</h3>
+        <p>Two new pure functions in the same module, both built on <code>exerciseBests</code>'s
+          rules and nothing else:</p>
+        <ul>
+          <li><code>recordHistory(workouts, exercise, kind)</code> — the ascending sequence of every
+            time the best was beaten, each with the date and the figure. This is what the exercise
+            page shows.</li>
+          <li><code>allRecords(workouts, exercises)</code> — current best per exercise per kind, with
+            the date it was set. This is what the Records page shows.</li>
+        </ul>
+        <h3>Trap</h3>
+        <p>The temptation is a faster bespoke scan that walks the rows once. Resist it. If
+          <code>allRecords</code> and <code>exerciseBests</code> can disagree on a single exercise,
+          the Records page and the exercise page will show two different numbers and you will spend
+          an evening finding out why.</p>
+        <h3>Done when</h3>
+        <p><span class="path">tests/records.test.cjs</span> proves, on seeded data, that every figure
+          <code>allRecords</code> reports is identical to what <code>exerciseBests</code> reports for
+          the same exercise.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="tid">T10</span><span class="ttl">Post-session records screen</span><span class="badge b-ok">Small</span><span class="badge b-crit">Blocked by T9</span></summary>
+      <div class="body">
+        <h3>What exists</h3>
+        <p><code>applyCompletion</code> increments <code>sess.recordCount</code> and throws away the
+          detail; <code>renderComplete</code> then prints "2 records broken". The margin you want is
+          computed and discarded.</p>
+        <h3>Change</h3>
+        <p>Keep the detail: <code>sess.records.push({exercise, kind, val, prev})</code> where the
+          counter is incremented. The completion screen then lists each one — exercise, new figure,
+          old figure, and the margin (<em>+3 reps</em>, <em>+2.5 kg</em>, <em>+0:12</em>).
+          <code>describeRecord()</code> already formats every kind correctly; extend it rather than
+          writing a second formatter.</p>
+        <h3>Trap</h3>
+        <p>A record broken twice in one session must show one row against the <em>real</em> previous
+          best, not two rows racing each other. <code>records.previousBest</code> already takes
+          <code>sess.workoutsAtStart</code> for exactly this reason — the display must respect the
+          same snapshot rule.</p>
+        <h3>Done when</h3>
+        <p>Finishing a session where you beat two bests shows both, with correct margins, and the
+          confetti still fires exactly once.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="tid">T11</span><span class="ttl">Records page, and record history per exercise</span><span class="badge b-warn">Medium</span><span class="badge b-crit">Blocked by T9</span></summary>
+      <div class="body">
+        <h3>Change</h3>
+        <ul>
+          <li>New <span class="path">src/page-records.js</span>: every exercise's current best in one
+            list, with the date set, filterable by the same chip pattern the Exercises page already
+            uses. Tapping a row opens that exercise.</li>
+          <li><span class="path">src/page-exercise-detail.js</span> gains a progression block — each
+            time this exercise's best was beaten, oldest to newest.</li>
+        </ul>
+        <h3>Open decision</h3>
+        <p>Where does the Records page live? T1 just committed the nav to six full-width tabs; a
+          seventh breaks that. Proposal: reach it from History (a segmented control) or from
+          Profile. Flagged below — this needs your call before T11 starts, not during it.</p>
+        <h3>Done when</h3>
+        <p>Every figure on the Records page matches the same figure on the exercise's own page, and
+          a brand-new vault with no history shows a real empty state.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="p3">
+    <h2>Phase 3 · Plans &amp; images</h2>
+
+    <details class="sev">
+      <summary><span class="tid">T12</span><span class="ttl">Filter plans by equipment and focus</span><span class="badge b-ok">Small</span></summary>
+      <div class="body">
+        <h3>What exists</h3>
+        <p>Both halves are already written and just never met. <span class="path">src/equipment.js</span>
+          exports <code>equipmentKeys(exercises, names)</code> and
+          <code>planExerciseNames(plan)</code> — the Plans list already prints an equipment summary per
+          card. <span class="path">src/page-exercises.js</span> has the chip-filter pattern
+          (<code>.gv-chips</code> / <code>.gv-chip</code>, "all" plus only the values actually in use).</p>
+        <h3>Change</h3>
+        <p>Two chip rows above the plans list: equipment (from <code>equipmentKeys</code> over each
+          plan's exercises) and focus (the union of <code>muscles</code> across a plan's exercises, in
+          <code>MUSCLE_GROUPS</code> order). Same "only show values in use" rule as the Exercises page,
+          so a vault with three plans does not render fourteen dead chips.</p>
+        <h3>Open decision</h3>
+        <p>The Browse / plan-library page cannot filter the same way today: a library plan's exercise
+          list is only known after download, so equipment and focus are not in the index. Filtering
+          there means adding those fields to <code>plans.json</code> in the
+          <span class="path">gym_plans</span> repo. In or out of this ticket? Flagged below.</p>
+        <h3>Done when</h3>
+        <p>Selecting "no equipment" leaves only the plans you can actually do on the floor, and
+          selecting a focus and an equipment chip together narrows correctly rather than either-or.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="tid">T13</span><span class="ttl">Exercise frame audit — how many really have all their phases?</span><span class="badge b-warn">Investigate first</span></summary>
+      <div class="body">
+        <h3>What exists</h3>
+        <p>Frames come from each exercise note's <code>image:</code> frontmatter, resolved by
+          <code>resolveExerciseImages</code> in
+          <span class="path">src/page-exercise-detail.js:123</span>. The guided view already supports
+          up to four frames (<code>MEDIA_MAX_FRAMES = 4</code>), so the plugin is not the limit.</p>
+        <h3>The thing to know before promising a fix</h3>
+        <div class="callout warn">
+          <div class="t">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#f5a524" stroke-width="2" role="img" aria-label="Warning"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            The upstream source only has two frames
+          </div>
+          <p class="muted" style="margin:0">Nearly every image is a free-exercise-db URL, and that
+            database ships exactly <code>0.jpg</code> and <code>1.jpg</code> per exercise — the code
+            even derives the second from the first for older notes. So "box jumps is missing the
+            landing frame" may not be a missing link; there may be no third frame to link to. If
+            that is what the audit finds, the fix is not an edit — it is sourcing images, which is a
+            different and much larger decision.</p>
+        </div>
+        <h3>Change</h3>
+        <p>A script — <span class="path">scripts/audit-frames.mjs</span> — that walks the seeded
+          exercise notes and the <span class="path">gym_plans</span> library and reports, per
+          exercise: how many <code>image:</code> entries, how many actually resolve, and whether the
+          movement name implies a phase the pair cannot show (jump, box, burpee, clean, snatch,
+          get-up, turkish, thruster). Output is a table, not an edit.</p>
+        <h3>Done when</h3>
+        <p>You have a count — "X exercises have one frame, Y have two, Z look like they need three" —
+          and a named decision about where the missing images would come from. Only then does a fix
+          ticket get written.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="p4">
+    <h2>Phase 4 · Running</h2>
+
+    <details class="sev" open>
+      <summary><span class="tid">T14</span><span class="ttl">Run recorder: timer, distance, speed, elevation</span><span class="badge b-crit">Large</span><span class="badge b-warn">Platform risk</span></summary>
+      <div class="body">
+        <p>You chose to build the full GPS recorder rather than spike it first. Noted and proceeding —
+          but the risk is real enough to be the ticket's first hour rather than a footnote.</p>
+
+        <div class="callout crit">
+          <div class="t">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#f06464" stroke-width="2" role="img" aria-label="Critical"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            Step one, before any UI
+          </div>
+          <p class="muted" style="margin:0">A ~30-minute probe on your actual iPhone: does
+            <code>navigator.geolocation.watchPosition</code> fire inside Obsidian iOS? Does it prompt
+            for permission? Does it keep firing with the screen locked, or only in the foreground?
+            Is the <code>app://</code> origin a secure context as far as WebKit is concerned? Every
+            line of the recorder rests on those four answers. If any is "no", the ticket delivers the
+            manual recorder below and reports back — nothing is wasted either way.</p>
+        </div>
+
+        <h3>Structure</h3>
+        <ul>
+          <li><span class="path">src/geo-track.js</span> — <strong>pure</strong>, no DOM, no
+            geolocation import: takes position fixes in, gives distance, pace and elevation gain out.
+            This is where the actual correctness lives and it is unit-testable with recorded fixture
+            fixes.</li>
+          <li><span class="path">src/page-run-recorder.js</span> — start / pause / stop, live km,
+            pace and elevation, holding the screen awake via the existing
+            <code>holdWakeLock()</code>. On stop it writes one workout row through the same path the
+            log page uses.</li>
+          <li>Run page (<span class="path">src/page-running.js</span>) gains the entry point.</li>
+        </ul>
+
+        <h3>The hard part is not the timer, it is the noise</h3>
+        <ul>
+          <li>Drop fixes with poor <code>accuracy</code> (a 100&nbsp;m fix under trees will add
+            phantom kilometres if you integrate it).</li>
+          <li>Drop physically implausible jumps between consecutive fixes.</li>
+          <li><strong>Elevation is the worst of them.</strong> Consumer GPS altitude is noisy enough
+            that naïve summing invents 200&nbsp;m of climb on a flat road. Ignore altitude entirely
+            when <code>altitudeAccuracy</code> is null or poor, and apply a minimum-change threshold
+            before counting a metre of gain. Whatever rule you pick, write it down in the module
+            header — a plausible-but-wrong elevation figure is worse than no figure.</li>
+          <li>Pace from the accumulated distance and the clock, never from the per-fix
+            <code>speed</code> field, which is unreliable and would give you two figures derived by
+            different rules.</li>
+        </ul>
+
+        <h3>Storage</h3>
+        <p>The summary (distance, seconds) fits the existing <code>WORKOUT_COLUMNS</code>, which
+          already has <code>distance_km</code>. The <em>track</em> — the polyline — does not belong in
+          a markdown table. Open decision below.</p>
+
+        <h3>Privacy</h3>
+        <p>Location data never leaves the device and is never sent anywhere; it is written into the
+          user's own vault. Say that in the permission prompt copy and in the README, plainly. This
+          plugin is public and in the community store — a location feature with no stated privacy
+          posture is the kind of thing directory review asks about.</p>
+
+        <h3>Done when</h3>
+        <p>A real run on your phone produces a distance within a few percent of a known route, a pace
+          that matches your watch, and an elevation figure you would be willing to defend — or a
+          written finding that geolocation does not work in this host, and a manual recorder that
+          does.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="open">
+    <h2>Open decisions</h2>
+    <p>Four calls I did not want to make silently. None of them block starting — each blocks one
+      specific ticket.</p>
+    <table>
+      <thead><tr><th>Decision</th><th>Blocks</th><th>My recommendation</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Where does the Records page live, now that the nav is six full-width tabs?</td>
+          <td>T11</td>
+          <td>A segmented control on History — records are history, and it keeps the tab count at six.</td>
+        </tr>
+        <tr>
+          <td>Do the plan-library (Browse) cards get the same equipment/focus filters? That needs new fields in <code>gym_plans</code>' <code>plans.json</code>.</td>
+          <td>T12</td>
+          <td>Out of scope for T12; own ticket once the library index is versioned.</td>
+        </tr>
+        <tr>
+          <td>Is the GPS track (the polyline) saved at all, and if so where — the workout note's body, or a sibling file?</td>
+          <td>T14</td>
+          <td>Summary only in v1. A track you cannot draw a map from is bytes you cannot use.</td>
+        </tr>
+        <tr>
+          <td>If T13 finds that three-frame movements have no upstream source, is sourcing images a project you want?</td>
+          <td>T13 follow-up</td>
+          <td>Decide after the audit reports counts — not before.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="rules">
+    <h2>Standing rules this plan obeys</h2>
+    <div class="panel">
+      <ul>
+        <li><strong>Green tests prove nothing about the UI.</strong> This suite renders no pages.
+          Every ticket ends with a runtime check in your vault on your phone, not with a passing
+          <code>npm test</code>.</li>
+        <li><strong>A green build installs nothing.</strong> Artifacts have to land in
+          <code>&lt;vault&gt;/.obsidian/plugins/gym-app/</code> and be proven byte-identical before
+          "it works" means anything — that is the dev-loop runbook, every time.</li>
+        <li><strong>iOS 15 WebKit is the floor</strong>, not <code>minAppVersion</code>. No lookbehind
+          regex, no Node APIs in <code>src/</code>, no <code>innerHTML</code>.</li>
+        <li><strong>One rule, one place.</strong> Two figures derived by different rules is this
+          repo's recurring bug shape. It is why T6 extracts the existing countdown instead of writing
+          a second one, why T9 builds on <code>exerciseBests</code>, and why T10 extends
+          <code>describeRecord</code>.</li>
+        <li><strong>Releases:</strong> Phase 0+1 → v0.7.0, Phase 2+3 → v0.8.0, Phase 4 → v0.9.0.
+          Three files bump, tag carries no <code>v</code> prefix, CI byte-compares the artifacts.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <p>Gym Vault feature plan · written against v0.6.0 (main @ 2555029) · 31 August 2026.
+      Self-contained — no network at runtime.</p>
+  </footer>
+</main>
+</body>
+</html>

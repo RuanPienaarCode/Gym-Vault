@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Sound harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:20px;background:#e9e9e4;font-family:system-ui,sans-serif}
+  h1{font-size:18px;margin:0 0 4px} p{margin:4px 0 16px;color:#555;font-size:13px}
+  pre{background:#fff;border:1px solid #ccc;padding:10px;font-size:12px;overflow:auto}
+  fieldset{border:1px solid #ccc;background:#fff;margin:0 0 14px;padding:10px 14px}
+  legend{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  button{font:inherit;margin:3px 4px 3px 0;padding:7px 12px;cursor:pointer}
+  label{font-size:13px;margin-right:12px}
+</style></head>
+<body>
+  <h1>sound.js harness</h1>
+  <p>Every button below is a real user gesture, which is the only way iOS will let this page make a noise.</p>
+
+  <fieldset><legend>Device capabilities</legend><pre id="caps">…</pre></fieldset>
+
+  <fieldset><legend>Mode</legend>
+    <div id="modes"></div>
+    <pre id="resolved">…</pre>
+  </fieldset>
+
+  <fieldset><legend>Make a noise</legend>
+    <button data-announce="7">announce(7)</button>
+    <button data-cue="begin" data-words="begin">cue(begin)</button>
+    <button data-cue="go" data-words="let's go">cue(go)</button>
+    <button data-cue="record" data-words="new record">cue(record)</button>
+    <button data-cue="goal" data-words="goal met">cue(goal)</button>
+    <button id="cancel">cancel()</button>
+  </fieldset>
+
+  <fieldset><legend>Voices on this device</legend><pre id="voices">…</pre></fieldset>
+
+<script src="bundle.js"></script>
+<script>
+  const sound = window.__sound;
+  const settings = { soundMode: 'voice', voiceURI: '' };
+  const caps = sound.capabilities();
+  document.getElementById('caps').textContent = JSON.stringify(caps, null, 1);
+
+  const resolved = document.getElementById('resolved');
+  const showResolved = () => {
+    const eff = sound.resolveMode(settings.soundMode, caps);
+    resolved.textContent = 'asked for: ' + settings.soundMode + '\n' +
+      'will actually: ' + eff + (eff === settings.soundMode ? '' : '  <-- device cannot do what was asked');
+  };
+  const modes = document.getElementById('modes');
+  for (const m of sound.MODES) {
+    const l = document.createElement('label');
+    const r = document.createElement('input');
+    r.type = 'radio'; r.name = 'mode'; r.value = m; r.checked = m === settings.soundMode;
+    r.addEventListener('change', () => { settings.soundMode = m; sound.unlock(); showResolved(); });
+    l.append(r, document.createTextNode(' ' + m));
+    modes.append(l);
+  }
+  showResolved();
+
+  for (const b of document.querySelectorAll('[data-announce]')) {
+    b.addEventListener('click', () => { sound.unlock(); sound.announce(b.dataset.announce, settings); });
+  }
+  for (const b of document.querySelectorAll('[data-cue]')) {
+    b.addEventListener('click', () => { sound.unlock(); sound.cue(b.dataset.cue, b.dataset.words, settings); });
+  }
+  document.getElementById('cancel').addEventListener('click', () => sound.cancel());
+
+  sound.watchVoices(vs => {
+    document.getElementById('voices').textContent = vs.length
+      ? vs.map(v => v.name + '  ' + (v.lang || '') + '  ' + v.voiceURI).join('\n')
+      : '(none reported yet — getVoices() fills in asynchronously)';
+  });
+</script>
+</body></html>

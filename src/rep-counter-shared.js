@@ -1,35 +1,25 @@
 'use strict';
 /* Side-effect helpers shared by every tap-to-count surface: the full-screen
    freestyle modal (rep-counter-modal.js) AND the guided view's embedded
-   counter/hold-timer (page-session.js). Speech, wake lock and the touch/
-   mouse tap-zone wiring live here ONCE so a debounce or a guard fix lands in
-   both places at the same time. The actual counting rule (debounce, undo,
+   counter/hold-timer (page-session.js). Wake lock and the touch/mouse
+   tap-zone wiring live here ONCE so a debounce or a guard fix lands in both
+   places at the same time. The actual counting rule (debounce, undo,
    floor-at-zero) stays pure in rep-counter.js — this module only touches the
-   DOM and browser device APIs. */
+   DOM and browser device APIs.
+
+   SPEECH USED TO LIVE HERE and now lives in sound.js. It moved because
+   speaking is no longer the only way this app can answer a rep: voice,
+   beeps, vibration and silence are one decision made once, and leaving a
+   bare speak() reachable from here is how half the call sites would have
+   kept using it. */
+
+const { el, ico } = require('./dom');
 
 /* A touch gesture that gets preventDefault()'d can still leave a browser's
    ~300ms touch->mouse compatibility window primed on some engines; this
    guard window comfortably outlasts it so a real tap never double-fires as
    a mousedown too. */
 const TOUCH_MOUSE_GUARD_MS = 800;
-
-/* ---------- speech ---------- */
-
-function speechAvailable() { return !!(window.speechSynthesis && window.SpeechSynthesisUtterance); }
-
-function speak(text) {
-  if (!speechAvailable()) return;
-  try {
-    window.speechSynthesis.cancel(); // fast reps must not queue a backlog of utterances
-    const u = new window.SpeechSynthesisUtterance(String(text));
-    window.speechSynthesis.speak(u);
-  } catch (e) { /* speech is a nicety — degrade silently, the count still lands */ }
-}
-
-function cancelSpeech() {
-  if (!speechAvailable()) return;
-  try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
-}
 
 /* ---------- wake lock ---------- */
 
@@ -84,11 +74,13 @@ function attachTapZone(zone, onTap) {
   let touchGuardUntil = 0;
 
   /* The zone is a container, and it now contains real controls (the
-     sensitivity picker). A press that starts ON one of those is that
-     control's press, not a rep — without this guard, changing sensitivity
-     mid-set silently adds a rep every time you touch it. Same rule
-     clickableCard() applies for the same reason. */
-  const nested = e => !!(e.target && e.target.closest && e.target.closest('button'));
+     sensitivity picker, and the number box "Type" swaps the count for). A
+     press that starts ON one of those is that control's press, not a rep —
+     without this guard, changing sensitivity mid-set silently adds a rep
+     every time you touch it, and placing the caret in the number box adds
+     one before you have typed anything. Same rule clickableCard() applies
+     for the same reason. */
+  const nested = e => !!(e.target && e.target.closest && e.target.closest('button, input, select, textarea'));
 
   const onTouchStart = e => {
     if (nested(e)) return;
@@ -133,4 +125,78 @@ function attachTapZone(zone, onTap) {
   };
 }
 
-module.exports = { speechAvailable, speak, cancelSpeech, holdWakeLock, attachTapZone, TOUCH_MOUSE_GUARD_MS };
+/* ---------- typing the count in by hand ---------- */
+
+/* "Type it" — set the count directly instead of tapping it out. Wired here
+   rather than in each counter so the freestyle modal and the guided view get
+   the same control with the same rules; they only supply the getter, the
+   setter and the label.
+
+   INLINE, NOT A DIALOG. A modal on top of the counter modal is a fight with
+   Obsidian's own stack, and on a phone the useful thing is the number pad,
+   which an input gets on its own. So the count display becomes an input in
+   place, and turns back into the count when it commits.
+
+   Commits on Enter and on blur; Escape abandons. Blur committing is
+   deliberate: on iOS the keyboard's "done" and a tap anywhere else both blur
+   without ever firing a key event, and a number typed and then lost is worse
+   than one committed a moment early. */
+function typeCountButton(countEl, opts) {
+  const o = opts || {};
+  const get = typeof o.get === 'function' ? o.get : () => 0;
+  const set = typeof o.set === 'function' ? o.set : () => {};
+
+  const btn = el('button', {
+    class: 'gv-btn gv-btn-ghost gv-btn-small gv-rc-type', type: 'button',
+    'aria-label': o.label || 'Type the count',
+  }, ico('pencil'), el('span', {}, 'Type'));
+
+  btn.addEventListener('click', () => {
+    if (countEl.querySelector('input')) return; // already editing
+    const before = String(get());
+    const input = el('input', {
+      class: 'gv-rc-typein', type: 'number', inputmode: 'numeric', min: '0', step: '1',
+      value: before, 'aria-label': o.label || 'Count',
+    });
+
+    let settled = false;
+    const restore = value => {
+      if (settled) return;
+      settled = true;
+      input.remove();
+      countEl.textContent = String(value);
+    };
+    const commit = () => {
+      const n = parseInt(input.value, 10);
+      /* Reps do not go negative and a blank box is not zero — an abandoned
+         edit keeps what was there, same rule undo() already applies. */
+      const next = Number.isFinite(n) && n >= 0 ? n : get();
+      restore(next);
+      set(next);
+    };
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); restore(get()); }
+      /* The counter's tap zone listens for Enter and Space as a rep. Typing
+         inside it must not also count one. */
+      e.stopPropagation();
+    });
+    input.addEventListener('blur', commit);
+    /* The input sits INSIDE the tap zone, so a tap to place the caret would
+       otherwise register as a rep. attachTapZone already ignores presses on
+       a <button>; this covers the input. */
+    for (const ev of ['touchstart', 'mousedown', 'click']) {
+      input.addEventListener(ev, e => e.stopPropagation());
+    }
+
+    countEl.textContent = '';
+    countEl.append(input);
+    input.focus();
+    input.select();
+  });
+
+  return btn;
+}
+
+module.exports = { holdWakeLock, attachTapZone, typeCountButton, TOUCH_MOUSE_GUARD_MS };

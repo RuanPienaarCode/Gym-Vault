@@ -215,6 +215,7 @@ function counterBtn(ctx, entry, set) {
       exerciseName: entry.exercise,
       skin: ctx.settings.skin,
       accent: ctx.settings.accent,
+      settings: ctx.settings,
       sensitivity: ex && ex.fm ? ex.fm.motion_sensitivity : null,
       onSensitivity: value => {
         if (!ex || !ex.file) return;

@@ -25,6 +25,7 @@ const { musicRow } = require('./music-picker');
 const { sameName } = require('./stats');
 const { itemSets } = require('./plan-parse');
 const { startDraft } = require('./page-log');
+const sound = require('./sound');
 
 /* How many moves a warm-up / cool-down block is built from. timed-plan.js
    splits its seconds budget evenly across them, so these are really "how
@@ -329,8 +330,8 @@ function previewText(ctx, day, ui) {
 
 /* SYNCHRONOUS, ALL THE WAY INTO THE SESSION — and it has to stay that way.
 
-   iOS only permits speechSynthesis once a page has spoken from inside a
-   real user-gesture call stack. Every other speak() in this app is called
+   iOS only permits speech and audio once a page has used them from inside a
+   real user-gesture call stack. Every other announcement in this app is made
    straight out of a tap handler, so it has always been fine. Timed mode is
    the first place speech fires on a TIMER (the interval announcement and the
    spoken "3, 2, 1"), which means the Start tap is the only gesture that can
@@ -343,6 +344,15 @@ function previewText(ctx, day, ui) {
    let the settings save happen afterwards on its own. Remembering the dial
    position is a convenience; the countdown you can hear is the feature. */
 function beginSession(ctx, plan, day, ui) {
+  /* FIRST LINE, SYNCHRONOUSLY — this call is the whole reason the comment
+     above insists on an unbroken gesture stack. iOS unlocks BOTH
+     speechSynthesis and AudioContext only for a page that has used them
+     from inside a real user gesture, and timed mode is the one place this
+     app makes a noise on a timer rather than on a tap. Do this before any
+     of the work below, so an early `return` on an empty schedule cannot
+     skip it. */
+  sound.unlock();
+
   if (ui.mode === 'timed') {
     const schedule = scheduleFor(ctx, day, ui);
     if (!workIntervals(schedule).length) {

@@ -1,0 +1,50 @@
+/* Nav harness entry. Uses the REAL NAV array and the REAL el()/ico() from
+   src/, and reproduces buildNav's loop verbatim (controller.js:249-270) —
+   buildNav is a closure inside mountApp, so it cannot be called directly
+   without standing up a whole plugin host. That reproduction is the one
+   thing here that can drift from the app; everything it consumes is real. */
+const { el, ico } = require('../src/dom');
+const { NAV } = require('../src/controller');
+
+function buildBar(host, activeId) {
+  const nav = el('div', { class: 'gv-nav' });
+  const headActions = el('div', { class: 'gv-head-actions' });
+  for (const item of NAV) {
+    if (item.when && !item.when({})) continue;
+    const head = item.place === 'head';
+    const b = el('button', {
+      class: head ? 'gv-head-btn' : 'gv-nav-btn',
+      type: 'button', 'data-page': item.id,
+      'aria-label': head ? item.label : null,
+    }, ico(item.icon), head ? '' : el('span', { class: 'gv-nav-label' }, item.label));
+    if (!head && item.id === activeId) b.classList.add('on');
+    (head ? headActions : nav).append(b);
+  }
+  headActions.append(el('button', { class: 'gv-head-btn', type: 'button', 'aria-label': 'Gym Vault settings' }, ico('settings')));
+
+  const head = el('div', { class: 'gv-head' },
+    el('div', { class: 'gv-logo' }, ico('dumbbell'), el('span', { class: 'gv-logo-text' }, 'Gym Vault')),
+    headActions);
+  const page = el('main', { class: 'gv-page' },
+    el('h2', { class: 'gv-toolbar-title' }, 'Page content'),
+    el('p', {}, 'The bar above is built from the real NAV array with the real dom helpers.'));
+  host.append(el('div', { class: 'gv-app gv-skin-floor gv-accent-lime' }, head, nav, page));
+}
+
+window.__buildBar = buildBar;
+
+/* sound.js, exposed for _preview/sound.html — the one module whose whole job
+   is device APIs the guard suite cannot reach (speechSynthesis, WebAudio,
+   navigator.vibrate). resolveMode() is unit-tested; that it actually makes a
+   noise is only knowable here. */
+window.__sound = require('../src/sound');
+
+/* countdown.js, for _preview/countdown.html — the count-in gate is timers +
+   SVG + real layout, none of which the guard suite can see. */
+window.__countdown = require('../src/countdown');
+
+/* rep-counter-shared.js, for _preview/typein.html — attachTapZone's guards
+   and the inline "Type" box are pointer/keyboard/focus behaviour, which is
+   exactly what a node test cannot see. */
+window.__shared = require('../src/rep-counter-shared');
+window.__repcounter = require('../src/rep-counter');
