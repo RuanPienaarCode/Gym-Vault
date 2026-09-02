@@ -89,3 +89,11 @@ window.__confetti = require('../src/confetti');
    hands them to onOpen(), which is all Modal's own machinery would have
    done before calling it. */
 window.__RepCounterModal = require('../src/rep-counter-modal').RepCounterModal;
+
+/* page-session-setup.js, for _preview/setsrow.html — the ONE sets field.
+   The real setsBlock, not a hand-built replica: a harness that rebuilds the
+   markup it is meant to be checking stops matching what ships the moment
+   the screen changes, which is exactly what happened to the nine-row
+   version of this page. */
+window.__setsBlock = require('../src/page-session-setup').setsBlock;
+window.__setsForItem = require('../src/page-session-setup').setsForItem;

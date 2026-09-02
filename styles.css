@@ -2406,6 +2406,22 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 }
 /* A count that differs from the plan says so — a number changed two sessions
    ago and forgotten must not quietly become the programme in someone's head. */
+/* ---------- today's sets: one field for the whole session ----------
+   Nine near-identical stepper rows became one, so the row carries a note
+   instead of an exercise name. */
+.gv-setsall { margin-top: 2px; }
+/* "Mixed" is a word, not a figure. The condensed display face at 22px reads
+   as a heading rather than a value, so the word drops to body type — the
+   number keeps the face that makes it scannable. */
+.gv-setsrow-n.word {
+  font-family: inherit;
+  font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+/* Only shown once the plan's own counts have been overridden. */
+.gv-app .gv-setsall-reset { margin-top: 8px; }
+.gv-app .gv-setsall-reset[hidden] { display: none; }
+
 .gv-setsrow.changed .gv-setsrow-n { color: var(--gv-lime-deep); }
 .gv-setsrow.changed { border-color: var(--gv-lime); }
 

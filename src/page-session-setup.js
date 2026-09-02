@@ -94,6 +94,48 @@ function setsPerEntryFor(day, ui) {
   return ((day && day.items) || []).map((it, i) => setsForItem(ui, it, i));
 }
 
+/* THE LEVELLING RULES, kept pure and exported for the guard test. All the
+   edge cases in "one field for every exercise" live here — a mixed plan
+   must not be flattened before anyone touches the control, and one set is
+   the floor — and none of them need a DOM to be wrong. */
+
+/* One set is the floor: zero sets is not a lighter session, it is a missing
+   exercise, and skipping one already has its own control inside the
+   session. Ten is a ceiling against a stuck thumb. */
+const SETS_MIN = 1;
+const SETS_MAX = 10;
+const nextSetsValue = (base, delta) => Math.max(SETS_MIN, Math.min(SETS_MAX, base + delta));
+
+/* The count every exercise currently resolves to, or null when they differ.
+   The single source for what the one field is allowed to claim: showing a
+   number over a plan that varies is the "two figures derived by different
+   rules" failure this codebase keeps finding, and the preview total
+   underneath would contradict it. */
+function uniformSets(items, ui) {
+  const list = items || [];
+  if (!list.length) return null;
+  const first = setsForItem(ui, list[0], 0);
+  return list.every((it, i) => setsForItem(ui, it, i) === first) ? first : null;
+}
+
+/* Stepping out of a mixed plan has to start somewhere the user recognises:
+   the count most of the exercises already carry. Ties break high — of "some
+   3s and some 1s", 3 is the session you were more nearly going to do. */
+function mostCommonSets(planned) {
+  const tally = new Map();
+  for (const n of planned || []) tally.set(n, (tally.get(n) || 0) + 1);
+  if (!tally.size) return SETS_MIN;
+  return [...tally.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
+}
+
+/* Writes one count across every index. Keyed by index because that is what
+   setsPerEntryFor reads and what startDraft receives — one path from "how
+   many sets" to a draft, not two. */
+function levelSets(ui, count, n) {
+  for (let i = 0; i < count; i++) ui.sets[i] = n;
+  return ui.sets;
+}
+
 function unitOf(ctx, name) {
   const ex = (ctx.data.exercises || []).find(e => sameName(e.name, name));
   return ex && ex.fm ? ex.fm.unit || null : null;
@@ -254,66 +296,91 @@ function render(ctx, root) {
   root.append(el('div', { class: 'gv-hero-action gv-setup-start' }, start));
 }
 
-/* Today's set counts, per exercise, before anything is created.
+/* TODAY'S SETS — ONE FIELD FOR THE WHOLE SESSION.
+
+   This was nine steppers, one per exercise, and on a nine-move circuit it
+   filled the screen with a column of near-identical rows that all said the
+   same number. Nobody sets a different count per exercise on the way into a
+   circuit; they decide how many times round they are going today. So it is
+   one control that levels every exercise.
 
    Nothing here writes to disk and nothing exists until Start — same promise
-   the rest of this screen makes. The numbers ride into startDraft as
-   `setsPerEntry`, which is the mechanism the timed schedule already uses, so
-   there is ONE path from "how many sets" to a draft rather than two. */
+   the rest of this screen makes, and the same reason `ui.sets` is not a plan
+   edit: "two rounds today because my shoulder is sore" is a fact about
+   today. Per-exercise counts are still expressible; they live in the plan's
+   own EDIT mode, which is where the programme is authored.
+
+   MIXED PLANS ARE NOT FLATTENED ON SIGHT. A plan may legitimately ask for 3
+   of the squats and 1 of the plank. Until this control is touched, every
+   exercise keeps its own count and the field reads "Mixed" — showing a
+   single number over a plan that varies would be the "two figures derived by
+   different rules" failure this codebase keeps finding, and the total in the
+   preview line underneath would contradict it. The first press levels them,
+   and says so before it does. */
 function setsBlock(ctx, day, ui, onChange) {
   const items = (day && day.items) || [];
   if (!items.length) return el('div', {});
 
+  const planned = items.map(it => itemSets(it));
+  const uniformNow = () => uniformSets(items, ui);
+  const overridden = () => Object.keys(ui.sets || {}).length > 0;
+
   const wrap = el('div', {});
   wrap.append(el('div', { class: 'gv-section-title' }, ico('list'), el('span', {}, 'Sets')));
 
-  const list = el('div', { class: 'gv-card-list' });
-  items.forEach((it, i) => {
-    const planned = itemSets(it);
-    const countEl = el('div', { class: 'gv-setsrow-n', 'aria-live': 'polite' });
-    const draw = () => {
-      const n = setsForItem(ui, it, i);
-      countEl.textContent = String(n);
-      /* Say so when today differs from the programme, so a number changed
-         two sessions ago and forgotten cannot quietly become the new normal
-         in someone's head. */
-      row.classList.toggle('changed', n !== planned);
-      minus.disabled = n <= 1;
-    };
-    const step = delta => {
-      const now = setsForItem(ui, it, i);
-      /* One set is the floor: zero sets is not a lighter session, it is a
-         missing exercise, and skipping one already has its own control
-         inside the session. Ten is a ceiling against a stuck thumb. */
-      ui.sets[i] = Math.max(1, Math.min(10, now + delta));
-      draw();
-      /* The preview quotes the total, so it has to move with the stepper —
-         otherwise the line under the button contradicts the button. */
-      if (onChange) onChange();
-    };
-    const minus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `One fewer set of ${it.exercise}` }, ico('minus'));
-    minus.addEventListener('click', () => step(-1));
-    const plus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `One more set of ${it.exercise}` }, ico('plus'));
-    plus.addEventListener('click', () => step(1));
+  const countEl = el('div', { class: 'gv-setsrow-n', 'aria-live': 'polite' });
+  const noteEl = el('div', { class: 'gv-setsrow-target' });
+  const reset = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-setsall-reset', type: 'button' }, 'Back to the plan');
 
-    /* THE NUMBER HAS TO SAY WHAT IT IS. This row shipped as the exercise
-       name, a bare "15" underneath it, and a big lime stepper reading "5" —
-       and it was read as five reps of something, because the biggest,
-       brightest number on a row is the one taken as its subject. It is the
-       SET count; the 15 is the reps per set. Both now name their unit, and
-       the stepper carries a label of its own. */
-    const row = el('div', { class: 'gv-card gv-setsrow' },
-      el('div', { class: 'gv-setsrow-main' },
-        el('div', { class: 'gv-setsrow-name' }, it.exercise),
-        el('div', { class: 'gv-setsrow-target' }, it.target ? `${it.target} each set` : '')),
-      el('div', { class: 'gv-setsrow-stepper' },
-        minus,
-        el('div', { class: 'gv-setsrow-count' }, countEl, el('div', { class: 'gv-setsrow-unit' }, 'sets')),
-        plus));
+  const draw = () => {
+    const n = uniformNow();
+    countEl.textContent = n === null ? 'Mixed' : String(n);
+    /* The figure is the display face when it is a number, and ordinary text
+       when it is the word — "Mixed" in the condensed display face at 22px
+       reads as a heading, not a value. */
+    countEl.classList.toggle('word', n === null);
+    noteEl.textContent = n === null
+      ? `The plan varies — this levels all ${items.length}`
+      : `${items.length} exercise${items.length === 1 ? '' : 's'}, ${n} each`;
+    row.classList.toggle('changed', overridden());
+    minus.disabled = n !== null && n <= 1;
+    reset.hidden = !overridden();
+  };
+
+  const step = delta => {
+    const base = uniformNow() ?? mostCommonSets(planned);
+    levelSets(ui, items.length, nextSetsValue(base, delta));
     draw();
-    list.append(row);
+    /* The preview quotes the total, so it has to move with the stepper —
+       otherwise the line under the button contradicts the button. */
+    if (onChange) onChange();
+  };
+
+  const minus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'One fewer set of every exercise' }, ico('minus'));
+  minus.addEventListener('click', () => step(-1));
+  const plus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'One more set of every exercise' }, ico('plus'));
+  plus.addEventListener('click', () => step(1));
+
+  /* Levelling a mixed plan is otherwise a one-way door inside this screen:
+     once every index carries an override there is no way back to the plan's
+     own counts without leaving and coming back. */
+  reset.addEventListener('click', () => {
+    ui.sets = {};
+    draw();
+    if (onChange) onChange();
   });
-  wrap.append(list);
+
+  const row = el('div', { class: 'gv-card gv-setsrow gv-setsall' },
+    el('div', { class: 'gv-setsrow-main' },
+      el('div', { class: 'gv-setsrow-name' }, 'Every exercise'),
+      noteEl),
+    el('div', { class: 'gv-setsrow-stepper' },
+      minus,
+      el('div', { class: 'gv-setsrow-count' }, countEl, el('div', { class: 'gv-setsrow-unit' }, 'sets')),
+      plus));
+
+  draw();
+  wrap.append(row, reset);
   return wrap;
 }
 
@@ -494,4 +561,9 @@ function rememberSetup(ctx, ui) {
   } catch (e) { console.error('gym-vault save guide settings', e); }
 }
 
-module.exports = { render };
+/* The levelling rules are exported alongside render for tests/session-sets
+   .test.cjs — the screen itself needs a DOM, these do not. setsBlock goes
+   with them so _preview/setsrow.html can render the REAL control: it used
+   to hand-build a replica of this markup, which is a harness that silently
+   stops matching what ships. */
+module.exports = { render, setsBlock, setsForItem, setsPerEntryFor, uniformSets, mostCommonSets, nextSetsValue, levelSets, SETS_MIN, SETS_MAX };
