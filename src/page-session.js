@@ -72,10 +72,6 @@ function render(ctx, root) {
          best twice in one session, which sess.records deliberately collapses
          into one row. Two figures derived by different rules, in the same
          object, three lines apart. */
-      /* false until the user taps Start on the first set. The count-in is
-         gated on it so a session never begins counting on the navigation
-         that got here. */
-      started: false,
       records: [],
       goalCount: 0,
       confettiStop: null,
@@ -214,27 +210,6 @@ function renderActive(ctx, root, draft, sess) {
   else if (entry.duration) root.append(durationBody(ctx, draft, sess, entry, set));
   else if (entry.weighted) root.append(weightedBody(ctx, draft, sess, entry, set));
   else root.append(repsBody(ctx, draft, sess, entry, set));
-}
-
-/* "Ready?" — the one tap that begins a session, before any clock runs. */
-function startGate(ctx, sess, entry, setIndex) {
-  const go = el('button', { class: 'gv-btn-go', type: 'button' }, 'Start');
-  go.addEventListener('click', () => {
-    /* The gesture iOS wants, spent on the stack that leads straight into the
-       count-in's first spoken number. */
-    sound.unlock();
-    sess.started = true;
-    ctx.rerender();
-  });
-  /* NO EXERCISE NAME AND NO TARGET HERE. exerciseBlock() renders directly
-     above this — name, target and demonstration image — so repeating them
-     printed "Push-ups / 15" twice on one screen, once in the heading and
-     once in the gate. The gate's job is the position in the session and the
-     button; the exercise is already answered above it. */
-  return el('div', { class: 'gv-session-body gv-session-startgate' },
-    el('div', { class: 'gv-kicker' }, `Set ${setIndex + 1} of ${entry.sets.length}`),
-    el('div', { class: 'gv-hero-action gv-session-nextwrap' }, go),
-    el('p', { class: 'gv-microcopy' }, `Counts you in from ${countdown.GATE_FROM}.`));
 }
 
 function exerciseBlock(ctx, sess, entry) {

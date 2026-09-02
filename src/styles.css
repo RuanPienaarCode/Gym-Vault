@@ -1744,13 +1744,6 @@ body.is-phone .gv-app .gv-page {
 .gv-rc-zone[data-fill="done"] .gv-rc-target { color: var(--gv-ink-fixed); }
 
 /* The first-set start gate — one tap before any clock runs. */
-.gv-session-startgate {
-  flex: 1 1 auto;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px; text-align: center; padding: 20px;
-}
-.gv-startgate-name { font-family: var(--gv-display); font-size: clamp(32px, 11vw, 56px); line-height: 1.02; }
-.gv-session-startgate .gv-hero-action { width: 100%; }
 
 /* Records broken this session, on the completion screen. The MARGIN is the
    loud half — it is the thing you did — and the figure it beat sits under
@@ -2425,52 +2418,6 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 }
 @media (prefers-reduced-motion: reduce) { .gv-count-ring-fill { transition: none; } }
 
-/* ---------- count-in gate (countdown.js runCountIn) ----------
-   The 3-2-1-Begin that stands in front of a set. It is a <button> because
-   tapping it skips ahead, which means app.css's own button chrome has to be
-   opted out of the usual way (.clickable-icon, added by dom.js's el() — this
-   node is built by hand in countdown.js, so it carries the class itself) and
-   `white-space` reset, since the label under it is allowed to wrap. */
-.gv-app .gv-countin {
-  flex: 1 1 auto;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 260px;
-  padding: 18px;
-  border: 0;
-  background: transparent;
-  color: var(--gv-ink);
-  cursor: pointer;
-  white-space: normal;
-  box-shadow: none;
-}
-.gv-countin-label {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--gv-ink-dim); text-align: center;
-}
-.gv-countin-dial { position: relative; width: min(62vw, 220px); }
-.gv-countin-number {
-  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--gv-display);
-  font-size: clamp(56px, 20vw, 96px); line-height: 1;
-  color: var(--gv-ink);
-}
-/* "Begin" is a word, not a digit — it cannot wear the digit's size and stay
-   inside the ring. */
-.gv-countin-number.gv-countin-go {
-  font-size: clamp(24px, 8vw, 40px);
-  letter-spacing: 0.04em; text-transform: uppercase;
-  /* --gv-lime-deep, not --gv-lime: the accent at full strength is a flood
-     colour in this design and fails contrast as small text on the page
-     background. The deep variant is the one that reads. */
-  color: var(--gv-lime-deep);
-}
-.gv-countin-hint {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--gv-ink-dim);
-}
 
 .gv-timed-count {
   position: absolute; top: 0; right: 0; bottom: 0; left: 0;

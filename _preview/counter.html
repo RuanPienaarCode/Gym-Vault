@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Counter screen harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .lab{font:600 11px/1.6 system-ui;color:#555;letter-spacing:.05em;text-transform:uppercase;margin:0 0 4px}
+  .frame{border:1px solid #bbb;background:#fff;overflow:hidden;width:390px}
+  .frame .gv-app{display:flex;flex-direction:column;height:760px}
+  .frame .gv-page{overflow:auto}
+  button.go{font:inherit;padding:7px 12px;margin:0 6px 6px 0;cursor:pointer}
+  pre{width:390px;background:#fff;border:1px solid #ccc;padding:8px;font-size:12px;white-space:pre-wrap;max-height:300px;overflow:auto}
+</style></head>
+<body>
+<script src="bundle.js"></script>
+<script>
+  const { el, ico } = window.__dom;
+  const NAV = window.__NAV;
+
+  const log = document.createElement('pre'); log.id = 'log'; log.textContent = 'ready';
+  const controls = document.createElement('div');
+  document.body.append(controls);
+
+  function line(msg) { log.textContent += '\n' + msg; console.log('[harness]', msg); }
+
+  /* Real head + nav chrome, built the same way controller.js's buildShell
+     does (head, nav, pageEl siblings inside .gv-app) — a fake stand-in for
+     this chrome would not prove focus mode actually hides the REAL thing. */
+  const rootEl = el('div', { class: 'gv-app gv-skin-floor gv-accent-lime gv-narrow' });
+  const headActionsEl = el('div', { class: 'gv-head-actions' });
+  const head = el('div', { class: 'gv-head' },
+    el('div', { class: 'gv-logo' }, ico('dumbbell'), el('span', { class: 'gv-logo-text' }, 'Gym Vault')),
+    headActionsEl);
+  const navEl = el('nav', { class: 'gv-nav', 'aria-label': 'Gym sections' });
+  for (const item of NAV) {
+    if (item.when && !item.when({})) continue;
+    const isHead = item.place === 'head';
+    const b = el('button', { class: isHead ? 'gv-head-btn' : 'gv-nav-btn', type: 'button', 'data-page': item.id },
+      ico(item.icon), isHead ? '' : el('span', { class: 'gv-nav-label' }, item.label));
+    (isHead ? headActionsEl : navEl).append(b);
+  }
+  const pageEl = el('main', { class: 'gv-page' });
+  rootEl.append(head, navEl, pageEl);
+
+  const frame = document.createElement('div'); frame.className = 'frame';
+  frame.append(rootEl);
+  const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = '390px · real head/nav chrome · real page-session.js';
+  document.body.append(lab, frame, log);
+
+  /* One reps exercise, two sets, no target — enough to reach repsBody
+     (focus mode + counter-settings sheet + count-in armed gate) without
+     needing the picker/duration/distance branches. */
+  function freshDraft() {
+    return {
+      date: '2026-09-02', plan: 'Harness plan', day: 'Day A', startedAt: Date.now(),
+      entries: [
+        { exercise: 'Push-ups', target: '', duration: false, weighted: false, distance: false,
+          sets: [
+            { reps: '', weight_kg: '', seconds: '', done: false, touched: false },
+            { reps: '', weight_kg: '', seconds: '', done: false, touched: false },
+          ] },
+      ],
+    };
+  }
+
+  const io = { saveExercise: async () => {} };
+  const plugin = { settings: { soundMode: 'off', voiceURI: '', weekStart: 'monday', skin: 'floor', accent: 'lime' } };
+  const data = {
+    present: true,
+    exercises: [{ name: 'Push-ups', fm: { motion_sensitivity: 'normal' }, file: null }],
+    workouts: [], goals: [], body: [],
+  };
+
+  const state = { page: 'session', params: {}, logDraft: freshDraft(), session: null, pageCleanup: null };
+
+  const ctx = {
+    app: {}, plugin, io, view: { contentEl: rootEl },
+    settings: plugin.settings, data, state,
+    notice: m => line('notice: ' + m),
+    _interval: null,
+  };
+  ctx.setPageInterval = (fn, ms) => {
+    if (ctx._interval) window.clearInterval(ctx._interval);
+    ctx._interval = window.setInterval(fn, ms);
+  };
+  const pages = {
+    session: window.__pages.session,
+    dashboard: { render: (c, root) => { root.append(el('h2', {}, 'Dashboard (placeholder — proves gv-focus does not leak here)')); } },
+  };
+  ctx.rerender = () => {
+    if (ctx._interval) { window.clearInterval(ctx._interval); ctx._interval = null; }
+    while (pageEl.firstChild) pageEl.removeChild(pageEl.firstChild);
+    /* Exactly what controller.js's ctx.rerender does at its top. */
+    rootEl.classList.remove('gv-focus');
+    (pages[ctx.state.page] || pages.dashboard).render(ctx, pageEl);
+  };
+  ctx.nav = id => {
+    if (ctx.state.pageCleanup) { ctx.state.pageCleanup(); ctx.state.pageCleanup = null; }
+    ctx.state.page = id;
+    ctx.rerender();
+  };
+  window.__ctx = ctx;
+
+  const resetBtn = document.createElement('button'); resetBtn.className = 'go'; resetBtn.textContent = 'Reset session';
+  resetBtn.addEventListener('click', () => {
+    ctx.state.logDraft = freshDraft();
+    ctx.state.session = null;
+    ctx.state.page = 'session';
+    ctx.rerender();
+    line('--- reset ---');
+  });
+  const navAwayBtn = document.createElement('button'); navAwayBtn.className = 'go'; navAwayBtn.textContent = 'nav(dashboard)';
+  navAwayBtn.addEventListener('click', () => { ctx.nav('dashboard'); line('navigated to dashboard, gv-focus present? ' + rootEl.classList.contains('gv-focus')); });
+  const navBackBtn = document.createElement('button'); navBackBtn.className = 'go'; navBackBtn.textContent = 'nav(session)';
+  navBackBtn.addEventListener('click', () => { ctx.nav('session'); });
+  const rafBtn = document.createElement('button'); rafBtn.className = 'go'; rafBtn.textContent = 'measure rafTicks(500ms)';
+  rafBtn.addEventListener('click', () => {
+    let n = 0;
+    const t0 = performance.now();
+    function f() { n++; if (performance.now() - t0 < 500) requestAnimationFrame(f); else line('rafTicks: ' + n + ' over ' + Math.round(performance.now() - t0) + 'ms, document.hidden=' + document.hidden); }
+    requestAnimationFrame(f);
+  });
+  const confettiBtn = document.createElement('button'); confettiBtn.className = 'go'; confettiBtn.textContent = 'fire confetti.burst()';
+  confettiBtn.addEventListener('click', () => {
+    const stop = window.__confetti.burst(rootEl, { origin: { x: 195, y: 300 } });
+    window.__confettiStop = stop;
+    line('confetti.burst() called, canvas present? ' + !!document.querySelector('.gv-confetti-canvas'));
+  });
+  controls.append(resetBtn, navAwayBtn, navBackBtn, rafBtn, confettiBtn);
+
+  ctx.rerender();
+  line('mounted. gv-focus present initially? ' + rootEl.classList.contains('gv-focus'));
+</script>
+</body></html>

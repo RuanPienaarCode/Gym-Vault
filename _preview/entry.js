@@ -71,3 +71,21 @@ window.__pages = {
 window.__voicePack = require('../src/voice-pack');
 window.__voiceRecord = require('../src/voice-record');
 window.__voiceClips = require('../src/voice-clips');
+
+/* page-session.js, for _preview/counter.html — the guided counter screen:
+   focus mode (gv-focus hiding the head/nav chrome), the counter-settings
+   sheet, and the count-in armed() gate are all real-DOM/timer behaviour a
+   node test cannot see. Exposed alongside the real dom helpers and NAV so
+   the harness can build the SAME head/nav chrome the controller does,
+   instead of a fake stand-in that could hide a real leak. */
+window.__pages.session = require('../src/page-session');
+window.__dom = require('./../src/dom');
+window.__NAV = NAV;
+window.__confetti = require('../src/confetti');
+
+/* RepCounterModal, for _preview/counter.html's second frame — the freestyle
+   tap-to-count modal. The stub Modal class has no modalEl/contentEl of its
+   own (real Obsidian creates them); the harness builds those two nodes and
+   hands them to onOpen(), which is all Modal's own machinery would have
+   done before calling it. */
+window.__RepCounterModal = require('../src/rep-counter-modal').RepCounterModal;
