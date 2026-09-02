@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Running records harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .lab{font:600 11px/1.6 system-ui;color:#555;letter-spacing:.05em;text-transform:uppercase;margin:0 0 4px}
+  .frame{border:1px solid #bbb;background:#fff;overflow:hidden}
+  .frame .gv-app{display:flex;flex-direction:column;height:760px}
+  .frame .gv-page{overflow:auto;padding:12px}
+</style></head>
+<body>
+<script src="bundle.js"></script>
+<script>
+  const w = (date, rows) => ({ name: date, fm: { date }, rows });
+  const run = (exercise, distance_km, seconds) => ({ exercise, distance_km, seconds });
+  const workouts = [
+    w('2026-07-07', [run('Easy Run', '4', '1500')]),
+    w('2026-07-11', [run('Long Trail Run', '5', '2100')]),
+    w('2026-07-14', [run('Easy Run', '4.5', '1620')]),
+    w('2026-07-18', [run('Long Trail Run', '7', '2800')]),
+    w('2026-07-25', [run('Long Trail Run', '8', '')]),
+    w('2026-08-01', [run('Long Trail Run', '8', '3000')]),
+    w('2026-08-04', [run('Easy Run', '0.4', '60')]),
+  ];
+  const exercises = [
+    { name: 'Easy Run', fm: { unit: 'km' } },
+    { name: 'Long Trail Run', fm: { unit: 'km' } },
+    { name: 'Hill Repeats', fm: { unit: 'km' } },
+  ];
+  function mount(width, theme, data) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = '';
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = width + 'px' + (theme ? ' · dark' : '');
+    const frame = document.createElement('div'); frame.className = 'frame' + (theme ? ' theme-dark' : ''); frame.style.width = width + 'px';
+    const app = document.createElement('div'); app.className = 'gv-app gv-skin-floor gv-accent-lime' + (width <= 480 ? ' gv-narrow' : '');
+    const page = document.createElement('main'); page.className = 'gv-page';
+    app.append(page); frame.append(app); wrap.append(lab, frame); document.body.append(wrap);
+    const ctx = { data, settings: { weekStart: 'mon' }, state: { page: 'run-records', params: {} },
+      nav: (p, params) => { window.__lastNav = [p, params]; }, rerender: () => {} };
+    window.__pages.runRecords.render(ctx, page);
+    return page;
+  }
+  window.__mount = mount;
+  mount(390, false, { workouts, exercises });
+  mount(390, true, { workouts, exercises });
+  mount(390, false, { workouts: [], exercises });
+</script>
+</body></html>

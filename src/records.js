@@ -18,8 +18,11 @@ const { exerciseBests, sameName, num } = require('./stats');
 const KINDS = ['reps', 'weight', 'seconds'];
 
 /* Which row column each kind reads. One table, so recordHistory and
-   allRecords cannot come to disagree about what "weight" means. */
-const COLUMN = { reps: 'reps', weight: 'weight_kg', seconds: 'seconds' };
+   allRecords cannot come to disagree about what "weight" means. `distance`
+   is here for recordHistory's benefit (the Running records page can walk
+   it) without being in KINDS — the strength Records page still does not
+   claim a distance record. */
+const COLUMN = { reps: 'reps', weight: 'weight_kg', seconds: 'seconds', distance: 'distance_km' };
 
 /* The best-so-far for `kind`, computed from `workouts`. Callers MUST pass a
    snapshot taken before the guided session started (or otherwise excluding

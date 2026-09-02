@@ -29,7 +29,18 @@
       what will actually happen, and callers never see the difference.
 
    The decisions are pure and exported for the guard suite; only the bottom
-   third of this file touches a device API. */
+   third of this file touches a device API.
+
+   A FIFTH MODE, 'custom', IS THE USER'S OWN VOICE. voice-pack.js is the
+   list of what can be recorded and voice-record.js is the microphone; this
+   module only holds the decoded clips and plays them. The rule for a
+   missing clip is per-announcement, not per-mode: "seventeen" recorded and
+   "eighteen" not means rep eighteen is spoken by the device voice, not
+   skipped — a count that goes quiet on one number is a count you cannot
+   trust. Clips play through the same AudioContext the beeps use, so the one
+   unlock() covers both. */
+
+const voicePack = require('./voice-pack');
 
 /* ---------- capabilities (the only device probing that happens) ---------- */
 
@@ -44,11 +55,13 @@ function capabilities() {
 
 /* ---------- pure decisions ---------- */
 
-const MODES = ['voice', 'beep', 'vibrate', 'silent'];
+const MODES = ['voice', 'custom', 'beep', 'vibrate', 'silent'];
 
 /* What will ACTUALLY happen, given what was asked for and what the device
    can do. The fallback chain is deliberate and one-directional:
 
+     custom  -> voice   (your own recordings need WebAudio to play; without
+                         it the device voice still says the same words)
      voice   -> beep    (you wanted to be told; a tone still tells you)
      beep    -> silent  (a beep asked for is a beep or nothing — falling
                          through to speech would be louder and more personal
@@ -63,6 +76,10 @@ const MODES = ['voice', 'beep', 'vibrate', 'silent'];
 function resolveMode(mode, caps) {
   const want = MODES.includes(mode) ? mode : 'voice';
   if (want === 'silent') return 'silent';
+  if (want === 'custom') {
+    if (caps.audio) return 'custom';
+    return caps.speech ? 'voice' : 'silent';
+  }
   if (want === 'voice') {
     if (caps.speech) return 'voice';
     return caps.audio ? 'beep' : 'silent';
@@ -134,7 +151,10 @@ let ctxAudio = null;
 
 function audioContext() {
   if (ctxAudio) return ctxAudio;
-  const Ctor = window.AudioContext || window.webkitAudioContext;
+  /* Guarded, not assumed: this is exported now (the recorder taps the same
+     context) and the guard suite requires the module with no window. */
+  const w = typeof window === 'undefined' ? null : window;
+  const Ctor = w && (w.AudioContext || w.webkitAudioContext);
   if (!Ctor) return null;
   try { ctxAudio = new Ctor(); } catch (e) { ctxAudio = null; }
   return ctxAudio;
@@ -197,15 +217,90 @@ function buzz(kind) {
   try { navigator.vibrate(buzzFor(kind)); } catch (e) { /* ignore */ }
 }
 
+/* ---------- the user's own clips ---------- */
+
+/* key -> AudioBuffer, decoded once per load by voice-clips.js. A Map rather
+   than an object so a clip called "constructor" could never be a bug. */
+let clips = new Map();
+/* The clip playing right now, so a fast rep can cut the previous number off
+   the same way speakText cancels the previous utterance. */
+let playing = null;
+
+function setClips(map) { clips = map instanceof Map ? map : new Map(Object.entries(map || {})); }
+function setClip(key, buffer) { if (buffer) clips.set(key, buffer); else clips.delete(key); }
+function hasClip(key) { return clips.has(key); }
+function clipKeys() { return [...clips.keys()]; }
+function clipSeconds(key) { const b = clips.get(key); return b ? b.duration : null; }
+
+/* Decode a WAV (or anything the engine can read) into an AudioBuffer.
+   Callback form, wrapped: the promise form is missing on the oldest WebKit
+   this app still runs on, and the callback form works everywhere. Decoding
+   does not need a running context, so this is safe before any gesture. */
+function decodeClip(arrayBuffer) {
+  return new Promise((resolve, reject) => {
+    const ac = audioContext();
+    if (!ac) { reject(new Error('no audio')); return; }
+    try {
+      /* decodeAudioData DETACHES the buffer it is given on some engines;
+         hand it a copy so the caller's bytes (about to be written to the
+         vault) stay intact. */
+      ac.decodeAudioData(arrayBuffer.slice(0), resolve, err => reject(err || new Error('could not decode')));
+    } catch (e) { reject(e); }
+  });
+}
+
+function stopClip() {
+  if (!playing) return;
+  try { playing.stop(); } catch (e) { /* already ended */ }
+  playing = null;
+}
+
+/* Play one decoded buffer now. Cuts off whatever clip was still playing —
+   the count must keep up with the taps, and "sev-EIGHT" beats "seven,
+   eight" arriving a rep late. Returns true when it actually started. */
+function playBuffer(buffer) {
+  const ac = audioContext();
+  if (!ac || !buffer) return false;
+  try {
+    if (ac.state === 'suspended') ac.resume();
+    stopClip();
+    const src = ac.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ac.destination);
+    src.onended = () => { if (playing === src) playing = null; };
+    src.start();
+    playing = src;
+    return true;
+  } catch (e) { return false; }
+}
+
+function playClip(key) { return playBuffer(clips.get(key)); }
+
+/* The custom-mode decision for ONE announcement: the clip if it exists,
+   otherwise the device voice saying the same words, otherwise the tone
+   shape. Never silence — a gap in the recordings must not be a gap in the
+   count. */
+function customOrFallback(key, words, toneKind, settings) {
+  if (key && clips.has(key) && playClip(key)) return;
+  if (capabilities().speech) return speakText(words, settings);
+  return playTone(toneKind);
+}
+
 /* ---------- what callers actually use ---------- */
 
 /* Announce a COUNT — a rep number, a hold checkpoint. `text` is what a voice
    would say; the beep and buzz modes ignore it and play the 'rep' shape,
    because a tone cannot say "twelve" and pretending otherwise would just be
-   a different tone per rep. */
-function announce(text, settings) {
+   a different tone per rep.
+
+   `kind` says WHICH count this is — 'rep' (the default) or 'count' for the
+   count-in — because in custom mode they are different recordings: "three"
+   on the way down into a set is not "three" on the way up through it. Every
+   other mode ignores it. */
+function announce(text, settings, kind) {
   const mode = resolveMode(settings && settings.soundMode, capabilities());
   if (mode === 'voice') return speakText(text, settings);
+  if (mode === 'custom') return customOrFallback(voicePack.clipKey(kind || 'rep', text), text, 'rep', settings);
   if (mode === 'beep') return playTone('rep');
   if (mode === 'vibrate') return buzz('rep');
 }
@@ -215,18 +310,20 @@ function announce(text, settings) {
 function cue(kind, words, settings) {
   const mode = resolveMode(settings && settings.soundMode, capabilities());
   if (mode === 'voice') return speakText(words || kind, settings);
+  if (mode === 'custom') return customOrFallback(voicePack.clipKey(kind, words), words || kind, kind, settings);
   if (mode === 'beep') return playTone(kind);
   if (mode === 'vibrate') return buzz(kind);
 }
 
-/* Stop anything queued. Only speech queues; tones are short and fire-and-
-   forget, and a vibration already ran. Called when muting mid-count and when
-   leaving a session, where a backlog of "seven… eight… nine" playing over
-   the next screen is the bug. */
+/* Stop anything queued. Speech queues and a clip may still be playing;
+   tones are short and fire-and-forget, and a vibration already ran. Called
+   when muting mid-count and when leaving a session, where a backlog of
+   "seven… eight… nine" playing over the next screen is the bug. */
 function cancel() {
   try {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } catch (e) { /* ignore */ }
+  stopClip();
 }
 
 /* Is this mode going to do anything at all here? Used to decide whether the
@@ -256,4 +353,6 @@ module.exports = {
   MODES, TONES, BUZZES, resolveMode, pickVoice, usableVoices, toneFor, buzzFor, capabilities,
   /* effects */
   unlock, announce, cue, cancel, audible, watchVoices,
+  /* the user's own clips */
+  audioContext, setClips, setClip, hasClip, clipKeys, clipSeconds, decodeClip, playBuffer, playClip,
 };

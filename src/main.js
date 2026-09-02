@@ -50,6 +50,11 @@ class GymPlugin extends Plugin {
         }).open();
       },
     });
+    this.addCommand({
+      id: 'record-voice',
+      name: 'Record your own count-in',
+      callback: () => this.openPage('voice'),
+    });
     this.addSettingTab(new GymSettingTab(this.app, this));
 
     if (this.settings.openOnStartup) {
@@ -84,6 +89,13 @@ class GymPlugin extends Plugin {
   }
 
   refreshViews() { this.forEachView(ctl => ctl.reload()); }
+
+  /* Open the gym and land on one of its pages — the settings tab's "Open
+     the recorder" button and the command palette both need this. */
+  async openPage(page, params) {
+    await this.activateView();
+    this.forEachView(ctl => ctl.ctx.nav(page, params));
+  }
 
   async activateView() {
     const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE);

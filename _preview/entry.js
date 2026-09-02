@@ -58,3 +58,16 @@ window.__target = require('../src/counter-target');
 window.__explainer = require('../src/explainer');
 
 window.__flame = require('../src/streak-flame');
+
+/* page-run-records.js and page-voice.js, for _preview/runrecords.html and
+   _preview/voice.html — two whole routes rendered against a stub ctx, which
+   is the only way to see them before deploying to a vault. */
+window.__pages = {
+  runRecords: require('../src/page-run-records'),
+  voice: require('../src/page-voice'),
+  running: require('../src/page-running'),
+  profile: require('../src/page-profile'),
+};
+window.__voicePack = require('../src/voice-pack');
+window.__voiceRecord = require('../src/voice-record');
+window.__voiceClips = require('../src/voice-clips');

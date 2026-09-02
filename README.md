@@ -24,8 +24,16 @@ desktop and mobile.
   dashboard.
 - **Goals** — targets measured from real logged data (best reps, best hold,
   heaviest weight, body weight, workouts per week).
-- **History** — activity heatmap and every logged session.
-- **Profile** — who's training, body stats log, weight trend, BMI.
+- **History** — activity heatmap and every logged session, plus a Records
+  page of every personal best.
+- **Running** — the week's runs from your running plan, the long-run ladder,
+  and a Running records page of its own: longest run, best pace over 1, 5,
+  10, 15 and 21.1 km+, longest time on feet, biggest week, and every time
+  the longest run moved. A pace is always one run's own time over its own
+  distance.
+- **Profile** — who's training, body stats log, weight trend, BMI, progress
+  photos, and *Your voice*: record the count-in, the rep counts and the
+  celebrations in your own voice.
 
 ## Installation
 
@@ -86,6 +94,15 @@ the camera so you can line yourself up the same way each time. Drag the slider
 to compare any two dates, or press play for a slow dissolve through all of
 them. The photos are ordinary `.jpg` files in your vault.
 
+**Count yourself in.** Settings → *Count-back* → **My voice**, then *Open
+the recorder* (or Profile → *Your voice*, or the command *Record your own
+count-in*). The recorder walks you through the list — five, four, three,
+two, one, Begin, each rep number to thirty, target reached, new record,
+goal met — one clip at a time: say the word, hear it back, keep it or go
+again. Anything you have not recorded is spoken by the device voice, per
+word, so a gap is never silence. Exercise names in a timed circuit always
+stay in the device voice.
+
 **Worth turning on.** Settings → *Download images for offline*, so the
 exercise library works with no connection. There's also an accent colour and
 a second visual style.
@@ -119,6 +136,13 @@ whoever shared it and is stripped before the link is saved.
 **Clipboard.** The Export page's *Copy* button writes the export you are
 looking at to the clipboard. The plugin never reads the clipboard.
 
+**Microphone.** Used only while you are on the *Your voice* page and only
+between your tap on *Record* and your tap on *Stop* (or a three-second cap);
+the microphone is released the moment a take ends or you leave the page.
+Each take is trimmed, levelled and written as a plain `.wav` file under
+`Gym/Voice/` — never uploaded, never exported, and playable on every device
+the vault syncs to. Delete them like any other file.
+
 **Exports.** Blood pressure, cholesterol and glucose are treated as clinical
 markers and are left out of every export format unless you explicitly switch
 them on for that export. The profile is exported as a fixed whitelist — a key
@@ -151,6 +175,8 @@ Gym/
   Goals/<name>.md       # frontmatter: metric, exercise, target, deadline
   Workouts/<date> <day>.md  # frontmatter + a table of logged sets
   Progress Photos/<pose>/<date>.jpg   # the folder IS the record — no index note
+  Voice/<cue>.wav       # your own recordings: count-5 … count-1, go, rep-1 … rep-30,
+                        # target, record, goal — the filename is the cue
 ```
 
 ## Development

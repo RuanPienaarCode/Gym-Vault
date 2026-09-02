@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Your voice harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .lab{font:600 11px/1.6 system-ui;color:#555;letter-spacing:.05em;text-transform:uppercase;margin:0 0 4px}
+  .frame{border:1px solid #bbb;background:#fff;overflow:hidden}
+  .frame .gv-app{display:flex;flex-direction:column;height:760px}
+  .frame .gv-page{overflow:auto;padding:12px}
+  pre{width:100%;background:#fff;border:1px solid #ccc;padding:8px;font-size:12px;white-space:pre-wrap}
+</style></head>
+<body>
+<script src="bundle.js"></script>
+<script>
+  /* A FAKE MICROPHONE: getUserMedia returns an oscillator routed through a
+     MediaStreamDestination, so the whole record → trim → WAV → decode →
+     play pipeline runs in the browser without a real device or a permission
+     prompt. Toggle window.__silentMic = true to feed silence instead. */
+  const sound = window.__sound;
+  window.__silentMic = false;
+  navigator.mediaDevices = navigator.mediaDevices || {};
+  navigator.mediaDevices.getUserMedia = async () => {
+    const ac = sound.audioContext();
+    const dest = ac.createMediaStreamDestination();
+    if (!window.__silentMic) {
+      const osc = ac.createOscillator(); osc.frequency.value = 220;
+      const g = ac.createGain(); g.gain.value = 0.4;
+      osc.connect(g).connect(dest); osc.start();
+      window.__osc = osc;
+    }
+    return dest.stream;
+  };
+
+  /* An in-memory vault: the io surface page-voice.js actually calls. */
+  const files = new Map(); // key -> {path, bytes}
+  const io = {
+    async listVoiceClips() { return [...files].map(([key, f]) => ({ key, file: { path: f.path, name: key + '.wav', stat: { mtime: f.mtime, size: f.bytes.byteLength } } })); },
+    async saveVoiceClip(key, bytes) { files.set(key, { path: 'Gym/Voice/' + key + '.wav', bytes, mtime: Date.now() }); window.__saved = (window.__saved || []).concat([[key, bytes.byteLength]]); return 'Gym/Voice/' + key + '.wav'; },
+    async readVoiceClip(file) { for (const f of files.values()) if (f.path === file.path) return f.bytes; throw new Error('missing'); },
+    async trash(file) { for (const [k, f] of files) if (f.path === file.path) files.delete(k); },
+  };
+  const plugin = { settings: { soundMode: 'voice' }, saveSettings: async () => { window.__savedSettings = { ...plugin.settings }; } };
+  const state = { page: 'voice', params: {}, pageCleanup: null };
+  const frame = document.createElement('div'); frame.className = 'frame'; frame.style.width = '390px';
+  const app = document.createElement('div'); app.className = 'gv-app gv-skin-floor gv-accent-lime gv-narrow';
+  const page = document.createElement('main'); page.className = 'gv-page';
+  app.append(page); frame.append(app);
+  const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = '390px · fake microphone';
+  document.body.append(lab, frame);
+  const log = document.createElement('pre'); log.id = 'log'; log.textContent = 'ready'; document.body.append(log);
+  const ctx = {
+    io, plugin, settings: plugin.settings, app: {}, state,
+    notice: m => { log.textContent += '\nnotice: ' + m; },
+    nav: (p) => { log.textContent += '\nnav: ' + p; },
+    rerender: () => { while (page.firstChild) page.removeChild(page.firstChild); window.__pages.voice.render(ctx, page); },
+  };
+  window.__ctx = ctx;
+  ctx.rerender();
+</script>
+</body></html>

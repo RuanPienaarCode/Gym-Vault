@@ -151,3 +151,37 @@ assert.deepStrictEqual(
 );
 
 console.log('sound OK (mode fallbacks never invert intent, unknown voice falls back to default, every event has its own shape)');
+
+/* ============================================================================
+   'custom' — the user's own voice.
+   ============================================================================ */
+
+/* Honoured wherever WebAudio exists; without it the DEVICE VOICE says the
+   same words (you asked to be told, in words — a voice still does that);
+   with neither, silence. Never a beep: a beep cannot say "seventeen", and
+   custom mode was chosen for the words. */
+assert.strictEqual(sound.resolveMode('custom', ALL), 'custom');
+assert.strictEqual(sound.resolveMode('custom', caps(true, false, true)), 'voice');
+assert.strictEqual(sound.resolveMode('custom', caps(false, false, true)), 'silent');
+assert.strictEqual(sound.resolveMode('custom', caps(false, true, false)), 'custom', 'clips need no speech engine');
+
+/* The registry is plain and never throws in node. */
+sound.setClips({ 'rep-1': { duration: 0.4 }, go: { duration: 0.3 } });
+assert.strictEqual(sound.hasClip('rep-1'), true);
+assert.strictEqual(sound.hasClip('rep-2'), false);
+assert.strictEqual(sound.clipSeconds('go'), 0.3);
+assert.strictEqual(sound.clipSeconds('nope'), null);
+assert.deepStrictEqual(sound.clipKeys().sort(), ['go', 'rep-1']);
+sound.setClip('rep-1', null);
+assert.strictEqual(sound.hasClip('rep-1'), false, 'setClip(key, null) forgets a deleted clip');
+sound.setClips(new Map());
+assert.deepStrictEqual(sound.clipKeys(), []);
+
+/* Without a window, playback and decoding degrade rather than throw — the
+   guard suite requires this module, and so does a page rendering with the
+   audio engine gone. */
+assert.strictEqual(sound.playClip('go'), false);
+assert.strictEqual(sound.playBuffer(null), false);
+sound.cancel();
+
+console.log('sound custom OK (own voice falls back to the device voice, never to a beep; registry is inert in node)');

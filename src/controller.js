@@ -5,6 +5,7 @@
 const { Notice, normalizePath } = require('obsidian');
 const { el, ico, clear } = require('./dom');
 const { makeIo } = require('./data');
+const voiceClips = require('./voice-clips');
 const pages = {
   dashboard: require('./page-dashboard'),
   exercises: require('./page-exercises'),
@@ -18,6 +19,8 @@ const pages = {
   log: require('./page-log'),
   exercise: require('./page-exercise-detail'),
   records: require('./page-records'),
+  'run-records': require('./page-run-records'),
+  voice: require('./page-voice'),
   setup: require('./page-session-setup'),
   session: require('./page-session'),
 };
@@ -243,6 +246,12 @@ function mountApp(view) {
     syncChrome();
     buildNav();
     ctx.rerender();
+    /* The user's own clips, decoded into sound.js. Deliberately AFTER the
+       render and never awaited: a session must not wait on forty decodes,
+       and voice-clips.js skips the work entirely when nothing changed. */
+    if (ctx.data && ctx.data.present) {
+      voiceClips.loadClips(io).catch(e => console.error('gym-vault voice clips', e));
+    }
   };
 
   /* Rebuilt on every reload. Every NAV entry is unconditional today — the
@@ -314,6 +323,9 @@ function mountApp(view) {
     if (!navEl) return;
     const current = ctx.state.page === 'log' || ctx.state.page === 'session' || ctx.state.page === 'setup' ? 'dashboard'
       : ctx.state.page === 'exercise' ? 'exercises'
+      : ctx.state.page === 'run-records' ? 'running'
+      : ctx.state.page === 'voice' ? 'profile'
+      : ctx.state.page === 'records' ? 'history'
       : ctx.state.page;
     const buttons = [
       ...navEl.querySelectorAll('.gv-nav-btn'),

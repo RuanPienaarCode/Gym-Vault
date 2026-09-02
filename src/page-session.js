@@ -1190,7 +1190,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
     if (whole !== null && whole !== tp.spokenAt) {
       tp.spokenAt = whole;
       live.textContent = String(whole);
-      if (!sess.muted) sound.announce(whole, ctx.settings);
+      if (!sess.muted) sound.announce(whole, ctx.settings, 'count');
     }
 
     if (remaining <= 0) advanceTimed(ctx, draft, sess);

@@ -150,7 +150,9 @@ function startCountIn(opts) {
     if (n !== null && n !== lastShown) {
       lastShown = n;
       onNumber(n, from ? Math.max(0, remaining) / from : 0);
-      if (!o.muted) sound.announce(n, o.settings);
+      /* 'count', not the default 'rep': in the user's-own-voice mode the
+         count-in numbers are their own recordings (see voice-pack.js). */
+      if (!o.muted) sound.announce(n, o.settings, 'count');
     }
     if (remaining <= 0) finish(false);
   }, TICK_MS);

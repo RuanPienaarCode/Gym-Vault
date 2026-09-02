@@ -9,7 +9,7 @@
 const { el, ico, fmt, fmtSeconds } = require('./dom');
 const { WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, startOfWeek, addDays } = require('./dates');
-const { distanceInWeek, ladderWeek, exerciseBests, num } = require('./stats');
+const { distanceInWeek, ladderWeek, exerciseBests, workoutDate, num } = require('./stats');
 
 const isRun = ex => (ex.fm.unit || '') === 'km';
 
@@ -20,9 +20,14 @@ function render(ctx, root) {
   const runExercises = data.exercises.filter(isRun);
 
   root.append(el('div', { class: 'gv-toolbar' },
-    el('div', { class: 'gv-toolbar-title' }, 'Running'),
-    plan ? el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => ctx.nav('plans', { plan: plan.name }) },
-      ico('clipboard-list'), el('span', {}, 'Plan')) : ''));
+    el('h2', { class: 'gv-toolbar-title' }, 'Running'),
+    el('div', { class: 'gv-toolbar-actions' },
+      /* Running records hang off this page the way strength records hang
+         off History — see page-run-records.js for why they are not one page. */
+      el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => ctx.nav('run-records') },
+        ico('trophy'), el('span', {}, 'Records')),
+      plan ? el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => ctx.nav('plans', { plan: plan.name }) },
+        ico('clipboard-list'), el('span', {}, 'Plan')) : '')));
 
   /* ---- the ladder: which week, what's the target ---- */
   const ladder = (plan && Array.isArray(plan.fm.ladder) ? plan.fm.ladder : []).map(num).filter(v => v !== null);
@@ -61,7 +66,10 @@ function render(ctx, root) {
       root.append(el('div', { class: 'gv-section-title' }, ico('calendar-days'), el('span', {}, 'This week')));
       const list = el('div', { class: 'gv-card-list' });
       for (const s of scheduled) {
-        const done = data.workouts.some(w => (w.fm.date || '').slice(0, 10) === s.iso &&
+        /* workoutDate, not a bare slice: it is THE rule for a workout's day
+           (stats.js). A `date: 2026-08-26T09:00` matched here by accident;
+           anything else fromISO accepts silently never did. */
+        const done = data.workouts.some(w => workoutDate(w) === s.iso &&
           (w.rows || []).some(r => num(r.distance_km) !== null));
         const isLong = /long/i.test(s.day.name);
         const rx = isLong && target !== null ? `${target} km` : (s.day.items[0] ? s.day.items[0].target : '');

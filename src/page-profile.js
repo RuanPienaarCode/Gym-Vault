@@ -3,7 +3,9 @@
    the measurement log. Static facts live in Profile.md frontmatter; every
    measurement is a dated row in Body Log.md. */
 
-const { el, ico, clear, fmt, fmtSeconds, sparkline } = require('./dom');
+const { el, ico, clear, fmt, fmtSeconds, sparkline, clickableCard } = require('./dom');
+const { progressOf } = require('./voice-pack');
+const sound = require('./sound');
 const { BODY_COLUMNS } = require('./constants');
 const { todayISO, fmtShort } = require('./dates');
 const { weightSeries, bmi, num } = require('./stats');
@@ -97,11 +99,15 @@ function render(ctx, root) {
     }
   }
 
+  /* Progress photos and the recorder both live here, UNCONDITIONALLY. The
+     photos call used to sit inside the training-notes branch below, so a
+     profile whose note body was empty never showed the camera at all. */
+  renderPhotos(ctx, root);
+  renderVoiceLink(ctx, root);
+
   /* Training notes from the profile body (watch-outs, context). */
   const notes = (data.profile.body || '').trim();
   if (notes) {
-  renderPhotos(ctx, root);
-
     root.append(el('div', { class: 'gv-section-title' }, ico('clipboard-list'), el('span', {}, 'Training notes')));
     const noteCard = el('div', { class: 'gv-card gv-profile-notes' });
     for (const para of notes.split(/\n\s*\n/)) noteCard.append(el('p', {}, para.replace(/\n/g, ' ')));
@@ -181,6 +187,25 @@ function openAddMeasurement(ctx) {
    lands. Guarding on isConnected matters: the user can leave Profile before
    the vault answers, and writing into a detached node is how a "why is this
    blank" bug starts. */
+/* The way into the recorder from inside the app. Settings has a button too,
+   but Profile is where "who is training" lives, and whose voice counts you
+   in is part of that. */
+function renderVoiceLink(ctx, root) {
+  const p = progressOf(sound.clipKeys());
+  const on = (ctx.settings.soundMode || 'voice') === 'custom';
+  root.append(el('div', { class: 'gv-section-title' }, ico('mic'), el('span', {}, 'Your voice')));
+  root.append(clickableCard(
+    { class: 'gv-card gv-optrow gv-voice-link', 'aria-label': 'Open the voice recorder' },
+    () => ctx.nav('voice'),
+    el('div', { class: 'gv-optrow-main' },
+      el('div', { class: 'gv-optrow-name' }, 'Count yourself in'),
+      el('div', { class: 'gv-optrow-desc' },
+        p.recorded
+          ? `${p.recorded} of ${p.total} recorded${on ? ' · in use' : ' · not in use yet'}`
+          : 'Record the count-in, the rep counts and the celebrations in your own voice.')),
+    ico('chevron-right', 'gv-dim')));
+}
+
 function renderPhotos(ctx, root) {
   const ui = ctx.state.photosUi || (ctx.state.photosUi = { pose: 'standing' });
 

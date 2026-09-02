@@ -114,6 +114,12 @@ function render(ctx, root) {
   };
   draw();
 
+  /* Runs are measured, not counted, and their records live on their own
+     page (see page-run-records.js). Say so here, where someone looking for
+     a longest run would otherwise conclude it was never tracked. */
+  root.append(el('div', { class: 'gv-session-foot' },
+    el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => ctx.nav('run-records') },
+      ico('footprints'), el('span', {}, 'Running records'))));
   root.append(el('p', { class: 'gv-microcopy' }, 'Every number here is one you already did.'));
 }
 

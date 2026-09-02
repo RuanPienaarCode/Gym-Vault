@@ -2512,6 +2512,94 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 }
 .theme-dark .gv-app.gv-accent-punch { --gv-lime-ghost: #2a121e; }
 
+/* ---- Running records (page-run-records.js) ----------------------------
+   Reads as a record sheet: the hero and tiles are the four dimensions of a
+   run, the band rows are a table with the distance as the row head. */
+.gv-rr-band { display: flex; align-items: center; gap: 12px; margin-bottom: -1px; }
+.gv-rr-band-km {
+  flex: 0 0 auto; width: 66px;
+  font-family: var(--gv-display); font-size: 20px; text-transform: uppercase; line-height: 1;
+}
+.gv-rr-band-main { flex: 1 1 auto; min-width: 0; }
+.gv-rr-band-pace { font-size: 15px; font-weight: 700; }
+.gv-rr-band-sub { font-size: 12px; color: var(--gv-ink-dim); margin-top: 3px; line-height: 1.45; }
+.gv-rr-band.empty .gv-rr-band-km { color: var(--gv-ink-dim); }
+.gv-rr-band.empty .gv-rr-band-pace { color: var(--gv-ink-dim); font-weight: 600; }
+
+/* ---- Your voice (page-voice.js) ---------------------------------------
+   An acting surface: the record button is the one flood-adjacent control
+   on the screen and it sits in the middle, under the thumb. Every rule
+   that colours the button carries .gv-app — app.css's
+   button:not(.clickable-icon) is (0,1,1) and would win otherwise. */
+.gv-voice-progress { margin: 14px 0 0; padding-bottom: 16px; }
+.gv-voice-bar { position: relative; height: 6px; background: var(--gv-line); overflow: hidden; }
+.gv-voice-bar-fill {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: calc(var(--gv-voice-pct, 0) * 100%);
+  background: var(--gv-lime);
+  transition: width 0.3s ease;
+}
+.gv-voice-blurb { margin: -6px 0 10px; line-height: 1.45; }
+.gv-voice-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+.gv-voice-actions-top { justify-content: flex-start; margin: 14px 0 6px; }
+
+.gv-voice-wizard { padding: 18px 16px 16px; text-align: center; margin-top: 12px; }
+.gv-voice-word { font-size: clamp(40px, 12vw, 64px); margin: 4px 0 0; }
+.gv-voice-say { font-size: 14px; color: var(--gv-ink-dim); margin: 8px 0 14px; }
+.gv-voice-say b { color: var(--gv-ink); font-weight: 700; }
+
+.gv-app .gv-voice-rec {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  width: 136px; height: 136px; margin: 6px auto 0;
+  border-radius: 50%;
+  border: 3px solid var(--gv-ink);
+  background: var(--gv-surface);
+  color: var(--gv-ink);
+  cursor: pointer;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  white-space: normal;
+}
+.gv-app .gv-voice-rec .gv-ico svg { width: 30px; height: 30px; }
+.gv-app .gv-voice-rec:hover { background: var(--gv-lime-ghost); }
+.gv-app .gv-voice-rec.live {
+  border-color: var(--gv-danger); color: var(--gv-danger);
+  animation: gv-voice-pulse 1s ease-in-out infinite;
+}
+.gv-app .gv-voice-rec.review { border-color: var(--gv-lime-deep); color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-voice-rec.review { border-color: var(--gv-lime); color: var(--gv-lime); }
+/* The pulse is --gv-danger at 35% — but a box-shadow cannot take a colour
+   variable inside rgba(), so the keyframes name the light and dark values
+   by hand and the dark theme swaps the animation. Composited over the dark
+   surface, the light-theme red is a near-black maroon that does not read
+   as "live" at all. Same lesson as the disabled switch: one value cannot
+   serve both themes. */
+@keyframes gv-voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.35); }
+  50% { box-shadow: 0 0 0 14px rgba(185, 28, 28, 0); }
+}
+@keyframes gv-voice-pulse-dark {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.45); }
+  50% { box-shadow: 0 0 0 14px rgba(248, 113, 113, 0); }
+}
+.theme-dark .gv-app .gv-voice-rec.live { animation-name: gv-voice-pulse-dark; }
+@media (prefers-reduced-motion: reduce) { .gv-app .gv-voice-rec.live { animation: none; } }
+
+.gv-voice-level { height: 8px; max-width: 260px; margin: 14px auto 0; background: var(--gv-line); overflow: hidden; }
+.gv-voice-level-fill {
+  display: block; height: 100%;
+  width: calc(var(--gv-level, 0) * 100%);
+  background: var(--gv-lime);
+  transition: width 80ms linear;
+}
+.gv-voice-error { color: var(--gv-danger); font-size: 13px; margin: 10px 0 0; line-height: 1.45; }
+
+.gv-voice-row { display: flex; align-items: center; gap: 10px; margin-bottom: -1px; }
+.gv-voice-row.have { box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-voice-row-main { flex: 1 1 auto; min-width: 0; }
+.gv-voice-row-name { font-size: 14px; font-weight: 700; }
+.gv-voice-row-meta { font-size: 12px; color: var(--gv-ink-dim); margin-top: 2px; }
+.gv-voice-row-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+
 /* ============================================================================
    SKIN: EDITORIAL — settings › Style. Pure 01 "Editorial Athlete": magazine
    cover, hairlines everywhere, NO floods — the accent survives only as the

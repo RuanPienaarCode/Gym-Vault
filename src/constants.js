@@ -88,6 +88,10 @@ const MUSIC_APPS = [
    probing and the fallback; this list is only the vocabulary. */
 const SOUND_MODES = [
   ['voice', 'Voice', 'Counts each rep out loud, and says when you break a record.'],
+  /* The user's own recordings (voice-pack.js lists them; the Your voice page
+     records them). Anything not recorded yet is spoken by the device voice,
+     per announcement — never skipped. */
+  ['custom', 'My voice', 'Your own recordings count you in and count you back. Anything you have not recorded yet is spoken by the device voice.'],
   ['beep', 'Beeps', 'A short tone per rep instead of a voice. Works where speech does not.'],
   ['vibrate', 'Vibration', 'A buzz per rep, nothing audible. Android only — iOS does not allow it.'],
   ['silent', 'Silent', 'No sound at all. The count is still on screen, and still read by a screen reader.'],

@@ -14,6 +14,7 @@ const { parsePlanBody, serializePlanBody } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
+const { clipFileName, keyFromFileName } = require('./voice-pack');
 
 /* Windows/OSX-illegal filename characters, folded to '-' so an exercise or
    plan named from user input always lands on disk. */
@@ -41,6 +42,7 @@ function makeIo(plugin) {
     bodyLog: () => `${root()}/Body Log.md`,
     attachments: () => `${root()}/Attachments`,
     exports: () => `${root()}/Exports`,
+    voice: () => `${root()}/Voice`,
   };
 
   const stamp = () => { plugin._lastWrite = Date.now(); };
@@ -468,6 +470,42 @@ function makeIo(plugin) {
      whole photo in memory for every thumbnail on the page. */
   const photoSrc = file => v.getResourcePath(file);
 
+  /* ---- the user's own voice ------------------------------------------- */
+
+  /* Voice clips are BINARY (WAV) and, like photos, live outside the
+     markdown model: the filename IS the key (voice-pack.js), so there is no
+     index note to drift. Not part of loadAll() for the same reasons photos
+     are not — every reload reads every note, and a clip is only needed once
+     a session speaks. Files whose name is not a known clip key are ignored,
+     never played. Top level only: a subfolder here is somebody's, not ours. */
+  async function listVoiceClips() {
+    const folder = v.getFolderByPath(paths.voice());
+    if (!folder) return [];
+    const out = [];
+    for (const child of folder.children || []) {
+      if (!(child instanceof TFile)) continue;
+      const key = keyFromFileName(child.name);
+      if (key) out.push({ key, file: child });
+    }
+    return out;
+  }
+
+  /* Write one clip, replacing any previous take of the same cue — unlike a
+     photo, a re-recorded "seven" is meant to replace the old "seven", not
+     sit beside it. `data` is an ArrayBuffer of WAV bytes. */
+  async function saveVoiceClip(key, data) {
+    await ensureFolder(paths.voice());
+    const path = `${paths.voice()}/${clipFileName(key)}`;
+    const f = v.getFileByPath(path);
+    stamp();
+    if (f) await v.modifyBinary(f, data);
+    else await v.createBinary(path, data);
+    return path;
+  }
+
+  /* Bytes of one clip, for decoding. */
+  const readVoiceClip = file => v.readBinary(file);
+
   /* ---- first-run scaffold --------------------------------------------- */
 
   async function scaffold() {
@@ -608,6 +646,7 @@ function makeIo(plugin) {
     createExercise, saveExercise, createGoal, saveGoal,
     createPlan, savePlan, setActivePlan, saveWorkout, trash, safeName,
     listPhotos, savePhoto, photoSrc,
+    listVoiceClips, saveVoiceClip, readVoiceClip,
   };
 }
 

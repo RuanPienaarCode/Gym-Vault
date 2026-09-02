@@ -5,6 +5,7 @@ const { SKINS, ACCENTS, MUSIC_APPS, SOUND_MODES } = require('./constants');
 const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 const sound = require('./sound');
+const { progressOf } = require('./voice-pack');
 
 class GymSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
@@ -203,6 +204,7 @@ class GymSettingTab extends PluginSettingTab {
              happen, is the honest version. */
           const supported = key === 'vibrate' ? caps.vibrate
             : key === 'beep' ? caps.audio
+            : key === 'custom' ? (caps.audio || caps.speech)
             : key === 'voice' ? (caps.speech || caps.audio)
             : true;
           if (!supported && key !== mode) continue;
@@ -224,6 +226,26 @@ class GymSettingTab extends PluginSettingTab {
         `${desc ? desc[2] + ' ' : ''}This device cannot do that, so it will ` +
         (effective === 'silent' ? 'stay silent.' : `use ${effective}s instead.`),
       );
+    }
+
+    if (mode === 'custom') {
+      const p = progressOf(sound.clipKeys());
+      new Setting(c)
+        .setName('Your recordings')
+        .setDesc(p.recorded
+          ? `${p.recorded} of ${p.total} recorded. The rest are spoken by the device voice until you record them.`
+          : 'Nothing recorded yet — every count is spoken by the device voice until you record it. The recorder walks you through the list.')
+        .addButton(b => b
+          .setButtonText(p.recorded ? 'Open the recorder' : 'Start recording')
+          .setCta()
+          .onClick(() => this.plugin.openPage('voice')))
+        .addButton(b => b
+          .setButtonText('Test')
+          .onClick(() => {
+            sound.unlock();
+            sound.cue('record', 'new record', this.plugin.settings);
+          }));
+      return;
     }
 
     if (mode !== 'voice' || !caps.speech) return;
