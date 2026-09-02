@@ -12,11 +12,10 @@
 const { Modal } = require('obsidian');
 const { el, ico, clear, segmented } = require('./dom');
 const { createCounter, tap, undo } = require('./rep-counter');
-const { holdWakeLock, attachTapZone, attachFillMeter, attachPowerUp, punch, typeCountButton } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton } = require('./rep-counter-shared');
 const counterTarget = require('./counter-target');
 const { helpButton } = require('./explainer');
 const sound = require('./sound');
-const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey } = require('./motion-count');
 const { Notice } = require('obsidian');
@@ -58,7 +57,7 @@ class RepCounterModal extends Modal {
        zone stays the default and this is the opt-in. */
     this.motion = false;
     this._stopMotion = null;
-    this._stopCountIn = null;
+    this._countIn = null;
     /* What this count is FOR. null is open-ended — a real choice, offered
        first on the picker, not a missing value. Set once, before the
        counter arms, and never afterwards: a target that could move
@@ -166,9 +165,11 @@ class RepCounterModal extends Modal {
     typeBtn.disabled = true;
     undoBtn.disabled = true;
 
-    this._armZone = () => {
-      typeBtn.disabled = false;
-      undoBtn.disabled = false;
+    /* MOUNTING AND ARMING ARE TWO THINGS NOW. The count-in runs INSIDE the
+       counter's own display, so the zone has to be on screen before it
+       starts — but the controls that act on a count must stay dead until
+       there is a count to act on. Mount, count in, then arm. */
+    this._mountZone = () => {
       /* The meter is built HERE, not in onOpen, because it needs the target
          the picker has just chosen. Open-ended returns null and the zone
          renders exactly as it always did. */
@@ -186,11 +187,19 @@ class RepCounterModal extends Modal {
       this.zone.focus();
     };
 
+    this._armZone = () => {
+      typeBtn.disabled = false;
+      undoBtn.disabled = false;
+      /* The count-in borrowed the numeral; hand it back to the real count. */
+      this.renderCount();
+      this.setHint(this.motion ? 'Counting your movement — taps still work' : '');
+    };
+
     /* THREE STEPS, ONE TAP EACH: what are you going for, 3-2-1, count.
        The picker's tap is also what starts the countdown, so choosing costs
        nothing extra — and "Just count" is first, so the person who does not
        want a target is not made to answer a question. */
-    this.renderTargetStep(c, () => this.startCountIn(c));
+    this.renderTargetStep(c, () => this.startCountIn());
 
     this._wakeLock = holdWakeLock();
   }
@@ -242,28 +251,31 @@ class RepCounterModal extends Modal {
     return step;
   }
 
-  startCountIn(c) {
+  startCountIn() {
     /* Count in before the zone arms — same 3, 2, 1, Begin the guided screen
-       uses, from the same module. Without it the first tap of a set is the
-       one that puts the phone on the floor, and every count starts a rep
-       behind. The zone is held back rather than covered: a tap zone under an
-       overlay is a tap zone that will eventually be tapped through. */
-    this._stopCountIn = countdown.runCountIn(c, {
-      label: this.exerciseName || 'Freestyle',
+       uses, through the SAME helper it uses, so the two counters cannot
+       drift. Without a count-in the first tap of a set is the one that puts
+       the phone on the floor, and every count starts a rep behind.
+
+       It runs IN the counter's own display: attachCountIn borrows the big
+       numeral and hands it back at zero. What it replaced was a full-bleed
+       gate standing in FRONT of the counter, which put the countdown
+       somewhere the counter was not — on a phone the eye had to travel from
+       where the number was to where the number would be. */
+    this._mountZone();
+    this._countIn = attachCountIn(this.zone, this.countEl, {
       muted: this.muted,
       settings: this.settings,
+      hintEl: this.hintEl,
       onDone: () => {
-        this._stopCountIn = null;
         if (!this.contentEl.isConnected) return; // modal closed mid-count
-        const gate = this.contentEl.querySelector('.gv-countin');
-        if (gate) gate.remove();
         this._armZone();
       },
     });
   }
 
   onClose() {
-    if (this._stopCountIn) { this._stopCountIn(); this._stopCountIn = null; }
+    if (this._countIn) { this._countIn.stop(); this._countIn = null; }
     this.stopMotion();
     if (this._wakeLock) { this._wakeLock.release(); this._wakeLock = null; }
     sound.cancel();
@@ -282,6 +294,12 @@ class RepCounterModal extends Modal {
   }
 
   registerTap() {
+    /* THE TAP THAT SAYS "READY" IS NOT REP ONE. While the count-in is
+       running a tap skips it; only once armed does a tap count. Without this
+       the gesture that dismisses the countdown lands as the first rep and
+       every set starts one ahead. Same guard, same reason, as the guided
+       screen's registerTap. */
+    if (this._countIn && !this._countIn.armed()) { this._countIn.skip(); return; }
     const now = Date.now();
     const result = tap(this.state, now);
     this.state = result.state;
