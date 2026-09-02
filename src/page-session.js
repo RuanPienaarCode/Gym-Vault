@@ -24,6 +24,7 @@ const { createCounter, tap, undo } = require('./rep-counter');
 const { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton } = require('./rep-counter-shared');
 const counterTarget = require('./counter-target');
 const { helpButton } = require('./explainer');
+const { counterSettingsButton } = require('./counter-settings');
 const sound = require('./sound');
 const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
@@ -563,13 +564,38 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
   doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }));
 
+  /* SIX BUTTONS BECAME FOUR. Motion, Type and the explainer are decisions
+     made once, at the start of a set — they sat at thumb height for the
+     whole set next to the two that are used mid-rep, and a row of six
+     identical buttons makes the eye read all of them every time it comes
+     back from the number. What stays is what you reach for without looking
+     up: mute, undo, done. */
+  const motionBtn = motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl);
+  const helpBtn = helpButton(() => body);
+  const settingsBtn = counterSettingsButton(() => body, () => [
+    { label: 'Motion counting', hint: 'Let the phone count the movement itself', node: motionBtn },
+    { label: 'Type the count', hint: 'For the reps the taps and the sensor both missed', node: typeBtn, closeOnUse: true },
+    { label: 'How this counts', hint: 'Tapping, tilting and sensitivity', node: helpBtn, closeOnUse: true },
+  ]);
+
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' },
-    motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl), muteButton(ctx, sess),
-    helpButton(() => body), typeBtn, undoBtn, doneBtn);
-  /* The sheet hosts on the BODY, not the zone: it has to cover the controls
-     as well, or the ? stays visible under its own explanation. */
+    settingsBtn, muteButton(ctx, sess), undoBtn, doneBtn);
+  /* Both sheets host on the BODY, not the zone: they have to cover the
+     controls as well, or the button stays visible under its own panel. */
   const body = el('div', { class: 'gv-session-body gv-xp-host' }, extraTop || '', zone, bar);
+  focusMode(ctx);
   return body;
+}
+
+/* FOCUS MODE. The brand bar and the tab strip are ~116px of chrome that
+   nothing inside a set uses, and on a phone they push the counter down far
+   enough that the number and the Done button compete for the same thumb.
+   Adding the class here rather than in the controller keeps the decision
+   with the screens that actually count something; ctx.rerender clears it at
+   the top of every render, so it can never outlive the counter. The session
+   bar keeps its X, which is the way out. */
+function focusMode(ctx) {
+  if (ctx.view && ctx.view.contentEl) ctx.view.contentEl.classList.add('gv-focus');
 }
 
 function lastWeightForExercise(ctx, name) {
@@ -710,6 +736,7 @@ function durationBody(ctx, draft, sess, entry, set) {
   }
 
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(ctx, sess));
+  focusMode(ctx);
   return el('div', { class: 'gv-session-body' }, zone, checkpointEl, bar);
 }
 
@@ -1081,6 +1108,7 @@ function timedTopBar(ctx, draft, sess, schedule, iv) {
 }
 
 function renderTimedInterval(ctx, root, draft, sess, iv) {
+  focusMode(ctx);
   const schedule = draft.timed;
   const tp = sess.timed;
   const isWork = iv.kind === 'work';

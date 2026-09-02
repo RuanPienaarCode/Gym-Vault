@@ -2153,6 +2153,53 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
 .gv-session-complete-tiles { margin: 4px 0 16px; }
 .gv-app .gv-session-review { width: 100%; margin-top: 10px; }
 
+/* ---------- focus mode (page-session.js focusMode) ----------
+   A set is the one screen in this app with a single job. The brand bar and
+   the tab strip are ~116px of chrome that nothing in a set uses, and on a
+   phone they push the counter far enough down that the number and the Done
+   button end up fighting for the same thumb.
+
+   display:none rather than height:0 — these are flex children of the app
+   root, and a collapsed-but-present flex item still holds its gaps and
+   still takes tab focus, which would leave a keyboard user tabbing through
+   an invisible nav on the way to the counter.
+
+   The class is added by the counting screens and cleared at the top of
+   ctx.rerender, so it cannot leak onto a page that needs its nav back. */
+.gv-app.gv-focus .gv-head,
+.gv-app.gv-focus .gv-nav { display: none; }
+
+/* ---------- counter settings sheet (src/counter-settings.js) ----------
+   Deliberately the same overlay idiom as .gv-xp: covers the counter AND its
+   controls, scrolls on its own, and sits inside the .gv-xp-host body so a
+   press cannot fall through to the tap zone. */
+.gv-cs {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 5;
+  display: flex; flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--gv-bg);
+  -webkit-overflow-scrolling: touch;
+}
+.gv-cs-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gv-cs-kicker { margin: 0; }
+.gv-cs-rows { display: flex; flex-direction: column; }
+.gv-cs-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--gv-line);
+}
+.gv-cs-row:last-child { border-bottom: 0; }
+.gv-cs-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gv-cs-label { font-size: 15px; font-weight: 700; color: var(--gv-ink); }
+.gv-cs-hint { font-size: 12.5px; color: var(--gv-ink-dim); }
+/* The row's control is whatever button was moved in here, so it must not be
+   allowed to shrink below its own tap target on a narrow phone. */
+.gv-cs-control { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+
 /* Confetti overlay (src/confetti.js) — fixed, non-interactive, above
    everything; the burst itself is drawn on canvas via getComputedStyle
    colors, nothing here carries a hex value. */

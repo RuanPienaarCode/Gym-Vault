@@ -204,6 +204,10 @@ function mountApp(view) {
     if (ctx._interval) { window.clearInterval(ctx._interval); ctx._interval = null; }
     if (!pageEl) return;
     clear(pageEl);
+    /* Focus mode is OPT-IN PER RENDER: cleared here, re-added by the counting
+       screens in page-session.js. A sticky class would hide the nav on a page
+       that has no other way out of itself. */
+    rootEl.classList.remove('gv-focus');
     renderNavState();
     /* NEVER render nothing. A blank page under the nav is indistinguishable
        from a broken plugin, and this is exactly what a mid-index vault used
