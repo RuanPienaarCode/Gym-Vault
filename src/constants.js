@@ -43,6 +43,26 @@ const DEFAULT_SETTINGS = {
 /* How a guided session is played — [key, name, description]. Keys are what
    `guideMode` stores. Two genuinely different sessions, not a display
    preference: see page-session-setup.js. */
+/* Human names for the routes a Back button can land on, so a nested page's
+   label can say where it will actually take you instead of a bare "Back".
+   Only the pages a back stack can hold need an entry — ctx.backTo falls back
+   to the caller's own default. */
+const PAGE_TITLES = {
+  dashboard: 'Today',
+  exercises: 'Exercises',
+  plans: 'Plans',
+  goals: 'Goals',
+  running: 'Running',
+  history: 'History',
+  profile: 'Profile',
+  export: 'Export',
+  records: 'Records',
+  'run-records': 'Running records',
+  exercise: 'the exercise',
+  browse: 'Browse',
+  log: 'the log',
+};
+
 const GUIDE_MODES = [
   ['reps', 'Reps', 'One set at a time. You decide when each one is done.'],
   ['timed', 'Timed circuit', 'The clock runs the session. Hands free, eyes up.'],
@@ -156,6 +176,6 @@ const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forea
 
 module.exports = {
   VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS, MUSIC_APPS, SOUND_MODES,
-  GUIDE_MODES, GUIDE_MINUTES,
+  GUIDE_MODES, GUIDE_MINUTES, PAGE_TITLES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

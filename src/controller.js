@@ -124,7 +124,26 @@ function mountApp(view) {
   };
   ctx.openFile = file => { app.workspace.getLeaf('tab').openFile(file); };
 
-  ctx.nav = (page, params) => {
+  /* A BACK STACK, so Back returns to where you came FROM.
+
+     Nested pages used to hardcode their destination: Running records always
+     went to Running, exercise detail always to the Exercises library. So
+     Records -> Running records -> Back landed on Running rather than
+     Records, and reaching an exercise from a record dropped you in the
+     library you had not been in. There was no route stack to consult.
+
+     Deliberately shallow. A tap on a PRIMARY nav tab is a fresh start, not
+     a descent, so it clears the stack — otherwise Back would eventually walk
+     you backwards through an entire session's browsing. The cap is the same
+     idea: this exists to get you out of two or three nested pages, and a
+     stack that remembers forever is a stack nobody can predict. */
+  const MAX_BACK = 10;
+  ctx._backStack = [];
+
+  /* The route change itself, with no stack bookkeeping — ctx.back() uses this
+     directly so that returning somewhere cannot push the page you just left,
+     which would make Back a toggle between two screens. */
+  const applyNav = (page, params) => {
     /* Leaving a page that registered cleanup (guided mode's wake lock and
        any in-flight confetti burst) tears it down exactly once — even when
        the user bails via the persistent nav bar rather than guided mode's
@@ -140,6 +159,31 @@ function mountApp(view) {
        from local UI state (a tick, a toggle) must not. */
     ctx._focusPageOnRender = true;
     ctx.rerender();
+  };
+
+  ctx.nav = (page, params, opts) => {
+    if (opts && opts.reset) ctx._backStack.length = 0;
+    else if (page !== ctx.state.page) {
+      /* A re-nav to the same page is a refresh, not a step — pushing it
+         would make Back land where you already are. */
+      ctx._backStack.push({ page: ctx.state.page, params: ctx.state.params || {} });
+      if (ctx._backStack.length > MAX_BACK) ctx._backStack.shift();
+    }
+    applyNav(page, params);
+  };
+
+  /* Where Back would go, or the fallback when nothing is remembered — the
+     first visit to a nested page has no caller. Read by the back buttons so
+     their label names the real destination instead of a generic "Back". */
+  ctx.backTo = fallback => {
+    const prev = ctx._backStack[ctx._backStack.length - 1];
+    return prev ? prev.page : fallback;
+  };
+
+  ctx.back = fallback => {
+    const prev = ctx._backStack.pop();
+    if (prev) applyNav(prev.page, prev.params);
+    else applyNav(fallback, null);
   };
 
   ctx.startLog = (plan, day) => {
@@ -295,7 +339,10 @@ function mountApp(view) {
         /* Leaving mid-log keeps the draft: coming back to Today offers the
            log page again via the nav highlight, and Finish/Discard are the
            only ways to end it. Navigation itself must never eat a session. */
-        ctx.nav(item.id);
+        /* A primary tab is a fresh start, not a step: it clears the stack,
+           so Back on whatever you open next does not walk you through
+           everywhere you have already been. */
+        ctx.nav(item.id, null, { reset: true });
       });
       (head && headActionsEl ? headActionsEl : navEl).append(b);
     }
@@ -347,6 +394,8 @@ function mountApp(view) {
       : ctx.state.page === 'run-records' ? 'running'
       : ctx.state.page === 'voice' ? 'profile'
       : ctx.state.page === 'records' ? 'history'
+      /* Browse hangs off Plans; unmapped, it left NO primary tab lit at all. */
+      : ctx.state.page === 'browse' ? 'plans'
       : ctx.state.page;
     const buttons = [
       ...navEl.querySelectorAll('.gv-nav-btn'),
