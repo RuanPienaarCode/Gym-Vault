@@ -16,6 +16,7 @@
 const { Notice } = require('obsidian');
 const { el, ico, clear, fmtSeconds, segmented } = require('./dom');
 const { todayISO } = require('./dates');
+const { DEFAULT_SETTINGS, GUIDE_REST } = require('./constants');
 const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
 const flow = require('./session-flow');
 const records = require('./records');
@@ -196,13 +197,21 @@ function renderActive(ctx, root, draft, sess) {
   if (!cur) { ctx.rerender(); return; } // isDone should already have caught this
   const { entry, set, entryIndex, setIndex } = cur;
 
-  const skipSetBtn = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'Skip this set' }, ico('skip-forward'));
+  /* SKIPPING SAYS SO. These were two chevron icons sitting next to the X,
+     with their meaning only in an aria-label — so "I'm done with this
+     movement, go to the next one" was invisible, and the reporter reached
+     for X instead, which reads as abandoning the whole session. Written
+     words, at the cost of a little width: an unlabelled icon that moves you
+     through a workout is not a control anyone can find under load. */
+  const skipSetBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-session-skip', type: 'button', 'aria-label': 'Skip this set' },
+    ico('skip-forward'), el('span', {}, 'Set'));
   skipSetBtn.addEventListener('click', () => {
     sess.pos = flow.skipSet(draft, sess.pos);
     resetActiveState(sess);
     ctx.rerender();
   });
-  const skipExBtn = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'Skip this exercise' }, ico('chevrons-right'));
+  const skipExBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-session-skip', type: 'button', 'aria-label': 'Skip this exercise' },
+    ico('chevrons-right'), el('span', {}, 'Exercise'));
   skipExBtn.addEventListener('click', () => {
     sess.pos = flow.skipExercise(draft, sess.pos);
     resetActiveState(sess);
@@ -211,7 +220,9 @@ function renderActive(ctx, root, draft, sess) {
 
   const ord = el('div', { class: 'gv-session-ord' },
     `Exercise ${entryIndex + 1}/${draft.entries.length} · Set ${setIndex + 1}/${entry.sets.length}`);
-  const extra = el('div', { class: 'gv-session-top-extra' }, ord, el('div', { class: 'gv-session-skips' }, skipSetBtn, skipExBtn));
+  const extra = el('div', { class: 'gv-session-top-extra' }, ord,
+    el('div', { class: 'gv-session-skips' },
+      el('span', { class: 'gv-session-skip-kicker' }, 'Skip'), skipSetBtn, skipExBtn));
 
   root.append(topBar(ctx, draft, extra));
   root.append(exerciseBlock(ctx, sess, entry));
@@ -944,6 +955,14 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
   return callouts;
 }
 
+/* How long the rest between sets runs, clamped to the dial's own range so a
+   hand-edited data.json cannot produce a rest that never ends. */
+function restSecondsFor(ctx) {
+  const n = Math.round(Number((ctx.settings || {}).guideRestSeconds));
+  if (!Number.isFinite(n)) return DEFAULT_SETTINGS.guideRestSeconds;
+  return Math.max(GUIDE_REST.min, Math.min(GUIDE_REST.max, n));
+}
+
 function completeSet(ctx, draft, sess, set, entry, values) {
   const callouts = applyCompletion(ctx, draft, sess, set, entry, values);
 
@@ -953,6 +972,14 @@ function completeSet(ctx, draft, sess, set, entry, values) {
     sess.pos = peek;
     sess.phase = 'active';
     sess.pendingPos = null;
+  } else if (restSecondsFor(ctx) <= 0) {
+    /* "Rest (if any)" — set to zero, there is none, so Done goes straight to
+       the next set. The callouts a record or a goal produced would have no
+       screen to land on, so they are announced instead of dropped. */
+    sess.pos = peek;
+    sess.phase = 'active';
+    sess.pendingPos = null;
+    for (const line of callouts) ctx.notice(line);
   } else {
     sess.pendingPos = peek;
     sess.phase = 'resting';
@@ -967,10 +994,25 @@ function completeSet(ctx, draft, sess, set, entry, values) {
 function renderRest(ctx, root, draft, sess) {
   const nextInfo = flow.currentSet(draft, sess.pendingPos);
 
-  const elapsedEl = el('div', { class: 'gv-session-rest-clock' }, '0:00');
+  /* THE REST ENDS BY ITSELF. It used to count UP with no target, so it never
+     finished and every set cost two taps — Done, then Next. Counting DOWN
+     gives it a moment to be over, which is the whole of "rest, then the next
+     set, no extra Next": the rest is not skipped, it simply stops needing a
+     tap to leave.
+
+     Derived from a start stamp rather than accumulated tick by tick — a
+     counter incremented on a timer drifts, and iOS throttles background
+     timers hard enough that the drift is visible inside one rest. Same rule
+     the timed clock follows. */
+  const restTotal = restSecondsFor(ctx);
+  const remaining = () => Math.max(0, restTotal - Math.round((Date.now() - sess.restStartedAt) / 1000));
+  const elapsedEl = el('div', { class: 'gv-session-rest-clock' }, fmtSeconds(remaining()));
   ctx.setPageInterval(() => {
-    const secs = Math.max(0, Math.round((Date.now() - sess.restStartedAt) / 1000));
+    const secs = remaining();
     elapsedEl.textContent = fmtSeconds(secs);
+    /* At zero it advances on its own. goNext() clears the interval by
+       re-rendering the page, and the guard makes a late tick harmless. */
+    if (secs <= 0 && sess.phase === 'resting') goNext();
   }, 1000);
 
   const nextLabel = nextInfo
@@ -984,8 +1026,11 @@ function renderRest(ctx, root, draft, sess) {
     ? el('div', { class: 'gv-session-callouts' }, ...(sess.pendingCallouts || []).map(line => el('div', { class: 'gv-session-callout' }, line)))
     : '';
 
-  const nextBtn = el('button', { class: 'gv-btn-go', type: 'button' }, 'Next');
-  nextBtn.addEventListener('click', () => {
+  /* The one way out of the rest, whether the clock ran out or a thumb said
+     so — two copies of this would be two chances to leave `pendingPos`
+     behind and resume the wrong set. */
+  const goNext = () => {
+    if (sess.phase !== 'resting') return;
     sess.pos = sess.pendingPos;
     sess.pendingPos = null;
     sess.pendingCallouts = [];
@@ -993,7 +1038,12 @@ function renderRest(ctx, root, draft, sess) {
     sess.restStartedAt = null;
     resetActiveState(sess);
     ctx.rerender();
-  });
+  };
+
+  /* Still here, and still the flood: "go now" is a real thing to want, and
+     the recommendation was to stop REQUIRING the tap, not to remove it. */
+  const nextBtn = el('button', { class: 'gv-btn-go', type: 'button' }, 'Next');
+  nextBtn.addEventListener('click', goNext);
 
   /* Stopping early is a REST-PHASE decision — you finish a set, then decide
      you are done — so the visible way out lives here rather than under the

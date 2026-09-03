@@ -2075,7 +2075,16 @@ body.is-phone .gv-app .gv-session-top { margin: 8px -18px 8px; padding: 0 18px 8
   font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--gv-ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.gv-session-skips { display: flex; gap: 6px; flex: 0 0 auto; }
+/* Written words, not two bare chevrons beside the X. The kicker carries the
+   verb so each button only needs its noun, which is what keeps the pair
+   inside a 390px top row. */
+.gv-session-skips { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.gv-session-skip-kicker {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gv-ink-dim);
+}
+.gv-app .gv-session-skip { padding: 4px 8px; font-size: 11px; gap: 4px; }
+.gv-session-skip .gv-ico svg { width: 14px; height: 14px; }
 .gv-session-bar { margin-top: 2px; }
 
 .gv-session-exblock { margin: 4px 0 14px; flex: 0 0 auto; }
