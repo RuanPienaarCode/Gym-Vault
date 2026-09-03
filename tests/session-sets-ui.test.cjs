@@ -76,7 +76,7 @@ const stub = {
 };
 const origLoad = Module._load;
 Module._load = (req, ...rest) => (req === 'obsidian' ? stub : origLoad(req, ...rest));
-const { setsBlock, setsPerEntryFor } = require('../src/page-session-setup');
+const { setsBlock, setsPerEntryFor, SETS_MIN, SETS_MAX } = require('../src/page-session-setup');
 Module._load = origLoad;
 
 /* ---------- harness ---------- */
@@ -170,9 +170,40 @@ const agrees = (m, where) => {
   const m = mount(day(1, 1));
   assert.strictEqual(m.field.textContent, '1');
   assert.strictEqual(m.minus.disabled, true, 'at the floor the control must be dead, not merely ineffective');
+  assert.strictEqual(m.plus.disabled, false, 'the floor says nothing about the ceiling');
   click(m.minus);
-  assert.deepStrictEqual(m.perEntry(), [1, 1], 'stepping down at the floor changes nothing');
+  assert.deepStrictEqual(m.perEntry(), [SETS_MIN, SETS_MIN], 'stepping down at the floor changes nothing');
   agrees(m, 'at the floor');
+}
+
+/* ---------- 4b. AND THE CEILING (#7) — plus dies at SETS_MAX ------------- */
+
+/* The clamp in nextSetsValue always held, so this was never a wrong number.
+   It was a dead control that looked live: at 10 the plus still rendered
+   enabled and a thumb kept pressing it. Both ends, or neither. */
+{
+  const m = mount(day(9, 9));
+  assert.strictEqual(m.plus.disabled, false, 'below the ceiling plus must be live');
+  click(m.plus);
+  assert.strictEqual(m.field.textContent, String(SETS_MAX));
+  assert.strictEqual(m.plus.disabled, true,
+    'at the ceiling the control must be dead, not merely ineffective — minus disables at the floor, plus must match');
+  click(m.plus);
+  assert.deepStrictEqual(m.perEntry(), [SETS_MAX, SETS_MAX], 'stepping up at the ceiling changes nothing');
+  agrees(m, 'at the ceiling');
+
+  /* Coming back down re-arms it, or the field is stuck at 10 forever. */
+  click(m.minus);
+  assert.strictEqual(m.plus.disabled, false, 'stepping away from the ceiling must re-arm plus');
+}
+
+/* A mixed plan has neither bound yet — it has no single number to be at one
+   — so neither control may be dead. */
+{
+  const m = mount(day(10, 1));
+  assert.strictEqual(m.field.textContent, 'Mixed');
+  assert.strictEqual(m.plus.disabled, false, 'a mixed plan is not at the ceiling, whatever its highest item says');
+  assert.strictEqual(m.minus.disabled, false, 'nor at the floor, whatever its lowest says');
 }
 
 /* ---------- 5. reset returns the plan's own counts ---------- */
