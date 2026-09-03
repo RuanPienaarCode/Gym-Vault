@@ -9,6 +9,7 @@
    and what reads as "no target at all" — are pinned here. */
 const assert = require('node:assert');
 const t = require('../src/counter-target');
+const { resumeSeconds, targetFromEntry } = t;
 
 /* ---------- makeTarget ---------- */
 
@@ -131,6 +132,44 @@ for (const [name, list] of [['QUICK_REPS', t.QUICK_REPS], ['QUICK_SECONDS', t.QU
       `${name}: every offered pick must survive makeTarget unchanged`,
     );
   }
+}
+
+/* ---------- THE HOLD'S STOPWATCH STARTS AT ZERO (issue #18) ---------- */
+
+/* THE BUG THIS REPRODUCES. makeEntry prefills a duration entry's `seconds`
+   from the plan ("60s" -> 60) and marks it untouched. durationBody seeded the
+   stopwatch with that number, so after Begin the big numeral read 0:30 while
+   elapsed was zero — until the first one-second tick caught up. A tap-to-stop
+   inside that window logged about 0s against a display that had just said
+   0:30.
+
+   Two figures derived by different rules, from the same prefill that made a
+   timed interval save the plan's target as your reps. A target is not a
+   result, and it is not elapsed time either. */
+{
+  /* The prefill: the plan asked for 60s and nobody has held anything yet. */
+  assert.strictEqual(resumeSeconds({ seconds: 60, touched: false }), 0,
+    'the plan\'s target must not seed the stopwatch — the clock has not run');
+  assert.strictEqual(resumeSeconds({ seconds: '30', touched: false }), 0,
+    'a string prefill is still a prefill');
+
+  /* A RESUME is different: the user measured that, so counting on from it is
+     right. This is what stops the fix eating real data. */
+  assert.strictEqual(resumeSeconds({ seconds: '47', touched: true }), 47,
+    'a figure the user actually measured is a time to count on from');
+  assert.strictEqual(resumeSeconds({ seconds: 12.4, touched: true }), 12.4);
+
+  /* Nothing to resume from, in every shape the draft can hand over. */
+  for (const set of [null, undefined, {}, { touched: true }, { seconds: '', touched: true },
+                     { seconds: 'abc', touched: true }, { seconds: 0, touched: true },
+                     { seconds: -5, touched: true }]) {
+    assert.strictEqual(resumeSeconds(set), 0,
+      `no measured time means start at zero: ${JSON.stringify(set)}`);
+  }
+
+  /* And the prefill keeps its real job — the meter still fills towards 60. */
+  assert.deepStrictEqual(targetFromEntry({ target: '60s' }), { kind: 'seconds', value: 60 },
+    'the target is unchanged; only the stopwatch stopped borrowing it');
 }
 
 console.log('counter-target OK (a target is an intention; bad input reads as open-ended, never as zero; stages escalate in order)');

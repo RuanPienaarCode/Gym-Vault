@@ -59,6 +59,26 @@ function targetFromEntry(entry) {
   return makeTarget(entry.duration ? 'seconds' : 'reps', n);
 }
 
+/* THE STOPWATCH'S STARTING FIGURE FOR A HOLD — and the reason it is not
+   simply set.seconds.
+
+   makeEntry prefills a duration entry's `seconds` from the plan ("60s" -> 60)
+   and marks it `touched: false`. durationBody seeded the stopwatch with that
+   number, so after Begin the big numeral read 0:30 while elapsed was zero,
+   until the first one-second tick caught up. A tap-to-stop inside that window
+   logged about 0s against a display that had just said 0:30 — two figures
+   derived by different rules, which is the failure this codebase keeps
+   finding, and the same one timedSetValues fixes on the save side.
+
+   A TARGET IS NOT ELAPSED TIME. The prefill stays what it always was, the
+   fill meter's target. Only a figure the user actually measured — a touched
+   set, which is a genuine resume — is a time to start counting from. */
+function resumeSeconds(set) {
+  if (!set || !set.touched) return 0;
+  const n = parseFloat(set.seconds);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 /* How far along, as a fraction. Deliberately NOT clamped at 1: going past
    the target is the good outcome, and the surface deciding how to celebrate
    an overshoot needs to be able to tell 1.0 from 1.4. Clamp at the point of
@@ -111,5 +131,5 @@ const QUICK_SECONDS = [20, 30, 45, 60, 90, 120];
 
 module.exports = {
   KINDS, QUICK_REPS, QUICK_SECONDS,
-  makeTarget, targetFromEntry, fillFraction, fillStage, describeTarget,
+  makeTarget, targetFromEntry, resumeSeconds, fillFraction, fillStage, describeTarget,
 };
