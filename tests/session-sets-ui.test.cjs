@@ -29,7 +29,7 @@ const mkNode = tag => ({
   /* nodeType 1 is load-bearing: el() checks `kid.nodeType` to tell an
      element from a string, so a stub without it stringifies its children. */
   nodeType: 1, tag, className: '', style: {}, children: [], attrs: {}, listeners: {}, parent: null,
-  hidden: false, disabled: false,
+  hidden: false, disabled: false, value: '',
   classList: {
     add(c) { const s = new Set(String(this.owner.className).split(/\s+/).filter(Boolean)); s.add(c); this.owner.className = [...s].join(' '); },
     remove(c) { const s = new Set(String(this.owner.className).split(/\s+/).filter(Boolean)); s.delete(c); this.owner.className = [...s].join(' '); },
@@ -107,10 +107,10 @@ function mount(d) {
     ui,
     plus: byAria(node, 'One more set of every exercise'),
     minus: byAria(node, 'One fewer set of every exercise'),
-    field: node.querySelector('gv-setsrow-n'),
-    note: node.querySelector('gv-setsrow-target'),
+    field: node.querySelector('gv-dial-value'),
+    note: node.querySelector('gv-dial-note'),
     reset: node.querySelector('gv-setsall-reset'),
-    row: node.querySelector('gv-setsrow'),
+    range: node.querySelector('gv-dial-range'),
     perEntry: () => setsPerEntryFor(d, ui),
     previews: () => previews,
   };
@@ -162,7 +162,6 @@ const agrees = (m, where) => {
   assert.strictEqual(m.field.textContent, '4');
   assert.strictEqual(m.previews(), 1, 'the preview total must be told, or the line under the button contradicts it');
   assert.strictEqual(m.reset.hidden, false, 'once levelled there must be a way back to the plan');
-  assert.ok(m.row.classList.contains('changed'), 'the row must show it is no longer the plan\'s own counts');
 }
 
 /* ---------- 4. the floor holds at the button, not just in levelSets ------- */
@@ -234,14 +233,11 @@ const agrees = (m, where) => {
   click(m.plus);
   assert.deepStrictEqual(m.perEntry(), [4, 4, 4]);
   assert.strictEqual(m.reset.hidden, false, 'now there is something to undo');
-  assert.ok(m.row.classList.contains('changed'));
 
   click(m.minus);
   assert.deepStrictEqual(m.perEntry(), [3, 3, 3], 'back on the plan\'s own counts');
   assert.strictEqual(m.reset.hidden, true,
     'undo must only be offered when there is something to undo — a no-op round trip leaves nothing');
-  assert.ok(!m.row.classList.contains('changed'),
-    'the row must not stay marked as changed once it matches the plan again');
 }
 
 /* Levelling a MIXED plan to a value one of its items already had still
@@ -267,6 +263,38 @@ const agrees = (m, where) => {
     click(n % 2 ? m.plus : m.minus);
     agrees(m, `after ${n} presses`);
   }
+}
+
+/* ---------- 6b. THE SLIDER IS THE SAME CONTROL (#9) ---------------------- */
+
+/* The dial is the minutes dial's twin, so it has minutes' range too — 1 to
+   10 in one drag instead of nine taps. It writes through the SAME levelling
+   path as the steppers, so it cannot become a second way to set sets that
+   disagrees with the first. */
+{
+  const m = mount(day(3, 1, 3));
+  assert.ok(m.range, 'the sets dial must carry a range, like the minutes dial it matches');
+  assert.strictEqual(m.range.attrs.min, String(SETS_MIN));
+  assert.strictEqual(m.range.attrs.max, String(SETS_MAX));
+
+  /* On a mixed plan the thumb sits where the STEPPERS start from, and says
+     the word to anything that reads it aloud — the two controls agree with
+     each other and neither claims the plan is uniform. */
+  assert.strictEqual(m.range.value, '3', 'mixed: the thumb sits at the count most exercises already carry');
+  assert.strictEqual(m.range.attrs['aria-valuetext'], 'Mixed',
+    'a thumb position is a number; what it is READ as must still be the truth');
+
+  m.range.value = '7';
+  (m.range.listeners.input || []).forEach(fn => fn());
+  assert.deepStrictEqual(m.perEntry(), [7, 7, 7], 'the range must level every index, exactly as the steppers do');
+  agrees(m, 'after dragging the range');
+  assert.strictEqual(m.range.attrs['aria-valuetext'], '7 sets');
+
+  /* And it is clamped by the same function, so it cannot outrun the buttons. */
+  m.range.value = '99';
+  (m.range.listeners.input || []).forEach(fn => fn());
+  assert.deepStrictEqual(m.perEntry(), [SETS_MAX, SETS_MAX, SETS_MAX],
+    'the range must clamp through nextSetsValue, not write whatever the DOM hands it');
 }
 
 /* ---------- 7. THE SEAM: the preview and the session quote one array ----- */

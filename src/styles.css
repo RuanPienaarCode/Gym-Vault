@@ -2334,6 +2334,24 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--gv-ink-dim);
 }
+/* "Mixed" is a word, not a figure. The condensed display face at 54px reads
+   as a headline rather than a value, so the word drops to body type — the
+   number keeps the face that makes it scannable across the room. Carried
+   over from the `gv-setsrow` stepper this dial replaced. */
+.gv-app .gv-dial-value.word {
+  font-family: inherit;
+  font-size: 15px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--gv-ink-dim);
+  /* Hold the line box the figure would have occupied, or the whole dial
+     jumps 60px up the screen the moment a plan turns out to be mixed. */
+  min-height: clamp(54px, 17vw, 80px); display: flex; align-items: center; justify-content: center;
+}
+/* What stepping would do, under the dial rather than beside a row name. */
+.gv-dial-note {
+  margin-top: 10px; text-align: center;
+  font-size: 12px; color: var(--gv-ink-dim);
+}
+.gv-dial-note:empty { display: none; }
 /* THE ONE NEW RULE THAT MUST CARRY .gv-app, and the only one in this file's
    new blocks that matches a native element: app.css ships
    `input[type='range'] { width: 100px; height: var(--slider-track-height) }`
@@ -2381,42 +2399,26 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 }
 .gv-setup-start { margin-top: 6px; }
 
-/* Today's set counts, one row per exercise. The stepper sits right, thumb
-   height, with the number between the two controls so it reads as one
-   object rather than a label with buttons near it. */
-.gv-setsrow { display: flex; align-items: center; gap: 12px; }
-.gv-setsrow-main { flex: 1 1 auto; min-width: 0; }
-.gv-setsrow-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gv-setsrow-target { font-size: 12px; color: var(--gv-ink-dim); }
-.gv-setsrow-target:empty { display: none; }
-.gv-setsrow-stepper { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.gv-setsrow-count { min-width: 42px; text-align: center; }
-.gv-setsrow-n { font-family: var(--gv-display); font-size: 22px; line-height: 1; }
-/* The unit under the figure, because the figure alone was read as reps. */
-.gv-setsrow-unit {
-  font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--gv-ink-dim); margin-top: 1px;
-}
-/* A count that differs from the plan says so — a number changed two sessions
-   ago and forgotten must not quietly become the programme in someone's head. */
-/* ---------- today's sets: one field for the whole session ----------
-   Nine near-identical stepper rows became one, so the row carries a note
-   instead of an exercise name. */
-.gv-setsall { margin-top: 2px; }
-/* "Mixed" is a word, not a figure. The condensed display face at 22px reads
-   as a heading rather than a value, so the word drops to body type — the
-   number keeps the face that makes it scannable. */
-.gv-setsrow-n.word {
-  font-family: inherit;
-  font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
-  color: var(--gv-ink-dim);
-}
+/* ONE FLOOD PER SCREEN, AND ON THIS SCREEN IT IS START.
+
+   Lime used to land on the selected Guide card, both dial readouts, the
+   dial's hover, the range thumb AND every Transitions-style switch — five
+   places competing with the one button the screen exists to get you to.
+   Scoped to .gv-guidesetup so the plan picker, the settings tab and every
+   other user of .gv-optrow / .gv-switch keep their own accent. */
+.gv-guidesetup .gv-optrow.on { box-shadow: inset 4px 0 0 var(--gv-ink); }
+.gv-guidesetup .gv-optrow-tick,
+.theme-dark .gv-app .gv-guidesetup .gv-optrow-tick { color: var(--gv-ink); }
+.gv-guidesetup .gv-dial-value,
+.theme-dark .gv-app .gv-guidesetup .gv-dial-value { color: var(--gv-ink); }
+.gv-app .gv-guidesetup .gv-dial-step:hover { background: var(--gv-line); }
+.gv-app .gv-guidesetup .gv-switch.on { background: var(--gv-ink); border-color: var(--gv-ink); }
+.gv-app .gv-guidesetup .gv-dial-range::-webkit-slider-thumb { background: var(--gv-ink); }
+
 /* Only shown once the plan's own counts have been overridden. */
-.gv-app .gv-setsall-reset { margin-top: 8px; }
+.gv-app .gv-setsall-reset { margin-top: 8px; display: block; margin-left: auto; margin-right: auto; }
 .gv-app .gv-setsall-reset[hidden] { display: none; }
 
-.gv-setsrow.changed .gv-setsrow-n { color: var(--gv-lime-deep); }
-.gv-setsrow.changed { border-color: var(--gv-lime); }
 
 /* ============================================================================
    TIMED SESSION — page-session.js's third renderer. Acting register, same
