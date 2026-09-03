@@ -6,7 +6,7 @@
 const { el, ico, fmtSeconds } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
 const { setCounts, sameName } = require('./stats');
-const { targetFirstNumber, targetWeight, targetIsDuration, itemSets } = require('./plan-parse');
+const { targetFirstNumber, targetWeight, targetIsDuration, targetDurationSeconds, itemSets } = require('./plan-parse');
 const { FormModal, ConfirmModal, EndSessionModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
 
@@ -41,7 +41,9 @@ function makeEntry(ctx, exercise, sets, target) {
   const duration = !distance && (unit === 'seconds' || (!unit && targetIsDuration(target || '')));
   const weighted = unit === 'kg' || targetWeight(target || '') !== null;
   const prefReps = duration ? '' : (targetFirstNumber(target || '') ?? '');
-  const prefSecs = duration ? (targetFirstNumber(target || '') ?? '') : '';
+  /* Seconds, honouring a written "min" — the prefill for `30 min easy` used
+     to be 30, so a manually logged run banked half a minute. */
+  const prefSecs = duration ? (targetDurationSeconds(target || '') ?? targetFirstNumber(target || '') ?? '') : '';
   const prefW = targetWeight(target || '') ?? '';
   return {
     exercise, target: target || '', duration, weighted, distance,

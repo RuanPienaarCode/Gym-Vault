@@ -59,6 +59,29 @@ function targetIsDuration(target) {
   return /\d\s*(s\b|sec|min)/i.test(target || '');
 }
 
+/* THE DURATION, IN SECONDS — the unit is written down, so read it.
+
+   targetIsDuration has always recognised "min", but every caller then took
+   targetFirstNumber as a count of SECONDS. So the seed's Easy Run,
+   `1 x 30 min easy`, scheduled a 30-second interval and logged the run as
+   0.5 min; `2 min` scheduled 5 seconds, because the floor clamp was the only
+   thing left doing any work. Three callers had the same hole — the timed
+   schedule, the fill meter's target, and the manual log's prefill — which is
+   this codebase's recurring shape: one question answered in three places by
+   rules that disagree. It is answered here now.
+
+   A RANGE takes its first number ("30-45s" is 30, "20-30 min" is 20), which
+   is what every caller already did and what the shortest honest reading of a
+   range is. Returns null when the target names no duration at all, so a rep
+   count is never mistaken for a clock. */
+function targetDurationSeconds(target) {
+  const m = (target || '').match(/(\d+(?:\.\d+)?)\s*(?:[-\u2013]\s*\d+(?:\.\d+)?\s*)?(s|secs?|seconds?|min|mins?|minutes?)\b/i);
+  if (!m) return null;
+  const n = +m[1];
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(/^m/i.test(m[2]) ? n * 60 : n);
+}
+
 /* A day keeps its lines as ORDERED `parts` ({kind:'note',line} |
    {kind:'item',item}) so a coaching cue written BETWEEN two exercise lines
    stays exactly where the author put it across saves — the earlier
@@ -219,5 +242,5 @@ function serializePlanBody(model) {
 
 module.exports = {
   parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, moveItem, updateItem, itemSets, isRestDay,
-  targetWeight, targetFirstNumber, targetIsDuration,
+  targetWeight, targetFirstNumber, targetIsDuration, targetDurationSeconds,
 };

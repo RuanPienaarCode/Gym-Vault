@@ -28,7 +28,7 @@
    A timer cannot count your push-ups; it can tell you how long to keep
    doing them. */
 
-const { targetFirstNumber, targetIsDuration } = require('./plan-parse');
+const { targetFirstNumber, targetDurationSeconds } = require('./plan-parse');
 
 /* Every duration below is seconds. These are the defaults a fresh install
    uses; the setup screen persists whatever the user picks over them. */
@@ -92,8 +92,14 @@ function shuffledIndices(n, next) {
    box, because reps are what gets logged. Don't "fix" this into agreement. */
 function workSecondsFor(item, config) {
   const target = (item && item.target) || '';
-  const isDuration = (item && item.unit === 'seconds') || targetIsDuration(target);
-  if (isDuration) {
+  /* A WRITTEN unit wins over the note's `unit:` field: "30 min easy" is
+     thirty minutes however the exercise note is filled in, and this used to
+     read it as thirty SECONDS. */
+  const written = targetDurationSeconds(target);
+  if (written) return Math.max(MIN_INTERVAL_S, written);
+  /* No unit written, but the note says this exercise is measured in seconds
+     — then the bare number is seconds, as it always was. */
+  if (item && item.unit === 'seconds') {
     const n = targetFirstNumber(target);
     if (Number.isFinite(n) && n > 0) return Math.max(MIN_INTERVAL_S, Math.round(n));
   }
