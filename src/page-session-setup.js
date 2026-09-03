@@ -323,7 +323,13 @@ function setsBlock(ctx, day, ui, onChange) {
 
   const planned = items.map(it => itemSets(it));
   const uniformNow = () => uniformSets(items, ui);
-  const overridden = () => Object.keys(ui.sets || {}).length > 0;
+  /* "Back to the plan" is UNDO, not a sticky flag on ui.sets. This used to
+     ask whether anything had been WRITTEN, so +1 then -1 on a uniform
+     3-plan left the row `.changed` and the reset on screen with nothing
+     left to undo — chrome claiming an override that the resolved counts no
+     longer carry. Asking whether the counts DIFFER makes it honest however
+     ui.sets got into that state. */
+  const differsFromPlan = () => setsPerEntryFor(day, ui).some((n, i) => n !== planned[i]);
 
   const wrap = el('div', {});
   wrap.append(el('div', { class: 'gv-section-title' }, ico('list'), el('span', {}, 'Sets')));
@@ -342,7 +348,7 @@ function setsBlock(ctx, day, ui, onChange) {
     noteEl.textContent = n === null
       ? `The plan varies — this levels all ${items.length}`
       : `${items.length} exercise${items.length === 1 ? '' : 's'}, ${n} each`;
-    row.classList.toggle('changed', overridden());
+    row.classList.toggle('changed', differsFromPlan());
     /* BOTH ends, and both against the constants nextSetsValue clamps to —
        plus used to stay live at SETS_MAX because only the floor was wired.
        The number was never wrong (the clamp held); the control was, which
@@ -351,7 +357,7 @@ function setsBlock(ctx, day, ui, onChange) {
        first time either bound moves. */
     minus.disabled = n !== null && n <= SETS_MIN;
     plus.disabled = n !== null && n >= SETS_MAX;
-    reset.hidden = !overridden();
+    reset.hidden = !differsFromPlan();
   };
 
   const step = delta => {

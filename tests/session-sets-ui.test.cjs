@@ -219,6 +219,46 @@ const agrees = (m, where) => {
   assert.strictEqual(m.previews(), 2, 'reset moves the total too');
 }
 
+/* ---------- 5b. UNDO IS NOT A FLAG (#8) — a no-op round trip clears it --- */
+
+/* +1 then -1 lands back on the plan's own counts, so there is nothing left
+   to undo. The reset used to ask whether anything had been WRITTEN to
+   ui.sets, which stays true forever once you touch the control — the row
+   kept its `.changed` mark and offered "Back to the plan" while already
+   being the plan. Start built the right draft throughout; only the chrome
+   lied. */
+{
+  const m = mount(day(3, 3, 3));
+  assert.strictEqual(m.reset.hidden, true, 'untouched: nothing to undo');
+
+  click(m.plus);
+  assert.deepStrictEqual(m.perEntry(), [4, 4, 4]);
+  assert.strictEqual(m.reset.hidden, false, 'now there is something to undo');
+  assert.ok(m.row.classList.contains('changed'));
+
+  click(m.minus);
+  assert.deepStrictEqual(m.perEntry(), [3, 3, 3], 'back on the plan\'s own counts');
+  assert.strictEqual(m.reset.hidden, true,
+    'undo must only be offered when there is something to undo — a no-op round trip leaves nothing');
+  assert.ok(!m.row.classList.contains('changed'),
+    'the row must not stay marked as changed once it matches the plan again');
+}
+
+/* Levelling a MIXED plan to a value one of its items already had still
+   differs from the plan — the others moved. The test is the whole array,
+   never one index. */
+{
+  const m = mount(day(3, 1, 3));
+  click(m.plus);           // -> 4,4,4
+  click(m.minus);          // -> 3,3,3 : matches item 0 and 2, NOT item 1
+  assert.deepStrictEqual(m.perEntry(), [3, 3, 3]);
+  assert.strictEqual(m.reset.hidden, false,
+    'the middle exercise moved from 1 to 3 — there is very much something to undo');
+  click(m.reset);
+  assert.deepStrictEqual(m.perEntry(), [3, 1, 3]);
+  assert.strictEqual(m.reset.hidden, true);
+}
+
 /* ---------- 6. every step keeps the face and the figures together -------- */
 {
   const m = mount(day(2, 5, 2));
