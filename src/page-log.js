@@ -3,10 +3,11 @@
    ctx.state.logDraft and nothing touches disk until Finish, so backing out
    never leaves a half-written session note. */
 
-const { el, ico, fmtSeconds } = require('./dom');
+const { el, ico, fmtSeconds, numericInput } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
 const { setCounts, sameName } = require('./stats');
 const { targetFirstNumber, targetWeight, targetIsDuration, targetDurationSeconds, itemSets } = require('./plan-parse');
+
 const { FormModal, ConfirmModal, EndSessionModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
 
@@ -197,18 +198,16 @@ function setRow(ctx, entry, set, si) {
   const row = el('div', { class: `gv-log-set${set.done ? ' done' : ''}${isPrefill ? ' prefill' : ''}` });
   row.append(el('span', { class: 'gv-set-num' }, String(si + 1).padStart(2, '0')));
 
-  const numInput = (key, placeholder, cls) => {
-    const i = el('input', {
-      class: `gv-set-input${cls ? ' ' + cls : ''}`, type: 'number', inputmode: 'decimal',
-      placeholder, value: set[key] ?? '',
-      /* A screen reader gets told it is a suggestion too — dimming it says
-         nothing to anyone not looking at the colour. */
-      'aria-label': `${INPUT_LABELS[key] || placeholder} — ${entry.exercise}, set ${si + 1}`
-        + (isPrefill && String(set[key] ?? '').trim() ? ', from the plan, not yet logged' : ''),
-    });
-    i.addEventListener('input', () => { set[key] = i.value; set.touched = true; });
-    return i;
-  };
+  /* dom.numericInput, not a bare type="number": a 4.3 km run could not be
+     entered, and "4,3" was discarded to an empty string outright. */
+  const numInput = (key, placeholder, cls) => numericInput({
+    class: `gv-set-input${cls ? ' ' + cls : ''}`,
+    placeholder, value: set[key] ?? '',
+    /* A screen reader gets told it is a suggestion too — dimming it says
+       nothing to anyone not looking at the colour. */
+    'aria-label': `${INPUT_LABELS[key] || placeholder} — ${entry.exercise}, set ${si + 1}`
+      + (isPrefill && String(set[key] ?? '').trim() ? ', from the plan, not yet logged' : ''),
+  }, v => { set[key] = v; set.touched = true; });
 
   if (entry.distance) {
     /* Two inputs in one row — narrower so km + min + the 48px tick still

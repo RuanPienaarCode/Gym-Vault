@@ -393,6 +393,80 @@ function segmented(options, current, onPick, opts) {
   return wrap;
 }
 
+/* NUMBERS YOU CAN ACTUALLY TYPE.
+
+   Every logged figure used `<input type="number">` with inputmode:'decimal'.
+   Two things were wrong with that, and both ended with a figure the user
+   entered not being there:
+
+     - type="number" defaults to step="1", so 4.3 is INVALID. inputmode only
+       chooses the on-screen keyboard; it says nothing about what the field
+       will hold.
+     - type="number" accepts exactly one decimal separator, the period, no
+       matter what the device's locale uses. Typing "4,3" leaves `.value` as
+       an EMPTY STRING — the distance did not come out wrong, it vanished.
+       That is how a comma-decimal locale writes it, South Africa included.
+
+   So these are TEXT inputs with inputmode:'decimal' — the same keypad on a
+   phone, none of the silent discarding — and the value is normalised here.
+   Text means the field will hold anything, so this is also what stops it:
+   buildRows writes the box's contents straight into the note's table, and
+   "abc km" must never get that far.
+
+   EVERY FIELD TAKES A DECIMAL, including reps and seconds. A first attempt
+   made those two whole-number and it was worse than the bug: keystrokes
+   arrive one at a time, so "12.5" reached the field as "12", "12." and then
+   "125" — the separator was dropped as it was typed and the digits joined.
+   A count that silently becomes ten times itself is far worse than one that
+   records a half. If someone types half a rep, they meant it.
+
+   normaliseNumber is exported and pure, because what a training log is
+   allowed to record is a rule, not a rendering detail. */
+function normaliseNumber(raw) {
+  let v = String(raw == null ? '' : raw).replace(/[^0-9.,-]/g, '');
+  /* A leading minus only. Rejecting the character mid-edit is worse than
+     enforcing the shape, so the sign is placed rather than policed. */
+  const neg = v.startsWith('-');
+  v = v.replace(/-/g, '');
+  /* A comma IS a decimal point here. */
+  v = v.replace(/,/g, '.');
+  const i = v.indexOf('.');
+  /* One point. A second separator is a slip — dropping it keeps the digits
+     the user typed, which beats emptying a field mid-edit. */
+  if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, '');
+  return (neg ? '-' : '') + v;
+}
+
+/* A logging field. onValue receives the normalised string on every edit. */
+function numericInput(attrs, onValue) {
+  const input = el('input', {
+    ...attrs,
+    type: 'text',
+    /* 'decimal' shows a keypad WITH a separator — the difference between
+       being able to type 4.3 on a phone and not. */
+    inputmode: 'decimal',
+    /* A measurement is not a word: no autocorrect, no capitalisation. */
+    autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
+  });
+  input.addEventListener('input', () => {
+    const clean = normaliseNumber(input.value);
+    if (clean !== input.value) {
+      /* Rewriting the value moves the caret to the end, which is wrong in
+         the middle of an edit. Put it back where it was, less whatever the
+         normalisation removed before it. */
+      const at = input.selectionStart;
+      const removed = input.value.length - clean.length;
+      input.value = clean;
+      if (at !== null && input.setSelectionRange) {
+        const to = Math.max(0, at - removed);
+        try { input.setSelectionRange(to, to); } catch (e) { /* not a text field yet */ }
+      }
+    }
+    if (onValue) onValue(input.value);
+  });
+  return input;
+}
+
 /* THE BACK BUTTON EVERY NESTED PAGE SHARES.
 
    These used to hardcode their destination — Running records always went to
@@ -416,5 +490,5 @@ function backButton(ctx, fallback) {
 }
 
 module.exports = {
-  backButton, el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented
+  backButton, numericInput, normaliseNumber, el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented
 };
