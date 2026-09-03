@@ -160,14 +160,20 @@ function audioContext() {
   return ctxAudio;
 }
 
+/* Kick a context that is not running. 'suspended' is the standard state;
+   'interrupted' is iOS WebKit's own, set when the audio session is taken
+   away — a phone call, Siri, or the microphone stream that just recorded a
+   take. A guard on 'suspended' alone leaves an interrupted context asleep,
+   and a buffer started on it is the take you recorded and never heard. */
+function wake(ac) {
+  if (ac && ac.state !== 'running' && ac.state !== 'closed') ac.resume();
+}
+
 /* Call from inside a user gesture, before anything will need to make a noise
    on a TIMER. Idempotent and never throws: a failed unlock degrades to a
    silent session, which is exactly what happens today without it. */
 function unlock() {
-  try {
-    const ac = audioContext();
-    if (ac && ac.state === 'suspended') ac.resume();
-  } catch (e) { /* audio is a nicety — the count still lands on screen */ }
+  try { wake(audioContext()); } catch (e) { /* audio is a nicety — the count still lands on screen */ }
   /* Speech unlocks by having spoken once from a gesture. An empty utterance
      is inaudible and does that without saying anything. */
   try {
@@ -191,7 +197,7 @@ function playTone(kind) {
   const ac = audioContext();
   if (!ac) return;
   try {
-    if (ac.state === 'suspended') ac.resume();
+    wake(ac);
     let at = ac.currentTime;
     for (const note of toneFor(kind)) {
       const osc = ac.createOscillator();
@@ -262,7 +268,7 @@ function playBuffer(buffer) {
   const ac = audioContext();
   if (!ac || !buffer) return false;
   try {
-    if (ac.state === 'suspended') ac.resume();
+    wake(ac);
     stopClip();
     const src = ac.createBufferSource();
     src.buffer = buffer;

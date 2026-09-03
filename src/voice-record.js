@@ -22,8 +22,17 @@
    handler BEFORE awaiting start(). This module cannot do that for it: by
    the time start() runs, the gesture stack may already be gone.
 
-   The stream is released the moment recording stops or is cancelled; there
-   is no state here that outlives one take. */
+   ITS OWN CONTEXT. The take is tapped through an AudioContext created for
+   it and CLOSED when it ends — never sound.js's shared one. On iOS a
+   microphone stream moves the whole audio session to play-and-record (output
+   to the call earpiece, at earpiece volume) and any context alive through
+   that comes out the far side 'interrupted'. Closing the capture context is
+   what hands the session back, so the playback context is never the one
+   that lived through a recording. The two run at whatever rates the engine
+   gives them; voice-pack.resample makes that nobody's problem.
+
+   The stream and the context are released the moment recording stops or is
+   cancelled; there is no state here that outlives one take. */
 
 const sound = require('./sound');
 const { rms, concatSamples, MAX_CLIP_MS } = require('./voice-pack');
@@ -58,8 +67,15 @@ function describeError(e) {
 async function startRecording(opts) {
   const o = opts || {};
   if (!canRecord()) throw new Error('This device cannot record here — no microphone access in this app.');
-  const ac = sound.audioContext();
+  /* Created and resumed HERE, synchronously, while the caller's tap stack is
+     still alive — an async function runs up to its first await inside the
+     caller's frame. Created after the await it would start suspended with
+     no gesture left to wake it. */
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  let ac = null;
+  try { ac = new Ctor(); } catch (e) { ac = null; }
   if (!ac) throw new Error('No audio engine is available.');
+  try { if (ac.state !== 'running') ac.resume(); } catch (e) { /* retried below */ }
 
   let stream;
   try {
@@ -110,6 +126,8 @@ async function startRecording(opts) {
     try { tap.disconnect(); } catch (e) { /* ignore */ }
     try { sink.disconnect(); } catch (e) { /* ignore */ }
     for (const t of stream.getTracks()) { try { t.stop(); } catch (e) { /* ignore */ } }
+    /* Last, and unconditionally: this is what gives iOS its speaker back. */
+    try { ac.close(); } catch (e) { /* ignore */ }
   };
 
   return {
