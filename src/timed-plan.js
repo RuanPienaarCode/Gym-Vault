@@ -251,6 +251,41 @@ function initialIndex(schedule, draft, isHandled) {
   return intervals.length;
 }
 
+/* WHAT A FINISHED INTERVAL IS ENTITLED TO WRITE.
+
+   A TARGET IS NOT A RESULT. makeEntry prefills reps and weight from the plan
+   and marks them `touched: false` — they are the day's prescription sitting
+   in the boxes, not anything anybody did. When a timed interval ended,
+   advanceTimed wrote the clock and applyCompletion set done/touched, so the
+   prefill was promoted to observed work and buildRows saved it. You did 8
+   push-ups in 45 seconds and your history said 15.
+
+   applyCompletion's `measured: false` only ever suppressed the RECORD toast.
+   It never stopped the save, which is the half that outlives the session.
+
+   So: the clock is written, because the clock is what this screen measured.
+   Anything the user typed is kept, because they typed it. An untouched
+   prefill is cleared, because nobody did it. Weight goes with reps — "8 x
+   60kg" is one prescription, and keeping half of it would be a figure with
+   no set behind it.
+
+   A distance entry has no prefills to clear (makeEntry leaves a run empty —
+   the distance covered is the whole point of logging it) and takes `minutes`
+   rather than `seconds`, because buildRows reads a run's time from minutes
+   and ignores seconds entirely. */
+function timedSetValues(entry, set, seconds) {
+  if (entry && entry.distance) {
+    return { minutes: String(Math.round((seconds / 60) * 10) / 10) };
+  }
+  const values = { seconds: String(Math.round(seconds)) };
+  if (!(set && set.touched)) {
+    values.reps = '';
+    values.weight_kg = '';
+  }
+  return values;
+}
+
 module.exports = {
+  timedSetValues,
   TIMED_DEFAULTS, MIN_INTERVAL_S, buildSchedule, workSecondsFor, workIntervals, initialIndex,
 };
