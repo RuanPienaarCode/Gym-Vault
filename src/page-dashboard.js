@@ -6,7 +6,7 @@
 const { el, ico, fmt, fmtSeconds, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
-const { workoutDates, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
+const { workoutDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { itemSets, isRestDay } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
@@ -34,6 +34,9 @@ function render(ctx, root) {
   const todays = ctx.daysOn(todayKeyName);
   const doneToday = dates.includes(today);
   const last = data.workouts.length ? data.workouts[data.workouts.length - 1] : null;
+  /* The day, via the one rule — a note whose date this app cannot read shows
+     no date rather than the string it was typed as. */
+  const lastDate = last ? workoutDate(last) : null;
 
   /* Masthead + action slab. */
   const hero = el('div', { class: 'gv-hero' });
@@ -105,7 +108,7 @@ function render(ctx, root) {
     slab.append(el('div', { class: 'gv-hero-action-line' },
       el('span', { class: 'gv-shout' }, `${setsTotal} sets · est. ${Math.max(15, Math.round(setsTotal * 1.8 / 5) * 5)} min`),
       el('span', { class: 'gv-shout' },
-        last && last.fm.date ? `Last: ${fmtShort(last.fm.date)} · ${sessionSets(last.rows)} sets` : 'First session — make it count')));
+        lastDate ? `Last: ${fmtShort(lastDate)} · ${sessionSets(last.rows)} sets` : 'First session — make it count')));
     slab.append(el('button', {
       class: 'gv-btn-go', type: 'button',
       onclick: () => ctx.startGuided(dayPlan, day),
@@ -188,7 +191,7 @@ function render(ctx, root) {
   const tiles = el('div', { class: 'gv-tiles' },
     tile(ico('calendar-days'), fmt(thisWeek), 'sessions this week'),
     tile(ico('dumbbell'), fmt(sessionCount(data.workouts)), 'sessions all time'),
-    tile(ico('history'), last && last.fm.date ? fmtShort(last.fm.date) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session', 'gv-tile-wide'),
+    tile(ico('history'), lastDate ? fmtShort(lastDate) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session', 'gv-tile-wide'),
   );
   root.append(tiles);
 

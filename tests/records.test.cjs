@@ -159,4 +159,125 @@ assert.deepStrictEqual(records.recordHistory(HISTORY, 'Push-ups', undefined), []
   assert.deepStrictEqual(records.allRecords([], exercises), []);
 }
 
+/* ================================================================
+   ONE RULE FOR A SESSION'S DAY (issue #24)
+   ================================================================
+
+   THE BUG THIS REPRODUCES. workoutDate() is this app's single rule for what
+   day a session happened on, but inDateOrder and data.js's loadAll sort both
+   compared the RAW frontmatter string:
+
+     `date: 2026-8-6`        Today ignores it (fromISO wants two digits), but
+                             as a string it sorts AFTER `2026-09-01` — so it
+                             led the history a record was computed from, and
+                             became the last element of data.workouts, which
+                             is exactly what the dashboard's "last session"
+                             tile reads.
+
+     `date: 2026-08-26T09:00` and `2026-08-26` are the same day to every
+                             other rule in the app, and two different keys to
+                             a string compare.
+
+   records.test.cjs only ever used clean ISO dates, which is why nothing
+   caught it. */
+{
+  /* The fixture has to make the two rules DISAGREE, or it proves nothing —
+     which is the trap #6 was about. `2026-8-6` is unparseable but happens to
+     sort last as a string too, so it discriminates nothing. A day-first date
+     is both realistic and decisive: `06-08-2026` sorts FIRST as a string, so
+     under the old rule it LED the history every record was computed from. */
+  const messy = [
+    { name: 'dayfirst', fm: { date: '06-08-2026' }, rows: [{ exercise: 'Pull-ups', reps: '99' }] },
+    { name: 'sept', fm: { date: '2026-09-01' }, rows: [{ exercise: 'Pull-ups', reps: '10' }] },
+    { name: 'stamped', fm: { date: '2026-08-26T09:00' }, rows: [{ exercise: 'Pull-ups', reps: '5' }] },
+    { name: 'plain', fm: { date: '2026-08-26' }, rows: [{ exercise: 'Pull-ups', reps: '6' }] },
+  ];
+
+  /* The old rule, run here so the disagreement is demonstrated rather than
+     asserted from memory. */
+  const rawOrder = messy.slice().sort((a, b) => {
+    const ad = a.fm.date || '9999-99-99', bd = b.fm.date || '9999-99-99';
+    return ad < bd ? -1 : ad > bd ? 1 : 0;
+  }).map(w => w.name);
+  assert.deepStrictEqual(rawOrder, ['dayfirst', 'plain', 'stamped', 'sept'],
+    'a raw string sort puts an unreadable date FIRST and reorders the two same-day notes — this is the bug');
+
+  const ordered = records.inDateOrder(messy).map(w => w.name);
+  assert.strictEqual(ordered[ordered.length - 1], 'dayfirst',
+    'a date this app cannot read must sort LAST — it cannot be claimed to have happened before anything, '
+    + 'and it must never lead the history a record is computed from');
+  assert.notStrictEqual(ordered[0], 'dayfirst',
+    'and it certainly must not lead it');
+
+  assert.deepStrictEqual(ordered.slice(0, 3), ['stamped', 'plain', 'sept'],
+    'the two August notes are the SAME DAY, so the comparator returns 0 and their input order stands — '
+    + 'a raw compare invented an order between them; September still comes after both');
+
+  /* Same-day stability matters beyond tidiness: saveWorkout explicitly
+     supports two sessions on one date. */
+  const twice = records.inDateOrder([
+    { name: 'run', fm: { date: '2026-08-26T18:00' }, rows: [] },
+    { name: 'lift', fm: { date: '2026-08-26' }, rows: [] },
+  ]).map(w => w.name);
+  assert.deepStrictEqual(twice, ['run', 'lift'],
+    'two sessions on one day keep the order they arrived in');
+}
+
+/* The record's own date is the day, not the string it was typed as. */
+{
+  const messy = [
+    { name: 'stamped', fm: { date: '2026-08-26T09:00' }, rows: [{ exercise: 'Pull-ups', reps: '12' }] },
+  ];
+  const hist = records.recordHistory(messy, 'Pull-ups', 'reps');
+  assert.strictEqual(hist.length, 1);
+  assert.strictEqual(hist[0].date, '2026-08-26',
+    'a record card must show the day, not "2026-08-26T09:00"');
+}
+
+/* An unreadable date yields no date at all rather than a misleading one. */
+{
+  const messy = [
+    { name: 'sloppy', fm: { date: '2026-8-6' }, rows: [{ exercise: 'Pull-ups', reps: '12' }] },
+  ];
+  const hist = records.recordHistory(messy, 'Pull-ups', 'reps');
+  assert.strictEqual(hist[0].date, '',
+    'a date this app cannot read must render as nothing, never as the raw string Today refuses');
+}
+
+/* ---- and the SAME rule in loadAll, which the "last session" tile reads --- */
+
+/* data.js sorts data.workouts the same way, and the dashboard's last-session
+   tile is simply the final element of that array. A day-first date sorted to
+   the FRONT under the old rule, which was survivable; a sloppy `2026-8-6`
+   sorted to the BACK and so became "your last session" — a note Today
+   refuses to recognise at all.
+
+   data.js needs the obsidian host to be required, so the comparator it uses
+   is checked in source and the rule itself is exercised above. */
+{
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'data.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  assert.match(src, /data\.workouts\.sort\(\(a, b\) => \{\s*const x = workoutDate\(a\) \|\| '', y = workoutDate\(b\) \|\| '';/,
+    'loadAll must order workouts by workoutDate — the last element of that array IS the "last session" tile');
+  assert.ok(!/const x = a\.fm\.date \|\| '', y = b\.fm\.date \|\| ''/.test(src),
+    'the raw-string comparator is what let an unreadable date become your most recent session');
+
+  /* The tiles must print that day too, not the string it was typed as. */
+  const dash = fs.readFileSync(path.join(__dirname, '..', 'src', 'page-dashboard.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.match(dash, /const lastDate = last \? workoutDate\(last\) : null;/,
+    'the last-session tile must show the day this app reads');
+  assert.ok(!/fmtShort\(last\.fm\.date\)/.test(dash),
+    'printing the raw frontmatter string shows a date nothing else in the app agrees with');
+
+  /* History's month headers group by the same day. */
+  const hist = fs.readFileSync(path.join(__dirname, '..', 'src', 'page-history.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.match(hist, /monthLabel\(workoutDate\(w\) \|\| ''\)/,
+    'a note under the wrong month header is the same lie as one in the wrong sort position');
+}
+
 console.log('records history OK (one rule for "the best"; a tie is not a record; order-independent)');
