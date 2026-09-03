@@ -9,15 +9,14 @@
 const { el, ico, fmt, fmtSeconds } = require('./dom');
 const { WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, startOfWeek, addDays } = require('./dates');
-const { distanceInWeek, ladderWeek, exerciseBests, workoutDate, num } = require('./stats');
+const { distanceInWeek, ladderWeek, workoutDate, num } = require('./stats');
+const { runRows, longestRun, paceOf, fmtPace } = require('./run-records');
 
-const isRun = ex => (ex.fm.unit || '') === 'km';
 
 function render(ctx, root) {
   const { data, settings } = ctx;
   const today = todayISO();
   const plan = ctx.runPlan();
-  const runExercises = data.exercises.filter(isRun);
 
   root.append(el('div', { class: 'gv-toolbar' },
     el('h2', { class: 'gv-toolbar-title' }, 'Running'),
@@ -93,13 +92,20 @@ function render(ctx, root) {
   /* ---- volume ---- */
   const thisWeekKm = distanceInWeek(data.workouts, today, settings.weekStart);
   const lastWeekKm = distanceInWeek(data.workouts, addDays(startOfWeek(today, settings.weekStart), -1), settings.weekStart);
-  let longest = null, total = 0, lastRun = null;
-  for (const ex of runExercises) {
-    const b = exerciseBests(data.workouts, ex.name);
-    if (b.distance !== null && (longest === null || b.distance > longest)) longest = b.distance;
-    total += b.totalDistance || 0;
-    if (b.lastDate && (!lastRun || b.lastDate > lastRun)) lastRun = b.lastDate;
-  }
+  /* ONE SCAN, THE SAME ONE THE RECORDS PAGE USES. These tiles used to walk
+     the CURRENT LIBRARY's km-unit notes and take exerciseBests per name,
+     while "this week" (distanceInWeek) and the records page counted every
+     distance_km row in history. So deleting an exercise note left the week
+     tile at 10 km and the records hero at 10 km while "longest run" dropped
+     to a dash — three surfaces, three rules, one of them quietly forgetting
+     history the moment a note was renamed or removed.
+
+     longestRun(runRows(...)) IS runRecords().longest: same function, same
+     input, so the tile cannot disagree with the hero. */
+  const runs = runRows(data.workouts);
+  const longestRunRow = longestRun(runs);
+  const longest = longestRunRow ? longestRunRow.km : null;
+  const lastRun = runs.reduce((d, r) => (r.date && (!d || r.date > d) ? r.date : d), null);
   root.append(el('div', { class: 'gv-tiles' },
     tile(ico('footprints'), fmt(thisWeekKm, ' km'), 'this week'),
     tile(ico('chart-line'), fmt(lastWeekKm, ' km'), 'last week'),
@@ -123,6 +129,15 @@ function render(ctx, root) {
   }
 
   /* ---- recent runs ---- */
+  /* ONE PACE PER RUN, from that run's own two figures.
+
+     This used to sum every distance row in a session and every seconds row,
+     then divide. An untimed warm-up walk beside a timed main run therefore
+     invented a pace neither of them had — the main run's time spread over
+     both distances, reported as if it were a single effort. The session
+     total is still shown as the distance, because that IS the sum of the
+     rows; only the pace is per-run, and it appears only when the run it
+     belongs to carries both figures. */
   const recent = [];
   for (let i = data.workouts.length - 1; i >= 0 && recent.length < 6; i--) {
     const w = data.workouts[i];
@@ -130,7 +145,20 @@ function render(ctx, root) {
     if (!rows.length) continue;
     const km = Math.round(rows.reduce((n, r) => n + num(r.distance_km), 0) * 10) / 10;
     const secs = rows.reduce((n, r) => n + (num(r.seconds) || 0), 0);
-    recent.push({ date: w.fm.date, name: rows[0].exercise, km, secs, file: w.file });
+    /* The pace of the LONGEST row that has both — the run of the session,
+       rather than an average across a warm-up. A session whose rows are all
+       untimed shows no pace at all, which is the honest answer. */
+    const paced = rows
+      .map(r => ({ km: num(r.distance_km), seconds: num(r.seconds) }))
+      .filter(r => r.km > 0 && r.seconds > 0)
+      .sort((a, b) => b.km - a.km)[0] || null;
+    recent.push({
+      date: w.fm.date, name: rows[0].exercise, km, secs, file: w.file,
+      pace: paced ? fmtPace(paceOf(paced)) : '',
+      /* One row, or several? A session pace shown against a multi-row
+         session has to say which run it belongs to. */
+      paceIsPartial: !!paced && rows.length > 1,
+    });
   }
   if (recent.length) {
     root.append(el('div', { class: 'gv-section-title' }, ico('history'), el('span', {}, 'Recent runs')));
@@ -143,7 +171,7 @@ function render(ctx, root) {
         el('div', { class: 'gv-runday-main' },
           el('div', { class: 'gv-runday-name' }, r.name),
           el('div', { class: 'gv-runday-rx' },
-            `${fmtShort(r.date)}${r.secs ? ' · ' + fmtSeconds(r.secs) : ''}${r.secs && r.km ? ' · ' + pace(r.secs, r.km) : ''}`))));
+            `${fmtShort(r.date)}${r.secs ? ' · ' + fmtSeconds(r.secs) : ''}${r.pace ? ` · ${r.pace}${r.paceIsPartial ? ' (longest leg)' : ''}` : ''}`))));
     }
     root.append(list);
   } else {
@@ -151,13 +179,6 @@ function render(ctx, root) {
   }
 }
 
-/* Pace for ONE run, from that run's own distance and time — never from a
-   longest-distance / longest-time pair, which can be different runs. */
-function pace(seconds, km) {
-  if (!seconds || !km) return '';
-  const s = Math.round(seconds / km);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} /km`;
-}
 
 function tile(icon, big, label) {
   return el('div', { class: 'gv-tile' },
