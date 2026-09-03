@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Guided setup harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif}
+  .wrap{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+  .col{width:390px}
+  h2{font:600 12px/1.4 system-ui;letter-spacing:.08em;text-transform:uppercase;color:#555;margin:0 0 6px}
+  /* A real iPhone viewport, so "below the fold" is a measurement and not an
+     opinion. 390x844 minus Safari/Obsidian chrome ~= 700px of usable height;
+     the rule is drawn at 700 and Start must sit above it. */
+  .phone{width:390px;height:844px;overflow:auto;background:#f5f7ef;border:1px solid #bbb;position:relative}
+  .fold{position:absolute;left:0;right:0;top:700px;border-top:2px dashed #c00;z-index:5;pointer-events:none}
+  .fold::after{content:'fold — 700px';position:absolute;right:4px;top:2px;font:700 10px system-ui;color:#c00}
+  .verdict{font:12px/1.6 ui-monospace,Menlo,monospace;padding:8px 0;white-space:pre}
+</style></head>
+<body>
+<script src="bundle.js"></script>
+<script>
+  var setupPage = window.__setupPage;
+
+  function day(name, counts) {
+    var names = ['Pull-ups', 'Push-ups', 'Bodyweight Squat', 'Plank', 'Tricep Dips'];
+    return { name: name, items: counts.map(function (n, i) {
+      return { exercise: names[i] || ('Move ' + (i + 1)), sets: n, target: '10' };
+    }) };
+  }
+
+  var PLAN = { name: 'Get Over The Bar', model: { days: [day('B · Push + Volume', [3, 3, 3, 3])] } };
+  var EXERCISES = [
+    { name: 'Pull-ups', fm: { equipment: 'pull-up bar' } },
+    { name: 'Push-ups', fm: { equipment: 'bodyweight' } },
+    { name: 'Bodyweight Squat', fm: { equipment: 'bodyweight' } },
+    { name: 'Plank', fm: { equipment: 'mat' } },
+    { name: 'Tricep Dips', fm: { equipment: 'bench' } },
+  ];
+
+  function makeCtx(mode) {
+    var ctx = {
+      settings: { guideMode: mode, guideMinutes: 30, guideTransitions: true, musicApp: 'spotify', musicUrl: '' },
+      data: { plans: [PLAN], exercises: EXERCISES },
+      state: { setup: { plan: PLAN.name, day: PLAN.model.days[0].name, dayIndex: 0 }, setupUi: null },
+      nav: function () {}, notice: function () {},
+    };
+    ctx.rerender = function () { draw(ctx.__host, ctx, ctx.__out); };
+    return ctx;
+  }
+
+  function draw(host, ctx, out) {
+    ctx.__host = host;
+    ctx.__out = out || ctx.__out;
+    host.innerHTML = '';
+    var app = document.createElement('div');
+    app.className = 'gv-app gv-narrow gv-skin-floor gv-accent-lime';
+    var page = document.createElement('main');
+    page.className = 'gv-page';
+    app.append(page);
+    host.append(app);
+    setupPage.render(ctx, page);
+    report(host, ctx.__out);
+  }
+
+  /* THE MEASUREMENT. Start's bottom edge against the fold line. */
+  function report(host, out) {
+    var start = host.querySelector('.gv-setup-start');
+    if (!start) { out.textContent = 'NO START BUTTON'; return; }
+    var bottom = start.getBoundingClientRect().bottom - host.getBoundingClientRect().top;
+    out.textContent = 'Start bottom edge: ' + Math.round(bottom) + 'px\n'
+      + (bottom <= 700 ? 'ABOVE THE FOLD — no scroll needed' : 'BELOW THE FOLD — regression');
+  }
+
+  function frame(title, mode) {
+    var col = document.createElement('div'); col.className = 'col';
+    var h = document.createElement('h2'); h.textContent = title;
+    var phone = document.createElement('div'); phone.className = 'phone';
+    var fold = document.createElement('div'); fold.className = 'fold';
+    var out = document.createElement('div'); out.className = 'verdict';
+    phone.append(fold);
+    col.append(h, phone, out);
+    document.body.querySelector('.wrap').append(col);
+    var host = document.createElement('div');
+    phone.append(host);
+    draw(host, makeCtx(mode), out);
+  }
+
+  document.body.append(Object.assign(document.createElement('div'), { className: 'wrap' }));
+  frame('Reps — sets dial', 'reps');
+  frame('Timed — minutes dial', 'timed');
+</script>
+</body></html>

@@ -97,3 +97,10 @@ window.__RepCounterModal = require('../src/rep-counter-modal').RepCounterModal;
    version of this page. */
 window.__setsBlock = require('../src/page-session-setup').setsBlock;
 window.__setsForItem = require('../src/page-session-setup').setsForItem;
+
+/* The WHOLE guided-setup screen, for _preview/setup.html. setsrow.html
+   drives setsBlock alone; this drives render(), because the bug reported
+   against 0.10.2 was not in any one control — it was the ORDER, and "Start
+   is below the fold on a 390px phone" is a claim only a browser with a real
+   viewport can settle. */
+window.__setupPage = require('../src/page-session-setup');

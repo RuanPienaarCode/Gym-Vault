@@ -227,25 +227,26 @@ function render(ctx, root) {
 
   const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back' }, ico('arrow-left'));
   back.addEventListener('click', () => { ctx.state.setup = null; ctx.nav('dashboard'); });
-  root.append(el('div', { class: 'gv-toolbar' },
+
+  /* THE ORDER IS THE FIX. This screen used to read equipment -> sets ->
+     Guide -> minutes -> toggles -> sound -> preview -> Start, which asked
+     HOW MANY before it asked WHAT KIND and pushed the only thing anyone
+     came here for off the bottom of a phone. Start was reported below the
+     fold on a 390px screen, three scrolls from "Get after it".
+
+     Now: what kind, then how many, then go — and everything that is not
+     that decision (the kit you will need, the circuit's extras, the music)
+     sits under the button, where it can be read but is never in the way. */
+  const wrap = el('div', { class: 'gv-guidesetup' });
+  root.append(wrap);
+
+  wrap.append(el('div', { class: 'gv-toolbar' },
     back,
     el('h2', { class: 'gv-toolbar-title' }, day.name || 'Session')));
-  if (plan) root.append(el('p', { class: 'gv-hero-sub gv-setup-lede' }, plan.name));
+  if (plan) wrap.append(el('p', { class: 'gv-hero-sub gv-setup-lede' }, plan.name));
 
-  root.append(equipmentBlock(ctx, day));
-
-  /* Reps mode only. In a timed circuit the CLOCK decides how many rounds
-     fit, so a set count typed here would be overwritten by the schedule the
-     moment it was built — offering it would be offering a control that does
-     nothing. */
-  /* Assigned below, once the preview element exists. The stepper is built
-     before it and needs to poke it, so the indirection is the cheap way to
-     keep both in one render pass. */
-  let refreshPreview = () => {};
-  if (ui.mode === 'reps') root.append(setsBlock(ctx, day, ui, () => refreshPreview()));
-
-  /* How you want to be guided. */
-  root.append(el('div', { class: 'gv-section-title' }, ico('play'), el('span', {}, 'Guide')));
+  /* 1. WHAT KIND. First, because it decides which dial comes next. */
+  wrap.append(el('div', { class: 'gv-section-title' }, ico('play'), el('span', {}, 'Guide')));
   const modes = el('div', { class: 'gv-card-list' });
   for (const [key, name, desc] of GUIDE_MODES) {
     const on = ui.mode === key;
@@ -259,7 +260,7 @@ function render(ctx, root) {
   }
   modes.setAttribute('role', 'radiogroup');
   modes.setAttribute('aria-label', 'How to be guided');
-  root.append(modes);
+  wrap.append(modes);
 
   /* NOT .gv-microcopy: the Editorial skin hides that class outright
      (styles.css), and this line is the only place the screen says how many
@@ -268,32 +269,37 @@ function render(ctx, root) {
   const start = el('button', { class: 'gv-btn-go', type: 'button' });
 
   /* The dial updates in place rather than re-rendering (a re-render mid-drag
-     loses the slider), so everything that quotes the minutes has to be
-     refreshed from here — including the Start button, which otherwise still
-     offers "Start 30 minutes" after you have dialled it to 45. */
+     loses the slider), so everything that quotes it has to be refreshed from
+     here — including the Start button, which otherwise still offers
+     "Start 30 minutes" after you have dialled it to 45. */
   const refresh = () => {
     while (preview.firstChild) preview.removeChild(preview.firstChild);
     preview.append(previewText(ctx, day, ui));
     start.textContent = ui.mode === 'timed' ? `Start ${ui.minutes} minutes` : 'Start session';
   };
-  refreshPreview = refresh;
 
-  if (ui.mode === 'timed') {
-    root.append(minutesBlock(ctx, ui, refresh));
-    root.append(togglesBlock(ctx, ui));
-  }
+  /* 2. HOW MANY — ONE DIAL, NEVER BOTH. In a timed circuit the CLOCK
+     decides how many rounds fit, so a set count here would be overwritten
+     by the schedule the moment it was built: offering it would be offering
+     a control that does nothing. In reps mode there is no clock to set. */
+  if (ui.mode === 'timed') wrap.append(minutesBlock(ctx, ui, refresh));
+  else wrap.append(setsBlock(ctx, day, ui, refresh));
+
+  /* 3. GO. */
+  refresh();
+  wrap.append(preview);
+  start.addEventListener('click', () => beginSession(ctx, plan, day, ui));
+  wrap.append(el('div', { class: 'gv-hero-action gv-setup-start' }, start));
+
+  /* --- below the button: what you read, not what you decide --- */
+  wrap.append(equipmentBlock(ctx, day));
+  if (ui.mode === 'timed') wrap.append(togglesBlock(ctx, ui));
 
   const music = musicRow(ctx);
   if (music) {
-    root.append(el('div', { class: 'gv-section-title' }, ico('music'), el('span', {}, 'Sound')));
-    root.append(music);
+    wrap.append(el('div', { class: 'gv-section-title' }, ico('music'), el('span', {}, 'Sound')));
+    wrap.append(music);
   }
-
-  refresh();
-  root.append(preview);
-
-  start.addEventListener('click', () => beginSession(ctx, plan, day, ui));
-  root.append(el('div', { class: 'gv-hero-action gv-setup-start' }, start));
 }
 
 /* TODAY'S SETS — ONE FIELD FOR THE WHOLE SESSION.
@@ -334,21 +340,31 @@ function setsBlock(ctx, day, ui, onChange) {
   const wrap = el('div', {});
   wrap.append(el('div', { class: 'gv-section-title' }, ico('list'), el('span', {}, 'Sets')));
 
-  const countEl = el('div', { class: 'gv-setsrow-n', 'aria-live': 'polite' });
-  const noteEl = el('div', { class: 'gv-setsrow-target' });
+  const countEl = el('div', { class: 'gv-dial-value', 'aria-live': 'polite' });
+  const noteEl = el('div', { class: 'gv-dial-note' });
   const reset = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-setsall-reset', type: 'button' }, 'Back to the plan');
+
+  /* Same control as the minutes dial, because it is the same question: how
+     many. It used to be a per-exercise `gv-setsrow` — "Every exercise" and a
+     cramped stepper — sitting ABOVE Guide, so the screen asked how many
+     before it asked what kind, in a different visual language from the
+     minutes dial one tap away. */
+  const range = el('input', {
+    class: 'gv-dial-range', type: 'range',
+    min: String(SETS_MIN), max: String(SETS_MAX), step: '1',
+    'aria-label': 'Sets for every exercise',
+  });
 
   const draw = () => {
     const n = uniformNow();
     countEl.textContent = n === null ? 'Mixed' : String(n);
-    /* The figure is the display face when it is a number, and ordinary text
-       when it is the word — "Mixed" in the condensed display face at 22px
-       reads as a heading, not a value. */
+    /* The figure is the display face; the WORD is not. "Mixed" set in the
+       condensed display face at 54px reads as a headline, not as a value —
+       and it is not a value, it is the honest refusal to give one. */
     countEl.classList.toggle('word', n === null);
     noteEl.textContent = n === null
       ? `The plan varies — this levels all ${items.length}`
       : `${items.length} exercise${items.length === 1 ? '' : 's'}, ${n} each`;
-    row.classList.toggle('changed', differsFromPlan());
     /* BOTH ends, and both against the constants nextSetsValue clamps to —
        plus used to stay live at SETS_MAX because only the floor was wired.
        The number was never wrong (the clamp held); the control was, which
@@ -357,22 +373,31 @@ function setsBlock(ctx, day, ui, onChange) {
        first time either bound moves. */
     minus.disabled = n !== null && n <= SETS_MIN;
     plus.disabled = n !== null && n >= SETS_MAX;
+    /* A slider thumb is inherently a number, so on a mixed plan it sits
+       where the STEPPERS would start from — mostCommonSets, the count most
+       of the exercises already carry — and says "Mixed" to anything that
+       reads it aloud. The two controls therefore agree with each other, and
+       neither claims the plan is uniform: the readout above them is the one
+       that answers "how many", and it says the word. */
+    range.value = String(n === null ? mostCommonSets(planned) : n);
+    range.setAttribute('aria-valuetext', n === null ? 'Mixed' : `${n} sets`);
     reset.hidden = !differsFromPlan();
   };
 
-  const step = delta => {
-    const base = uniformNow() ?? mostCommonSets(planned);
-    levelSets(ui, items.length, nextSetsValue(base, delta));
+  const apply = next => {
+    levelSets(ui, items.length, nextSetsValue(next, 0));
     draw();
-    /* The preview quotes the total, so it has to move with the stepper —
+    /* The preview quotes the total, so it has to move with the control —
        otherwise the line under the button contradicts the button. */
     if (onChange) onChange();
   };
+  const step = delta => apply((uniformNow() ?? mostCommonSets(planned)) + delta);
 
-  const minus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'One fewer set of every exercise' }, ico('minus'));
+  const minus = el('button', { class: 'gv-dial-step', type: 'button', 'aria-label': 'One fewer set of every exercise' }, ico('minus'));
   minus.addEventListener('click', () => step(-1));
-  const plus = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'One more set of every exercise' }, ico('plus'));
+  const plus = el('button', { class: 'gv-dial-step', type: 'button', 'aria-label': 'One more set of every exercise' }, ico('plus'));
   plus.addEventListener('click', () => step(1));
+  range.addEventListener('input', () => apply(Number(range.value)));
 
   /* Levelling a mixed plan is otherwise a one-way door inside this screen:
      once every index carries an override there is no way back to the plan's
@@ -383,17 +408,15 @@ function setsBlock(ctx, day, ui, onChange) {
     if (onChange) onChange();
   });
 
-  const row = el('div', { class: 'gv-card gv-setsrow gv-setsall' },
-    el('div', { class: 'gv-setsrow-main' },
-      el('div', { class: 'gv-setsrow-name' }, 'Every exercise'),
-      noteEl),
-    el('div', { class: 'gv-setsrow-stepper' },
+  const dial = el('div', { class: 'gv-setup-dial gv-sets-dial' },
+    el('div', { class: 'gv-dial-row' },
       minus,
-      el('div', { class: 'gv-setsrow-count' }, countEl, el('div', { class: 'gv-setsrow-unit' }, 'sets')),
-      plus));
+      el('div', { class: 'gv-dial-readout' }, countEl, el('div', { class: 'gv-dial-unit' }, 'sets')),
+      plus),
+    range, noteEl);
 
   draw();
-  wrap.append(row, reset);
+  wrap.append(dial, reset);
   return wrap;
 }
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Sets field harness</title>
+<html><head><meta charset="utf-8"><title>Sets dial harness</title>
 <link rel="stylesheet" href="gym.css">
 <style>
   body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif}
@@ -32,13 +32,21 @@
     var f = document.createElement('div'); f.className = 'frame';
     var app = document.createElement('div');
     app.className = 'gv-app gv-narrow gv-skin-floor gv-accent-lime';
+    /* gv-guidesetup is a CHILD of gv-app in the real view (it lives inside
+       main.gv-page), and the screen's ink rules are written as descendant
+       selectors. Putting both classes on ONE node here silently stopped
+       every one of them matching, and the harness showed lime the app does
+       not ship. Mirror the real nesting. */
+    var screen = document.createElement('div');
+    screen.className = 'gv-guidesetup';
+    app.append(screen);
     var out = document.createElement('div'); out.className = 'out';
     var readout = function () {
       out.textContent = 'per-entry -> [' + d.items.map(function (it, i) {
         return setsForItem(ui, it, i);
       }).join(', ') + ']';
     };
-    app.append(setsBlock(null, d, ui, readout));
+    screen.append(setsBlock(null, d, ui, readout));
     app.append(out);
     readout();
     f.append(app);
