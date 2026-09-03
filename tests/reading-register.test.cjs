@@ -1,8 +1,6 @@
 'use strict';
-/* THE READING REGISTER, on the pages that were wearing the acting one.
-
-   Plan detail here (issue #11); Profile's half is added by the commit that
-   fixes it, so that each commit's guards describe the code it ships.
+/* THE TWO REGISTERS, on the two pages that were wearing the wrong one
+   (issues #11 and #12).
 
    Editorial Floor divides every screen in two. READING surfaces are paper,
    1px hairlines, and the accent used only as a highlight. ACTING surfaces
@@ -75,4 +73,35 @@ const isSolid = c => !/gv-btn-ghost|gv-btn-danger-ghost/.test(c);
     'the 2px ink top border is what made six day cards read as six things to do');
 }
 
-console.log('reading register OK (plan detail floods only today, and keeps every Start)');
+/* ---- GUARD 3: Profile has ZERO floods ---- */
+{
+  const src = strip(read('page-profile.js'));
+  const solid = buttonClasses(src).filter(isSolid);
+  assert.deepStrictEqual(solid, [],
+    `Profile is a reading dossier and must carry no solid primary — found: ${solid.join(' | ')}`);
+
+  /* Both actions still exist. Demoting them must not have removed them. */
+  assert.match(src, /openAddMeasurement\(ctx\)/, 'the measurement modal must still be reachable');
+  assert.match(src, /list\.length \? 'New photo' : 'First photo'/, 'the camera must still be reachable');
+
+  /* And no flood was invented elsewhere to "replace" them. */
+  assert.ok(!/gv-btn-go/.test(src),
+    'zero floods means zero — logging a weight and taking a photo are not floor CTAs');
+}
+
+/* ---- GUARD 4: the Profile avatar is paper, not a filled block ---- */
+{
+  const css = read('styles.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rule = css.match(/\.gv-profile-avatar\s*\{[^}]*\}/);
+  assert.ok(rule, '.gv-profile-avatar rule missing');
+  assert.match(rule[0], /background:\s*var\(--gv-surface\)/,
+    'the avatar must be paper — a filled ink cube is a flood, and it is nowhere near a thumb');
+  assert.match(rule[0], /border:\s*1px solid/, 'paper needs its hairline or it disappears');
+
+  const dark = css.match(/\.theme-dark[^{]*\.gv-profile-avatar\s*\{[^}]*\}/);
+  assert.ok(dark, 'the dark-theme avatar rule must stay — it is what keeps the glyph legible');
+  assert.ok(!/background:\s*var\(--gv-lime\)/.test(dark[0]),
+    'dark mode must not flip the avatar back to a filled accent block');
+}
+
+console.log('reading register OK (plan detail floods only today; Profile floods nothing; both keep every action)');

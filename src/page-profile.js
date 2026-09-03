@@ -74,7 +74,11 @@ function render(ctx, root) {
   /* Measurement log + add. */
   root.append(el('div', { class: 'gv-toolbar' },
     el('div', { class: 'gv-toolbar-title' }, 'Body log'),
-    el('button', { class: 'gv-btn', type: 'button', onclick: () => openAddMeasurement(ctx) },
+    /* Ghost, not a flood. Profile is a reading dossier — identity, stats,
+       trend, body log, photos — and logging a weight is not a floor CTA.
+       Today and the live session own the floods; a second one here competes
+       with them from a page you came to read. */
+    el('button', { class: 'gv-btn gv-btn-ghost', type: 'button', onclick: () => openAddMeasurement(ctx) },
       ico('plus'), el('span', {}, 'Measurement'))));
 
   if (!data.body.length) {
@@ -247,7 +251,9 @@ function paint(ctx, body, entries, ui) {
   const list = photosForPose(entries, ui.pose);
   const pair = beforeAfter(entries, ui.pose);
 
-  const shoot = el('button', { class: 'gv-btn', type: 'button' },
+  /* Ghost for the same reason as Measurement above — and deliberately NOT
+     replaced by a flood elsewhere on the page. Zero floods on Profile. */
+  const shoot = el('button', { class: 'gv-btn gv-btn-ghost', type: 'button' },
     ico('camera'), el('span', {}, list.length ? 'New photo' : 'First photo'));
   shoot.addEventListener('click', () => openCapture(ctx, ui.pose, list, body, entries, ui));
   body.append(el('div', { class: 'gv-photo-viewer-actions' }, shoot));
