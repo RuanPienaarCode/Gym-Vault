@@ -343,7 +343,14 @@ function setsBlock(ctx, day, ui, onChange) {
       ? `The plan varies — this levels all ${items.length}`
       : `${items.length} exercise${items.length === 1 ? '' : 's'}, ${n} each`;
     row.classList.toggle('changed', overridden());
-    minus.disabled = n !== null && n <= 1;
+    /* BOTH ends, and both against the constants nextSetsValue clamps to —
+       plus used to stay live at SETS_MAX because only the floor was wired.
+       The number was never wrong (the clamp held); the control was, which
+       is worse on a phone: a thumb keeps pressing a button that looks like
+       it is doing something. A literal here would drift from the clamp the
+       first time either bound moves. */
+    minus.disabled = n !== null && n <= SETS_MIN;
+    plus.disabled = n !== null && n >= SETS_MAX;
     reset.hidden = !overridden();
   };
 
