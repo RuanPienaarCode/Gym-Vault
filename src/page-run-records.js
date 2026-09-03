@@ -12,7 +12,7 @@
    Reached from the Running page's toolbar, the way Records is reached from
    History. Not a nav tab: the bar stays at six (see page-records.js). */
 
-const { el, ico, fmt, fmtSeconds, clickableCard } = require('./dom');
+const { el, ico, fmt, fmtSeconds, clickableCard, backButton } = require('./dom');
 const { fmtShort } = require('./dates');
 const { runRecords, paceOf, fmtPace, MIN_PACE_KM } = require('./run-records');
 const { sameName } = require('./stats');
@@ -32,8 +32,9 @@ function render(ctx, root) {
   const { data, settings } = ctx;
   const R = runRecords(data.workouts, data.exercises, settings.weekStart);
 
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back to running' }, ico('arrow-left'));
-  back.addEventListener('click', () => ctx.nav('running'));
+  /* Back to the CALLER, not to a hardcoded page. Reaching this from
+     Records used to drop you on Running instead of where you came from. */
+  const back = backButton(ctx, 'running');
   root.append(el('div', { class: 'gv-toolbar' },
     back,
     el('h2', { class: 'gv-toolbar-title' }, 'Running records'),

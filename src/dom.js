@@ -5,6 +5,7 @@
    user-authored strings (exercise names, notes) inert. */
 
 const { setIcon } = require('obsidian');
+const { PAGE_TITLES } = require('./constants');
 
 const el = (tag, attrs = {}, ...kids) => {
   const n = document.createElement(tag);
@@ -392,5 +393,28 @@ function segmented(options, current, onPick, opts) {
   return wrap;
 }
 
-module.exports = { el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented
+/* THE BACK BUTTON EVERY NESTED PAGE SHARES.
+
+   These used to hardcode their destination — Running records always went to
+   Running, exercise detail always to the Exercises library — so Records ->
+   Running records -> Back landed on Running rather than Records, and an
+   exercise opened from a record dropped you in a library you had never been
+   in. ctx.back() consults the route stack instead; `fallback` is where to go
+   on a first visit, when nothing called you.
+
+   The label NAMES the destination rather than saying a bare "Back", because
+   it now varies with how you arrived, and "Back" alone tells a screen-reader
+   user nothing about where they are about to land. */
+function backButton(ctx, fallback) {
+  const to = ctx.backTo(fallback);
+  const b = el('button', {
+    class: 'gv-icon-btn', type: 'button',
+    'aria-label': `Back to ${PAGE_TITLES[to] || to}`,
+  }, ico('arrow-left'));
+  b.addEventListener('click', () => ctx.back(fallback));
+  return b;
+}
+
+module.exports = {
+  backButton, el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented
 };

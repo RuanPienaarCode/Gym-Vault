@@ -13,7 +13,7 @@
    would eventually show a different best from the exercise's own page, and
    nothing would say which was wrong. */
 
-const { el, ico, fmtSeconds, clickableCard } = require('./dom');
+const { el, ico, fmtSeconds, clickableCard, backButton } = require('./dom');
 const { MUSCLE_GROUPS } = require('./constants');
 const { allRecords } = require('./records');
 const { fmtShort } = require('./dates');
@@ -34,8 +34,7 @@ function render(ctx, root) {
   const { data } = ctx;
   const ui = ctx.state.recordsUi || (ctx.state.recordsUi = { q: '', muscle: '' });
 
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back to history' }, ico('arrow-left'));
-  back.addEventListener('click', () => ctx.nav('history'));
+  const back = backButton(ctx, 'history');
 
   const search = el('input', {
     class: 'gv-search', type: 'search', placeholder: 'Search exercises…', value: ui.q, 'aria-label': 'Search records',

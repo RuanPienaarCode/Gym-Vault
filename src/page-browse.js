@@ -6,13 +6,12 @@
    already have is ever overwritten. Series (a plan in numbered phases) are
    grouped so a four-phase programme reads as one thing, not four. */
 
-const { el, ico } = require('./dom');
+const { el, ico, backButton } = require('./dom');
 
 function render(ctx, root) {
   const ui = ctx.state.browseUi || (ctx.state.browseUi = { index: null, error: null, loading: false, busy: null });
 
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back to plans' }, ico('arrow-left'));
-  back.addEventListener('click', () => ctx.nav('plans'));
+  const back = backButton(ctx, 'plans');
   root.append(el('div', { class: 'gv-toolbar' },
     back,
     el('h2', { class: 'gv-toolbar-title' }, 'Plan library'),

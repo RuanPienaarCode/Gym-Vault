@@ -11,7 +11,7 @@
    pass. */
 
 const { MarkdownRenderer } = require('obsidian');
-const { el, ico, fmt, fmtSeconds } = require('./dom');
+const { el, ico, fmt, fmtSeconds, backButton } = require('./dom');
 const { exerciseBests, epley1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
 const { recordHistory, KINDS } = require('./records');
@@ -52,8 +52,9 @@ function render(ctx, root) {
   if (!ex) { ctx.nav('exercises'); return; }
 
   /* Toolbar */
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back to exercises' }, ico('arrow-left'));
-  back.addEventListener('click', () => ctx.nav('exercises'));
+  /* Back to the CALLER, not to a hardcoded page. Reaching this from
+     Records used to drop you on Exercises instead of where you came from. */
+  const back = backButton(ctx, 'exercises');
   root.append(el('div', { class: 'gv-toolbar' },
     back,
     el('h2', { class: 'gv-toolbar-title' }, ex.name),
