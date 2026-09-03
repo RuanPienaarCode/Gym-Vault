@@ -2112,6 +2112,12 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
 .gv-session-nextwrap { margin-top: 14px; }
 .gv-app .gv-session-nextwrap .gv-btn-go { margin-top: 0; }
 
+/* The quiet way out of a session, under Next. Ghost and narrower than the
+   flood above it on purpose: ending early is a real choice but not the one
+   most rests make, and two full-width buttons in a column read as a
+   toss-up. */
+.gv-app .gv-session-finish { margin-top: 10px; }
+
 .gv-session-callouts { margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
 .gv-app .gv-session-callout {
   background: var(--gv-lime-ghost); color: var(--gv-lime-deep); border: 1px solid var(--gv-lime);
