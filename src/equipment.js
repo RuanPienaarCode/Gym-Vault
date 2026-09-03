@@ -43,6 +43,31 @@ function labelFor(key) {
   return k.charAt(0).toUpperCase() + k.slice(1);
 }
 
+/* ONE NOTE CAN NAME SEVERAL THINGS. The exercise form's own placeholder says
+   `bar, dumbbells, bodyweight`, and a YAML list stringifies to
+   `bar,kettlebell` — but this used to lowercase the WHOLE field as one key.
+   So a note reading `equipment: bar, kettlebell` produced a single chip
+   labelled "Bar, kettlebell", the `bar` facet the plans filter offers never
+   matched it, and `bodyweight, band` was neither dropped as bodyweight nor
+   revealed as a band. Muscles have always been comma-split; equipment was
+   not, while being invited to look identical.
+
+   SPLIT ON COMMAS ONLY. Values are free text — `treadmill or road` and
+   `sandbag` are things a note may legitimately say — so a token keeps its
+   spaces and is title-cased if it is not a known key. This is a splitter,
+   not a vocabulary. */
+function equipmentTokens(value) {
+  const parts = Array.isArray(value) ? value : String(value == null ? '' : value).split(',');
+  const out = [];
+  for (const part of parts) {
+    const k = String(part == null ? '' : part).trim().toLowerCase();
+    /* Per TOKEN, not per field: "bodyweight, band" needs the band. */
+    if (!k || k === BODYWEIGHT || k === 'none') continue;
+    out.push(k);
+  }
+  return out;
+}
+
 /* Distinct equipment keys needed by `names`, in first-appearance order (the
    order the session will actually reach them, which is the order you'd lay
    them out). Bodyweight is dropped; an exercise the vault doesn't define is
@@ -53,11 +78,11 @@ function equipmentKeys(exercises, names) {
   for (const name of names || []) {
     const ex = (exercises || []).find(e => sameName(e.name, name));
     if (!ex) continue;
-    const raw = String((ex.fm && ex.fm.equipment) || '').trim().toLowerCase();
-    if (!raw || raw === BODYWEIGHT || raw === 'none') continue;
-    if (seen.has(raw)) continue;
-    seen.add(raw);
-    out.push(raw);
+    for (const key of equipmentTokens(ex.fm && ex.fm.equipment)) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(key);
+    }
   }
   return out;
 }
@@ -84,4 +109,4 @@ function planExerciseNames(plan) {
   return names;
 }
 
-module.exports = { EQUIPMENT_LABELS, labelFor, equipmentKeys, equipmentFor, equipmentSummary, planExerciseNames };
+module.exports = { EQUIPMENT_LABELS, labelFor, equipmentTokens, equipmentKeys, equipmentFor, equipmentSummary, planExerciseNames };

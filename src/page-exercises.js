@@ -4,6 +4,7 @@
 const { el, ico, fmtSeconds, clickableCard } = require('./dom');
 const { EXERCISE_TYPES, MUSCLE_GROUPS } = require('./constants');
 const { exerciseBests } = require('./stats');
+const { equipmentTokens, labelFor } = require('./equipment');
 const { FormModal, ConfirmModal } = require('./modals');
 
 function render(ctx, root) {
@@ -77,7 +78,10 @@ function card(ctx, ex, idx) {
     : unit === 'kg' ? (bests.weight !== null ? `${bests.weight}kg` : null)
     : unit === 'km' ? (bests.distance !== null ? `${bests.distance}km` : null)
     : (bests.reps !== null ? String(bests.reps) : null);
-  const meta = [ex.fm.type || 'strength', listOf(ex.fm.muscles).join(', '), ex.fm.equipment]
+  /* Labelled tokens, not the raw field: a YAML list printed itself as
+     "bar,bench" and a comma string went out unsplit and unlabelled. */
+  const kit = equipmentTokens(ex.fm.equipment).map(labelFor).join(', ');
+  const meta = [ex.fm.type || 'strength', listOf(ex.fm.muscles).join(', '), kit]
     .filter(Boolean).join(' · ');
   const c = clickableCard(
     { class: 'gv-ex-card', 'aria-label': `Open ${ex.name}` },
@@ -111,7 +115,7 @@ function exerciseFields(fm, name) {
     { key: 'name', label: 'Name', kind: 'text', value: name || '', placeholder: 'e.g. Pull-ups' },
     { key: 'type', label: 'Type', kind: 'dropdown', options: EXERCISE_TYPES.map(t => [t, t]), value: (fm && fm.type) || 'strength' },
     { key: 'muscles', label: 'Muscles', kind: 'text', value: listOf(fm && fm.muscles).join(', '), placeholder: 'back, biceps', desc: 'Comma-separated' },
-    { key: 'equipment', label: 'Equipment', kind: 'text', value: (fm && fm.equipment) || '', placeholder: 'bar, dumbbells, bodyweight' },
+    { key: 'equipment', label: 'Equipment', kind: 'text', value: listOf(fm && fm.equipment).join(', '), placeholder: 'bar, dumbbells, bodyweight', desc: 'Comma-separated' },
     { key: 'unit', label: 'Tracked as', kind: 'dropdown', options: [['reps', 'reps'], ['kg', 'weight (kg)'], ['seconds', 'seconds'], ['km', 'distance (km)']], value: (fm && fm.unit) || 'reps' },
     { key: 'image', label: 'Images', kind: 'text', value: listOf(fm && fm.image).join(', '), placeholder: 'vault path or https URL', desc: 'Comma-separate two (start, finish) to show the movement' },
     { key: 'video', label: 'Video', kind: 'text', value: (fm && fm.video) || '', placeholder: 'vault path or https URL' },
@@ -119,6 +123,17 @@ function exerciseFields(fm, name) {
 }
 
 const parseMuscles = s => (s || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+
+/* The Equipment box invites a list ("bar, dumbbells") and equipment.js reads
+   one. Written back as a plain STRING when there is a single value, so an
+   ordinary `equipment: bar` note is never churned into `equipment: [bar]`
+   just because someone renamed the exercise; a list only when it is one.
+   Case is preserved here — equipment.js lowercases its own keys, and free
+   text like "Treadmill or road" is the author's wording. */
+const parseEquipment = s => {
+  const parts = (s || '').split(',').map(x => x.trim()).filter(Boolean);
+  return parts.length > 1 ? parts : (parts[0] || '');
+};
 
 /* Comma-separated field → single string or list (two = start/finish pair). */
 const parseImages = s => {
@@ -134,7 +149,7 @@ function openAdd(ctx) {
     validate: v => (!v.name.trim() ? 'Give it a name.' : null),
     onSubmit: async v => {
       const created = await ctx.io.createExercise({
-        name: v.name.trim(), type: v.type, muscles: parseMuscles(v.muscles), equipment: v.equipment.trim(), unit: v.unit,
+        name: v.name.trim(), type: v.type, muscles: parseMuscles(v.muscles), equipment: parseEquipment(v.equipment), unit: v.unit,
         image: parseImages(v.image), video: v.video.trim(),
       });
       if (!created) ctx.notice('An exercise with that name already exists.');
@@ -149,7 +164,7 @@ function openEdit(ctx, ex) {
     fields: exerciseFields(ex.fm, ex.name).filter(f => f.key !== 'name'), // rename = rename the note, like every entity here
     onSubmit: async v => {
       ex.fm = {
-        ...ex.fm, type: v.type, muscles: parseMuscles(v.muscles), equipment: v.equipment.trim(), unit: v.unit,
+        ...ex.fm, type: v.type, muscles: parseMuscles(v.muscles), equipment: parseEquipment(v.equipment), unit: v.unit,
         image: parseImages(v.image), video: v.video.trim(),
       };
       await ctx.io.saveExercise(ex);
