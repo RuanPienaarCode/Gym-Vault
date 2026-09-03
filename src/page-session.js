@@ -1069,20 +1069,14 @@ function advanceTimed(ctx, draft, sess, opts) {
       const entry = draft.entries[iv.entryIndex];
       const set = entry && entry.sets && entry.sets[iv.setIndex];
       if (entry && set) {
-        /* The clock is the one figure this screen actually measured, so it is
-           the one it writes. Reps and weight keep whatever is in their boxes —
-           the plan's target, or what the user typed over it — and
-           applyCompletion's measured:false stops an untyped target being
-           celebrated as a personal best.
-
-           A run is the exception, and it has to be: page-log's buildRows
-           takes a distance entry's time from `minutes` and ignores `seconds`
-           entirely, so writing seconds here would tick the set done and then
-           save a row with no distance AND no time — a junk row that counts
-           towards the session tally and says nothing. */
-        const measured = entry.distance
-          ? { minutes: String(Math.round((iv.seconds / 60) * 10) / 10) }
-          : { seconds: String(Math.round(iv.seconds)) };
+        /* The clock is the one figure this screen measured, so it is the
+           one it writes — and an untouched plan prefill is cleared rather
+           than promoted to observed work. timed-plan.timedSetValues owns
+           that rule (and the run's minutes-not-seconds exception) so it can
+           be tested without standing up this screen. `set` is read BEFORE
+           applyCompletion sets touched, which is the only order in which
+           "did the user type this" is still answerable. */
+        const measured = timedPlan.timedSetValues(entry, set, iv.seconds);
         sess.pendingCallouts = applyCompletion(ctx, draft, sess, set, entry, measured, { measured: false });
       }
     }
