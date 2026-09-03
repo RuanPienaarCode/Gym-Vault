@@ -633,8 +633,11 @@ function weightedBody(ctx, draft, sess, entry, set) {
    (it records the elapsed seconds and advances), no separate Done button. */
 function durationBody(ctx, draft, sess, entry, set) {
   if (!sess.hold || sess.holdFor !== setKey(sess.pos)) {
-    const prefilled = parseFloat(set.seconds);
-    sess.hold = { running: false, startedAt: null, frozenSeconds: Number.isFinite(prefilled) ? prefilled : 0, lastAnnounced: -1, lastLiveAnnounced: -1, targetHit: false };
+    /* NOT set.seconds — that is the plan's target sitting in the box, and
+       seeding the stopwatch with it made the numeral say 0:30 before the
+       clock had run. counter-target.resumeSeconds owns the rule: only a
+       figure the user actually measured is a time to count on from. */
+    sess.hold = { running: false, startedAt: null, frozenSeconds: counterTarget.resumeSeconds(set), lastAnnounced: -1, lastLiveAnnounced: -1, targetHit: false };
     sess.holdFor = setKey(sess.pos);
   }
   const hold = sess.hold;
