@@ -7,6 +7,42 @@ const { makeIo } = require('./data');
 const sound = require('./sound');
 const { progressOf } = require('./voice-pack');
 
+/* A TEXT BOX IS NOT COMMITTED UNTIL YOU STOP TYPING.
+
+   Setting.addText's onChange fires on every KEYSTROKE. The Gym folder field
+   therefore saved and reloaded the open view once per character: typing
+   "Training" over "Gym" persisted gymFolder "T", then "Tr", then "Tra",
+   reloading against folders that do not exist — and closing the dialog
+   mid-word left one of those persisted, so the next launch opened a gym that
+   was not there.
+
+   Committed on BLUR and on Enter instead, plus once more when the dialog
+   closes, since a user can type and click straight out. `pending` is null
+   whenever there is nothing uncommitted, so blur after a commit is a no-op
+   and the field never saves the same value twice.
+
+   Dropdowns and toggles are deliberately NOT routed through this: they have
+   no half-finished state to protect, and making a week-start picker wait for
+   focus to leave would be the opposite of a fix. */
+function commitOnBlur(tab, t, onCommit) {
+  let pending = null;
+  const commit = () => {
+    if (pending === null) return;
+    const value = pending;
+    pending = null;
+    Promise.resolve(onCommit(value)).catch(e => console.error('gym-vault settings', e));
+  };
+  t.onChange(v => { pending = v; });
+  t.inputEl.addEventListener('blur', commit);
+  t.inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { commit(); t.inputEl.blur(); }
+  });
+  /* hide() runs them all: a field typed into and abandoned by closing the
+     dialog is still a value the user entered. */
+  (tab._pendingCommits || (tab._pendingCommits = [])).push(commit);
+  return t;
+}
+
 class GymSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -16,6 +52,9 @@ class GymSettingTab extends PluginSettingTab {
   display() {
     const { containerEl: c } = this;
     c.empty();
+    /* display() rebuilds every control, so yesterday's commit callbacks point
+       at inputs that no longer exist. */
+    this._pendingCommits = [];
     /* display() runs again every time the tab is reopened, and each run
        subscribes to `voiceschanged`. Without this the listeners pile up on a
        global object that outlives the tab. */
@@ -24,13 +63,14 @@ class GymSettingTab extends PluginSettingTab {
     new Setting(c)
       .setName('Gym folder')
       .setDesc('Vault folder holding your exercises, plans, workouts, goals and body log.')
-      .addText(t => t
-        .setValue(this.plugin.settings.gymFolder)
-        .onChange(async v => {
-          this.plugin.settings.gymFolder = v.trim() || 'Gym';
-          await this.plugin.saveSettings();
-          this.plugin.refreshViews();
-        }));
+      .addText(t => commitOnBlur(this, t.setValue(this.plugin.settings.gymFolder), async v => {
+        /* An empty box still means Gym — the fallback has to be here as well
+           as at every read, or blanking the field persists ''. */
+        this.plugin.settings.gymFolder = v.trim() || 'Gym';
+        await this.plugin.saveSettings();
+        /* Once, on the finished folder name. */
+        this.plugin.refreshViews();
+      }));
 
     new Setting(c)
       .setName('Week starts on')
@@ -100,12 +140,13 @@ class GymSettingTab extends PluginSettingTab {
     new Setting(c)
       .setName('Plan library')
       .setDesc('Where "Browse" on the Plans page fetches shared plans from. Any repo with a plans.json, plans/ and exercises/ works.')
-      .addText(t => t
-        .setValue(this.plugin.settings.planRepo)
-        .onChange(async v => {
-          this.plugin.settings.planRepo = v.trim();
-          await this.plugin.saveSettings();
-        }));
+      .addText(t => commitOnBlur(this, t.setValue(this.plugin.settings.planRepo), async v => {
+        /* This one never reloaded the view, so it was only writing data.json
+           per keystroke rather than reloading per keystroke — but a persisted
+           half-typed "https://gith" is still not a plan library. */
+        this.plugin.settings.planRepo = v.trim();
+        await this.plugin.saveSettings();
+      }));
 
     new Setting(c)
       .setName('Download images for offline')
@@ -343,6 +384,8 @@ class GymSettingTab extends PluginSettingTab {
      listener is on window.speechSynthesis, which outlives this tab. */
   hide() {
     if (this._stopVoices) { this._stopVoices(); this._stopVoices = null; }
+    /* Typing into a box and closing the dialog is still an edit. */
+    for (const commit of this._pendingCommits || []) commit();
   }
 }
 
