@@ -543,8 +543,11 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      above it. */
   if (meter) meter.set(sess.counter.count);
 
+  /* No bare numeral on it any more: "− 1" beside a big live count is what
+     read as a stepper. Inside the sheet it has a written label, so the icon
+     alone is unambiguous. */
   const undoBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': 'Undo last rep' },
-    ico('minus'), el('span', {}, '1'));
+    ico('minus'), el('span', {}, 'Undo'));
   undoBtn.addEventListener('click', () => {
     sess.counter = undo(sess.counter);
     countEl.textContent = String(sess.counter.count);
@@ -568,22 +571,36 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
   doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }));
 
-  /* SIX BUTTONS BECAME FOUR. Motion, Type and the explainer are decisions
-     made once, at the start of a set — they sat at thumb height for the
-     whole set next to the two that are used mid-rep, and a row of six
-     identical buttons makes the eye read all of them every time it comes
-     back from the number. What stays is what you reach for without looking
-     up: mute, undo, done. */
+  /* SIX BUTTONS BECAME FOUR, AND THEN THREE. Motion, Type and the explainer
+     are decisions made once, at the start of a set — they sat at thumb
+     height for the whole set next to the two that are used mid-rep, and a
+     row of six identical buttons makes the eye read all of them every time
+     it comes back from the number.
+
+     Undo followed them (issue #3): rendered as a minus icon beside a bare
+     "1", directly under the big count, it read as a second rep counter
+     sitting at 1. It is a correction, not a counter. What stays on the floor
+     is mute and Done — and neither of them is a number. */
   const motionBtn = motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl);
   const helpBtn = helpButton(() => body);
   const settingsBtn = counterSettingsButton(() => body, () => [
+    { label: 'Undo a rep', hint: 'Takes one back off the count', node: undoBtn, closeOnUse: true },
     { label: 'Motion counting', hint: 'Let the phone count the movement itself', node: motionBtn },
     { label: 'Type the count', hint: 'For the reps the taps and the sensor both missed', node: typeBtn, closeOnUse: true },
     { label: 'How this counts', hint: 'Tapping, tilting and sensitivity', node: helpBtn, closeOnUse: true },
   ]);
 
+  /* ONE NUMBER, ONE JOB. Undo rendered as a minus icon beside a bare "1",
+     on the floor directly under the big count — so a first-run tester read
+     the pair as a SECOND rep counter sitting at 1, and could not tell which
+     of the two numbers on screen was live. It is a correction, not a
+     counter, so it moves in beside Type, where 0.10.1 already put the other
+     control you reach for once rather than mid-rep.
+
+     The floor is now mute and Done: the two things a thumb reaches for
+     without looking up, and neither of them is a number. */
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' },
-    settingsBtn, muteButton(ctx, sess), undoBtn, doneBtn);
+    settingsBtn, muteButton(ctx, sess), doneBtn);
   /* Both sheets host on the BODY, not the zone: they have to cover the
      controls as well, or the button stays visible under its own panel. */
   const body = el('div', { class: 'gv-session-body gv-xp-host' }, extraTop || '', zone, bar);

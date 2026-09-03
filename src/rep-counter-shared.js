@@ -161,11 +161,22 @@ function attachCountIn(zone, countEl, opts) {
   const restore = () => {
     countEl.classList.remove('gv-rc-countin', 'gv-rc-countin-go');
     zone.classList.remove('gv-rc-arming');
+    /* The label goes with the countdown — leaving it behind would put
+       "Counting you in" over a live rep count, which is the same confusion
+       pointing the other way. Guarded because restore() runs from both
+       onDone and stop(), and a set can be left mid-count-in. */
+    if (label && label.parentNode) label.parentNode.removeChild(label);
   };
 
+  /* NAME THE NUMBER. The countdown borrows the live count's own node, so for
+     five seconds the biggest thing on screen is a figure that is not a rep
+     count — and nothing said so. "Tap to start now" underneath read as an
+     instruction about a counter showing 3. */
+  const label = el('div', { class: 'gv-rc-countin-label' }, 'Counting you in');
   countEl.classList.add('gv-rc-countin');
   zone.classList.add('gv-rc-arming');
   countEl.textContent = String(o.from == null ? countdown.GATE_FROM : o.from);
+  if (countEl.parentNode) countEl.parentNode.insertBefore(label, countEl.nextSibling);
   if (o.hintEl) o.hintEl.textContent = 'Tap to start now';
 
   const seq = countdown.startCountIn({
