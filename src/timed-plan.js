@@ -144,9 +144,21 @@ function buildSchedule(items, config) {
   let remaining = budget - spent(warm) - spent(cool) - leadIn;
 
   intervals.push(...warm);
+
+  /* Round 0's order is settled BEFORE the lead-in is written, because the
+     lead-in names the exercise you are about to do — and with shuffle on it
+     used to name list[0] while the first work interval was somebody else.
+     The screen, the demo media and the spoken "Starting with Push-ups" then
+     set you up for the wrong movement. The loop below always places
+     order[0] first (see "Always place the FIRST work interval"), so this is
+     the same exercise the schedule actually starts with. */
+  const orderFor = r => (cfg.shuffle
+    ? shuffledIndices(list.length, rng((Number(cfg.seed) || 1) + r))
+    : list.map((_, i) => i));
+
   if (leadIn > 0) {
     intervals.push({
-      kind: 'transition', leadIn: true, exercise: list[0].exercise, seconds: leadIn,
+      kind: 'transition', leadIn: true, exercise: list[orderFor(0)[0]].exercise, seconds: leadIn,
       entryIndex: null, setIndex: null, round: null, target: '', unit: null,
     });
   }
@@ -159,9 +171,7 @@ function buildSchedule(items, config) {
      seconds early is honest where a clipped hold is not. */
   outer:
   while (intervals.length < MAX_INTERVALS) {
-    const order = cfg.shuffle
-      ? shuffledIndices(list.length, rng((Number(cfg.seed) || 1) + round))
-      : list.map((_, i) => i);
+    const order = orderFor(round);
 
     for (const entryIndex of order) {
       const item = list[entryIndex];

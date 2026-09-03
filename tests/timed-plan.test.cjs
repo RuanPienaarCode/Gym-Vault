@@ -30,6 +30,54 @@ const works = s => s.intervals.filter(i => i.kind === 'work');
   assert.strictEqual(s.intervals[0].entryIndex, null, 'a lead-in is never logged');
 }
 
+/* AND IT NAMES THE RIGHT ONE WITH SHUFFLE ON (issue #14).
+
+   THE BUG THIS REPRODUCES: the lead-in was written from list[0] BEFORE the
+   shuffle loop chose round 0's order, so with shuffle on the screen, the
+   demo media and the spoken "Starting with Push-ups" all set you up for an
+   exercise the session was not about to do. Measured against 0.10.2 this
+   was 27 of 40 seeds on a five-move day.
+
+   The fixture above has shuffle OFF, where list[0] is accidentally right —
+   which is exactly why it passed. So this sweeps seeds instead of trusting
+   one: a lead-in that happens to match on seed 1 is not a fixed lead-in. */
+{
+  const FIVE = ['Push-ups', 'Squats', 'Plank', 'Dips', 'Lunges']
+    .map(exercise => ({ exercise, target: '30s', sets: 3 }));
+
+  const mismatched = [];
+  for (let seed = 1; seed <= 40; seed++) {
+    const s = tp.buildSchedule(FIVE, { minutes: 10, shuffle: true, seed });
+    const lead = s.intervals.find(i => i.leadIn);
+    const firstWork = s.intervals.find(i => i.kind === 'work');
+    assert.ok(lead && firstWork, `seed ${seed}: expected a lead-in and a work interval`);
+    if (lead.exercise !== firstWork.exercise) mismatched.push(`seed ${seed}: "${lead.exercise}" vs "${firstWork.exercise}"`);
+  }
+  assert.deepStrictEqual(mismatched, [],
+    `the lead-in must name the exercise the session actually starts with: ${mismatched.slice(0, 3).join('; ')}`);
+
+  /* The lead-in is still interval 0 when there is no warm-up, so
+     announcementFor's "Starting with X" reads the same object. */
+  const s = tp.buildSchedule(FIVE, { minutes: 10, shuffle: true, seed: 7 });
+  assert.strictEqual(s.intervals[0].leadIn, true);
+  assert.strictEqual(s.intervals[0].exercise, s.intervals.find(i => i.kind === 'work').exercise);
+}
+
+/* Shuffle must still actually shuffle — a lead-in that agrees with the first
+   work interval is trivially satisfiable by disabling the shuffle, and that
+   would be a worse bug wearing this one's fix. */
+{
+  const FIVE = ['Push-ups', 'Squats', 'Plank', 'Dips', 'Lunges']
+    .map(exercise => ({ exercise, target: '30s', sets: 3 }));
+  const firsts = new Set();
+  for (let seed = 1; seed <= 40; seed++) {
+    const s = tp.buildSchedule(FIVE, { minutes: 10, shuffle: true, seed });
+    firsts.add(s.intervals.find(i => i.kind === 'work').exercise);
+  }
+  assert.ok(firsts.size > 1,
+    `shuffle must still vary which exercise opens the session — got only ${[...firsts]}`);
+}
+
 /* ---------- the draft mapping ---------- */
 
 /* Every work interval points at a real {entryIndex, setIndex}, and setIndex
