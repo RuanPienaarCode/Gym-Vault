@@ -141,4 +141,91 @@ assert.strictEqual(R.firstDate, '2026-07-07');
   assert.ok(E.bands.every(b => b.best === null));
 }
 
-console.log('run-records OK (longest is exerciseBests, week is distanceInWeek, pace is one run\'s own figures, ties keep the first)');
+/* ================================================================
+   THE RUNNING PAGE MUST QUOTE THESE SAME FIGURES (issue #19)
+   ================================================================
+
+   THE BUG THIS REPRODUCES. The Running page's tiles walked the CURRENT
+   LIBRARY — exercise notes carrying `unit: km` — and took exerciseBests per
+   name. But "this week" (distanceInWeek) and this whole records page count
+   every distance_km ROW in history. So the three surfaces disagreed the
+   moment a note was deleted or renamed: the week tile still said 10 km, the
+   records hero still said 10 km, and "longest run" quietly dropped to
+   whatever remained in the library.
+
+   History does not forget a run because you tidied up your exercise list. */
+const fs = require('node:fs');
+const path = require('node:path');
+
+{
+  const workouts = [
+    w('2026-08-01', [run('Easy Run', '10', '3000')]),
+    w('2026-08-08', [run('Recovery Walk', '4', ''), run('Tempo Run', '6', '1800')]),
+  ];
+  /* The library AFTER the Easy Run note was deleted — history keeps the row. */
+  const libraryNow = [
+    { name: 'Recovery Walk', fm: { unit: 'km' } },
+    { name: 'Tempo Run', fm: { unit: 'km' } },
+  ];
+
+  /* What the tile used to compute: max over the surviving notes only. */
+  let libraryLongest = null;
+  for (const ex of libraryNow) {
+    const b = exerciseBests(workouts, ex.name);
+    if (b.distance !== null && (libraryLongest === null || b.distance > libraryLongest)) libraryLongest = b.distance;
+  }
+  assert.strictEqual(libraryLongest, 6, 'the library scan forgets the deleted exercise — this is the old tile');
+
+  /* What every other surface says, and what the tile must now say. */
+  const records = rr.runRecords(workouts, libraryNow, 'mon');
+  assert.strictEqual(records.longest.km, 10,
+    'history keeps the row, so the records hero still knows about the 10 km');
+  assert.strictEqual(rr.longestRun(rr.runRows(workouts)).km, records.longest.km,
+    'longestRun(runRows(...)) IS runRecords().longest — same function, same input, so the tile cannot drift from the hero');
+  assert.notStrictEqual(libraryLongest, records.longest.km,
+    'the fixture must actually exercise the disagreement, or this test proves nothing');
+
+  /* And "this week" was always row-based, which is why it disagreed. */
+  const wk = distanceInWeek(workouts, '2026-08-01', 'mon');
+  assert.strictEqual(wk, 10, 'the week tile counted the row all along — that is the rule the others must join');
+}
+
+/* ---- ONE PACE PER RUN, never a session average ---- */
+{
+  /* A 4 km untimed walk beside a 6 km run done in 30 minutes. Summing both
+     columns and dividing gave 1800s over 10 km = 3:00 /km — elite marathon
+     pace, from a session where nothing was run at 3:00 /km. */
+  const rows = [{ km: 4, seconds: null }, { km: 6, seconds: 1800 }];
+
+  const sumKm = rows.reduce((n, r) => n + r.km, 0);
+  const sumSecs = rows.reduce((n, r) => n + (r.seconds || 0), 0);
+  assert.strictEqual(rr.fmtPace(sumSecs / sumKm), '3:00 /km',
+    'the old rule: one run\'s time spread over two runs\' distance');
+
+  /* The rule now: the pace belongs to a row that carries BOTH figures. */
+  const paced = rows.filter(r => r.km > 0 && r.seconds > 0).sort((a, b) => b.km - a.km)[0];
+  assert.strictEqual(rr.fmtPace(rr.paceOf(paced)), '5:00 /km',
+    'the run actually happened at 5:00 /km, and that is the only pace in this session');
+
+  /* A session with no timed row has no pace at all — the honest answer. */
+  const untimed = [{ km: 4, seconds: null }].filter(r => r.km > 0 && r.seconds > 0);
+  assert.strictEqual(untimed.length, 0, 'nothing to divide means nothing to show');
+}
+
+/* ---- the page really does route through here ---- */
+{
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'page-running.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  assert.match(src, /require\('\.\/run-records'\)/,
+    'the Running page must take its figures from run-records, not compute a third set');
+  assert.match(src, /longestRun\(runs\)/,
+    'the longest tile must be longestRun over the row scan');
+  assert.ok(!/exerciseBests/.test(src),
+    'the per-library-note scan is what forgot deleted history — it must not come back');
+  assert.ok(!/function pace\(/.test(src),
+    'the page had its own pace helper that summed a session; run-records.paceOf/fmtPace own this now');
+}
+
+console.log('run-records OK (longest is exerciseBests, week is distanceInWeek, pace is one run\'s own figures, ties keep the first;');
+console.log('               and the Running page quotes those same figures, so deleting a note cannot shrink your longest run)');
