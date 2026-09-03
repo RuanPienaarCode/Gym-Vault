@@ -3,7 +3,7 @@
 
 const { el, ico, fmtSeconds, clickableCard } = require('./dom');
 const { todayISO, addDays, startOfWeek, fmtShort, monthLabel, weekdayKey } = require('./dates');
-const { workoutDates, workoutDate, weekStreak, sessionVolume, sessionSets } = require('./stats');
+const { workoutDates, workoutDate, weekStreak, sessionCount, sessionVolume, sessionSets } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { ConfirmModal } = require('./modals');
 
@@ -13,12 +13,17 @@ function render(ctx, root) {
   const { data, settings } = ctx;
   const today = todayISO();
   const dates = new Set(workoutDates(data.workouts));
-  const counted = data.workouts.filter(w => workoutDate(w)).length;
+  /* Every session on the list, including undated ones. This counted only
+     DATED files while the list below rendered all of them, so the number and
+     the cards under it could disagree — and Today counted unique dates on
+     top of that, making three surfaces and three answers. stats.sessionCount
+     is the one rule now. */
+  const counted = sessionCount(data.workouts);
 
   root.append(el('div', { class: 'gv-toolbar' },
     el('h2', { class: 'gv-toolbar-title' }, 'History'),
-    /* Count DATED sessions, via the same workoutDate() rule the dashboard
-       and the export use — this line reported a third, different figure. */
+    /* stats.sessionCount — the same rule the dashboard tile and the export
+       summary use. */
     el('div', { class: 'gv-dim' }, `${counted} session${counted === 1 ? '' : 's'}`),
     /* Records hang off History rather than taking a seventh nav tab — see
        page-records.js's header for why the bar stays at six. */

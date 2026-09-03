@@ -11,7 +11,7 @@
 const { BODY_COLUMNS, WORKOUT_COLUMNS, WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, fmtShort, addDays, fromISO } = require('./dates');
 const {
-  num, exerciseBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, workoutDate,
+  num, exerciseBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, sessionCount, workoutDate,
 } = require('./stats');
 
 /* Columns that are clinical rather than physical. */
@@ -61,7 +61,12 @@ function buildSummary(data, options) {
 
   L.push(`# Gym Vault export — ${fmtShort(o.today)}`);
   L.push('');
-  L.push(`Training log exported from Obsidian. Range: ${rangeLabel}. ${workouts.length} session${workouts.length === 1 ? '' : 's'}.`);
+  /* stats.sessionCount over the picked range — the same rule Today and
+     History print, so the three surfaces can no longer report three numbers
+     for one word. (This one was already file-based; it is routed through the
+     helper so a change to the rule reaches all three.) */
+  const sessions = sessionCount(workouts);
+  L.push(`Training log exported from Obsidian. Range: ${rangeLabel}. ${sessions} session${sessions === 1 ? '' : 's'}.`);
   L.push('');
 
   /* Athlete */

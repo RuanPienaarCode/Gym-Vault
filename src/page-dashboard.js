@@ -6,7 +6,7 @@
 const { el, ico, fmt, fmtSeconds, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
-const { workoutDates, weekStreak, countInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
+const { workoutDates, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { itemSets, isRestDay } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
@@ -164,7 +164,12 @@ function render(ctx, root) {
 
   /* Stats — oversized numerals on the hairline grid. */
   const streak = weekStreak(dates, settings.weekStart, today);
-  const thisWeek = countInWeek(dates, today, settings.weekStart);
+  /* SESSIONS, not training days. These tiles counted unique DATES while
+     History and Export counted files, so logging a lift and then a run on
+     the same day — "Log another session" is a button on this very screen —
+     showed 1 here and 2 there. `dates` is still what the streak and the
+     heatmap use, because a streak is genuinely a run of DAYS. */
+  const thisWeek = sessionsInWeek(data.workouts, today, settings.weekStart);
 
   /* The streak comes OUT of the tile grid and becomes a drawing, because it
      is the one figure here whose size means something: a flame that is
@@ -182,7 +187,7 @@ function render(ctx, root) {
      as a figure that failed to load. The last-session tile spans instead. */
   const tiles = el('div', { class: 'gv-tiles' },
     tile(ico('calendar-days'), fmt(thisWeek), 'sessions this week'),
-    tile(ico('dumbbell'), fmt(dates.length), 'sessions all time'),
+    tile(ico('dumbbell'), fmt(sessionCount(data.workouts)), 'sessions all time'),
     tile(ico('history'), last && last.fm.date ? fmtShort(last.fm.date) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session', 'gv-tile-wide'),
   );
   root.append(tiles);
