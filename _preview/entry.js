@@ -104,3 +104,4 @@ window.__setsForItem = require('../src/page-session-setup').setsForItem;
    is below the fold on a 390px phone" is a claim only a browser with a real
    viewport can settle. */
 window.__setupPage = require('../src/page-session-setup');
+  window.__constants = require('../src/constants');

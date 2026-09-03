@@ -14,7 +14,7 @@
    time guided mode is (re-)entered via ctx.enterGuided(). */
 
 const { Notice } = require('obsidian');
-const { el, ico, clear, fmtSeconds, segmented } = require('./dom');
+const { el, ico, clear, fmtSeconds, segmented, numericInput } = require('./dom');
 const { todayISO } = require('./dates');
 const { DEFAULT_SETTINGS, GUIDE_REST } = require('./constants');
 const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
@@ -648,11 +648,11 @@ function weightedBody(ctx, draft, sess, entry, set) {
     const last = lastWeightForExercise(ctx, entry.exercise);
     if (last !== null) set.weight_kg = last; // prefill only — not touched, same as a plan-target prefill
   }
-  const weightInput = el('input', {
-    class: 'gv-set-input gv-session-weight', type: 'number', inputmode: 'decimal', placeholder: 'kg', value: set.weight_kg ?? '',
+  /* 2.5 kg plates exist, and type="number" refused the decimal. */
+  const weightInput = numericInput({
+    class: 'gv-set-input gv-session-weight', placeholder: 'kg', value: set.weight_kg ?? '',
     'aria-label': `Weight in kilograms — ${entry.exercise}`,
-  });
-  weightInput.addEventListener('input', () => { set.weight_kg = weightInput.value; set.touched = true; });
+  }, v => { set.weight_kg = v; set.touched = true; });
   const weightRow = el('div', { class: 'gv-session-weightrow' }, weightInput, el('span', { class: 'gv-set-unit' }, 'kg'));
   return repsBody(ctx, draft, sess, entry, set, weightRow);
 }
@@ -797,16 +797,15 @@ function distanceBody(ctx, draft, sess, entry, set) {
     const last = lastRunForExercise(ctx, entry.exercise);
     if (last) { set.distance_km = last.distance_km; set.minutes = last.minutes; }
   }
-  const kmInput = el('input', {
-    class: 'gv-set-input gv-session-distance', type: 'number', inputmode: 'decimal', placeholder: 'km', value: set.distance_km ?? '',
+  /* THE REPORTED ONE: a 4.3 km run could not be logged here. */
+  const kmInput = numericInput({
+    class: 'gv-set-input gv-session-distance', placeholder: 'km', value: set.distance_km ?? '',
     'aria-label': `Distance in kilometres — ${entry.exercise}`,
-  });
-  kmInput.addEventListener('input', () => { set.distance_km = kmInput.value; set.touched = true; });
-  const minInput = el('input', {
-    class: 'gv-set-input gv-session-distance', type: 'number', inputmode: 'decimal', placeholder: 'min', value: set.minutes ?? '',
+  }, v => { set.distance_km = v; set.touched = true; });
+  const minInput = numericInput({
+    class: 'gv-set-input gv-session-distance', placeholder: 'min', value: set.minutes ?? '',
     'aria-label': `Minutes — ${entry.exercise}`,
-  });
-  minInput.addEventListener('input', () => { set.minutes = minInput.value; set.touched = true; });
+  }, v => { set.minutes = v; set.touched = true; });
 
   const row = el('div', { class: 'gv-session-runrow' },
     el('div', { class: 'gv-session-runfield' }, kmInput, el('span', { class: 'gv-set-unit' }, 'km')),
@@ -1318,12 +1317,11 @@ function timedFigures(ctx, entry, set, iv) {
   }
 
   const field = (key, placeholder, unit, label) => {
-    const input = el('input', {
-      class: 'gv-set-input gv-timed-input', type: 'number', inputmode: 'decimal',
+    const input = numericInput({
+      class: 'gv-set-input gv-timed-input',
       placeholder, value: set[key] ?? '',
       'aria-label': `${label} — ${entry.exercise}`,
-    });
-    input.addEventListener('input', () => { set[key] = input.value; set.touched = true; });
+    }, v => { set[key] = v; set.touched = true; });
     return el('div', { class: 'gv-timed-field' }, input, el('span', { class: 'gv-set-unit' }, unit));
   };
 
