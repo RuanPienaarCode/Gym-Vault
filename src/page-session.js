@@ -491,8 +491,23 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   };
   /* Motion-detected reps bypass the tap debounce — motion-count.js runs its
      own refractory window, and stacking the two would drop any rep landing in
-     the gap between them. */
-  const registerMotionRep = () => { sess.counter = tap(sess.counter, Date.now(), 0).state; showRep(); };
+     the gap between them.
+
+     THEY DO NOT BYPASS THE COUNT-IN. motionOn survives set to set, and the
+     detector warms up in about 1.2s of a 5s gate — so a phone still moving
+     from the last rep scored into the next set before it had begun, and
+     showRep() overwrote the countdown digit with a live count. The set
+     started ahead and the numeral was no longer the countdown.
+
+     DROPPED, NOT SKIPPED — and that is the difference from registerTap
+     above. A tap on the zone is a deliberate "I'm ready", so it dismisses
+     the gate. A phone wobbling on the bench says nothing of the kind, and
+     letting it skip would hand the count-in away to a shoelace. */
+  const registerMotionRep = () => {
+    if (countIn && !countIn.armed()) return;
+    sess.counter = tap(sess.counter, Date.now(), 0).state;
+    showRep();
+  };
   attachTapZone(zone, registerTap);
 
   const hintEl = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' }, sess.motionOn ? 'Counting your movement — taps still work' : '');

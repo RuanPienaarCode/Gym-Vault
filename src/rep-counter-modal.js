@@ -311,7 +311,11 @@ class RepCounterModal extends Modal {
      applies its own refractory window, and running both would silently drop
      any rep that landed in the gap between the two. Taps still work while
      motion is on: a rep the sensor misses is added by hand rather than lost. */
+  /* And they do NOT bypass the count-in — same hole, same shape, as the
+     guided screen's. Dropped rather than skipped: a tap is a deliberate
+     "ready", a moving phone is not. */
   registerMotionRep() {
+    if (this._countIn && !this._countIn.armed()) return;
     this.state = tap(this.state, Date.now(), 0).state;
     this.commitRep();
   }
