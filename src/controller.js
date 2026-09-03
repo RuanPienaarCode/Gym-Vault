@@ -6,6 +6,7 @@ const { Notice, normalizePath } = require('obsidian');
 const { el, ico, clear } = require('./dom');
 const { makeIo } = require('./data');
 const voiceClips = require('./voice-clips');
+const sound = require('./sound');
 const pages = {
   dashboard: require('./page-dashboard'),
   exercises: require('./page-exercises'),
@@ -152,6 +153,22 @@ function mountApp(view) {
      always resumes at the first actually-incomplete set, honouring anything
      ticked on the overview since guided mode was last open. */
   ctx.enterGuided = () => {
+    /* THE GESTURE, AT THE SEAM. iOS permits speechSynthesis and AudioContext
+       only for a page that has used them from inside a real user-gesture call
+       stack, and guided mode is where this app first makes a noise on a TIMER
+       — the interval announcement and the spoken "3, 2, 1".
+
+       beginSession unlocks in the Start tap, so the setup route was fine. The
+       log overview's Guided button called this directly and unlocked nothing,
+       so Dashboard -> Log manually -> Guided — a first-run path — ran the
+       whole session silent on a phone, with no error and nothing to explain
+       it. Putting it HERE covers every route into guided mode, including the
+       next one somebody adds.
+
+       Every caller reaches this synchronously from a click, which is the
+       whole requirement; unlock() is idempotent and never throws, so calling
+       it again after beginSession's costs nothing. */
+    sound.unlock();
     ctx.state.session = null;
     ctx.nav('session');
   };

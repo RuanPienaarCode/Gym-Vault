@@ -47,6 +47,44 @@ const stripComments = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.
     'the settings save must come AFTER ctx.enterGuided(), so it can never delay entering the session');
 }
 
+/* 1b. AND THE CHAIN HOLDS FROM EVERY ROUTE, NOT JUST START (issue #17).
+
+   The pin above only ever watched beginSession — the setup screen's Start.
+   The log overview's "Guided" button called ctx.enterGuided() directly and
+   unlocked nothing, so Dashboard -> Log manually -> Guided, which is a
+   first-run path, ran the entire session silent on a phone: no interval
+   announcement, no spoken count-in, no error, nothing to explain it.
+
+   The unlock belongs at the seam every route passes through, so a future
+   fourth way into guided mode cannot reintroduce this. */
+{
+  const src = stripComments(read('controller.js'));
+  const m = src.match(/ctx\.enterGuided = \(\) => \{([\s\S]*?)\n  \};/);
+  assert.ok(m, 'ctx.enterGuided must exist — it is the one seam into guided mode');
+
+  assert.match(m[1], /sound\.unlock\(\)/,
+    'ctx.enterGuided must unlock audio: iOS permits speech on a TIMER only for a page that already '
+    + 'spoke from a real gesture, and every caller reaches this synchronously from a click');
+
+  /* Before anything that navigates, so the unlock is unambiguously still
+     inside the click's own stack. */
+  const unlockAt = m[1].indexOf('sound.unlock()');
+  const navAt = m[1].indexOf('ctx.nav(');
+  assert.ok(unlockAt >= 0 && navAt > unlockAt,
+    'unlock must come before the navigation, not after it');
+
+  assert.ok(!/async/.test(m[0]) && !/\bawait\b/.test(m[1]),
+    'enterGuided must not await — resolving on a later task is exactly what breaks the gesture chain');
+
+  /* The log overview's Guided button must still go through it rather than
+     navigating on its own. */
+  const log = stripComments(read('page-log.js'));
+  assert.match(log, /guidedBtn\.addEventListener\('click', \(\) => ctx\.enterGuided\(\)\)/,
+    "the log overview's Guided button must enter through ctx.enterGuided, which is where the unlock lives");
+  assert.ok(!/guidedBtn\.addEventListener\([^)]*ctx\.nav\(/.test(log),
+    'it must not navigate to the session directly and bypass the unlock');
+}
+
 /* 2. THE ONE NEW RULE THAT MATCHES A NATIVE ELEMENT.
 
    app.css ships `input[type='range'] { width: 100px; … }` at specificity
