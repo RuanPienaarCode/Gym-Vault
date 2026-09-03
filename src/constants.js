@@ -35,6 +35,12 @@ const DEFAULT_SETTINGS = {
   guideCooldown: false,
   guideShuffle: false,
   guideTransitions: true,
+  /* Seconds of rest between sets in REPS mode. The rest screen used to count
+     UP with no target, so it never ended on its own and every set cost two
+     taps — Done, then Next. It counts down from here instead and moves on by
+     itself; Next stays as "go now". Zero means no rest screen at all, which
+     is the "rest (if any)" case. */
+  guideRestSeconds: 60,
   /* Raw base of a plan library repo (see RuanPienaarCode/gym_plans). Any
      repo with the same shape — plans.json + plans/ + exercises/ — works. */
   planRepo: 'https://raw.githubusercontent.com/RuanPienaarCode/gym_plans/main',
@@ -67,6 +73,10 @@ const GUIDE_MODES = [
   ['reps', 'Reps', 'One set at a time. You decide when each one is done.'],
   ['timed', 'Timed circuit', 'The clock runs the session. Hands free, eyes up.'],
 ];
+
+/* The rest dial's range and step, in seconds. 0 is a real choice — no rest
+   screen — which is why the floor is not the step. */
+const GUIDE_REST = { min: 0, max: 300, step: 15 };
 
 /* The duration dial's range and step, in minutes. */
 const GUIDE_MINUTES = { min: 5, max: 90, step: 5 };
@@ -176,6 +186,6 @@ const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forea
 
 module.exports = {
   VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS, MUSIC_APPS, SOUND_MODES,
-  GUIDE_MODES, GUIDE_MINUTES, PAGE_TITLES,
+  GUIDE_MODES, GUIDE_MINUTES, GUIDE_REST, PAGE_TITLES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

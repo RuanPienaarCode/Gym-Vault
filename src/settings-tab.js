@@ -1,7 +1,7 @@
 'use strict';
 
 const { PluginSettingTab, Setting, Notice } = require('obsidian');
-const { SKINS, ACCENTS, MUSIC_APPS, SOUND_MODES } = require('./constants');
+const { SKINS, ACCENTS, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
 const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 const sound = require('./sound');
@@ -126,6 +126,29 @@ class GymSettingTab extends PluginSettingTab {
       });
 
     this.renderPlaylists(c);
+
+    /* A DROPDOWN, not a text box: this is a choice from a short list, so it
+       commits immediately — the blur rule above exists for half-typed
+       values, and there is no such thing as half of "60 seconds". */
+    new Setting(c)
+      .setName('Rest between sets')
+      .setDesc('How long the guided rest screen runs before it moves to the next set on its own. "No rest" goes straight there — Next is always available either way.')
+      .addDropdown(d => {
+        d.addOption('0', 'No rest');
+        /* "1:15", not "1.25 mins" — a rest is read as a clock, and that is
+           the same face the rest screen counts down in. */
+        const label = n => (n < 60 ? `${n} seconds`
+          : n % 60 === 0 ? `${n / 60} min`
+            : `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`);
+        for (let n = GUIDE_REST.step; n <= GUIDE_REST.max; n += GUIDE_REST.step) {
+          d.addOption(String(n), label(n));
+        }
+        d.setValue(String(this.plugin.settings.guideRestSeconds));
+        d.onChange(async v => {
+          this.plugin.settings.guideRestSeconds = Number(v);
+          await this.plugin.saveSettings();
+        });
+      });
 
     new Setting(c)
       .setName('Open on startup')
