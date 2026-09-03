@@ -1,0 +1,72 @@
+# THE PRE-TAG GATE. release.yml is excellent and runs this same check — but
+# only on a tag, so until now a bad commit on main was invisible until you
+# were already shipping it. This runs the identical gate on every pull
+# request and every push to main, which is where a regression should be
+# caught: before it is a release candidate.
+#
+# It is deliberately the same five steps as a local `./build.sh`, in the same
+# order, so "CI is red" and "build.sh is red" are always the same sentence.
+# The one thing it does NOT do is anything release-only — no attestations, no
+# tag/manifest check, no `gh release create`. Those belong to the tag.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Read-only. Nothing here publishes, so nothing here needs to be able to.
+permissions:
+  contents: read
+
+# A second push supersedes the first: the only run whose answer still matters
+# is the one for the current head of the branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # SHA-pinned to the same commits release.yml uses, so the two workflows
+      # cannot silently diverge on the action that checks the code out.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      # `npm ci`, not `npm install`: it installs EXACTLY package-lock.json,
+      # which is what makes the byte comparison below meaningful. A floating
+      # bundler upgrade would produce a diff indistinguishable from a genuinely
+      # stale commit.
+      - name: Install
+        run: npm ci
+
+      # main.js and styles.css are COMMITTED build artifacts. A src/ change
+      # pushed without rebuilding leaves the repo describing one plugin and
+      # shipping another — and the release workflow would be the first thing
+      # to notice, at exactly the wrong moment.
+      - name: Rebuild and verify the committed artifacts are current
+        run: |
+          npm run build
+          node --check main.js
+          if ! git diff --exit-code -- main.js; then
+            echo "main.js does not match src/ — run ./build.sh and commit the result." >&2
+            exit 1
+          fi
+          # styles.css is build output too: src/font.css concatenated with
+          # src/styles.css. Without this check a stale committed stylesheet
+          # would sail through while the main.js check above passed.
+          if ! git diff --exit-code -- styles.css; then
+            echo "styles.css does not match src/ — run ./build.sh and commit the result." >&2
+            exit 1
+          fi
+
+      # The guard suite: iOS hazards, CSS guards, schema tripwires, contrast,
+      # and the call-site pins. Every one of these has caught something real.
+      - name: Run the guard suite
+        run: npm test
