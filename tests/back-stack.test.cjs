@@ -149,6 +149,58 @@ function makeRouter() {
     'an uncapped stack is one nobody can predict, and it grows for as long as the view is open');
 }
 
+/* ---------- 7b. A LATERAL MOVE IS NOT A STEP (found in the real host) ----
+
+   Plan detail and the plan LIST are the same page id with different params,
+   so opening a plan is a lateral move and the stack deliberately does not
+   push it. That is what makes an empty stack land you back on the list.
+
+   Plan detail's Back was still hardcoded to ctx.nav('plans'), so reaching a
+   plan from RUNNING — its "Plan" button navigates straight here — dropped
+   you on the Plans list instead of returning you to Running. The same defect
+   #22 fixed for records and exercise detail, on a route that issue did not
+   name, and found by driving the real app rather than by any test here. */
+{
+  /* From the list: nothing to pop, and the fallback IS the list. */
+  const a = makeRouter();
+  a.nav('plans', null, { reset: true });
+  a.nav('plans', { plan: '9 Foundations' });
+  assert.strictEqual(a.stack.length, 0, 'opening a plan is lateral — it must not push');
+  assert.strictEqual(a.backTo('plans'), 'plans', 'so the label reads "Back to Plans"');
+  a.back('plans');
+  assert.strictEqual(a.state.page, 'plans');
+  assert.deepStrictEqual(a.state.params, {}, 'and Back lands on the list, via the fallback');
+
+  /* From Running: the page DID change, so it pushed, and Back must honour it. */
+  const b = makeRouter();
+  b.nav('running', null, { reset: true });
+  b.nav('plans', { plan: 'Trail Base' });
+  assert.strictEqual(b.backTo('plans'), 'running',
+    'reached from Running, Back must say — and mean — Running');
+  b.back('plans');
+  assert.strictEqual(b.state.page, 'running',
+    'this is the bug: Back used to drop you on the Plans list from here');
+
+  /* Leaving a plan detail for a real page still records THAT plan. */
+  const c = makeRouter();
+  c.nav('plans', null, { reset: true });
+  c.nav('plans', { plan: '9 Foundations' });
+  c.nav('exercise', { exercise: 'Push-ups' });
+  c.back('exercises');
+  assert.deepStrictEqual(c.state.params, { plan: '9 Foundations' },
+    'a lateral move is not pushed, but leaving the page is — back to THAT plan, not the list');
+
+  /* And the lateral rule is what keeps History's expand/collapse from
+     filling the stack, since it re-navs the same page with new params. */
+  const d = makeRouter();
+  d.nav('history', null, { reset: true });
+  d.nav('history', { session: 'a' });
+  d.nav('history', {});
+  d.nav('history', { session: 'b' });
+  assert.strictEqual(d.stack.length, 0,
+    'expanding a session must not become a back step, or leaving History takes four presses');
+}
+
 /* ---------- 8. THE SOURCE IS WIRED THAT WAY ---------- */
 {
   const read = f => fs.readFileSync(path.join(__dirname, '..', 'src', f), 'utf8')
@@ -170,12 +222,13 @@ function makeRouter() {
     ['page-exercise-detail.js', 'exercises'],
     ['page-records.js', 'history'],
     ['page-browse.js', 'plans'],
+    ['page-plans.js', 'plans'],
   ]) {
     const src = read(file);
     assert.ok(src.includes(`backButton(ctx, '${fallback}')`),
       `${file} must use the shared back button with '${fallback}' as its first-visit fallback`);
     assert.ok(!src.includes(`back.addEventListener('click', () => ctx.nav('${fallback}'))`),
-      `${file} must not also keep its old hardcoded handler — two listeners means two navigations`);
+      `${file} must not keep a hardcoded destination — that is the whole defect`);
   }
 
   /* And the button consults the stack for its label. */

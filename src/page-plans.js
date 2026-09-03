@@ -4,7 +4,7 @@
    via "Open note", and everything written here round-trips through
    plan-parse so hand-written coaching cues survive. */
 
-const { el, ico, prose, clickableCard } = require('./dom');
+const { el, ico, prose, clickableCard, backButton } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { addItem, removeItemAt, moveItem, updateItem, isRestDay } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
@@ -129,8 +129,18 @@ function renderDetail(ctx, root, plan) {
   const active = String(plan.fm.active) === 'true';
 
   const bar = el('div', { class: 'gv-toolbar' });
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back' }, ico('arrow-left'));
-  back.addEventListener('click', () => ctx.nav('plans'));
+  /* Back to the CALLER. This was hardcoded to the plan LIST, which is right
+     when you opened the plan from the list — and wrong from anywhere else.
+     Running's "Plan" button navigates straight here, so Back dropped you on
+     the Plans list rather than returning you to Running: the same defect
+     #22 fixed for records and exercise detail, on a route that issue did not
+     name.
+
+     'plans' stays the fallback rather than the destination. Opening a plan
+     from the list is a LATERAL move — same page, different params — so the
+     stack deliberately does not push it, and with an empty stack the
+     fallback is what lands you back on the list. */
+  const back = backButton(ctx, 'plans');
   bar.append(back, el('h2', { class: 'gv-toolbar-title' }, plan.name));
   const actions = el('div', { class: 'gv-toolbar-actions' });
   if (!active) {
