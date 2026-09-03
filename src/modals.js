@@ -95,6 +95,49 @@ class ConfirmModal extends Modal {
   onClose() { this.contentEl.empty(); }
 }
 
+/* Ending a session is a FORK, not a confirmation — the two ways out are save
+   and discard, and the sheet has to name BOTH. It used to be a ConfirmModal
+   titled "Discard session?", which meant the only route to *keeping* a
+   workout ran under a heading that said the opposite: you tapped X (an icon
+   that reads as cancel), landed on discard-flavoured chrome, and had to
+   trust that "Bank it" was the save. Reported from a 0.10.2 smoke test.
+
+   onReview is optional and exists for exactly one caller: the guided screen,
+   where "back to the overview" is a third, non-committal way out AND the
+   only route there, since the log page is not a nav tab. On the log page
+   itself there is nothing to go back to, so it is left off. */
+class EndSessionModal extends Modal {
+  constructor(app, { onSave, onDiscard, onReview }) {
+    super(app);
+    this.onSave = onSave; this.onDiscard = onDiscard; this.onReview = onReview || null;
+  }
+  onOpen() {
+    this.modalEl.addClass('gv-modal');
+    this.titleEl.setText('End session');
+    this.contentEl.createEl('p', { text: 'Save what you logged, or throw the session away.' });
+    /* Order is Obsidian's: the way back first, the destructive next, the
+       primary last and rightmost — so the save is under the thumb and the
+       discard is not where a hurried tap lands. */
+    const s = new Setting(this.contentEl)
+      .addButton(b => b.setButtonText('Keep going').onClick(() => this.close()));
+    if (this.onReview) {
+      s.addButton(b => b.setButtonText('Back to the log').onClick(() => {
+        this.close();
+        this.onReview();
+      }));
+    }
+    s.addButton(b => b.setButtonText('Discard').setWarning().onClick(() => {
+      this.close();
+      Promise.resolve(this.onDiscard()).catch(e => failed('discarding the session', e));
+    }));
+    s.addButton(b => b.setButtonText('Bank it').setCta().onClick(() => {
+      this.close();
+      Promise.resolve(this.onSave()).catch(e => failed('saving the session', e));
+    }));
+  }
+  onClose() { this.contentEl.empty(); }
+}
+
 /* Switch which plan drives the dashboard. Parallel and fallback plans are
    listed too but not selectable — they are not alternatives, they fill in
    around whatever is active, and saying so beats hiding them. */
@@ -143,4 +186,4 @@ function planSummary(p) {
   return `${days.length} day${days.length === 1 ? '' : 's'} · ${days.map(d => d.weekday).join(', ')}`;
 }
 
-module.exports = { FormModal, ConfirmModal, PlanPickerModal };
+module.exports = { FormModal, ConfirmModal, EndSessionModal, PlanPickerModal };

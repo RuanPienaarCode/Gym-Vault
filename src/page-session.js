@@ -31,6 +31,7 @@ const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey } = require('./motion-count');
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const { buildRows, finishSession } = require('./page-log');
+const { EndSessionModal } = require('./modals');
 const { nextFrameIndex } = require('./media-cycle');
 const { musicButton } = require('./music-picker');
 const timedPlan = require('./timed-plan');
@@ -141,9 +142,22 @@ function progressBar(draft) {
   return el('div', { class: 'gv-bar gv-session-bar' }, el('div', { class: 'gv-bar-fill', style: `width:${pct}%` }));
 }
 
-function exitButton(ctx) {
-  const b = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Exit to overview' }, ico('x'));
-  b.addEventListener('click', () => ctx.nav('log'));
+/* The one sheet both ways out of a session go through. X used to nav
+   straight to the overview, which made the ONLY exit from the live screen an
+   icon that reads as cancel — and the save then hid behind "Bank it" under
+   the overview's discard-flavoured chrome. Now X asks, and names the save.
+   `review` keeps the old behaviour available as one of the three answers. */
+function endSession(ctx, draft, { review } = {}) {
+  new EndSessionModal(ctx.app, {
+    onSave: () => finishSession(ctx, draft),
+    onDiscard: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
+    onReview: review ? () => ctx.nav('log') : null,
+  }).open();
+}
+
+function exitButton(ctx, draft) {
+  const b = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'End session' }, ico('x'));
+  b.addEventListener('click', () => endSession(ctx, draft, { review: true }));
   return b;
 }
 
@@ -155,7 +169,7 @@ function exitButton(ctx) {
 
 function topBar(ctx, draft, extra) {
   return el('div', { class: 'gv-session-top' },
-    el('div', { class: 'gv-session-top-row' }, exitButton(ctx), extra || '', musicButton(ctx) || ''),
+    el('div', { class: 'gv-session-top-row' }, exitButton(ctx, draft), extra || '', musicButton(ctx) || ''),
     progressBar(draft));
 }
 
@@ -946,6 +960,15 @@ function renderRest(ctx, root, draft, sess) {
     ctx.rerender();
   });
 
+  /* Stopping early is a REST-PHASE decision — you finish a set, then decide
+     you are done — so the visible way out lives here rather than under the
+     counter, where a full-width button sits directly beneath a zone you are
+     tapping repeatedly and would be banked by a stray rep. Ghost, not a
+     second flood: Next is still what most rests end with. */
+  const finishBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-session-finish', type: 'button' },
+    ico('check'), el('span', {}, 'Finish session'));
+  finishBtn.addEventListener('click', () => finishSession(ctx, draft));
+
   root.append(topBar(ctx, draft, null));
   root.append(el('div', { class: 'gv-session-rest' },
     /* The rest phase is a whole route with no other title — a heading here
@@ -956,6 +979,7 @@ function renderRest(ctx, root, draft, sess) {
     callouts,
     nextLabel,
     el('div', { class: 'gv-hero-action gv-session-nextwrap' }, nextBtn),
+    finishBtn,
     el('p', { class: 'gv-microcopy' }, "Rest, don't scroll.")));
 }
 
@@ -1074,7 +1098,7 @@ function timedTopBar(ctx, draft, sess, schedule, iv) {
   return {
     node: el('div', { class: 'gv-session-top' },
       el('div', { class: 'gv-session-top-row' },
-        exitButton(ctx),
+        exitButton(ctx, draft),
         el('div', { class: 'gv-session-top-extra' }, ord),
         musicButton(ctx) || ''),
       bar),

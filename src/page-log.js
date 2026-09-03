@@ -7,7 +7,7 @@ const { el, ico, fmtSeconds } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
 const { setCounts, sameName } = require('./stats');
 const { targetFirstNumber, targetWeight, targetIsDuration, itemSets } = require('./plan-parse');
-const { FormModal, ConfirmModal } = require('./modals');
+const { FormModal, ConfirmModal, EndSessionModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
 
 /* `opts.setsPerEntry` (an array, one count per day item) overrides the plan's
@@ -59,13 +59,18 @@ function render(ctx, root) {
   const draft = ctx.state.logDraft;
   if (!draft) { ctx.nav('dashboard'); return; }
 
-  const confirmDiscard = () => new ConfirmModal(ctx.app, {
-    title: 'Discard session?', message: 'Nothing has been saved yet.', confirmLabel: 'Discard',
-    onConfirm: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
+  /* Leaving this page is a FORK, so the sheet names both ways out rather
+     than assuming the destructive one. The back arrow used to be labelled
+     "Discard session" and open a "Discard session?" confirm — which made
+     every route off this page, including the one people take to KEEP a
+     workout, read as throwing it away. */
+  const endSheet = () => new EndSessionModal(ctx.app, {
+    onSave: () => finishSession(ctx, draft),
+    onDiscard: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
   }).open();
 
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Discard session' }, ico('arrow-left'));
-  back.addEventListener('click', confirmDiscard);
+  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'End session' }, ico('arrow-left'));
+  back.addEventListener('click', endSheet);
 
   /* Enters guided mode over THIS SAME draft at the first incomplete set —
      no new session, just a second renderer over the one draft (see
@@ -116,10 +121,13 @@ function render(ctx, root) {
 
   const finish = el('button', { class: 'gv-btn-finish', type: 'button', onclick: () => finishSession(ctx, draft) },
     el('span', {}, 'Bank it'));
+  /* This button IS the destructive route, so its own confirm may say so —
+     what was wrong was the SHEET that every exit shared being titled that
+     way. Kept as a ConfirmModal for that reason: there is no fork here. */
   const discard = el('button', { class: 'gv-btn-discard', type: 'button', onclick: () => new ConfirmModal(ctx.app, {
-    title: 'Discard session?', message: 'Nothing has been saved yet.', confirmLabel: 'Discard',
+    title: 'Discard session?', message: 'Nothing you logged will be saved.', confirmLabel: 'Discard',
     onConfirm: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
-  }).open() }, 'Discard session');
+  }).open() }, 'Discard');
   root.append(el('div', { class: 'gv-log-foot' }, finish, discard,
     el('p', { class: 'gv-microcopy' }, "The bar isn't going to climb itself.")));
 }
