@@ -55,6 +55,35 @@ function setCounts(set) {
   return !!(set.done || (set.touched && hasFigure));
 }
 
+/* HOW MANY SESSIONS — the one rule, for every surface that prints the word.
+
+   Three screens counted three different things and all three said
+   "sessions": Today counted UNIQUE DATES, History counted dated FILES, and
+   Export counted files. Log a lift and then a run on the same day — which
+   this app treats as first-class, "Log another session" is a button — and
+   Today said 1 while History listed 2.
+
+   A session is a logged workout note. Two on one day are two. An undated
+   note is still one — it is a session someone recorded and History already
+   shows it on screen; leaving it out of the count made the number disagree
+   with the cards underneath it. Undated notes stay out of the STREAK and the
+   heatmap, which genuinely need a date, and workoutDates() still answers
+   that separate question. */
+function sessionCount(workouts) {
+  return (workouts || []).length;
+}
+
+/* The same rule, inside one week. Undated notes belong to no week, so they
+   are absent here — the week tile is a dated question. */
+function sessionsInWeek(workouts, refIso, weekStart) {
+  const start = startOfWeek(refIso, weekStart);
+  const end = addDays(start, 7);
+  return (workouts || []).filter(w => {
+    const d = workoutDate(w);
+    return d && d >= start && d < end;
+  }).length;
+}
+
 function countInWeek(dates, refIso, weekStart) {
   const start = startOfWeek(refIso, weekStart);
   const end = addDays(start, 7);
@@ -166,7 +195,10 @@ function goalCurrent(goal, ctx) {
       return rows.length ? num(rows[rows.length - 1].weight_kg) : null;
     }
     case 'workouts-per-week':
-      return countInWeek(workoutDates(ctx.workouts), ctx.today || todayISO(), ctx.weekStart);
+      /* Sessions, not training days — the same rule the tile beside it uses.
+         A goal of "4 a week" met by two doubles and no third day was
+         reported as 2 while History listed 4. */
+      return sessionsInWeek(ctx.workouts, ctx.today || todayISO(), ctx.weekStart);
     default: return null;
   }
 }
@@ -227,7 +259,7 @@ function bmi(weightKg, heightCm) {
 }
 
 module.exports = {
-  num, workoutDates, workoutDate, sameName, countInWeek, weekStreak, exerciseBests, epley1RM,
+  num, workoutDates, workoutDate, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM,
   sessionVolume, sessionSets, setCounts, distanceInWeek, ladderWeek,
   goalCurrent, goalIssue, goalProgress, weightSeries, bmi,
 };
