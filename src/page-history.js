@@ -60,7 +60,9 @@ function render(ctx, root) {
   let lastMonth = '';
   const openName = ctx.state.params && ctx.state.params.session;
   for (const w of sessions) {
-    const m = monthLabel(w.fm.date || '');
+    /* The day this app actually reads, not the raw string — a note under the
+       wrong month header is the same lie as one in the wrong sort position. */
+    const m = monthLabel(workoutDate(w) || '');
     if (m && m !== lastMonth) {
       root.append(el('div', { class: 'gv-section-title' }, ico('calendar-days'), el('span', {}, m)));
       lastMonth = m;
@@ -78,7 +80,10 @@ function sessionCard(ctx, w, open) {
   ].filter(Boolean).join(' · ');
 
   const card = el('div', { class: `gv-card gv-session-card${open ? ' open' : ''}` });
-  const whenLabel = w.fm.date ? fmtShort(w.fm.date) : w.name;
+  /* An unreadable date falls back to the file name rather than printing a
+     date nothing else in the app agrees with. */
+  const d = workoutDate(w);
+  const whenLabel = d ? fmtShort(d) : w.name;
   const head = clickableCard(
     { class: 'gv-session-head', 'aria-expanded': open ? 'true' : 'false', 'aria-label': `${whenLabel} session, ${open ? 'expanded' : 'collapsed'}` },
     () => ctx.nav('history', { session: open ? undefined : w.name }),

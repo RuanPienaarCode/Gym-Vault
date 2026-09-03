@@ -15,6 +15,7 @@ const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
 const { clipFileName, keyFromFileName } = require('./voice-pack');
+const { workoutDate } = require('./stats');
 
 /* Windows/OSX-illegal filename characters, folded to '-' so an exercise or
    plan named from user input always lands on disk. */
@@ -167,8 +168,14 @@ function makeIo(plugin) {
     /* Return 0 on equality: returning 1 makes the comparator
        non-antisymmetric, and two sessions logged on the SAME day (which
        saveWorkout explicitly supports) then get an unstable order. */
+    /* Sorted by workoutDate(), the one rule for a session's day — not by the
+       raw frontmatter string. A sloppy `date: 2026-8-6` sorted AFTER
+       `2026-09-01` lexically and so became the last workout in the array,
+       which is what the dashboard's "last session" tile reads — a note Today
+       refuses to recognise at all. Unreadable dates sort last, so they never
+       displace a real one. */
     data.workouts.sort((a, b) => {
-      const x = a.fm.date || '', y = b.fm.date || '';
+      const x = workoutDate(a) || '', y = workoutDate(b) || '';
       return x < y ? -1 : x > y ? 1 : 0;
     });
     return data;

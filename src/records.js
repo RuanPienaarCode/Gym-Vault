@@ -10,7 +10,7 @@
    'weight', 'seconds'. Distance (runs) has no record concept here in v1 —
    callers simply don't call this for a distance entry. */
 
-const { exerciseBests, sameName, num } = require('./stats');
+const { exerciseBests, sameName, num, workoutDate } = require('./stats');
 
 /* The three dimensions a record can exist in, in the order they are shown.
    Distance is deliberately absent: a run's record is its own thing and
@@ -57,9 +57,20 @@ function isRecord(prev, value) {
    putting it at the end means it can only ever ADD a record, never
    retroactively invalidate one. */
 function inDateOrder(workouts) {
+  /* workoutDate(), not the raw frontmatter string. A hand-typed
+     `date: 2026-8-6` is not a date this app understands — Today ignores it —
+     but as a STRING it sorts after `2026-09-01`, so it led the history a
+     record was read from. And `2026-08-26T09:00` and `2026-08-26` are the
+     same day to every other rule here while being different keys to a string
+     compare. One rule for a session's day, or the record you are shown was
+     computed from an order nothing else agrees with.
+
+     Unparseable and undated both sort LAST, which is the rule this already
+     had for an empty date — a note whose day we cannot read cannot be
+     claimed to have happened before anything. */
   return (workouts || []).slice().sort((a, b) => {
-    const ad = (a.fm && a.fm.date) || '9999-99-99';
-    const bd = (b.fm && b.fm.date) || '9999-99-99';
+    const ad = workoutDate(a) || '9999-99-99';
+    const bd = workoutDate(b) || '9999-99-99';
     return ad < bd ? -1 : ad > bd ? 1 : 0;
   });
 }
@@ -80,7 +91,7 @@ function recordHistory(workouts, exercise, kind) {
   const out = [];
   let best = null;
   for (const w of inDateOrder(workouts)) {
-    const date = (w.fm && w.fm.date) || '';
+    const date = workoutDate(w) || '';  // the day, not the raw string it was typed as
     for (const r of w.rows || []) {
       if (!sameName(r.exercise, exercise)) continue;
       const v = num(r[column]);
