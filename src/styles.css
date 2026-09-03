@@ -1485,6 +1485,38 @@ body.is-phone .gv-app .gv-page {
    is doing push-ups. The shockwave is a pseudo-element on the count so it
    cannot take a tap away from the zone. */
 .gv-rc-count { will-change: transform; }
+
+/* THE COUNT-IN IS NOT A COUNT. attachCountIn reuses the same big numeral —
+   one node, so the countdown and the live count occupied the same place with
+   the same treatment. A "3" with "Tap to start now" under it was therefore
+   indistinguishable from three reps already scored, and the class that was
+   supposed to tell them apart (gv-rc-countin) had NO RULE AT ALL: it was
+   added on every set and styled nothing.
+
+   Hollow, not solid: a counted rep is ink you have earned, a countdown is
+   the app waiting for you. The kicker underneath names it outright, because
+   colour alone is not an explanation. */
+.gv-rc-count.gv-rc-countin {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--gv-ink-dim);
+  opacity: 0.85;
+}
+.theme-dark .gv-app .gv-rc-count.gv-rc-countin { -webkit-text-stroke-color: var(--gv-line-2); }
+/* GO lands solid — that beat IS the transition to counting. */
+.gv-rc-count.gv-rc-countin.gv-rc-countin-go {
+  color: var(--gv-lime-deep);
+  -webkit-text-stroke: 0;
+  opacity: 1;
+}
+.theme-dark .gv-app .gv-rc-count.gv-rc-countin-go { color: var(--gv-lime); }
+/* Says what the number is, for the whole five seconds it is not a count. */
+.gv-rc-countin-label {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gv-ink-dim);
+  text-align: center; margin-top: 2px;
+}
+.gv-rc-countin-label:empty { display: none; }
+
 .gv-rc-count.gv-punch { animation: gv-punch 380ms cubic-bezier(0.22, 1.4, 0.36, 1); }
 @keyframes gv-punch {
   0%   { transform: scale(1);    color: var(--gv-ink); }

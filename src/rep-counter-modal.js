@@ -104,7 +104,9 @@ class RepCounterModal extends Modal {
     this.motionBtn.addEventListener('click', () => this.toggleMotion());
 
     const undoBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': 'Undo last rep' },
-      ico('minus'), el('span', {}, '1'));
+      /* Not a bare numeral: '- 1' beside a live count reads as a second
+         counter sitting at 1 (issue #3). Same word as the guided screen's. */
+      ico('minus'), el('span', {}, 'Undo'));
     undoBtn.addEventListener('click', () => {
       this.state = undo(this.state);
       this.renderCount();
