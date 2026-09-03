@@ -13,7 +13,7 @@
    precisely because a prefilled number that got saved as if it were observed
    is the bug shape this project keeps digging out. */
 
-const { targetFirstNumber, targetIsDuration } = require('./plan-parse');
+const { targetFirstNumber, targetDurationSeconds } = require('./plan-parse');
 
 const KINDS = ['reps', 'seconds'];
 
@@ -50,9 +50,13 @@ function makeTarget(kind, value) {
 function targetFromEntry(entry) {
   if (!entry || entry.distance) return null; // a run is not counted, it is measured
   const raw = entry.target || '';
+  /* "2 min" is 120 seconds, not 2. The meter used to fill against the bare
+     number, so a two-minute hold showed as complete after two seconds. */
+  const written = targetDurationSeconds(raw);
+  if (written) return makeTarget('seconds', written);
   const n = targetFirstNumber(raw);
   if (n === null || n === undefined) return null;
-  return makeTarget(entry.duration || targetIsDuration(raw) ? 'seconds' : 'reps', n);
+  return makeTarget(entry.duration ? 'seconds' : 'reps', n);
 }
 
 /* How far along, as a fraction. Deliberately NOT clamped at 1: going past
