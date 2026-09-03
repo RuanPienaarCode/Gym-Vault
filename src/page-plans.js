@@ -6,10 +6,11 @@
 
 const { el, ico, prose, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
-const { addItem, removeItemAt, moveItem, updateItem } = require('./plan-parse');
+const { addItem, removeItemAt, moveItem, updateItem, isRestDay } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
 const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
+const { todayISO, weekdayKey } = require('./dates');
 
 function render(ctx, root) {
   const { data } = ctx;
@@ -165,14 +166,34 @@ function renderDetail(ctx, root, plan) {
     root.append(prose(plan.model.intro, { class: 'gv-plan-intro', preview: 1 }));
   }
 
+  /* THIS PAGE IS A READING DOCUMENT (Editorial Floor). It is coaching prose,
+     day lists and equipment tags — so it gets ONE acting flood, not one per
+     day. Every day card used to carry a solid Start, which made a six-day
+     plan six acting blocks and left nothing for the eye to land on.
+
+     The one flood is today's day, if the plan has one. On a rest day, or
+     when today is not on this plan, every Start goes ghost and NO flood is
+     invented: Today already owns the primary training CTA, and a second one
+     here would be competing with it from a page you came to read.
+
+     Start stays on every day either way — starting a specific day from the
+     plan is a real action, and this is a change of register, not of
+     function. */
+  const todayKey = weekdayKey(todayISO());
+  const todaysDay = plan.model.days.find(d => d.weekday === todayKey && !isRestDay(d)) || null;
+
   for (const day of plan.model.days) {
     const card = el('div', { class: 'gv-card gv-day-card' });
+    const isToday = day === todaysDay;
     card.append(el('div', { class: 'gv-day-head' },
       el('div', {},
         el('div', { class: 'gv-day-title' }, day.name),
         el('div', { class: 'gv-day-sub' }, WEEKDAY_LABELS[day.weekday] || day.weekday)),
-      el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startGuided(plan, day) },
-        ico('play'), el('span', {}, 'Start'))));
+      el('button', {
+        class: `gv-btn gv-btn-small${isToday ? '' : ' gv-btn-ghost'}`,
+        type: 'button',
+        onclick: () => ctx.startGuided(plan, day),
+      }, ico('play'), el('span', {}, 'Start'))));
     if (day.notes.length) card.append(prose(day.notes, { class: 'gv-day-note', preview: 1 }));
     const kit = equipmentFor(ctx.data.exercises, day.items.map(it => it.exercise));
     if (kit.length) {

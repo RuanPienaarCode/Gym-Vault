@@ -949,7 +949,10 @@ body.is-phone .gv-app .gv-page {
 .gv-day-note { margin-top: 8px; }
 .gv-day-note p { font-size: 13px; }
 
-.gv-day-card { margin-bottom: 12px; border-top: 2px solid var(--gv-ink); }
+/* A hairline, not a 2px ink rule: plan detail is a READING surface, and 2px
+   ink is the acting register's weight. Six of them down a six-day plan read
+   as six things to do rather than one document to read. */
+.gv-day-card { margin-bottom: 12px; border-top: 1px solid var(--gv-line-2); }
 .gv-day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .gv-day-title { font-family: var(--gv-display); font-size: 20px; text-transform: uppercase; line-height: 1; }
 .gv-day-sub { font-size: 10px; font-weight: 800; color: var(--gv-lime-deep); text-transform: uppercase; letter-spacing: 0.13em; margin-top: 5px; }
@@ -1171,14 +1174,22 @@ body.is-phone .gv-app .gv-page {
 /* ---------- profile ---------- */
 
 .gv-profile-card { display: flex; gap: 14px; align-items: center; margin-top: 12px; border-top: 2px solid var(--gv-ink); }
+/* Paper and a hairline, with the accent kept as a HIGHLIGHT on the glyph.
+   This was a filled ink cube with a lime-hi icon — a flood, sitting at the
+   top of a reading page and nowhere near a thumb. Lime on the stat numerals
+   and the sparkline stays: those are data, and a highlight is not a flood. */
 .gv-profile-avatar {
   flex: 0 0 auto;
   width: 52px; height: 52px;
   display: flex; align-items: center; justify-content: center;
-  background: var(--gv-ink);
-  color: var(--gv-lime-hi);
+  background: var(--gv-surface);
+  border: 1px solid var(--gv-line-2);
+  color: var(--gv-lime-deep);
 }
-.theme-dark .gv-app .gv-profile-avatar { background: var(--gv-lime); color: var(--gv-ink-fixed); }
+/* Dark theme keeps the same treatment rather than flipping to a filled
+   block: --gv-surface is already the dark card, and --gv-lime reads on it
+   where --gv-lime-deep would not. */
+.theme-dark .gv-app .gv-profile-avatar { border-color: var(--gv-line-2); color: var(--gv-lime); }
 .gv-profile-avatar .gv-ico svg { width: 24px; height: 24px; }
 .gv-profile-main { flex: 1 1 auto; }
 .gv-profile-name { font-family: var(--gv-display); font-size: 26px; text-transform: uppercase; line-height: 1; }
