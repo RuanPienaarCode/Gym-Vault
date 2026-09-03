@@ -140,11 +140,17 @@ function elapsed(draft) {
 }
 
 function entryCard(ctx, draft, entry, ei) {
-  const card = el('div', { class: 'gv-card gv-log-card' });
+  /* Says so, rather than leaving a column of the plan's own numbers to be
+     read as work. setCounts is the SAME rule finishSession saves by, so this
+     label and the note that lands can never disagree. */
+  const logged = entry.sets.some(setCounts);
+  const card = el('div', { class: `gv-card gv-log-card${logged ? '' : ' unlogged'}` });
   card.append(el('div', { class: 'gv-log-ex-head' },
     el('div', {},
       el('div', { class: 'gv-log-ex-name' }, entry.exercise),
-      entry.target ? el('div', { class: 'gv-log-ex-target' }, `target ${entry.target}`) : ''),
+      el('div', { class: 'gv-log-ex-target' },
+        [entry.target ? `target ${entry.target}` : '', logged ? '' : 'not logged yet']
+          .filter(Boolean).join(' · '))),
     removeBtn(ctx, draft, ei)));
 
   const rows = el('div', { class: 'gv-log-sets' });
@@ -175,14 +181,30 @@ const INPUT_LABELS = {
 };
 
 function setRow(ctx, entry, set, si) {
-  const row = el('div', { class: `gv-log-set${set.done ? ' done' : ''}` });
+  /* A PREFILL IS THE PLAN TALKING, NOT YOU. These boxes are seeded from the
+     day's prescription and marked `touched: false`; until you type or tick,
+     nothing here has happened. They rendered identically to a figure you had
+     entered, so a session where two sets were logged and the rest skipped
+     read back as five sets of submax that were never done — reported from a
+     first-run smoke test, where it looked like an 18-set day had been
+     credited. The saved note was always honest; this screen was not.
+
+     Dimmed rather than emptied, because ticking a prefilled set is a real
+     and useful action — "I did exactly what the plan said" — and stats.
+     setCounts has always honoured it. Emptying the box would take that away
+     to fix a display problem. */
+  const isPrefill = !set.touched && !set.done;
+  const row = el('div', { class: `gv-log-set${set.done ? ' done' : ''}${isPrefill ? ' prefill' : ''}` });
   row.append(el('span', { class: 'gv-set-num' }, String(si + 1).padStart(2, '0')));
 
   const numInput = (key, placeholder, cls) => {
     const i = el('input', {
       class: `gv-set-input${cls ? ' ' + cls : ''}`, type: 'number', inputmode: 'decimal',
       placeholder, value: set[key] ?? '',
-      'aria-label': `${INPUT_LABELS[key] || placeholder} — ${entry.exercise}, set ${si + 1}`,
+      /* A screen reader gets told it is a suggestion too — dimming it says
+         nothing to anyone not looking at the colour. */
+      'aria-label': `${INPUT_LABELS[key] || placeholder} — ${entry.exercise}, set ${si + 1}`
+        + (isPrefill && String(set[key] ?? '').trim() ? ', from the plan, not yet logged' : ''),
     });
     i.addEventListener('input', () => { set[key] = i.value; set.touched = true; });
     return i;

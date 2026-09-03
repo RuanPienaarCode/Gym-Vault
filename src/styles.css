@@ -1249,6 +1249,16 @@ body.is-phone .gv-app .gv-page {
   background: var(--gv-surface);
 }
 .theme-dark .gv-app .gv-log-set { border-color: var(--gv-line-2); }
+/* A PREFILL IS THE PLAN'S SUGGESTION, NOT A LOGGED FIGURE. Until a set is
+   typed into or ticked, its boxes hold the day's prescription — they used to
+   render exactly like a number you had entered, so a session with two sets
+   logged read back as five sets performed. Dimmed, not emptied: ticking a
+   prefilled set is a real action and setCounts honours it. */
+.gv-log-set.prefill .gv-set-input { color: var(--gv-ink-dim); opacity: 0.75; }
+.gv-log-set.prefill .gv-set-unit { opacity: 0.6; }
+/* An exercise with nothing logged says so on its own head. */
+.gv-app .gv-log-card.unlogged { border-style: dashed; }
+.gv-log-card.unlogged .gv-log-ex-name { color: var(--gv-ink-dim); }
 .gv-log-set.done { background: var(--gv-ink); color: var(--gv-surface); }
 .theme-dark .gv-app .gv-log-set.done { color: var(--gv-ink-fixed); }
 .gv-log-set .gv-set-num { width: 26px; font-family: var(--gv-display); font-size: 14px; color: var(--gv-ink-dim); }
