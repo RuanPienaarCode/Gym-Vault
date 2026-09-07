@@ -20,6 +20,12 @@ const { photosForPose, poseByKey } = require('./progress-photos');
 const STEP_MS = 1400;          // dwell per photo when playing — "slow morph"
 const FADE_MS = 900;
 
+/* THE REDUCED-MOTION DECISION LIVES HERE, not in the stylesheet. The
+   cross-fade below is an inline transition, and an inline style outranks
+   every selector — a stylesheet could only override it with !important, and
+   a rule that has to shout to be heard is a rule in the wrong file. So this
+   is the single gate: show() takes the no-animation path when it returns
+   true, and the transition is never set in the first place. */
 const reducedMotion = () => {
   try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
   catch (e) { return false; }

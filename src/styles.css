@@ -202,9 +202,13 @@
 .gv-app .gv-photos-section { margin-bottom: 18px; }
 .gv-app .gv-photos-viewer { margin-top: 12px; }
 
-@media (prefers-reduced-motion: reduce) {
-  .gv-app .gv-photo-layer { transition: none !important; }
-}
+/* No reduced-motion rule for .gv-photo-layer here on purpose. Its cross-fade
+   is an INLINE transition written by photo-viewer.js, and an inline style is
+   beaten by nothing a stylesheet can say except !important — so a rule here
+   could only ever be a shout. photo-viewer.js checks prefers-reduced-motion
+   itself before it sets the transition at all, which is the honest place for
+   the decision. Every other reduced-motion block in this file governs a
+   transition CSS actually owns, and none of them needs !important. */
 
 /* ---------- accessibility utilities ---------- */
 
@@ -871,12 +875,19 @@ body.is-phone .gv-app .gv-page {
   line-height: 1.4;
   /* A flex item will not shrink below its min-content width, so a long
      headline ran off the screen edge and shoved the chevron out with it.
-     min-width:0 lets it wrap; overflow-wrap catches unbreakable tokens.
-     `break-word` first because `anywhere` is Safari 15.4+ and the engine
-     floor here is 15 — an unsupported value is just dropped. */
+     min-width:0 lets it wrap; overflow-wrap catches unbreakable tokens. */
   min-width: 0;
   overflow-wrap: break-word;
-  overflow-wrap: anywhere;
+}
+/* `anywhere` breaks a long unbroken token more willingly than `break-word`,
+   but it is Safari 15.4+ and this plugin's engine floor is iOS 15.0. It used
+   to sit as a second overflow-wrap in the rule above, relying on an older
+   engine dropping the value it does not know — which works, but reads to a
+   linter (and to the next person) as one declaration accidentally written
+   twice. @supports says the same thing on purpose: 15.0 keeps break-word,
+   15.4+ takes anywhere. */
+@supports (overflow-wrap: anywhere) {
+  .gv-app .gv-chunk-label { overflow-wrap: anywhere; }
 }
 /* A derived headline is the opening of a sentence, not a section title —
    shouting it in caps reads as a label it was never written to be. */
