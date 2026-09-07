@@ -175,12 +175,29 @@ function attachCountIn(zone, countEl, opts) {
   const label = el('div', { class: 'gv-rc-countin-label' }, 'Counting you in');
   countEl.classList.add('gv-rc-countin');
   zone.classList.add('gv-rc-arming');
-  countEl.textContent = String(o.from == null ? countdown.GATE_FROM : o.from);
+  const gateFrom = o.from == null ? countdown.GATE_FROM : o.from;
+  /* THE FIRST PAINT, not just the ticking clock. `o.startedAt` (below) lets
+     the sequencer itself resume mid-count instead of restarting at
+     gateFrom — but startCountIn's first tick is TICK_MS away, and without
+     this the numeral would flash the full "5" for that gap before dropping
+     to whatever second it actually resumed at. */
+  const initialRemaining = o.startedAt == null ? gateFrom : Math.max(0, gateFrom - (Date.now() - o.startedAt) / 1000);
+  countEl.textContent = String(countdown.countInNumber(initialRemaining, gateFrom) ?? gateFrom);
   if (countEl.parentNode) countEl.parentNode.insertBefore(label, countEl.nextSibling);
   if (o.hintEl) o.hintEl.textContent = 'Tap to start now';
 
   const seq = countdown.startCountIn({
     from: o.from,
+    /* A caller resuming a count already in progress (a re-render mid-gate,
+       not a fresh one) passes the ORIGINAL start stamp through here, so the
+       remaining time survives the rebuild instead of the gate restarting
+       from gateFrom every time the page happens to redraw — see
+       page-session.js's own comment on why a genuine re-render can land
+       mid-count-in at all. */
+    startedAt: o.startedAt,
+    /* FORWARDED, not read. `o.muted` may be a function (see countdown.js) —
+       reading it here would collapse a live getter back into the snapshot
+       that made muting mid-count-in do nothing. */
     muted: o.muted,
     settings: o.settings,
     onNumber: n => {

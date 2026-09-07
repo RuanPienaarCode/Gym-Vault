@@ -103,14 +103,25 @@ const typed = text => {
   assert.ok(!normaliseNumber('4|3').includes('|'), 'a pipe must never survive into a table cell');
 }
 
-/* ---------- 4. one separator, one sign ---------- */
+/* ---------- 4. one separator, NO sign (0.11.2 journey audit, finding
+   L10) ----------
+
+   Every field this helper feeds is a physical quantity — a weight, a
+   distance, a duration, a rep count — and none of them is meaningful
+   negative. A leading minus used to be PLACED rather than policed, so
+   "-5" reps or "-2.5" kg round-tripped straight into the note's table as a
+   real, unflagged figure. Dropped now, the same way a stray second decimal
+   point is dropped rather than rejected: keeping the digits typed beats
+   emptying the field mid-edit, and a dash landing here (by accident, or
+   pasted from somewhere) is noise, not a sign. */
 {
   assert.strictEqual(normaliseNumber('4.3.7'), '4.37',
     'a second separator is a slip — dropping it keeps the digits, which beats emptying the field mid-edit');
   assert.strictEqual(normaliseNumber('4,3,7'), '4.37');
-  assert.strictEqual(normaliseNumber('-2.5'), '-2.5', 'a leading minus is kept');
-  assert.strictEqual(normaliseNumber('2-5'), '25', 'a minus anywhere else is not a sign');
-  assert.strictEqual(normaliseNumber('--5'), '-5');
+  assert.strictEqual(normaliseNumber('-2.5'), '2.5',
+    'no field fed by this helper is ever legitimately negative — the sign is dropped, not carried through');
+  assert.strictEqual(normaliseNumber('2-5'), '25', 'a minus anywhere else was never a sign either');
+  assert.strictEqual(normaliseNumber('--5'), '5');
 }
 
 /* ---------- 5. every logging field goes through it ---------- */

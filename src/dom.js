@@ -421,20 +421,28 @@ function segmented(options, current, onPick, opts) {
    records a half. If someone types half a rep, they meant it.
 
    normaliseNumber is exported and pure, because what a training log is
-   allowed to record is a rule, not a rendering detail. */
+   allowed to record is a rule, not a rendering detail.
+
+   NO MINUS SIGN. Every field this feeds (0.11.2 journey audit, finding
+   L10: weight_kg, distance_km, minutes, seconds, reps — every numericInput()
+   call site in the plugin, checked) is a physical quantity that is never
+   meaningful negative. A leading "-" used to be PLACED rather than policed,
+   so "-5" reps or "-2.5" kg round-tripped straight into the note's table as
+   a real, unflagged figure. It is dropped here, the same way a stray second
+   decimal point is dropped rather than rejected — keeping the digits the
+   user typed beats emptying the field mid-edit. If a field genuinely needs a
+   sign one day (nothing today does), that is a clamp at ITS OWN call site,
+   not a reason to bring the minus back here — this helper is shared by
+   every numeric field in the app. */
 function normaliseNumber(raw) {
-  let v = String(raw == null ? '' : raw).replace(/[^0-9.,-]/g, '');
-  /* A leading minus only. Rejecting the character mid-edit is worse than
-     enforcing the shape, so the sign is placed rather than policed. */
-  const neg = v.startsWith('-');
-  v = v.replace(/-/g, '');
+  let v = String(raw == null ? '' : raw).replace(/[^0-9.,]/g, '');
   /* A comma IS a decimal point here. */
   v = v.replace(/,/g, '.');
   const i = v.indexOf('.');
   /* One point. A second separator is a slip — dropping it keeps the digits
      the user typed, which beats emptying a field mid-edit. */
   if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, '');
-  return (neg ? '-' : '') + v;
+  return v;
 }
 
 /* A logging field. onValue receives the normalised string on every edit. */

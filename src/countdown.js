@@ -101,7 +101,10 @@ function countdownRing(size) {
      from      seconds to count from (default GATE_FROM)
      muted     this session's mute toggle — silences the app's own voice,
                never a caller's aria-live (a screen-reader user is not using
-               the app's speech and must not lose the cue with it)
+               the app's speech and must not lose the cue with it). A
+               FUNCTION is preferred and is asked again on every tick, so
+               muting part-way through a count-in actually stops it; a plain
+               boolean is still accepted and is read the same way.
      settings  passed to sound.js for the mode and voice
      onNumber(n)  a new whole second landed — show it
      onGo()       the count reached zero; GO_WORD is the word
@@ -119,6 +122,12 @@ function startCountIn(opts) {
   const done = typeof o.onDone === 'function' ? o.onDone : () => {};
   const onNumber = typeof o.onNumber === 'function' ? o.onNumber : () => {};
   const onGo = typeof o.onGo === 'function' ? o.onGo : () => {};
+  /* MUTE IS READ LIVE, NOT SNAPSHOT. A count-in runs for five seconds and
+     the mute button is on screen for every one of them, so a boolean copied
+     at start time meant hitting mute at 1.5s still spoke "3, 2, 1, Begin"
+     into a quiet room. A function is therefore allowed here and asked again
+     on every tick; a plain boolean still works, so no caller had to change. */
+  const isMuted = () => (typeof o.muted === 'function' ? !!o.muted() : !!o.muted);
 
   let finished = false;
   let timer = null;
@@ -126,7 +135,12 @@ function startCountIn(opts) {
      clears the interval and THEN schedules this. A teardown landing in that
      gap has to be able to cancel it. */
   let handoff = null;
-  const startedAt = Date.now();
+  /* `o.startedAt` lets a caller RESUME a count already in progress instead
+     of starting a fresh five (or three) seconds — see rep-counter-shared.js
+     and page-session.js's own comment for why a caller needs this at all. A
+     caller with nothing to resume passes nothing, and this is Date.now(),
+     exactly as before. */
+  const startedAt = o.startedAt == null ? Date.now() : o.startedAt;
   let lastShown = null;
 
   const finish = skipped => {
@@ -135,7 +149,7 @@ function startCountIn(opts) {
     if (timer) { window.clearInterval(timer); timer = null; }
     if (!skipped) {
       onGo();
-      if (!o.muted) sound.cue('go', GO_WORD, o.settings);
+      if (!isMuted()) sound.cue('go', GO_WORD, o.settings);
     }
     /* One beat of "Begin" before the counter takes over. A SKIP gets no such
        pause — a skip is someone saying "now", and making them wait for a
@@ -152,7 +166,7 @@ function startCountIn(opts) {
       onNumber(n, from ? Math.max(0, remaining) / from : 0);
       /* 'count', not the default 'rep': in the user's-own-voice mode the
          count-in numbers are their own recordings (see voice-pack.js). */
-      if (!o.muted) sound.announce(n, o.settings, 'count');
+      if (!isMuted()) sound.announce(n, o.settings, 'count');
     }
     if (remaining <= 0) finish(false);
   }, TICK_MS);
