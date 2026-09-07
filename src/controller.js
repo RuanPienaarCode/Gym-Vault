@@ -5,6 +5,7 @@
 const { Notice, normalizePath } = require('obsidian');
 const { el, ico, clear } = require('./dom');
 const { makeIo } = require('./data');
+const { ConfirmModal } = require('./modals');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
 const pages = {
@@ -45,6 +46,71 @@ const NAV = [
   { id: 'export', label: 'Export', icon: 'share-2', place: 'head' },
 ];
 
+/* THE DAY-RESOLUTION RULE, pure and exported.
+
+   It lives out here rather than inside mountApp because the closure form was
+   only ever testable by writing a second copy of it in the guard suite, and
+   "two figures derived by different rules" is this codebase's recurring bug
+   shape — a modelled rule that has quietly stopped matching the real one is
+   the same failure wearing a test's clothes. ctx.daysOn is now a thin
+   wrapper over this.
+
+   Order matters and is the contract: the active plan's own weekday first,
+   then its `any` day if it claims this weekday no other way, then every
+   parallel plan, then — only when nothing at all is scheduled — one
+   fallback plan. */
+function resolveDaysOn(weekday, activePlan, parallelPlans, fallbackPlans) {
+  const out = [];
+  if (activePlan) {
+    const own = activePlan.model.days.filter(d => d.weekday === weekday);
+    for (const d of own) out.push({ plan: activePlan, day: d });
+    /* A plan whose days are ALL `(any)` used to schedule nothing at all: the
+       wildcard was honoured only for FALLBACK plans, so making one active
+       left every weekday resolving to the rest plan instead, and every Start
+       button on the plan's own page ghosted. Ten plans in the shared library
+       are shaped exactly that way, and their own prose promises they "fill
+       whatever day is otherwise empty".
+
+       An exact weekday still wins over the wildcard — that is what
+       `own.length` tests — so a mixed plan (three named days plus an `any`)
+       behaves the way its author meant. */
+    if (!own.length) {
+      const anyDay = activePlan.model.days.find(d => d.weekday === 'any');
+      if (anyDay) out.push({ plan: activePlan, day: anyDay });
+    }
+  }
+  for (const p of parallelPlans || []) {
+    for (const d of p.model.days) if (d.weekday === weekday) out.push({ plan: p, day: d });
+  }
+  /* Nothing training-related today? A fallback plan (rest & recovery) fills
+     the gap — an exact weekday match first, then its `any` day. */
+  if (!out.length) {
+    for (const p of fallbackPlans || []) {
+      const day = p.model.days.find(d => d.weekday === weekday) || p.model.days.find(d => d.weekday === 'any');
+      if (day) { out.push({ plan: p, day }); break; }
+    }
+  }
+  return out;
+}
+
+/* True when NOTHING carries the active flag and activePlan() is merely
+   falling back to the first main plan. Every downloaded plan arrives
+   `active: false`, so deleting the seeded plan leaves Today confidently
+   driving a plan the Plans list does not badge. Exported for the same reason
+   as the rule above: the dashboard's notice and the guard that pins it must
+   read one implementation. */
+function isImplicitActive(mainPlans) {
+  const main = mainPlans || [];
+  return main.length > 0 && !main.some(p => String(p.fm.active) === 'true');
+}
+
+/* How an in-progress draft names itself on the Today screen. */
+function describeDraft(draft) {
+  if (!draft) return '';
+  if (draft.day && draft.plan) return `${draft.day} · ${draft.plan}`;
+  return draft.day || draft.plan || 'Freestyle session';
+}
+
 function mountApp(view) {
   const plugin = view.plugin;
   const app = plugin.app;
@@ -60,8 +126,14 @@ function mountApp(view) {
        that ctx.nav runs the moment the page actually changes. */
     /* setup/setupUi: the pending {plan, day} and the choices being made on
        the setup screen — deliberately NOT a draft. Nothing exists until
-       Start, so backing out of setup leaves the vault untouched. */
-    state: { page: 'dashboard', params: {}, logDraft: null, session: null, setup: null, setupUi: null, pageCleanup: null },
+       Start, so backing out of setup leaves the vault untouched.
+       sessionCarry: a one-shot handoff for the tally a guided session had
+       accumulated (records/goalCount/metGoals) when the page was last left —
+       written by page-session.js's own pageCleanup, tied to the draft it
+       belongs to, and consumed exactly once by the next fresh session built
+       for that SAME draft (see page-session.js's render() and its own
+       comment, 0.11.2 journey audit finding L9). */
+    state: { page: 'dashboard', params: {}, logDraft: null, session: null, setup: null, setupUi: null, pageCleanup: null, sessionCarry: null },
     _interval: null,
     /* Set by ctx.nav() only (never by a plain ctx.rerender() from local UI
        state — ticking a set, toggling a switch — which must NOT steal focus
@@ -96,6 +168,8 @@ function mountApp(view) {
     const main = ctx.data.plans.filter(p => !isParallel(p));
     return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
   };
+  ctx.activePlanIsImplicit = () =>
+    (ctx.data ? isImplicitActive(ctx.data.plans.filter(p => !isParallel(p))) : false);
   const isFallback = p => String(p.fm.fallback) === 'true';
   ctx.parallelPlans = () => (ctx.data ? ctx.data.plans.filter(p => isParallel(p) && !isFallback(p)) : []);
   ctx.fallbackPlans = () => (ctx.data ? ctx.data.plans.filter(isFallback) : []);
@@ -106,22 +180,10 @@ function mountApp(view) {
   ctx.runPlan = () =>
     ctx.parallelPlans().find(p => p.model.days.some(d => d.items.some(i => isRunExercise(i.exercise))))
     || ctx.parallelPlans()[0] || null;
-  /* Every {plan, day} scheduled on a weekday, active plan first. */
-  ctx.daysOn = weekday => {
-    const out = [];
-    const main = ctx.activePlan();
-    if (main) for (const d of main.model.days) if (d.weekday === weekday) out.push({ plan: main, day: d });
-    for (const p of ctx.parallelPlans()) for (const d of p.model.days) if (d.weekday === weekday) out.push({ plan: p, day: d });
-    /* Nothing training-related today? A fallback plan (rest & recovery)
-       fills the gap — an exact weekday match first, then its `any` day. */
-    if (!out.length) {
-      for (const p of ctx.fallbackPlans()) {
-        const day = p.model.days.find(d => d.weekday === weekday) || p.model.days.find(d => d.weekday === 'any');
-        if (day) { out.push({ plan: p, day }); break; }
-      }
-    }
-    return out;
-  };
+  /* Every {plan, day} scheduled on a weekday, active plan first. The rule
+     itself is resolveDaysOn, up at the top of this file — see its comment
+     for why it is not written out here any more. */
+  ctx.daysOn = weekday => resolveDaysOn(weekday, ctx.activePlan(), ctx.parallelPlans(), ctx.fallbackPlans());
   ctx.openFile = file => { app.workspace.getLeaf('tab').openFile(file); };
 
   /* A BACK STACK, so Back returns to where you came FROM.
@@ -186,16 +248,53 @@ function mountApp(view) {
     else applyNav(fallback, null);
   };
 
-  ctx.startLog = (plan, day) => {
+  /* A DRAFT IS NOT DISPOSABLE. startDraft and beginSession both replace
+     ctx.state.logDraft outright, and the nav bar is visible during rest and
+     on the completion screen — so one thumb-slip mid-session ("Today", then
+     "Get after it") used to throw away every completed set with no warning
+     and nothing to undo it. The nav handler's own comment has promised since
+     0.5 that "coming back to Today offers the log page again"; nothing ever
+     read the draft back, so this is that promise, kept in two halves:
+     ctx.resumeDraft() is the way back in (the dashboard offers it), and
+     everything that would REPLACE a live draft asks first. */
+  ctx.describeDraft = () => describeDraft(ctx.state.logDraft);
+  /* Back into the draft by way of the log overview — the "one draft, two
+     views" hub, which shows what is already ticked and keeps Guided one tap
+     away. Deliberately NOT straight into guided mode: a manually typed draft
+     and a guided one are the same object, and only the overview is right for
+     both. */
+  ctx.resumeDraft = () => { if (ctx.state.logDraft) ctx.nav('log'); };
+
+  const replacingDraft = onProceed => {
+    if (!ctx.state.logDraft) { onProceed(); return; }
+    new ConfirmModal(app, {
+      title: 'A session is already open',
+      message: `${ctx.describeDraft()} is still in progress. Starting a new one discards everything logged in it.`,
+      confirmLabel: 'Discard and start',
+      onConfirm: () => { ctx.state.logDraft = null; onProceed(); },
+    }).open();
+  };
+
+  ctx.startLog = (plan, day) => replacingDraft(() => {
     pages.log.startDraft(ctx, plan, day);
     ctx.nav('log');
-  };
+  });
 
   /* Enter guided mode over whatever draft already exists in
      ctx.state.logDraft — page-session.js routes to the dashboard if there
      isn't one. session=null forces a fresh initialPosition() so re-entering
      always resumes at the first actually-incomplete set, honouring anything
-     ticked on the overview since guided mode was last open. */
+     ticked on the overview since guided mode was last open.
+
+     THE POSITION RESETS; THE TALLY DOES NOT. A record broken, or a goal
+     met, before "Review in log" is real regardless of what screen you were
+     looking at when it happened, and the completion screen reads both off
+     the session's own accumulated total — so wiping ctx.state.session here
+     must not also wipe what it had already earned. That half of the state
+     is carried separately: see page-session.js's pageCleanup (which stashes
+     it, tied to the draft) and its render() (which picks it back up for
+     that same draft only — a genuinely new draft must never inherit an old
+     session's tally just because one happened to still be sitting there). */
   ctx.enterGuided = () => {
     /* THE GESTURE, AT THE SEAM. iOS permits speechSynthesis and AudioContext
        only for a page that has used them from inside a real user-gesture call
@@ -227,7 +326,7 @@ function mountApp(view) {
      wholesale — a held reference would then be a snapshot of a plan that no
      longer exists, and the session would be built from it. The index is kept
      only as a fallback for the pathological case of two days sharing a name. */
-  ctx.startGuided = (plan, day) => {
+  ctx.startGuided = (plan, day) => replacingDraft(() => {
     const dayIndex = plan && day ? plan.model.days.indexOf(day) : -1;
     ctx.state.setup = {
       plan: plan ? plan.name : null,
@@ -236,7 +335,7 @@ function mountApp(view) {
     };
     ctx.state.setupUi = null;
     ctx.nav('setup');
-  };
+  });
 
   /* A page may register one interval (the log clock); it's cleared on every
      rerender and on unmount so a closed pane never keeps a timer alive. */
@@ -522,4 +621,4 @@ function renderSetup(ctx, root) {
 /* NAV is exported for the guard suite (tests/nav.test.cjs) and the preview
    harness, which both need the real tab list rather than a copy of it — a
    copied nav is a nav that silently stops matching the app. */
-module.exports = { mountApp, NAV };
+module.exports = { mountApp, NAV, resolveDaysOn, isImplicitActive, describeDraft };

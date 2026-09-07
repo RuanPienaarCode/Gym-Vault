@@ -38,6 +38,26 @@ function render(ctx, root) {
      no date rather than the string it was typed as. */
   const lastDate = last ? workoutDate(last) : null;
 
+  /* AN OPEN SESSION OUTRANKS TODAY'S PLAN. The nav bar stays visible during
+     rest and on the completion screen, so leaving mid-session is one tap and
+     easily accidental. The draft survives that in memory, but until now
+     nothing on this screen said so and nothing offered it back — the next
+     Start simply overwrote it. This slab is the way back in; the controller
+     asks before anything replaces a live draft. */
+  if (ctx.state.logDraft) {
+    /* Deliberately built from the "Also today" card's own classes rather
+       than a new pair of its own: this is the same object (card, label,
+       name, one action button) and a second near-identical rule set is how
+       two cards drift apart. */
+    root.append(el('div', { class: 'gv-card gv-alsotoday' },
+      el('div', { class: 'gv-alsotoday-main' },
+        el('div', { class: 'gv-kicker' }, 'Session in progress'),
+        el('div', { class: 'gv-alsotoday-name' }, ctx.describeDraft()),
+        el('div', { class: 'gv-alsotoday-plan' }, 'Nothing is saved until you finish it')),
+      el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.resumeDraft() },
+        ico('play'), el('span', {}, 'Resume'))));
+  }
+
   /* Masthead + action slab. */
   const hero = el('div', { class: 'gv-hero' });
   /* The plan name is the switcher — swapping programme is a thing you do
@@ -59,6 +79,26 @@ function render(ctx, root) {
     kicker.append(swap);
   }
   hero.append(kicker);
+
+  /* No plan carries the active flag, so activePlan() is quietly falling back
+     to the first main plan. Every downloaded plan arrives `active: false`, so
+     deleting the seeded plan lands the user here — Today driving a programme
+     the Plans list does not badge, with nothing on screen admitting the
+     choice was made for them. Say it, and make fixing it one tap. */
+  if (plan && ctx.activePlanIsImplicit()) {
+    const claim = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button' },
+      ico('circle-check'), el('span', {}, 'Make it active'));
+    claim.addEventListener('click', async () => {
+      await ctx.io.setActivePlan(ctx.mainPlans(), plan);
+      ctx.notice(`${plan.name} is now your active plan.`);
+      ctx.reload();
+    });
+    hero.append(el('div', { class: 'gv-card gv-alsotoday' },
+      el('div', { class: 'gv-alsotoday-main' },
+        el('div', { class: 'gv-kicker' }, 'No active plan'),
+        el('div', { class: 'gv-alsotoday-plan' }, `Today is using ${plan.name}.`)),
+      claim));
+  }
 
   const restToday = todays.length && isRestDay(todays[0].day);
   if (restToday) {
