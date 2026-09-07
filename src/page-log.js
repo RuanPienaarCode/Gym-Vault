@@ -39,7 +39,18 @@ function makeEntry(ctx, exercise, sets, target) {
   const ex = ctx.data.exercises.find(e => sameName(e.name, exercise));
   const unit = ex ? ex.fm.unit : null;
   const distance = unit === 'km';
-  const duration = !distance && (unit === 'seconds' || (!unit && targetIsDuration(target || '')));
+  /* A WRITTEN duration wins over the note's unit, same as the clock
+     (timed-plan.js workSecondsFor): `Strides | 4 x 20s` is a duration entry
+     even under `unit: reps`, and `Farmer's Carry | 2 x 40s` is one even
+     under `unit: kg` — both are real plan lines in the shared library. This
+     used to require EITHER `unit: seconds` OR no unit at all before it would
+     read the target as a duration, so a plain tick on either line banked the
+     written seconds as reps instead — timed mode read the same target
+     correctly and manual mode didn't, which is the two-rules-for-one-figure
+     bug this codebase keeps shipping. `km` is the one unit that still wins
+     outright: a run is measured in distance, not time, however its target
+     reads. */
+  const duration = !distance && (unit === 'seconds' || targetIsDuration(target || ''));
   const weighted = unit === 'kg' || targetWeight(target || '') !== null;
   const prefReps = duration ? '' : (targetFirstNumber(target || '') ?? '');
   /* Seconds, honouring a written "min" — the prefill for `30 min easy` used
@@ -109,10 +120,11 @@ function render(ctx, root) {
   root.append(addEx);
 
   /* Tally — recomputed on every rerender, so ticking a set updates it.
-     Counts by stats.setCounts, the SAME rule finishSession saves by. */
+     Counts by setWorthSaving, the SAME rule buildRows saves by (setCounts
+     alone isn't enough here — see that function's comment). */
   let doneSets = 0, doneReps = 0;
   for (const entry of draft.entries) for (const set of entry.sets) {
-    if (!setCounts(set)) continue;
+    if (!setWorthSaving(entry, set)) continue;
     doneSets++;
     const r = parseFloat(set.reps);
     if (Number.isFinite(r)) doneReps += r;
@@ -263,9 +275,26 @@ function counterBtn(ctx, entry, set) {
   return b;
 }
 
+/* A timed schedule's intervals hold a POSITIONAL entryIndex into
+   draft.entries (see timed-plan.js), not a reference to the entry itself.
+   Splicing draft.entries during a timed session leaves every interval after
+   the removed one pointing at the WRONG entry — remove entry 0 and an
+   interval still named "Push-ups" writes its reps into Squats, while the
+   last interval indexes past the end and is silently dropped. Re-keying the
+   schedule to match belongs to the lane that owns timed-plan.js; this side
+   only has to refuse the removal while a timed draft is live. */
 function removeBtn(ctx, draft, ei) {
-  const b = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'Remove exercise' }, ico('x'));
-  b.addEventListener('click', () => { draft.entries.splice(ei, 1); ctx.rerender(); });
+  const locked = !!draft.timed;
+  const b = el('button', {
+    class: 'gv-icon-btn gv-icon-btn-small', type: 'button',
+    'aria-label': locked ? 'Remove exercise — finish or discard the timed session first' : 'Remove exercise',
+  }, ico('x'));
+  if (locked) b.disabled = true;
+  b.addEventListener('click', () => {
+    if (locked) { ctx.notice('Finish or discard the timed session first — removing an exercise mid-clock would log the rest against the wrong one.'); return; }
+    draft.entries.splice(ei, 1);
+    ctx.rerender();
+  });
   return b;
 }
 
@@ -289,6 +318,22 @@ function openAddExercise(ctx, draft) {
   }).open();
 }
 
+/* setCounts alone says "this set was ticked or holds a typed figure" — it
+   does not ask whether a DISTANCE set's own two fields (km, min) are both
+   still empty. Ticking "done" on a run entry with neither filled in used to
+   sail straight through, so an accidental tap saved a row of nothing:
+   `distance_km: ''`, `seconds: ''` — junk history with no distance and no
+   time. A plain reps entry is deliberately NOT touched by this: `reps: '0'`
+   is a real "I failed the set" signal Ruan has not decided to discard, and
+   setCounts already treats it as worth saving. Shared by buildRows (which
+   SAVES rows) and the on-screen tally, so what you see before Finish and
+   what lands on disk still agree. */
+function setWorthSaving(entry, set) {
+  if (!setCounts(set)) return false;
+  if (entry.distance && !String(set.distance_km ?? '').trim() && !String(set.minutes ?? '').trim()) return false;
+  return true;
+}
+
 /* The one rows-shaping rule, shared by finishSession (which SAVES it) and
    page-session.js (which builds a synthetic in-memory workout from it to
    check goal progress mid-session, without ever writing to disk) — two
@@ -299,7 +344,7 @@ function buildRows(draft) {
   for (const entry of draft.entries) {
     let n = 0;
     for (const set of entry.sets) {
-      if (!setCounts(set)) continue;
+      if (!setWorthSaving(entry, set)) continue;
       n++;
       if (entry.distance) {
         /* The ONLY minutes->seconds conversion: the column is seconds, the

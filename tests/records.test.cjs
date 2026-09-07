@@ -281,3 +281,60 @@ assert.deepStrictEqual(records.recordHistory(HISTORY, 'Push-ups', undefined), []
 }
 
 console.log('records history OK (one rule for "the best"; a tie is not a record; order-independent)');
+
+/* ============================================================================
+   claimableKinds / allRecords — a timed circuit's clock reading is not a
+   hold (journey audit finding 2).
+
+   THE BUG THIS REPRODUCES. page-log.buildRows deliberately writes `seconds`
+   for a REP entry too — a timed circuit measures real time on a push-up
+   interval, and throwing that figure away would be worse. But allRecords
+   used to walk EVERY kind in KINDS for EVERY exercise regardless of its
+   unit, so a 45-second push-up interval surfaced on the Records page as
+   "Push-ups · hold · 45s", and a longer circuit printed a new "hold" best
+   for an exercise nobody ever held.
+
+   claimableKinds is the one gate: it decides which kinds an exercise can
+   claim by its OWN unit, not by which columns happen to be filled, and both
+   allRecords here and the exercise-duration goal path in page-goals.js read
+   it — so the two pages cannot disagree about the same exercise. */
+const { claimableKinds } = require('../src/records');
+
+{
+  assert.deepStrictEqual(claimableKinds({ name: 'Easy Run', fm: { unit: 'km' } }), [],
+    'a run claims no strength-record kind here — it has its own Running records page');
+  assert.deepStrictEqual(claimableKinds({ name: 'Plank', fm: { unit: 'seconds' } }), ['seconds'],
+    'a held exercise claims only seconds — its reps/weight columns are never filled');
+  assert.deepStrictEqual(claimableKinds({ name: 'Deadlift', fm: { unit: 'kg' } }), ['reps', 'weight'],
+    'a weighted exercise can set a rep best or a weight best');
+  assert.deepStrictEqual(claimableKinds({ name: 'Push-ups', fm: { unit: 'reps' } }), ['reps', 'weight'],
+    'a rep exercise claims reps and weight, same as unweighted');
+  assert.deepStrictEqual(claimableKinds({ name: 'Pull-ups', fm: {} }), ['reps', 'weight'],
+    'no unit at all is treated the same as reps');
+}
+
+{
+  /* Push-ups (unit: reps) picked up a 45s "hold" from a timed circuit
+     interval — buildRows wrote it on purpose, but it must not surface here. */
+  const workouts = [
+    wk('2026-03-01', [{ exercise: 'Push-ups', reps: '15', seconds: '45' }]),
+    wk('2026-03-08', [{ exercise: 'Push-ups', reps: '18' }]),
+  ];
+  const exercises = [{ name: 'Push-ups', fm: { unit: 'reps' } }];
+  const rows = records.allRecords(workouts, exercises);
+  assert.deepStrictEqual(rows.map(r => r.kind).sort(), ['reps'],
+    'a rep exercise must not claim a "hold" record just because a circuit\'s clock filled the seconds column');
+  assert.strictEqual(rows.find(r => r.kind === 'reps').value, 18);
+}
+
+{
+  /* A genuinely timed exercise still gets its hold — the gate must not
+     over-correct into hiding a real record. */
+  const workouts = [wk('2026-03-01', [{ exercise: 'Plank', seconds: '90' }])];
+  const exercises = [{ name: 'Plank', fm: { unit: 'seconds' } }];
+  const rows = records.allRecords(workouts, exercises);
+  assert.deepStrictEqual(rows.map(r => r.kind), ['seconds']);
+  assert.strictEqual(rows[0].value, 90);
+}
+
+console.log('records claimableKinds OK (a circuit\'s clock reading on a rep exercise is not a hold)');

@@ -133,4 +133,91 @@ Module._load = origLoad;
   }
 }
 
+/* ---------- 7. THE MANUAL LOG HONOURS THE SAME WRITTEN UNIT (journey audit
+   finding 1) -----------------------------------------------------------
+
+   THE BUG THIS REPRODUCES. page-log.makeEntry only read a written duration
+   off the target when the exercise had NO unit at all — `unit: seconds` or
+   `!unit`. `Strides | 4 x 20s` against a Strides note with `unit: reps` (a
+   real line in both run plans in the shared library) fell through that
+   gate, so the set prefilled `reps: 20` and a plain tick banked
+   `{reps: '20', seconds: ''}` — a written duration silently banked as reps.
+   `Farmer's Carry | 2 x 40s` under `unit: kg` did the same. Timed mode
+   (timed-plan.workSecondsFor) already let a WRITTEN unit win regardless of
+   the note's own unit — that divergence, one clock giving two different
+   answers to "how long is this", was the bug.
+
+   makeEntry must now use the SAME rule as the clock: duration when the unit
+   is `seconds`, OR the target parses as a duration — `km` is the only unit
+   that still wins outright. */
+{
+  const stub = {
+    setIcon: () => {}, Notice: class {}, Modal: class {}, Setting: class {},
+    ItemView: class {}, Plugin: class {}, PluginSettingTab: class {}, TFile: class {},
+    normalizePath: p => p, requestUrl: async () => ({}), Platform: { isMobile: false },
+  };
+  const origLoad2 = Module._load;
+  Module._load = (req, ...rest) => (req === 'obsidian' ? stub : origLoad2(req, ...rest));
+  const mkNode = () => ({
+    nodeType: 1, className: '', style: {}, children: [], attrs: {},
+    classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
+    setAttribute() {}, addEventListener() {}, append() {}, querySelector: () => null,
+  });
+  global.document = { createElement: mkNode, createTextNode: t => ({ nodeType: 3, text: String(t) }) };
+  global.window = global.window || {};
+  const { startDraft, buildRows } = require('../src/page-log');
+  Module._load = origLoad2;
+
+  const ctxFor = exercises => ({ data: { exercises }, state: {} });
+
+  /* `Strides | 4 x 20s` — Strides is measured in reps. */
+  {
+    const ctx = ctxFor([{ name: 'Strides', fm: { unit: 'reps' } }]);
+    startDraft(ctx, { name: 'Speed' }, {
+      name: 'Track', items: [{ exercise: 'Strides', target: '20s', sets: 4 }],
+    });
+    const entry = ctx.state.logDraft.entries[0];
+    assert.strictEqual(entry.duration, true,
+      'a written "20s" must read as a duration even though Strides is unit: reps');
+    assert.strictEqual(entry.sets[0].reps, '',
+      'nothing is prefilled into reps for a duration entry');
+    assert.strictEqual(entry.sets[0].seconds, 20, 'the written duration is what gets prefilled');
+
+    /* A PLAIN TICK — no typing — must bank seconds, not reps. */
+    entry.sets[0].done = true;
+    const rows = buildRows(ctx.state.logDraft);
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].seconds, '20', 'a plain tick must bank the duration as seconds');
+    assert.strictEqual(rows[0].reps, '', 'and never bank the same figure as reps');
+  }
+
+  /* `Farmer's Carry | 2 x 40s` — Farmer's Carry is measured in kg. */
+  {
+    const ctx = ctxFor([{ name: "Farmer's Carry", fm: { unit: 'kg' } }]);
+    startDraft(ctx, { name: 'Strength' }, {
+      name: 'Full body', items: [{ exercise: "Farmer's Carry", target: '40s', sets: 2 }],
+    });
+    const entry = ctx.state.logDraft.entries[0];
+    assert.strictEqual(entry.duration, true,
+      'a written "40s" must read as a duration even though Farmer\'s Carry is unit: kg');
+    entry.sets[0].done = true;
+    const rows = buildRows(ctx.state.logDraft);
+    assert.strictEqual(rows[0].seconds, '40');
+    assert.strictEqual(rows[0].reps, '');
+    assert.strictEqual(rows[0].weight_kg, '', 'a duration entry never banks weight either');
+  }
+
+  /* A run (unit: km) still wins outright over a written duration-looking
+     target — distance is checked first and duration excludes it. */
+  {
+    const ctx = ctxFor([{ name: 'Easy Run', fm: { unit: 'km' } }]);
+    startDraft(ctx, { name: 'Cardio' }, {
+      name: 'Run day', items: [{ exercise: 'Easy Run', target: '30 min easy', sets: 1 }],
+    });
+    assert.strictEqual(ctx.state.logDraft.entries[0].distance, true);
+    assert.strictEqual(ctx.state.logDraft.entries[0].duration, false,
+      'km always wins — a run is measured in distance, not time');
+  }
+}
+
 console.log('duration units OK ("30 min" is 1800s in the schedule, the meter and the log — not 30)');
