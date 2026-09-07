@@ -98,7 +98,14 @@ function card(ctx, ex, idx) {
       iconBtn('pencil', 'Edit', () => openEdit(ctx, ex)),
       iconBtn('trash-2', 'Delete', () => new ConfirmModal(ctx.app, {
         title: 'Delete exercise?',
-        message: `"${ex.name}" will be deleted, following your Obsidian "Deleted files" setting. Logged history keeps its rows.`,
+        /* THE WHOLE TRUTH, NOT JUST THE SAFE HALF (0.11.2 journey audit,
+           finding L14). "Logged history keeps its rows" was true but only
+           told half the story: any plan line naming this exercise keeps
+           working too (plans reference exercises by name, not by note), but
+           openAddItem's dropdown builds its options from ctx.data.exercises
+           — so once the note is gone, that same exercise can no longer be
+           ADDED to a plan from the picker, only typed in by hand. */
+        message: `"${ex.name}" will be deleted, following your Obsidian "Deleted files" setting. Logged history keeps its rows, and any plan naming it keeps working — it just won't be offered again from the Add-exercise dropdown.`,
         onConfirm: async () => { await ctx.io.trash(ex.file); ctx.reload(); },
       }).open())));
   return c;

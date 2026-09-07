@@ -106,10 +106,31 @@ function parsePlanBody(body) {
     }
     const h = fenced ? null : line.match(DAY_HEADING);
     if (h) {
-      day = { name: h[1].trim(), weekday: h[2].toLowerCase(), parts: [], notes: [], items: [] };
+      /* weekdayCase keeps the AUTHOR'S OWN CASING ("(Mon)", "(MON)") purely
+         for writing the line back out — every comparison against a weekday
+         still goes through the lowercase `weekday` below, which is what
+         resolveDaysOn/WEEKDAYS/WEEKDAY_LABELS all key off (0.11.2 journey
+         audit, finding L15). Without this, the very first save after a
+         hand-written plan silently rewrote "(Mon)" to "(mon)" — a change
+         the user never asked for, in their own file, for a detail nothing
+         downstream reads case-sensitively anyway. */
+      day = { name: h[1].trim(), weekday: h[2].toLowerCase(), weekdayCase: h[2], parts: [], notes: [], items: [] };
       days.push(day);
       continue;
     }
+    /* LEFT DELIBERATELY UNGUARDED (0.11.2 journey audit, finding L13): a
+       `## Heading` with no `(weekday)` does not match DAY_HEADING and falls
+       straight through to the plain-note branch below, folding it — and
+       every bullet after it — into whatever day came before. No file in the
+       seed library or anywhere else this plugin writes is shaped that way
+       (Add day always writes a real weekday), so this is a hand-edit hazard
+       only, and it is a genuinely ambiguous one to fix blind: a `##` line
+       with no weekday could equally be a typo for a new day OR a deliberate
+       sub-heading commentary within the current one, and this is a pure
+       parser with no UI to ask which. Guessing wrong either way is its own
+       silent corruption, on top of the one being fixed. Left alone rather
+       than gamed into a guess; a warning surfaced at load time (not a parse
+       rule change) is the safer shape for this, if it is ever worth doing. */
     /* An INDENTED bullet is the user's own annotation hanging off the line
        above — `  - grip: overhand`, a superset's members — not an exercise.
        Testing the trimmed line made indentation invisible, so those became
@@ -227,7 +248,13 @@ function serializePlanBody(model) {
   if (model.intro && model.intro.length) { out.push(...model.intro, ''); }
   for (const d of model.days) {
     const wd = d.weekday === 'any' || WEEKDAYS.includes(d.weekday) ? d.weekday : 'mon';
-    out.push(`## ${d.name} (${wd})`, '');
+    /* Write back whatever CASE the author originally used, as long as it
+       still names the same weekday — a day built in the app (openAddDay)
+       or one whose weekday genuinely changed carries no weekdayCase (or a
+       stale one) and falls through to the canonical lowercase, same as
+       always. */
+    const wdOut = d.weekdayCase && d.weekdayCase.toLowerCase() === wd ? d.weekdayCase : wd;
+    out.push(`## ${d.name} (${wdOut})`, '');
     const parts = d.parts || [
       ...(d.notes || []).map(line => ({ kind: 'note', line })),
       ...((d.notes && d.notes.length) ? [{ kind: 'note', line: '' }] : []),

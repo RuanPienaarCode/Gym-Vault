@@ -223,6 +223,11 @@ function makeRouter() {
     ['page-records.js', 'history'],
     ['page-browse.js', 'plans'],
     ['page-plans.js', 'plans'],
+    /* Guided-session setup reopened the same defect (finding #1, the 0.11.2
+       journey audit): Plans -> a plan -> Start -> Back and Running -> Start
+       -> Back both hardcoded ctx.nav('dashboard') and dropped the user on
+       Today instead of wherever they actually came from. */
+    ['page-session-setup.js', 'dashboard'],
   ]) {
     const src = read(file);
     assert.ok(src.includes(`backButton(ctx, '${fallback}')`),
@@ -236,6 +241,16 @@ function makeRouter() {
   assert.match(dom, /const to = ctx\.backTo\(fallback\);/,
     'the label must name where Back will actually land, since that now varies with how you arrived');
   assert.match(dom, /ctx\.back\(fallback\)/, 'and the click must go through the stack');
+
+  /* THE ROUTE TEST 4 (above) ASSUMES MUST ACTUALLY EXIST (0.11.2 journey
+     audit, finding L11). "params are restored, not just the page" modelled
+     plan detail -> exercise detail -> Back, but page-plans.js never called
+     ctx.nav('exercise', …) — the model was describing a route the app did
+     not have. It does now: an exercise name in the read view opens its
+     library page, the same jump Records and Running records already make. */
+  const plans = read('page-plans.js');
+  assert.match(plans, /ctx\.nav\('exercise', \{ exercise: it\.exercise, path: ex\.file\.path \}\)/,
+    'page-plans.js must actually open an exercise\'s detail page, or test 4 above is modelling a route that does not exist');
 }
 
-console.log('back stack OK (Back returns to the caller, primary tabs reset it, browse lights Plans)');
+console.log('back stack OK (Back returns to the caller, primary tabs reset it, browse lights Plans, and plan detail can reach an exercise)');

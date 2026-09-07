@@ -6,11 +6,12 @@
 
 const { el, ico, prose, clickableCard, backButton } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
-const { addItem, removeItemAt, moveItem, updateItem, isRestDay } = require('./plan-parse');
+const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
 const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
 const { todayISO, weekdayKey } = require('./dates');
+const { sameName } = require('./stats');
 
 function render(ctx, root) {
   const { data } = ctx;
@@ -143,25 +144,46 @@ function renderDetail(ctx, root, plan) {
   const back = backButton(ctx, 'plans');
   bar.append(back, el('h2', { class: 'gv-toolbar-title' }, plan.name));
   const actions = el('div', { class: 'gv-toolbar-actions' });
-  if (!active) {
+  /* A parallel or fallback plan is never a switch TARGET. ctx.activePlan()
+     (controller.js) filters both kinds out of `main` before picking who
+     drives the dashboard, so a "Make active" button here that flipped
+     fm.active on one of them badged IT as active on this page while Today
+     kept running whatever main plan the filter fell back to — the truth
+     split between the two screens. Say what the plan actually does
+     instead of offering a switch that cannot work. */
+  const isParallel = String(plan.fm.parallel) === 'true';
+  const isFallback = String(plan.fm.fallback) === 'true';
+  if (active) {
+    actions.append(el('span', { class: 'gv-badge' }, 'active'));
+  } else if (isFallback || isParallel) {
+    actions.append(el('span', { class: 'gv-dim' }, isFallback ? 'Fills empty days' : 'Runs alongside the active plan'));
+  } else {
     actions.append(el('button', {
       class: 'gv-btn gv-btn-ghost', type: 'button',
-      onclick: async () => { await ctx.io.setActivePlan(ctx.data.plans, plan); ctx.reload(); },
+      /* ctx.mainPlans(), never the whole plan list: setActivePlan clears
+         active:false onto every OTHER plan it is handed, so passing the raw
+         list let it stamp a real flag onto a parallel/fallback plan the
+         dashboard was never going to look at, and just as easily clear one
+         on a plan the switcher never showed as an option. */
+      onclick: async () => { await ctx.io.setActivePlan(ctx.mainPlans(), plan); ctx.reload(); },
     }, ico('circle-check'), el('span', {}, 'Make active')));
-  } else {
-    actions.append(el('span', { class: 'gv-badge' }, 'active'));
   }
   /* EDIT MODE is a view state, not a draft. Every change writes to the note
      the moment it is made — there is no Save button and nothing accumulates
      unsaved, because a half-finished plan edit lost to a vault sync would be
      worse than an extra write. The toggle only changes what controls are on
      screen. */
-  const editing = !!(ctx.state.plansUi && ctx.state.plansUi.editing);
+  /* Keyed to THIS plan's name, not a bare bool: without the key, edit mode
+     outlived the plan it was switched on for — open plan A, tap Edit, Back,
+     open plan B, and B opened already in edit mode (it even survived a tab
+     switch, since nothing ever reset it). A plan whose name no longer
+     matches means we navigated somewhere else since, so it reads as off. */
+  const editing = !!(ctx.state.plansUi && ctx.state.plansUi.plan === plan.name && ctx.state.plansUi.editing);
   actions.append(el('button', {
     class: `gv-btn ${editing ? '' : 'gv-btn-ghost'}`, type: 'button',
     'aria-pressed': editing ? 'true' : 'false',
     onclick: () => {
-      ctx.state.plansUi = { editing: !editing };
+      ctx.state.plansUi = { plan: plan.name, editing: !editing };
       ctx.rerender();
     },
   }, ico(editing ? 'check' : 'pencil'), el('span', {}, editing ? 'Done' : 'Edit')));
@@ -212,12 +234,12 @@ function renderDetail(ctx, root, plan) {
     }
     const ul = el('div', { class: 'gv-day-items' });
     day.items.forEach((it, idx) => {
-      ul.append(editing
-        ? editableItem(ctx, plan, day, it, idx)
-        : el('div', { class: 'gv-day-item' },
-            el('span', { class: 'gv-day-item-name' }, it.exercise),
-            el('span', { class: 'gv-day-item-rx' }, it.sets != null ? `${it.sets} × ${it.target}` : it.target),
-            removeItemBtn(ctx, plan, day, idx)));
+      /* No remove button outside edit mode. It used to sit beside every
+         line in the read view with no confirm and no undo — a mis-tap on a
+         phone silently rewrote the plan note. Edit mode already carries the
+         same button (below), so removing a line now takes a deliberate step
+         into edit mode first. */
+      ul.append(editing ? editableItem(ctx, plan, day, it, idx) : planItemRow(ctx, it));
     });
     ul.append(el('button', { class: 'gv-add-line', type: 'button', onclick: () => openAddItem(ctx, plan, day) },
       ico('plus'), el('span', {}, 'Add exercise')));
@@ -253,6 +275,32 @@ function renderDetail(ctx, root, plan) {
   root.append(foot);
 }
 
+/* One exercise line in the READ view (0.11.2 journey audit, finding L11).
+   Nothing here opened its exercise — back-stack.test.cjs's own router model
+   already assumed a plan detail -> exercise detail leg existed, and it did
+   not: page-plans.js never called ctx.nav('exercise', …). Every other place
+   an exercise's name appears (the library, Records, Running records)
+   already makes that jump.
+
+   A plan can name an exercise with no note behind it — nothing stops a
+   hand-typed line — and there the row stays inert: page-exercise-detail
+   bounces straight back to the library when it can't resolve one, which
+   would only replace "goes nowhere" with "goes to the wrong somewhere". */
+function planItemRow(ctx, it) {
+  const rx = it.sets != null ? `${it.sets} × ${it.target}` : it.target;
+  const ex = ctx.data.exercises.find(e => sameName(e.name, it.exercise));
+  if (!ex) {
+    return el('div', { class: 'gv-day-item' },
+      el('span', { class: 'gv-day-item-name' }, it.exercise),
+      el('span', { class: 'gv-day-item-rx' }, rx));
+  }
+  return clickableCard(
+    { class: 'gv-day-item gv-day-item-link', 'aria-label': `Open ${it.exercise}` },
+    () => ctx.nav('exercise', { exercise: it.exercise, path: ex.file.path }),
+    el('span', { class: 'gv-day-item-name' }, it.exercise),
+    el('span', { class: 'gv-day-item-rx' }, rx));
+}
+
 /* One exercise line, in edit mode: sets, target, move up, move down, remove.
 
    THE NAME IS NOT EDITABLE. Plans, goals and every logged row reference an
@@ -261,12 +309,17 @@ function renderDetail(ctx, root, plan) {
    to change which exercise a line is.
 
    Writes on `change`, not on every keystroke: `input` would save (and then
-   reload the whole plan out from under the field) between "1" and "12". */
+   reload the whole plan out from under the field) between "1" and "12".
+
+   The reload that follows a write is DEFERRED to when focus actually leaves
+   this row (see the `focusout` listener below), not fired the instant a
+   field's `change` event does. `change` fires on blur, so tabbing from Sets
+   straight into Target used to call ctx.reload() — a full re-render of the
+   whole page — right as focus landed in Target, throwing the caret back out
+   to the page mid-tab. The write itself still happens on every change. */
 function editableItem(ctx, plan, day, it, idx) {
-  const save = async () => {
-    await ctx.io.savePlan(plan);
-    ctx.reload();
-  };
+  const persist = () => ctx.io.savePlan(plan);
+  const save = async () => { await persist(); ctx.reload(); };
 
   const setsInput = el('input', {
     class: 'gv-set-input gv-edititem-sets', type: 'number', inputmode: 'numeric', min: '1', step: '1',
@@ -275,7 +328,7 @@ function editableItem(ctx, plan, day, it, idx) {
   });
   setsInput.addEventListener('change', () => {
     updateItem(day, idx, { sets: setsInput.value });
-    save();
+    persist();
   });
 
   const targetInput = el('input', {
@@ -284,8 +337,24 @@ function editableItem(ctx, plan, day, it, idx) {
     'aria-label': `Prescription for ${it.exercise}`,
   });
   targetInput.addEventListener('change', () => {
-    updateItem(day, idx, { target: targetInput.value });
-    save();
+    /* A typed target that STARTS WITH "N x" / "N ×" is peeled the same way
+       parsePrescription (plan-parse.js) reads a saved line back off disk:
+       the leading count becomes Sets, the remainder becomes Target. Without
+       this, typing "3 x 10" into Target while Sets already held 3 wrote the
+       line as `3 x 3 x 10` (the existing Sets count, PLUS the count typed
+       into Target) — which round-tripped through the parser as sets:3,
+       target:"3 x 10", and displayed as "3 × 3 x 10". Peeling before the
+       write means what the box shows the moment it is typed is what comes
+       back after a reload, not a second multiplier stacked on top of it. */
+    const parsed = parsePrescription(targetInput.value);
+    if (parsed.sets != null) {
+      updateItem(day, idx, { sets: parsed.sets, target: parsed.target });
+      setsInput.value = String(parsed.sets);
+      targetInput.value = parsed.target;
+    } else {
+      updateItem(day, idx, { target: targetInput.value });
+    }
+    persist();
   });
 
   const move = delta => async () => {
@@ -300,13 +369,24 @@ function editableItem(ctx, plan, day, it, idx) {
   down.addEventListener('click', move(1));
   down.disabled = idx === day.items.length - 1;
 
-  return el('div', { class: 'gv-day-item gv-edititem' },
+  const row = el('div', { class: 'gv-day-item gv-edititem' },
     el('div', { class: 'gv-edititem-name' }, it.exercise),
     el('div', { class: 'gv-edititem-rx' },
       setsInput,
       el('span', { class: 'gv-set-unit' }, '×'),
       targetInput),
     el('div', { class: 'gv-edititem-actions' }, up, down, removeItemBtn(ctx, plan, day, idx)));
+
+  /* `focusout` bubbles (unlike `blur`), so one listener on the row catches
+     focus leaving ANY of its fields. `relatedTarget` is where focus is
+     GOING — if that is still inside this row (Sets -> Target, or into one
+     of the row's own buttons) nothing has actually been left yet, so the
+     rebuild waits. */
+  row.addEventListener('focusout', e => {
+    if (e.relatedTarget && row.contains(e.relatedTarget)) return;
+    ctx.reload();
+  });
+  return row;
 }
 
 function removeItemBtn(ctx, plan, day, idx) {
@@ -345,7 +425,12 @@ function openAddDay(ctx, plan) {
     title: 'Add day',
     fields: [
       { key: 'name', label: 'Day name', kind: 'text', placeholder: 'e.g. Push + Volume' },
-      { key: 'weekday', label: 'Weekday', kind: 'dropdown', options: WEEKDAYS.map(w => [w, WEEKDAY_LABELS[w]]), value: 'mon' },
+      /* `any` sits after the seven real weekdays, not among them — it is
+         the wildcard fallback/parallel plans use to fill whatever weekday
+         they do not otherwise claim (controller.js's resolveDaysOn), a real
+         and now-authorable choice rather than the decorative one it used to
+         be (0.11.2 journey audit, finding L12). */
+      { key: 'weekday', label: 'Weekday', kind: 'dropdown', options: [...WEEKDAYS, 'any'].map(w => [w, WEEKDAY_LABELS[w]]), value: 'mon' },
     ],
     submitLabel: 'Add',
     validate: v => (!v.name.trim() ? 'Give the day a name.' : null),

@@ -131,7 +131,17 @@ const SOUND_MODES = [
    canonical mon-first order; startOfWeek() in dates.js handles the sun-start
    setting, this array never reorders. */
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const WEEKDAY_LABELS = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
+const WEEKDAY_LABELS = {
+  mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
+  /* `any` is the wildcard weekday plan-parse.js already parses and
+     controller.js's resolveDaysOn already gives real behaviour to (an
+     active plan's own `any` day fills whichever weekday it does not
+     otherwise claim) — but nothing offered it as something you could
+     WRITE from the app, only something a hand-edited or downloaded plan
+     could already contain (0.11.2 journey audit, finding L12). Named in
+     the house voice here, not as the raw parser token. */
+  any: 'Any day (fills the gap)',
+};
 
 /* The one column declaration per flat table (learned the hard way in the
    budget plugin: two figures derived by different rules is the recurring bug
