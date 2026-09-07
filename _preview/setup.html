@@ -41,6 +41,13 @@
       data: { plans: [PLAN], exercises: EXERCISES },
       state: { setup: { plan: PLAN.name, day: PLAN.model.days[0].name, dayIndex: 0 }, setupUi: null },
       nav: function () {}, notice: function () {},
+      /* backButton() (dom.js) asks the controller where Back would go and
+         then calls ctx.back(). Without these two the whole screen throws
+         and renders nothing — which is exactly what this page did once the
+         setup screen adopted the shared back button. Same shape as the real
+         controller: backTo() names the destination, back() goes there. */
+      backTo: function (fallback) { return fallback; },
+      back: function (fallback) { console.log('back ->', fallback); },
     };
     ctx.rerender = function () { draw(ctx.__host, ctx, ctx.__out); };
     return ctx;

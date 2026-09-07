@@ -30,9 +30,20 @@
     doneCount = 0;
     const t0 = Date.now();
     log.textContent = 'running…';
-    stop = cd.runCountIn(host, {
-      label: 'Push-ups · set 2 of 3',
-      muted, settings: { soundMode: 'voice', voiceURI: '' },
+    /* startCountIn is HEADLESS — it owns the clock, the sound and the
+       skip; the caller owns every pixel (see countdown.js's header). This
+       page used to call a runCountIn() that has never existed, so it threw
+       on every Run and verified nothing.
+
+       `muted` is passed as a FUNCTION on purpose: it is read fresh on each
+       tick, so toggling mute part-way through a count actually silences the
+       rest of it. Toggle it mid-run to see that. */
+    const seq = cd.startCountIn({
+      from: cd.GATE_FROM,
+      muted: () => muted,
+      settings: { soundMode: 'voice', voiceURI: '' },
+      onNumber: n => { host.textContent = String(n); },
+      onGo: () => { host.textContent = cd.GO_WORD; },
       onDone: () => {
         doneCount++;
         log.textContent = 'onDone x' + doneCount + ' after ' + (Date.now() - t0) + 'ms';
@@ -43,6 +54,7 @@
         host.append(p);
       },
     });
+    stop = seq.stop;
   });
 </script>
 </body></html>
