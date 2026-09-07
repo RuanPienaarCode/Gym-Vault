@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault Journey Audit</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --line:#2a2f3a;
+    --ink:#e7eaf0; --muted:#9aa3b2; --muted-2:#6f81a3;
+    --accent:#5b9dff; --accent-2:#7c5cff;
+    --crit:#f06464; --warn:#f5a524; --ok:#3ecf8e; --info:#5bb8ff;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --radius:12px; --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(180deg,#0c0e12,var(--bg) 240px);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:16px;padding-bottom:4rem}
+  main{max-width:var(--maxw);margin:0 auto;padding:48px 24px 96px}
+  a{color:var(--accent)}
+  header.hero{padding:8px 0 28px;border-bottom:1px solid var(--line);margin-bottom:36px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  h1{font-size:34px;line-height:1.15;margin:10px 0 8px;letter-spacing:-.02em;text-wrap:balance}
+  h1 .accent{color:var(--accent-2)}
+  .lede{color:var(--muted);font-size:17px;max-width:70ch;margin:0}
+  h2{font-size:23px;margin:46px 0 14px;letter-spacing:-.01em;border-left:3px solid var(--accent);padding-left:.6rem}
+  h3{font-size:17px;margin:26px 0 8px;color:var(--muted)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0}
+  .toc{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;list-style:none;padding:0}
+  .toc a{font-size:13px;color:var(--muted);text-decoration:none;border:1px solid var(--line);padding:5px 11px;border-radius:999px}
+  .toc a:hover{color:var(--ink);border-color:var(--accent)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin:16px 0}
+  code{font-family:var(--mono);font-size:.88em;background:#10131a;border:1px solid var(--line);padding:1px 6px;border-radius:6px}
+  .tablewrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted-2);font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase}
+  td.num{font-variant-numeric:tabular-nums}
+  a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .muted{color:var(--muted)}
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted-2);font-size:13px}
+
+  .statwrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin:1rem 0}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:.9rem 1rem}
+  .stat .n{font-size:1.7rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:.78rem;color:var(--muted-2);text-transform:uppercase;letter-spacing:.06em;margin-top:.25rem}
+  .stat.crit .n{color:var(--crit)} .stat.warn .n{color:var(--warn)} .stat.ok .n{color:var(--ok)} .stat.info .n{color:var(--info)}
+
+  .callout{border-left:3px solid var(--accent);background:var(--panel-2);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:18px 0}
+  .callout.warn{border-left-color:var(--warn)} .callout.ok{border-left-color:var(--ok)} .callout.crit{border-left-color:var(--crit)}
+  .callout .t{font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+
+  .badge{display:inline-block;font-size:.68rem;font-weight:700;padding:.12rem .5rem;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  .b-crit{background:rgba(240,100,100,.16);color:var(--crit);border:1px solid rgba(240,100,100,.4)}
+  .b-warn{background:rgba(245,165,36,.15);color:var(--warn);border:1px solid rgba(245,165,36,.4)}
+  .b-ok{background:rgba(62,207,142,.13);color:var(--ok);border:1px solid rgba(62,207,142,.4)}
+  .b-info{background:rgba(91,184,255,.13);color:var(--info);border:1px solid rgba(91,184,255,.4)}
+  .b-dim{background:rgba(154,163,178,.12);color:var(--muted);border:1px solid rgba(154,163,178,.35)}
+
+  details.sev{background:var(--panel);border:1px solid var(--line);border-radius:11px;margin:.55rem 0;overflow:hidden}
+  details.sev[open]{border-color:var(--panel-2);background:var(--panel-2)}
+  details.sev>summary{cursor:pointer;list-style:none;padding:.75rem .9rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  details.sev>summary::-webkit-details-marker{display:none}
+  details.sev .ttl{font-weight:600;flex:1;min-width:200px}
+  details.sev .id{font-family:var(--mono);font-size:.78rem;color:var(--muted-2);min-width:2.6rem}
+  details.sev .body{padding:.2rem .9rem 1rem}
+  details.sev .body p{margin:8px 0}
+  .path{font-family:var(--mono);font-size:.83rem;color:var(--accent-2);background:rgba(124,92,255,.1);padding:.05rem .35rem;border-radius:5px}
+  .k{color:var(--muted-2);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-right:.4rem}
+  .lane{font-size:.75rem;color:var(--muted-2)}
+  .toolbar{display:flex;gap:8px;margin:8px 0 4px}
+  .toolbar button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
+  .toolbar button:hover{color:var(--ink);border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="eyebrow">Gym Vault · journey audit and fix pass · 0.11.2 @ 8469070</div>
+    <h1>Gym Vault <span class="accent">Journey Audit</span></h1>
+    <p class="lede">Every step from Exercises through Plans, a guided session, rest, the end-of-plan screen and the tracking data it leaves behind, traced in code, driven live in the browser, and then fixed. 29 of the 30 findings are closed; the last was left alone on purpose. The guard suite grew from 55 files to 73, and every new guard was run against the unfixed code first and required to fail by name before its fix went in.</p>
+    <nav aria-label="Contents">
+      <ul class="toc">
+        <li><a href="#journey">Journey status</a></li>
+        <li><a href="#high">High</a></li>
+        <li><a href="#medium">Medium</a></li>
+        <li><a href="#low">Low</a></li>
+        <li><a href="#pattern">Recurring pattern</a></li>
+        <li><a href="#decisions">Decisions taken</a></li>
+        <li><a href="#gaps">Coverage gaps</a></li>
+        <li><a href="#method">Method</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="statwrap" role="img" aria-label="30 findings found, 29 fixed, 1 left by decision, 73 guard files passing, 18 new guard files">
+    <div class="stat ok"><div class="n">30</div><div class="l">Found</div></div>
+    <div class="stat ok"><div class="n">29</div><div class="l">Fixed</div></div>
+    <div class="stat warn"><div class="n">1</div><div class="l">Left by decision</div></div>
+    <div class="stat info"><div class="n">73</div><div class="l">Guard files green</div></div>
+    <div class="stat info"><div class="n">+18</div><div class="l">New guard files</div></div>
+    
+  </div>
+
+  <div class="callout ok">
+    <div class="t">29 of 30 fixed, 1 left on purpose</div>
+    <p style="margin:0">Six lanes worked disjoint sets of files on branch <code>fix/journey-audit-0.11.2</code>. The suite is green at 73 files, the bundle builds, and every reachable fix was driven in a browser. The plugin has NOT been deployed to the vault, and nothing is committed or pushed. Each finding below carries the fix that closed it; the one left open (L13) says why.</p>
+  </div>
+
+  <section id="journey">
+    <h2>Journey status</h2>
+    <p class="muted">Status combines the static trace and the browser click-through. "Partial" means the main path works but a named edge case does not.</p>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Step</th><th>Status</th><th>What holds it back</th><th>Findings</th></tr></thead>
+      <tbody>
+        <tr><td>Exercises: browse, detail, create, edit, delete</td><td><span class="badge b-ok">Works</span></td><td>No rename. The delete wording is being revisited.</td><td>L14</td></tr>
+        <tr><td>Plans: list, create, delete</td><td><span class="badge b-ok">Works</span></td><td>Delete confirms, honours the trash setting, navigates first. Guarded by tests.</td><td></td></tr>
+        <tr><td>Edit plan</td><td><span class="badge b-warn">Partial</span></td><td>The read-mode remove, the sticky edit flag and the "5 x 10" target are fixed. Still not editable in-app: plan name, day name, weekday, intro, and per-plan rest.</td><td>M6, M7, M8, M9, L12</td></tr>
+        <tr><td>Select plan (Make active) and pick today's day</td><td><span class="badge b-ok">Fixed</span></td><td>Was: Make active split the list from Today, ten any-day plans could not drive Today, and duplicate day names started the wrong day. All three are closed.</td><td>H1, H2, M5, M10</td></tr>
+        <tr><td>Choose timed or count</td><td><span class="badge b-ok">Works</span></td><td>One global mode, chosen on the setup screen and remembered. There is still no per-plan or per-item mode, but the two rules for reading a duration are now one.</td><td>H3</td></tr>
+        <tr><td>Select reps, sets, minutes, rest</td><td><span class="badge b-ok">Works</span></td><td>Dials clamp; preview equals what Start builds. Start on an empty day is now refused. Rest is still one global setting, not per plan.</td><td>M4</td></tr>
+        <tr><td>Counter: count-in, tap, type, undo, target, overshoot</td><td><span class="badge b-ok">Works</span></td><td>All driven live. The motion listener leak is fixed; motion counting itself still needs a phone to confirm.</td><td>H5</td></tr>
+        <tr><td>Rest: countdown, skip, auto-advance</td><td><span class="badge b-ok">Works</span></td><td>Driven live from real elapsed time. Leaving by the nav bar no longer loses the session.</td><td>H4</td></tr>
+        <tr><td>Leave mid-session</td><td><span class="badge b-warn">Partial</span></td><td>The X asks save, discard or review, and a nav-bar tap now leaves a Resume slab on Today. Nothing replaces a live draft without asking.</td><td>H4</td></tr>
+        <tr><td>End of plan</td><td><span class="badge b-warn">Partial</span></td><td>Summary and celebration render, the screen now has an exit, and with nothing saveable it offers Discard instead of a Finish that fails.</td><td>M4</td></tr>
+        <tr><td>Tracking data written and read back</td><td><span class="badge b-warn">Partial</span></td><td>One row rule, one bests rule, aborted sessions write nothing. The false weight PR, the invented hold record and the always-a-record timed duration are all closed.</td><td>H3, H6, M1, M2, M3</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section id="high">
+    <h2>High</h2>
+    <p class="muted">Each of these was opened at the cited line. Five were reproduced by running the real modules under node; H5 needs a phone with a motion sensor.</p>
+    <div class="toolbar"><button type="button" data-open="1">Expand all</button><button type="button" data-open="0">Collapse all</button></div>
+
+    <details class="sev" open>
+      <summary><span class="id">H1</span><span class="badge b-ok">Fixed</span><span class="badge b-crit">High</span><span class="ttl">"Make active" on a parallel or fallback plan splits the truth</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-plans.js:146-150</span> <span class="path">src/data.js:261-276</span> <span class="path">src/controller.js:94-98</span></p>
+        <p>The button appears on every non-active plan and flips <code>active</code> onto, say, Rest &amp; Recovery while flipping it off the real strength plan. Today ignores parallel plans and falls back to the first main plan, so Today keeps driving Get Over The Bar while the Plans list badges Rest &amp; Recovery as active. The dashboard's own switcher already scopes to main plans.</p>
+        <p><span class="k">Fix</span>Hide the button when the plan is parallel or fallback (or show the picker's "runs alongside / fills empty days" copy) and pass the main-plan list to the setter.</p>
+        <p><span class="k">Fix shipped</span>The button now renders only for a plan that is neither parallel nor fallback; those show "Runs alongside the active plan" or "Fills empty days" instead. The setter is handed <code>ctx.mainPlans()</code>, so it can no longer stamp or clear the flag on a plan the dashboard never consults.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">H2</span><span class="badge b-ok">Fixed</span><span class="badge b-crit">High</span><span class="ttl">Ten of the 27 library plans cannot drive Today</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/controller.js:110-124</span> <span class="path">src/page-plans.js:192-193</span></p>
+        <p>9 Foundations, the five body-part plans, the kettlebell full-body, the tap-counter circuit, mobility and the post-run stretch have only <code>(any)</code> days and no parallel or fallback flag. The day resolver honours <code>any</code> only for fallback plans, so with 9 Foundations active every weekday resolves to Rest &amp; Recovery, and on the plan page every Start button is ghosted. The plan's own prose promises it "fills whatever day is otherwise empty".</p>
+        <p><span class="k">Fix</span>A decision (see below): either the app lets the active plan's any-day fill a weekday nothing else claims, or the library marks those ten plans.</p>
+        <p><span class="k">Fix shipped</span>The day rule was lifted out of the controller closure into an exported <code>resolveDaysOn</code>, and the active plan's <code>any</code> day now stands in on a weekday it does not claim explicitly. An exact weekday still beats the wildcard, and a plan with no wildcard still falls through to the rest plan.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">H3</span><span class="badge b-ok">Fixed</span><span class="badge b-crit">High</span><span class="ttl">Reps mode banks a written duration as reps when the exercise unit is reps or kg</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-log.js:41-44</span> <span class="path">src/timed-plan.js:94-99</span></p>
+        <p>A line like <code>Strides | 4 x 20s</code> (unit reps, in both run plans) or <code>Farmer's Carry | 2 x 40s</code> (unit kg) prefills 20 or 40 <em>reps</em>, and a plain tick saves <code>reps: 20, seconds: ''</code>. Timed mode reads the same line correctly because it lets a written unit win; reps mode trusts the exercise note first.</p>
+        <p><span class="k">Fix</span>In <code>makeEntry</code>, treat the entry as a duration when the unit is seconds <em>or</em> the target parses to a duration, the same rule the clock uses.</p>
+        <p><span class="k">Fix shipped</span>The draft builder now treats a written duration as a duration for every unit except km, which is the rule the clock already used. Verified against the audit's own case: Strides at 4 x 20s banks 20 seconds, not 20 reps.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">H4</span><span class="badge b-ok">Fixed</span><span class="badge b-crit">High</span><span class="ttl">A nav-bar tap mid-session orphans the draft; the next Start silently overwrites it</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/controller.js:339-345</span> <span class="path">src/page-dashboard.js</span> <span class="path">src/controller.js:189, 563-573</span></p>
+        <p>The nav handler's comment promises "coming back to Today offers the log page again". Nothing does: the only reader of the draft outside the log and session pages is the view-close notice. Today renders no resume affordance and every route into a session replaces the draft. Rest and completion phases show the nav bar, so one thumb-slip during a rest loses every completed set with no warning.</p>
+        <p><span class="k">Fix</span>Render a "Resume session" slab on Today while a draft exists, and have Start refuse or confirm while one is live.</p>
+        <p><span class="k">Fix shipped</span>Today now carries a "Session in progress" slab naming the day and plan, saying nothing is saved yet, and offering Resume. Both routes that would replace a live draft ask first and only clear it on confirmation.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">H5</span><span class="badge b-ok">Fixed</span><span class="badge b-crit">High</span><span class="ttl">Motion counting leaks its listener across renders and counts invisibly in the next set</span><span class="badge b-dim">Suspected · needs a device</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-session.js:403-407</span> <span class="path">src/page-session.js:113, 360</span></p>
+        <p>The re-subscribe branch assumes "the previous render's [subscription] was torn down with its DOM", but the listener is on <code>window</code> and <code>stopMotion</code> is only called on page cleanup and on toggle, never on the re-render every completed set causes. The old closure stays live with a detached count element and an already-armed count-in, and the new render sees a subscription and never makes its own. Expected symptoms: during rest, motion taps a null counter and throws per sample; in set two, reps are spoken and added while the numeral stays at 0 and they land during the count-in.</p>
+        <p><span class="k">Fix</span>In <code>render()</code>, next to the media-timer teardown, call and null <code>sess.stopMotion</code> so the re-subscribe branch runs with the live closure.</p>
+        <p><span class="k">Fix shipped</span>The render pass now tears the motion subscription down beside the media timer, so the next render re-subscribes with a live closure instead of leaving the old one counting into a detached element.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">H6</span><span class="badge b-ok">Fixed</span><span class="badge b-crit">High</span><span class="ttl">The reps screen saves an untouched weight prefill and claims a weight PR for it</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-session.js:647-649, 583, 900-916</span> <span class="path">src/timed-plan.js:276-286</span></p>
+        <p>The weighted body prefills the plan's <code>@ 60kg</code> or the last-used weight. Completing the set marks it touched and measured because "the set-by-set screen always observes", but nothing observed the weight. Reproduced: plan 5 @ 60 kg with a 55 kg best saves <code>weight_kg '60'</code> and celebrates "NEW BEST · 60 kg (was 55 kg)". The identical set through the timed rule saves an empty weight. Two screens, two persistence rules for one prefill.</p>
+        <p><span class="k">Fix</span>Pass <code>measured</code> per kind so weight is trustworthy only if the user touched it before completion. Whether an untouched weight is still <em>saved</em> is Ruan's call.</p>
+        <p><span class="k">Fix shipped</span>The blanket "measured" flag became <code>opts.observed</code>, a list of the kinds a screen actually watched. The reps screen observes reps only, so an untouched weight is still saved but can no longer claim a record; typing one still can.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="medium">
+    <h2>Medium</h2>
+
+    <details class="sev">
+      <summary><span class="id">M1</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">A timed rep interval's seconds become a "hold" record and feed duration goals</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-log.js:314-325</span> <span class="path">src/records.js:118-139</span> <span class="path">src/page-records.js:21</span></p>
+        <p>Timed mode deliberately writes <code>seconds</code> for rep entries. Records walks every kind per exercise, so one 45-second push-up interval shows as "Push-ups · hold · 45s" and an exercise-duration goal on push-ups reads as met. Each longer circuit then prints a new hold best on the Records page.</p>
+        <p><span class="k">Fix</span>Derive record kinds from the exercise's kind, or tag the row so bests distinguish interval time from a hold.</p>
+        <p><span class="k">Fix shipped</span>A new exported <code>claimableKinds</code> decides which kinds an exercise can claim from its own unit, and gates both the Records page and the duration-goal path. A rep exercise no longer invents a hold best from a circuit's clock.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">M2</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">Timed duration entry: the "measured" clock is the plan target, so a record is always claimed</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/timed-plan.js:98-99, 280</span> <span class="path">src/page-session.js:921</span></p>
+        <p>The work-seconds helper returns the written duration, so a 90-second plank saves 90 and beats a 60-second best whether or not the plank was held. A user who dropped at 40 seconds can only Skip, which logs nothing. This contradicts the timed-persists contract "never the plan's target as your result" for exactly the duration case.</p>
+        <p><span class="k">Fix</span>Offer a "stopped early" seconds box in the timed figures for duration entries, or mark seconds unmeasured when they equal the target.</p>
+        <p><span class="k">Fix shipped</span>An elapsed clock is no longer trusted as an observed hold. Timed duration intervals also gained their own seconds box, so a 40-second effort on a 90-second plank can be recorded, and a typed figure wins over the clock.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">M3</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">"Remove exercise" on the log page during a timed session mis-attributes every later interval</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-log.js:268</span> <span class="path">src/timed-plan.js:191-195</span> <span class="path">src/page-session.js:1140</span></p>
+        <p>Intervals hold a positional entry index; removing entry 0 shifts the array. Reproduced: remove Push-ups, and the interval still named "Push-ups" writes into Squats while the Lunges interval hits an undefined entry and is silently dropped.</p>
+        <p><span class="k">Fix</span>Disable remove while a timed schedule exists, or key intervals by exercise name.</p>
+        <p><span class="k">Fix shipped</span>Removing an exercise is refused while a timed schedule is live, with the reason said out loud. The positional interval keys are left alone rather than re-keyed under a running session.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">M4</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">Completion screen has no exit and dead-ends when nothing was counted</span><span class="badge b-ok">Confirmed in source</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-session-setup.js:269-291</span> <span class="path">src/page-session.js:1379-1391</span> <span class="path">src/page-log.js:340</span></p>
+        <p>Start is never disabled, so an empty day builds zero entries and lands straight on "Session done". The completion screen renders no top bar or X. If every set was skipped, Finish &amp; save refuses with a notice while the heading still says done; the only way out is Review then Discard.</p>
+        <p><span class="k">Fix</span>Disable Start when the day has no exercises; on completion with zero rows show Discard instead of Finish.</p>
+        <p><span class="k">Fix shipped</span>Start is disabled with "Nothing to start" when the day has no exercises, and the completion screen gained a real exit plus a Discard button when there is nothing saveable.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">M5</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">Two days with the same name: Start on the second runs the first</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/controller.js:230-236</span> <span class="path">src/page-session-setup.js:214-216</span> <span class="path">src/page-plans.js:343-357</span></p>
+        <p>The setup state stores the day name with the index only as fallback; resolution prefers the name. Reproduced: tap Thursday, get Monday's session. Add day never checks for a duplicate name.</p>
+        <p><span class="k">Fix</span>Prefer the indexed day when its name matches, and validate uniqueness in Add day.</p>
+        <p><span class="k">Fix shipped</span>Day resolution now prefers the stored index when its name matches, falling back to the name lookup otherwise. Tapping the second of two same-named days runs that day.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">M6</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">Timed figure box shows the plan prefill as a full-ink value, then discards it on save</span><span class="badge b-ok">Confirmed in source</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-session.js:1320-1325</span> <span class="path">styles.css:1257</span></p>
+        <p>The prefill dimming exists only for the log page's set rows. In timed mode the user reads "15" in the box, does 15, leaves it, and history shows no reps because untouched values are cleared. The inverse of the earlier issue where prefills were saved as results.</p>
+        <p><span class="k">Fix</span>Render untouched values as placeholders (or reuse the prefill treatment) with a tap-to-confirm affordance.</p>
+        <p><span class="k">Fix shipped</span>An untouched timed prefill is now dimmed through a class removed the moment the user types, reusing the existing theme-aware dim token so it reads correctly in both themes.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">M7</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">Setup screen's Back is hardcoded to Today</span><span class="badge b-dim">Suspected · same shape as the 0.11.1 fix</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-session-setup.js:228-229</span> <span class="path">tests/back-stack.test.cjs:220-226</span></p>
+        <p>Plans → plan → Start → Back drops you on Today, not the plan; the same from Running. Both auditors flagged it independently. The back-stack source pin lists five nested pages and omits this one, and the page-title map has no setup entry.</p>
+        <p><span class="k">Fix</span>Use the shared back button with a dashboard fallback, and move the setup-state reset into the page cleanup.</p>
+        <p><span class="k">Fix shipped</span>The setup screen uses the shared back button, so Back returns to the plan or the Running page it was opened from. The setup state is cleared in the page cleanup, and the back-stack source pin now covers this page.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">M8</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">Remove-X on every exercise line in read mode, no confirm, immediate write</span><span class="badge b-ok">Confirmed in source</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-plans.js:217-220, 312-319</span></p>
+        <p>Edit mode already carries the same button. A mis-tap on a phone edits the plan note with no undo.</p>
+        <p><span class="k">Fix</span>Drop the read-mode instance.</p>
+        <p><span class="k">Fix shipped</span>The remove control is gone from read mode and lives only in edit mode, where it already existed.</p>
+      </div>
+    </details>
+
+    <details class="sev">
+      <summary><span class="id">M9</span><span class="badge b-ok">Fixed</span><span class="badge b-warn">Medium</span><span class="ttl">Target box silently becomes the set count</span><span class="badge b-ok">Confirmed</span></summary>
+      <div class="body">
+        <p><span class="path">src/page-plans.js:283</span></p>
+        <p>Blank Sets plus <code>5 x 10</code> in Target writes <code>- Push-ups | 5 x 10</code>, read back as 5 sets of 10. Sets 3 plus <code>3 x 10</code> writes <code>3 x 3 x 10</code>, displayed as "3 × 3 x 10". The placeholder gives no hint.</p>
+        <p><span class="k">Fix</span>Peel a leading <code>N x</code> off the target into Sets, or reject it.</p>
+        <p><span class="k">Fix shipped</span>A target typed as "5 x 10" is now run through the real parser before saving, peeling the count into Sets instead of embedding it in the target.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="low">
+    <h2>Low</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>#</th><th>Finding</th><th>Location</th><th>Was</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td>L1</td><td>Edit mode is sticky across plans and tabs: open A, Edit, Back, open B and B opens in edit mode.</td><td><span class="path">src/page-plans.js:164</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L2</td><td>Every field save re-renders the page under the keyboard; tabbing Sets to Target loses focus.</td><td><span class="path">src/page-plans.js:266-269</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L3</td><td>No plan flagged active: Today silently runs the alphabetically-first main plan, which the list does not badge.</td><td><span class="path">src/controller.js:97</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L4</td><td>Done at 0 reps, or "Log run" with empty boxes, saves a row (<code>reps '0'</code> or all blanks).</td><td><span class="path">src/page-session.js:583, 815</span></td><td>Confirmed</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L5</td><td>Muting during the count-in does not silence it; the muted flag is copied once.</td><td><span class="path">src/page-session.js:539</span> <span class="path">src/countdown.js:138,155</span></td><td>Confirmed</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L6</td><td>Session summary under-reports a record beaten twice: shows the later value, not the max.</td><td><span class="path">src/page-session.js:938</span></td><td>Suspected</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L7</td><td>Completion tile says "0 min" while the saved note says <code>duration_min: 1</code>.</td><td><span class="path">src/page-session.js:1350</span> <span class="path">src/page-log.js:345</span></td><td>Confirmed</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L8</td><td>A vault reload mid count-in restarts it from 5, contrary to the comment above it.</td><td><span class="path">src/page-session.js:528-548</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L9</td><td>"Review in log" then "Guided" loses the records and goals summary.</td><td><span class="path">src/controller.js:216</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L10</td><td>Negative weights, distances and minutes are accepted and written verbatim.</td><td><span class="path">src/dom.js:429</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L11</td><td>Plan detail has no route to exercise detail, yet the back-stack test models one.</td><td><span class="path">tests/back-stack.test.cjs:104-111</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L12</td><td>Add-day dropdown offers weekdays only; the library's <code>(any)</code> wildcard cannot be authored in-app.</td><td><span class="path">src/page-plans.js:348</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L13</td><td>A <code>## Heading</code> without a weekday folds into the previous day and its bullets become exercises. Hand-edit hazard only.</td><td><span class="path">src/plan-parse.js</span></td><td>Confirmed</td><td><span class="badge b-dim">Left</span></td></tr>
+        <tr><td>L14</td><td>Exercise delete copy says history keeps its rows but not that plan lines keep naming it; those items cannot be re-added from the dropdown.</td><td><span class="path">src/page-exercises.js:101</span></td><td>Confirmed in source</td><td><span class="badge b-ok">Fixed</span></td></tr>
+        <tr><td>L15</td><td>Uppercase <code>(Mon)</code> is lowercased on first save. Cosmetic churn.</td><td><span class="path">src/markdown.js</span></td><td>Confirmed</td><td><span class="badge b-ok">Fixed</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout warn">
+      <div class="t">L13 was left alone deliberately</div>
+      <p style="margin:0">A <code>##</code> heading with no weekday in brackets still folds into the day above it. Nothing in the plan library is shaped that way, and a parser that guessed would have to decide between "this is a new day" and "this is a note about the current one" with no way to ask. Guessing wrong would corrupt a user's own file more quietly than the current behaviour does. The reasoning now sits in a comment at that exact line, along with the note that a load-time warning, not a parse-rule change, is the safer shape if it is ever revisited.</p>
+    </div>
+  </section>
+
+  <section id="pattern">
+    <h2>Recurring pattern: two rules for one figure</h2>
+    <p>Five findings share a root shape the author's other repos know well. The same value is derived by different rules on different screens, and the screens disagree.</p>
+    <ul>
+      <li><strong>H3</strong> reps mode trusts the exercise unit, timed mode trusts the written unit.</li>
+      <li><strong>H6</strong> the reps screen saves an untouched weight prefill, the timed screen clears it.</li>
+      <li><strong>M1</strong> the row writer saves interval seconds for rep entries, the records reader treats every <code>seconds</code> as a hold.</li>
+      <li><strong>M2</strong> the timed clock equals the plan target, yet is marked measured.</li>
+      <li><strong>L7</strong> the completion tile floors elapsed minutes at 0, the note floors at 1.</li>
+    </ul>
+    <p>They were fixed as one change, not four. The boolean "measured" flag became <code>opts.observed</code>, a list of the kinds a screen actually watched, and a new exported <code>claimableKinds</code> decides from an exercise's own unit which kinds it may ever claim. Both screens now pass through the same seam, and the records page and the goals page read the same rule.</p>
+  </section>
+
+  <section id="decisions">
+    <h2>Decisions taken</h2>
+    <p>Five findings turned on a product call rather than a defect. Each was taken with the default below and built that way. Say the word on any of them and it changes.</p>
+    <div class="panel">
+      <ol>
+        <li><strong>Any-day plans fill empty weekdays, in the app.</strong> The alternative was re-flagging ten plans in the separate library repo. The app fix was chosen because those plans already promise this in their own prose, and it also covers any future plan shaped the same way without a second repo needing a push.</li>
+        <li><strong>Make active is hidden for parallel and fallback plans.</strong> They now state what they do instead. A switch that cannot work is worse than no switch.</li>
+        <li><strong>An untouched weight prefill is still saved, but never claims a record.</strong> Tick-to-accept stays, because doing the prescribed weight is real information. Celebrating a number nobody measured is not.</li>
+        <li><strong>Interval time on a rep exercise is excluded from records and duration goals.</strong> It is still written to the row, because the clock genuinely knew it. It just no longer counts as a hold you never did.</li>
+        <li><strong>Done at zero reps still saves a zero row.</strong> Left deliberately alone: a failed set is real data. Only the all-blank run row, which carries no information at all, is now dropped.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="gaps">
+    <h2>Coverage gaps</h2>
+    <p>The guard suite is green at 55 files and renders no pages. Every session-screen guard is a regex on source, so nothing below is executed by a test today.</p>
+    <ul>
+      <li>Completing a set, applying completion, and the rest-to-next-set transition.</li>
+      <li>Motion subscription lifecycle across renders (H5); draft survival across navigation (H4).</li>
+      <li>Record claims on the reps screen for weight (H6); Records and goals reading <code>seconds</code> off rep exercises (M1); a duration interval equal to its target (M2).</li>
+      <li>Log-page structural edits against a live timed schedule (M3); completion-screen exits with zero rows (M4).</li>
+      <li>Make-active scoping (H1); the day resolver with an any-only active plan (H2); duration inference in <code>makeEntry</code> (H3); day resolution by name versus index (M5).</li>
+      <li>The setup page's Back (M7) is missing from the back-stack source pin; the plans edit flag is never reset (L1); <code>N x</code> in the target box (M9).</li>
+      <li>The library at <code>~/Github/gym_plans</code> is never parsed by the plugin's own parser in CI, though all 27 plans round-trip today with zero lines rewritten.</li>
+    </ul>
+    <h3>What the browser harness cannot reach</h3>
+    <ul>
+      <li>Start on the setup page into a live session: the setup harness has no controller behind it.</li>
+      <li>Finish &amp; save writing a workout note: the counter harness never stubs the save. The plugin's own error handling caught the missing function cleanly, which is a good sign.</li>
+      <li>Timed-mode circuits, motion counting, voice, run records and sound cues were not driven this pass; each has its own harness page.</li>
+      <li>Anything animation-gated: the pane stayed hidden, so requestAnimationFrame never ticked.</li>
+    </ul>
+  </section>
+
+  <section id="method">
+    <h2>Method</h2>
+    <p>Three lanes ran in parallel against <code>~/Github/gym-vault</code> at commit <code>8469070</code>, version 0.11.2, whose <code>main.js</code>, <code>styles.css</code> and <code>manifest.json</code> are byte-identical to the vault's installed copy.</p>
+    <ul>
+      <li><strong>Plan-side static trace</strong> over exercises, plans, edit, delete, select, mode storage and file persistence, with node reproductions against the real modules and all 27 files of the plans library.</li>
+      <li><strong>Session-side static trace</strong> from setup through counter, rest, completion and the readers of the written data, with node reproductions and a timer audit (every interval, timeout and animation frame is cleared except the motion listener in H5).</li>
+      <li><strong>Browser click-through</strong> of the preview harness at 390px and 1280px: setup, counter, target meter and nav pages, driven by dispatched DOM events with the console read after each step.</li>
+    </ul>
+    <p>Consolidation: 31 raw findings, one duplicate (both lanes flagged the setup page's Back at the same lines, merged as M7). Severity follows the owning lane. Every High was opened at the cited line by the main thread before inclusion; H5 stays High but is marked suspected because it needs a motion sensor to reproduce.</p>
+
+    <h3>The fix pass</h3>
+    <p>Five lanes then worked disjoint sets of source files on branch <code>fix/journey-audit-0.11.2</code>, so no two ever held the same file. Every behaviour change carries a guard test, and every guard was run against the unfixed code first and required to fail by name before the fix went in. That rule caught real weakness: this repo has previously shipped guards that passed against the very bug they were written for.</p>
+    <p>Two rules that were only testable by writing a second copy of them, the day resolver and the draft description, were lifted out of the controller closure and exported, so their guards now execute the shipping code rather than a model of it. The Today screen's new slabs are proven by rendering the real page against a DOM stub, not by matching source.</p>
+    <p>A browser pass then drove every reachable fix on the rebuilt harness at phone and desktop width, in both light and dark: the empty-day Start gate, the shared Back, the completion-screen exit, the all-skipped Discard, the weighted prefill saving without claiming a record, and the timed prefill dimming. Two harness pages were themselves broken and were repaired, since the harness is the verification tool: the setup page threw before rendering because its stub predated the shared back button, and the count-in page called a function that has never existed in this codebase.</p>
+    <p>The build is green at 73 test files and the bundle compiles. The plugin has NOT been deployed to the vault and nothing has been committed or pushed.</p>
+</section>
+
+  <footer>
+    <p>Audited and fixed 6 September 2026 against gym-vault 0.11.2, on branch <code>fix/journey-audit-0.11.2</code>. Not committed, not deployed. Self-contained, no network at runtime.</p>
+  </footer>
+</main>
+<script>
+  document.querySelectorAll('.toolbar button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var open = b.getAttribute('data-open') === '1';
+      document.querySelectorAll('details.sev').forEach(function (d) { d.open = open; });
+    });
+  });
+</script>
+</body>
+</html>
