@@ -956,6 +956,11 @@ body.is-phone .gv-app .gv-page {
 .gv-day-item-name { font-weight: 600; flex: 1 1 auto; }
 .gv-day-item-rx { font-family: var(--gv-display); color: var(--gv-lime-deep); font-size: 14px; letter-spacing: 0.02em; white-space: nowrap; }
 .theme-dark .gv-app .gv-day-item-rx { color: var(--gv-lime); }
+/* Read-view rows that resolve to a real exercise note open it (finding L11,
+   0.11.2 journey audit) — same hover affordance as the plan/goal cards
+   above, at row scale rather than card scale. */
+.gv-day-item-link { cursor: pointer; border-radius: 4px; }
+.gv-day-item-link:hover { background: var(--gv-lime-ghost); }
 
 /* ---------- goals ---------- */
 
@@ -2524,6 +2529,14 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   gap: 12px; margin: 0 0 12px;
 }
 .gv-timed-field { display: flex; align-items: center; gap: 4px; }
+/* A PREFILL IS THE PLAN'S SUGGESTION, NOT A LOGGED FIGURE — same visual
+   weight as .gv-log-set.prefill above, reapplied here because .gv-log-set
+   never wraps this markup: the plan's target sits in the box until the set
+   is typed into, and full ink read as a result already produced. --gv-ink-dim
+   already carries the per-theme value (light/dark both defined at the top of
+   this file), so this needs no separate .theme-dark rule of its own. */
+.gv-timed-field.gv-timed-prefill .gv-set-input { color: var(--gv-ink-dim); opacity: 0.75; }
+.gv-timed-field.gv-timed-prefill .gv-set-unit { opacity: 0.6; }
 .gv-app .gv-timed-input { width: 84px; text-align: center; }
 .gv-timed-target {
   font-size: 11px; font-weight: 800; letter-spacing: 0.1em;

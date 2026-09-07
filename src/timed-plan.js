@@ -272,10 +272,27 @@ function initialIndex(schedule, draft, isHandled) {
    A distance entry has no prefills to clear (makeEntry leaves a run empty —
    the distance covered is the whole point of logging it) and takes `minutes`
    rather than `seconds`, because buildRows reads a run's time from minutes
-   and ignores seconds entirely. */
+   and ignores seconds entirely.
+
+   THE DURATION CARVE-OUT. For every OTHER kind of entry, `seconds` is a side
+   figure the clock alone gets to write (a push-up interval logging "15 reps,
+   45s" — the reps are the user's, the seconds are just how long it took).
+   For a DURATION entry, seconds IS the headline figure, and an interval that
+   simply counts down to zero and ends is not proof anyone held the position
+   the whole time — the schedule elapsing is not the same as the hold
+   lasting. So timedFigures now offers a seconds box on a duration entry, and
+   here that changes the rule for seconds alone: a TOUCHED duration set is
+   left with whatever the user typed — the clock is not written over it, same
+   as it never overwrites a typed rep count. Untouched, the interval ran its
+   schedule end to end with nothing to contradict it, so the schedule length
+   is exactly what was measured, same as before this carve-out existed. */
 function timedSetValues(entry, set, seconds) {
   if (entry && entry.distance) {
     return { minutes: String(Math.round((seconds / 60) * 10) / 10) };
+  }
+  if (entry && entry.duration) {
+    if (set && set.touched) return {}; // the typed figure wins; don't write over it
+    return { seconds: String(Math.round(seconds)) };
   }
   const values = { seconds: String(Math.round(seconds)) };
   if (!(set && set.touched)) {

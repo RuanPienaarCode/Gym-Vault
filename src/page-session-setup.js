@@ -17,7 +17,7 @@
                set counts (startDraft's setsPerEntry). Get that backwards and
                the log fills with empty sets nothing ever played. */
 
-const { el, ico, clickableCard, toggleRow } = require('./dom');
+const { el, ico, clickableCard, toggleRow, backButton } = require('./dom');
 const { GUIDE_MODES, GUIDE_MINUTES, DEFAULT_SETTINGS } = require('./constants');
 const { equipmentFor } = require('./equipment');
 const { buildSchedule, workIntervals } = require('./timed-plan');
@@ -211,9 +211,19 @@ function resolveSetup(ctx) {
   const plan = (ctx.data.plans || []).find(p => p.name === setup.plan) || null;
   if (!plan) return null;
   const days = (plan.model && plan.model.days) || [];
-  const day = days.find(d => d.name === setup.day)
-    || (setup.dayIndex >= 0 ? days[setup.dayIndex] : null)
-    || null;
+  /* INDEX FIRST, but only when it still names the day we were sent here for.
+     Two days sharing a name make days.find() return the FIRST one however
+     you actually got here — controller.js's ctx.startGuided keeps dayIndex
+     for exactly that pathological case, and this used to ignore it whenever
+     the name lookup succeeded, so tapping the SECOND Thursday still built
+     the first one's session. An index+name match wins here; a vault edit
+     that renames or reorders days invalidates the index (the name at that
+     position no longer matches setup.day), and the name lookup below is
+     still the right way to follow that edit. */
+  const byIndex = setup.dayIndex >= 0 ? days[setup.dayIndex] : null;
+  const day = (byIndex && byIndex.name === setup.day)
+    ? byIndex
+    : (days.find(d => d.name === setup.day) || byIndex || null);
   return day ? { plan, day } : null;
 }
 
@@ -223,10 +233,20 @@ function render(ctx, root) {
   const { plan, day } = resolved;
   const ui = uiState(ctx);
 
-  ctx.state.pageCleanup = () => { ctx.state.setupUi = null; };
+  /* setup is reset HERE, not in the back button's own click handler — this
+     runs on every way off the screen (Back, a primary-tab tap, the vault
+     edit that sends resolveSetup() straight to the dashboard below), where a
+     handler wired only to one button would not. beginSession already nulls
+     ctx.state.setup before it navs into the session, so this second write on
+     that path is a harmless no-op, not a double-clear. */
+  ctx.state.pageCleanup = () => { ctx.state.setupUi = null; ctx.state.setup = null; };
 
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back' }, ico('arrow-left'));
-  back.addEventListener('click', () => { ctx.state.setup = null; ctx.nav('dashboard'); });
+  /* Back used to hardcode ctx.nav('dashboard') — the exact defect #22 fixed
+     for plan detail in 0.11.1, reopened here: Plans -> a plan -> Start ->
+     Back, or Running -> Start -> Back, both dropped you on Today instead of
+     where you actually came from. The shared button consults the route
+     stack instead. */
+  const back = backButton(ctx, 'dashboard');
 
   /* THE ORDER IS THE FIX. This screen used to read equipment -> sets ->
      Guide -> minutes -> toggles -> sound -> preview -> Start, which asked
@@ -272,10 +292,20 @@ function render(ctx, root) {
      loses the slider), so everything that quotes it has to be refreshed from
      here — including the Start button, which otherwise still offers
      "Start 30 minutes" after you have dialled it to 45. */
+  /* AN EMPTY DAY MUST NOT BE STARTABLE. Without this, startDraft below
+     builds zero entries, the session reports itself done before it begins,
+     and "Finish & save" then refuses with a notice — a dead end with no way
+     out but Discard. The preview line above already says why in the same
+     house voice (previewText's "Nothing on this day yet…"); the button
+     repeats the verdict rather than a reason, so the two never disagree. */
+  const empty = !((day && day.items) || []).length;
   const refresh = () => {
     while (preview.firstChild) preview.removeChild(preview.firstChild);
     preview.append(previewText(ctx, day, ui));
-    start.textContent = ui.mode === 'timed' ? `Start ${ui.minutes} minutes` : 'Start session';
+    start.disabled = empty;
+    start.textContent = empty
+      ? 'Nothing to start'
+      : (ui.mode === 'timed' ? `Start ${ui.minutes} minutes` : 'Start session');
   };
 
   /* 2. HOW MANY — ONE DIAL, NEVER BOTH. In a timed circuit the CLOCK

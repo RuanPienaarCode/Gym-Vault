@@ -161,4 +161,35 @@ const finishInterval = (entry, set, seconds) => {
   assert.strictEqual(timedSetValues({}, typed, 44.6).seconds, '45');
 }
 
+/* ---------- 7. a duration entry's TYPED figure wins over the clock (0.11.2
+   journey audit, finding #3 — an elapsed clock is not an observed hold) ---- */
+{
+  const draft = newDraft();
+  const entry = draft.entries[2];
+  const set = entry.sets[0];
+  assert.strictEqual(entry.duration, true, 'Plank is a duration entry');
+
+  /* The user dropped the plank at 40s and typed it into the new seconds box
+     (timedFigures) before the interval's own clock ran out at 90s. */
+  set.seconds = '40';
+  set.touched = true;
+
+  finishInterval(entry, set, 90);
+  const [row] = buildRows(draft);
+  assert.strictEqual(row.seconds, '40',
+    'a typed hold time must win over the clock — the interval running its full schedule is not proof the hold lasted that long');
+}
+
+/* ---------- 8. untouched, the schedule is still exactly what happened ---- */
+{
+  const draft = newDraft();
+  const entry = draft.entries[2];
+  const set = entry.sets[0];
+  assert.strictEqual(set.touched, false, 'nothing typed yet');
+  finishInterval(entry, set, 90);
+  const [row] = buildRows(draft);
+  assert.strictEqual(row.seconds, '90',
+    'with nothing typed to contradict it, the interval genuinely ran its full schedule — this must not regress alongside the typed case above');
+}
+
 console.log('timed persists OK (the clock and what you typed; never the plan\'s target as your result)');

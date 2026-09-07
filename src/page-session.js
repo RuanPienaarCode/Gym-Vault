@@ -52,6 +52,16 @@ function render(ctx, root) {
   if (!draft) { ctx.nav('dashboard'); return; }
 
   if (!ctx.state.session) {
+    /* THE HANDOFF FROM LAST TIME THIS PAGE WAS OPEN (0.11.2 journey audit,
+       finding L9). pageCleanup stashes the outgoing session's tally here,
+       tied to the draft it was earned against — consumed exactly once, and
+       only for THAT SAME draft, so a genuinely new draft (a fresh Start
+       after Finish or Discard, both of which null ctx.state.logDraft before
+       navigating away) never inherits a stale total just because one
+       happened to still be sitting on ctx.state. */
+    const carry = ctx.state.sessionCarry;
+    const carryMatches = !!carry && carry.draft === draft;
+    ctx.state.sessionCarry = null;
     ctx.state.session = {
       pos: flow.initialPosition(draft),
       phase: 'active',
@@ -65,7 +75,7 @@ function render(ctx, root) {
       motionOn: false, stopMotion: null,
       hold: null, holdFor: null,
       workoutsAtStart: ctx.data.workouts, // snapshot: never includes THIS session's own rows (they aren't saved until Finish)
-      metGoals: new Set(),
+      metGoals: carryMatches ? carry.metGoals : new Set(),
       /* [{key, exercise, kind, val, prev}] — every best broken this session,
          with what it beat.
 
@@ -74,8 +84,8 @@ function render(ctx, root) {
          best twice in one session, which sess.records deliberately collapses
          into one row. Two figures derived by different rules, in the same
          object, three lines apart. */
-      records: [],
-      goalCount: 0,
+      records: carryMatches ? carry.records : [],
+      goalCount: carryMatches ? carry.goalCount : 0,
       confettiStop: null,
       completionCelebrated: false,
       mediaCycleTimer: null,
@@ -105,6 +115,18 @@ function render(ctx, root) {
      nodes and a second one stacks on top of it next render. */
   if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
 
+  /* The motion subscription is on `window`, not the DOM, so nothing tears
+     it down on its own the way a detached tap zone would. Every full render
+     rebuilds renderActive's body from scratch (same as the media-cycle timer
+     above), so the PREVIOUS render's subscription has to die here, right
+     next to it, or it outlives its own DOM: it keeps closing over a detached
+     count element and an already-armed count-in, and during rest (where
+     sess.counter is null) every sample it still delivers calls tap(null) and
+     throws. motionButton's own re-subscribe branch below only fires when
+     sess.stopMotion is null, so clearing it here — not there — is what makes
+     that branch actually run again with a live closure. */
+  if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
+
   ctx.state.pageCleanup = () => {
     if (sess.wakeLock) { sess.wakeLock.release(); sess.wakeLock = null; }
     if (sess.confettiStop) { sess.confettiStop(); sess.confettiStop = null; }
@@ -112,6 +134,20 @@ function render(ctx, root) {
     if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
     if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
     sound.cancel();
+    /* THE TALLY OUTLIVES THE PAGE; THE POSITION DOES NOT (0.11.2 journey
+       audit, finding L9). Leaving this page for ANY reason — the review
+       exit, a nav-bar tap, Finish, Discard — used to throw the whole
+       session object away with it, records/goalCount included, so a record
+       broken before "Review in log" vanished from the completion screen the
+       moment Guided reopened it. Stashed here rather than dropped, and tied
+       to the DRAFT it belongs to rather than a bare flag: Finish and
+       Discard both null ctx.state.logDraft before they navigate away (see
+       page-log.js's finishSession and the EndSessionModal's onDiscard), so
+       a stash captured here for either of them carries a null draft and
+       will never match a later, genuinely new one. render()'s own fresh-
+       session branch is the other half — it only ever applies this for the
+       SAME draft, and only once. */
+    ctx.state.sessionCarry = { draft: ctx.state.logDraft, records: sess.records, goalCount: sess.goalCount, metGoals: sess.metGoals };
     ctx.state.session = null;
   };
   if (!sess.wakeLock) sess.wakeLock = holdWakeLock();
@@ -402,8 +438,10 @@ function motionButton(ctx, sess, entry, onRep, hintEl, sensEl) {
     }).then(fn => { if (sess.motionOn) sess.stopMotion = fn; else fn(); });
   };
 
-  /* A re-render lands here with motion already ON and no live subscription
-     (the previous render's was torn down with its DOM). Pick it back up. */
+  /* A re-render lands here with motion already ON and no live subscription:
+     render() tears down the previous render's sess.stopMotion explicitly,
+     right next to the media-cycle timer — the listener is on window, not the
+     DOM, so nothing does that for free. Pick it back up here. */
   if (sess.motionOn && !sess.stopMotion) begin();
 
   btn.addEventListener('click', () => {
@@ -526,17 +564,35 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   zone.append(targetEl, hintEl, sensEl);
 
   /* Count in, in the counter's own display. Keyed by POSITION so the screen
-     can re-render for any of the reasons it does — a mute toggle, motion
-     switched on, a typed weight — without restarting the count. Any
-     sequencer still running from a previous render of this same set is torn
-     down first, or two of them speak over each other and the earlier one
-     arms the counter behind the later. */
+     can re-render for any of the reasons it does without restarting the
+     count — including a GENUINE full re-render (a vault sync landing
+     mid-gate, say), not only the interaction paths (a mute toggle, motion
+     switched on, a typed weight) that update their own corner of the DOM
+     directly and never call ctx.rerender() at all (0.11.2 journey audit,
+     finding L8 — the claim used to stop at the harmless case).
+
+     A full render rebuilds this body from scratch, which used to mean a
+     fresh attachCountIn seeded from a fresh Date.now() — so the one
+     re-render that DOES land mid-gate silently put the numeral back at 5.
+     sess.countInStartedFor/countInStartedAt are the actual clock, carried
+     across that rebuild; sess.countedIn is only the flag for "already
+     armed" and says nothing about a count still in progress. Any sequencer
+     still running from a previous render of this same set is torn down
+     first, or two of them speak over each other and the earlier one arms
+     the counter behind the later. */
   const countInKey = setKey(sess.pos);
   let countIn = null;
   if (sess.countedIn !== countInKey) {
     if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
+    if (sess.countInStartedFor !== countInKey) {
+      sess.countInStartedFor = countInKey;
+      sess.countInStartedAt = Date.now();
+    }
     countIn = attachCountIn(zone, countEl, {
-      muted: sess.muted,
+      startedAt: sess.countInStartedAt,
+      /* A GETTER: the mute button is live for all five seconds of the
+         count-in, and a copied boolean ignored it. */
+      muted: () => sess.muted,
       settings: ctx.settings,
       hintEl,
       hint: sess.motionOn ? 'Counting your movement — taps still work' : '',
@@ -580,7 +636,13 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   });
 
   const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
-  doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }));
+  /* observed: ['reps'] ALWAYS — this button is shared by a plain reps entry
+     AND a weighted one (weightedBody wraps this same body). The tap counter
+     watched the reps either way; it never watched the weight, so this list
+     must not grow a 'weight' entry just because the entry is weighted —
+     that would be right back to finding 2 (an untouched @60kg prefill
+     claiming a false record). */
+  doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }, { observed: ['reps'] }));
 
   /* SIX BUTTONS BECAME FOUR, AND THEN THREE. Motion, Type and the explainer
      are decisions made once, at the start of a set — they sat at thumb
@@ -715,7 +777,10 @@ function durationBody(ctx, draft, sess, entry, set) {
       const secs = Math.round(currentSeconds());
       hold.running = false;
       hold.frozenSeconds = secs;
-      completeSet(ctx, draft, sess, set, entry, { seconds: String(secs) });
+      /* observed: ['seconds'] — the stopwatch above genuinely ran for this
+         many seconds; unlike a timed interval's clock, it was started and
+         stopped by the user's own taps, not merely allowed to elapse. */
+      completeSet(ctx, draft, sess, set, entry, { seconds: String(secs) }, { observed: ['seconds'] });
     }
   };
   attachTapZone(zone, startStop);
@@ -749,12 +814,23 @@ function durationBody(ctx, draft, sess, entry, set) {
      seconds between reading the word and finding the button.
 
      Keyed by position for the same reason as the rep counter's: this
-     function runs again on every render of the set. */
+     function runs again on every render of the set, INCLUDING a genuine
+     full re-render that lands mid-gate — countInStartedFor/countInStartedAt
+     on `sess` are what actually carry the elapsed time across that rebuild;
+     see repsBody's count-in for the full account (0.11.2 journey audit,
+     finding L8). */
   const holdKey = setKey(sess.pos);
   if (sess.countedIn !== holdKey) {
     if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
+    if (sess.countInStartedFor !== holdKey) {
+      sess.countInStartedFor = holdKey;
+      sess.countInStartedAt = Date.now();
+    }
     const countIn = attachCountIn(zone, countEl, {
-      muted: sess.muted,
+      startedAt: sess.countInStartedAt,
+      /* A GETTER: the mute button is live for all five seconds of the
+         count-in, and a copied boolean ignored it. */
+      muted: () => sess.muted,
       settings: ctx.settings,
       onDone: () => {
         sess.countedIn = holdKey;
@@ -897,17 +973,27 @@ function celebrate(ctx, sess, cueKind, words) {
    mean two different things depending on which screen you were looking at.
    Returns the callout lines to show on the way to the next thing.
 
-   `opts.measured` says whether the figures are OBSERVED or merely PREFILLED.
-   The set-by-set screen always observes: a rep count came off the tap
-   counter, a hold came off the stopwatch. A timed interval observes the
-   clock, but a rep or weight figure it did not watch you produce is the
-   plan's target sitting in the box — and celebrating a "new best" for a
-   number nobody measured is exactly the kind of wrong figure this codebase
-   keeps having to dig out. So a timed interval passes measured:false for
-   reps and weight, and those records are simply not claimed unless the user
-   typed the figure themselves. */
+   `opts.observed` is the list of record KINDS this call site actually
+   watched the user produce — not a single measured/unmeasured flag, because
+   the same screen can watch one figure and merely prefill another. The
+   set-by-set reps screen watches reps (the tap counter) but never weight
+   (typed once and left alone, or carried over from last time) — so a set
+   with an untouched `@ 60kg` prefill must not claim a weight record just
+   because the reps beside it were real. The set-by-set duration screen
+   watches seconds (the stopwatch genuinely ran that long). A timed interval
+   watches NEITHER reps/weight (the plan's target sitting in the box) NOR
+   seconds (an interval that counts down to zero and ends is a scheduled
+   duration, not an observed hold — the user could have dropped at 40s of a
+   90s plank and let the clock run out empty).
+
+   Per kind, a figure is trustworthy — and so claimable as a record — if
+   EITHER this screen observed that kind directly, OR the user typed it
+   themselves (typedByUser, read BEFORE this call touches set.touched, since
+   afterwards every completed set reads as touched and the distinction is
+   gone). A typed figure is always the user's own word for what happened,
+   whichever screen it was typed on. */
 function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
-  const measured = !opts || opts.measured !== false;
+  const observed = (opts && opts.observed) || [];
   const typedByUser = !!set.touched;
 
   Object.assign(set, values);
@@ -917,8 +1003,7 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
   const callouts = [];
   try {
     const kind = classifyKind(entry);
-    /* seconds are always measured — the clock genuinely ran that long. */
-    const trustworthy = measured || kind === 'seconds' || typedByUser;
+    const trustworthy = observed.indexOf(kind) !== -1 || typedByUser;
     if (kind && trustworthy) {
       const prev = records.previousBest(sess.workoutsAtStart, entry.exercise, kind);
       const val = valueForKind(set, kind);
@@ -935,8 +1020,20 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
            honour the same snapshot rule or it would contradict it. */
         const key = `${entry.exercise}/${kind}`;
         const existing = sess.records.find(r => r.key === key);
-        if (existing) existing.val = val;
-        else sess.records.push({ key, exercise: entry.exercise, kind, val, prev });
+        if (existing) {
+          /* THE BEST OF THE SESSION, NOT THE LATEST ATTEMPT (0.11.2 journey
+             audit, finding L6). This used to overwrite unconditionally, so
+             hitting 21 reps and then 20 later in the same session reported
+             "20 reps (was 14)" on the completion screen — the real 21 was
+             computed right here and thrown away one line later, same shape
+             as the comment above already warns about for the tally. Every
+             kind this row can hold is "bigger is better" (more reps, more
+             kg, a longer hold), the same direction isRecord() already
+             tests, so keeping the larger of the two is the whole fix. */
+          if (parseFloat(val) > parseFloat(existing.val)) existing.val = val;
+        } else {
+          sess.records.push({ key, exercise: entry.exercise, kind, val, prev });
+        }
         callouts.push(`NEW BEST · ${describeRecord(kind, val, prev)}`);
         celebrate(ctx, sess, 'record', 'new record');
       }
@@ -962,8 +1059,8 @@ function restSecondsFor(ctx) {
   return Math.max(GUIDE_REST.min, Math.min(GUIDE_REST.max, n));
 }
 
-function completeSet(ctx, draft, sess, set, entry, values) {
-  const callouts = applyCompletion(ctx, draft, sess, set, entry, values);
+function completeSet(ctx, draft, sess, set, entry, values, opts) {
+  const callouts = applyCompletion(ctx, draft, sess, set, entry, values, opts);
 
   const peek = flow.advance(draft, sess.pos);
   resetActiveState(sess);
@@ -1138,15 +1235,21 @@ function advanceTimed(ctx, draft, sess, opts) {
       const entry = draft.entries[iv.entryIndex];
       const set = entry && entry.sets && entry.sets[iv.setIndex];
       if (entry && set) {
-        /* The clock is the one figure this screen measured, so it is the
-           one it writes — and an untouched plan prefill is cleared rather
-           than promoted to observed work. timed-plan.timedSetValues owns
-           that rule (and the run's minutes-not-seconds exception) so it can
-           be tested without standing up this screen. `set` is read BEFORE
-           applyCompletion sets touched, which is the only order in which
-           "did the user type this" is still answerable. */
+        /* The clock is the one figure this screen writes (an untouched plan
+           prefill is cleared rather than promoted to observed work —
+           timed-plan.timedSetValues owns that rule, and the run's
+           minutes-not-seconds exception, so it can be tested without
+           standing up this screen). `set` is read BEFORE applyCompletion
+           sets touched, which is the only order in which "did the user type
+           this" is still answerable.
+
+           observed: [] — a timed interval watches NOTHING here, not even
+           seconds: an interval that counts down and ends on its own is a
+           SCHEDULED duration, not an observed hold (see timedFigures' seconds
+           box for a duration entry — a typed figure is what makes the hold
+           itself claimable, via typedByUser). */
         const measured = timedPlan.timedSetValues(entry, set, iv.seconds);
-        sess.pendingCallouts = applyCompletion(ctx, draft, sess, set, entry, measured, { measured: false });
+        sess.pendingCallouts = applyCompletion(ctx, draft, sess, set, entry, measured, { observed: [] });
       }
     }
   }
@@ -1219,12 +1322,19 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   let urgency = 'calm';
   body.append(dial);
 
-  /* Rep and weight boxes for a work interval that has them. A timer cannot
-     count your push-ups, so the plan's target sits in the box as a starting
-     point and this is where you correct it — typing marks the set touched,
-     which is also what makes a personal best claimable (see
-     applyCompletion). */
-  if (isWork && set && !entry.duration) {
+  /* Rep, weight and (for a duration entry) seconds boxes for a work
+     interval that has them. A timer cannot count your push-ups, so the
+     plan's target sits in the box as a starting point and this is where you
+     correct it — typing marks the set touched, which is also what makes a
+     personal best claimable (see applyCompletion).
+
+     A duration entry used to be EXCLUDED here, on the assumption that the
+     countdown is the whole answer for how long a hold ran. It is not: the
+     interval counts down and ends whether or not the hold was actually kept
+     up, so the seconds box is the only way to say "I dropped it at 40s of a
+     90s plank" — and a typed figure is what makes that hold's record
+     claimable (typedByUser), where the clock alone no longer is. */
+  if (isWork && set) {
     body.append(timedFigures(ctx, entry, set, iv));
   } else if (iv.target) {
     body.append(el('div', { class: 'gv-timed-target' }, iv.target));
@@ -1316,19 +1426,39 @@ function timedFigures(ctx, entry, set, iv) {
     if (last !== null) set.weight_kg = last; // prefill only — not touched, same as a plan-target prefill
   }
 
+  /* A PREFILL IS THE PLAN'S SUGGESTION, NOT A RESULT — same rule as the log
+     overview's .gv-log-set.prefill (styles.css): until this set is touched
+     its boxes hold the day's prescription, and rendering that full-ink read
+     as a logged figure. The user did exactly what the box said, never
+     touched it, and history then showed nothing — timedSetValues clears an
+     untouched value on save. Read BEFORE any field below can flip it. */
+  const prefilled = !set.touched;
+
   const field = (key, placeholder, unit, label) => {
+    const wrap = el('div', { class: `gv-timed-field${prefilled ? ' gv-timed-prefill' : ''}` });
     const input = numericInput({
       class: 'gv-set-input gv-timed-input',
       placeholder, value: set[key] ?? '',
       'aria-label': `${label} — ${entry.exercise}`,
-    }, v => { set[key] = v; set.touched = true; });
-    return el('div', { class: 'gv-timed-field' }, input, el('span', { class: 'gv-set-unit' }, unit));
+    }, v => {
+      set[key] = v;
+      set.touched = true;
+      wrap.classList.remove('gv-timed-prefill'); // typed — it reads as a result now, not a suggestion
+    });
+    wrap.append(input, el('span', { class: 'gv-set-unit' }, unit));
+    return wrap;
   };
 
   /* A run logs the distance you covered; the clock supplies the time on its
      own when the interval ends, so there is no minutes box here. */
   if (entry.distance) {
     row.append(field('distance_km', 'km', 'km', 'Distance in kilometres'));
+  } else if (entry.duration) {
+    /* The interval counting down to zero is not proof of a held duration —
+       an elapsed clock is not an observed hold. This box is the user's own
+       word for how long they actually held it, and typing into it is what
+       makes the hold's record claimable (applyCompletion's typedByUser). */
+    row.append(field('seconds', 'sec', 's', 'Seconds held'));
   } else {
     row.append(field('reps', 'reps', '×', 'Reps'));
     if (entry.weighted) row.append(field('weight_kg', 'kg', 'kg', 'Weight in kilograms'));
@@ -1347,9 +1477,18 @@ function tile(icon, big, label) {
 }
 
 function renderComplete(ctx, root, draft, sess) {
-  const totalMin = Math.max(0, Math.round((Date.now() - draft.startedAt) / 60000));
+  /* Floored at 1, same as page-log.finishSession's own duration_min — a
+     session logged in under a minute is 1 minute, not 0. The tile here and
+     the figure the note actually saves must agree, or the screen and the
+     history it just wrote about itself disagree on the way out the door. */
+  const totalMin = Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));
   let doneSets = 0;
   for (const entry of draft.entries) for (const set of entry.sets) if (setCounts(set)) doneSets++;
+  /* page-log.finishSession's own guard: zero saveable rows means Finish has
+     nothing to write and only notices, leaving a "Finish & save" button that
+     silently does nothing under a thumb. Discard is the honest name for
+     what tapping it here actually does — nothing was saved either way. */
+  const hasSaveableRows = doneSets > 0;
 
   const broken = sess.records || [];
   const wins = [];
@@ -1376,6 +1515,18 @@ function renderComplete(ctx, root, draft, sess) {
     celebrate(ctx, sess, null);
   }
 
+  /* THE COMPLETION SCREEN HAD NO EXIT. No top bar, no X — the only way off it
+     was Finish (which, with nothing saveable, only notices and leaves you
+     right here) or Review. Same exit as every other phase of the session, so
+     ending up here from a mostly-skipped session is not a dead end. */
+  root.append(el('div', { class: 'gv-session-top' }, el('div', { class: 'gv-session-top-row' }, exitButton(ctx, draft))));
+
+  const primaryBtn = el('button', { class: 'gv-btn-go', type: 'button' }, hasSaveableRows ? 'Finish & save' : 'Discard');
+  primaryBtn.addEventListener('click', () => {
+    if (hasSaveableRows) finishSession(ctx, draft);
+    else { ctx.state.logDraft = null; ctx.nav('dashboard'); } // nothing was ever saveable — same as EndSessionModal's onDiscard
+  });
+
   root.append(el('div', { class: 'gv-session-complete' },
     el('div', { class: 'gv-session-complete-ico' }, ico('trophy')),
     el('h2', { class: 'gv-display gv-session-complete-title' }, 'Session done'),
@@ -1384,11 +1535,18 @@ function renderComplete(ctx, root, draft, sess) {
     el('div', { class: 'gv-tiles gv-session-complete-tiles' },
       tile(ico('check'), String(doneSets), 'sets done'),
       tile(ico('timer'), `${totalMin} min`, 'elapsed')),
-    el('div', { class: 'gv-hero-action gv-session-nextwrap' },
-      el('button', { class: 'gv-btn-go', type: 'button', onclick: () => finishSession(ctx, draft) }, 'Finish & save')),
+    el('div', { class: 'gv-hero-action gv-session-nextwrap' }, primaryBtn),
     el('button', { class: 'gv-btn gv-btn-ghost gv-session-review', type: 'button', onclick: () => ctx.nav('log') },
       ico('list'), el('span', {}, 'Review in log')),
     el('p', { class: 'gv-microcopy' }, 'No zero days.')));
 }
 
-module.exports = { render };
+/* applyCompletion and classifyKind are exported so the observed-kind trust
+   rule (findings #2/#3 of the 0.11.2 journey audit) can be exercised
+   directly, without standing up a render — same reasoning as timed-plan.js
+   pulling timedSetValues out to where it can be tested on its own.
+   renderComplete takes only (ctx, root, draft, sess) with no dependency on
+   the flow/position machinery the rest of render() needs, so findings #4
+   and #7 (the completion screen's exit and its elapsed-minutes tile) are
+   exercised the same way. */
+module.exports = { render, applyCompletion, classifyKind, renderComplete };
