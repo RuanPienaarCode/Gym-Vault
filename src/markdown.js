@@ -20,14 +20,24 @@ const unescMd = s => (s ?? '').replace(/<br>/g, '\n').replace(/\\\|/g, '|').trim
 
 /* ---- frontmatter ---------------------------------------------------- */
 
-/* Flat `key: value` frontmatter plus inline lists `[a, b]`. Nested YAML is
-   deliberately out of the format — every file this plugin owns keeps its
-   structure in the BODY (tables, day sections), so a tiny parser stays honest
-   about what it can round-trip. */
+/* Flat `key: value` frontmatter plus lists — inline `[a, b]` (what the plugin
+   writes) and block `- a` sequences of scalars (what OBSIDIAN writes). Nested
+   YAML is deliberately out of the format — every file this plugin owns keeps
+   its structure in the BODY (tables, day sections), so a tiny parser stays
+   honest about what it can round-trip. */
 /* Unquote a scalar: strip outer quotes, then undo yamlStr's escapes. The
    unescape must exist or values containing `"` gain a backslash per save
    cycle (write \" → read \" verbatim → write \\\" → …). */
 const unquote = s => {
+  /* YAML single-quoted (Obsidian and hand-edits write these): no backslash
+     escapes, `''` is one literal `'`. Left alone, `'seconds'` kept its quotes
+     when read and the next save double-wrapped it as `"'seconds'"`. As below,
+     only unquote when every quote INSIDE is doubled — `'a' and 'b'` is not
+     one quoted value. */
+  if (/^'.*'$/.test(s)) {
+    const inner = s.slice(1, -1);
+    return inner.replace(/''/g, '').indexOf("'") === -1 ? inner.replace(/''/g, "'") : s;
+  }
   if (!/^".*"$/.test(s)) return s;
   /* `/^".*"$/` cannot tell "fully quoted" from "merely starts and ends with a
      quote": `"a" and "b"` is the latter, and eating its outer quotes destroys
@@ -62,11 +72,70 @@ function splitListItems(inner) {
    the top level — so `archive:\n  active: true` became the plan's own
    `active: true` and silently hijacked which plan was active.
 
-   `layout` records the original line order, marking each part either as a
-   modelled key (re-emitted from `fm`) or as raw lines (re-emitted verbatim).
-   It rides on the fm object under a Symbol, so `Object.entries`, spread and
-   JSON.stringify all ignore it and every existing caller is unchanged. */
+   `layout` records the original line order. A part is one of:
+     raw    — comment / blank / stray lines, re-emitted verbatim.
+     key    — a flat `key: value` or inline list, re-emitted from `fm`.
+     block  — a key whose value sits on the following lines and IS modelled:
+              a block sequence of scalars (read into `fm` as an array) or an
+              empty `key:` (kept OUT of `fm`). Re-emitted verbatim while `fm`
+              still says what the lines say; once the plugin changes it, the
+              whole block is REPLACED where it sits, in the plugin's own flow
+              style.
+     opaque — a key whose structure we cannot model (nested map, block
+              scalar, list of maps). Verbatim, unless the plugin sets that key
+              to a real value, which replaces it in place.
+   Appending is only for keys the file never had: an existing key written
+   twice is a duplicate-key error to Obsidian's parser (uniqueKeys) and the
+   note's properties go invalid.
+   The layout rides on the fm object under a Symbol, so `Object.entries`,
+   spread and JSON.stringify all ignore it and every existing caller is
+   unchanged. */
 const FM_LAYOUT = Symbol.for('gv.fmLayout');
+
+/* Where a key's value continues on the lines after it: indented lines and,
+   for an empty `key:`, un-indented `- ` items (YAML allows both). Blank and
+   comment lines belong to the block only when more of it follows. Returns the
+   exclusive end index. */
+function continuationEnd(lines, i, seqAtColumnZero) {
+  let end = i + 1;
+  for (let j = i + 1; j < lines.length; j++) {
+    const l = lines[j];
+    if (/^\s+\S/.test(l) || (seqAtColumnZero && /^-(\s|$)/.test(l))) end = j + 1;
+    else if (l.trim() !== '' && !/^#/.test(l)) break;
+  }
+  return end;
+}
+
+/* One block-sequence item as a scalar, or null when it is not a scalar (a map
+   item, a nested list or block scalar, an anchor/tag) — the whole list is then
+   left opaque rather than half-read. */
+function blockItem(item) {
+  if (/^"/.test(item)) return item.length > 1 && /"$/.test(item) ? unquote(item) : null;
+  if (/^'/.test(item)) return item.length > 1 && /'$/.test(item) ? unquote(item) : null;
+  if (/^\[\[[^\]]*\]\]$/.test(item)) return item;
+  /* An unquoted ` #` starts a YAML comment: `- chest  # primary` is `chest`. */
+  const plain = item.replace(/(^|\s+)#.*$/, '');
+  if (/^[[{|>!&*]/.test(plain) || /^-(\s|$)/.test(plain) || /:(\s|$)/.test(plain)) return null;
+  return plain;
+}
+
+/* The lines after `key:` as an array of scalars, or null when they are not a
+   plain block sequence (every item at one indent, every item a scalar). */
+function readBlockSeq(lines) {
+  const items = [];
+  let indent = -1;
+  for (const l of lines) {
+    if (l.trim() === '' || /^\s*#/.test(l)) continue;
+    const m = l.match(/^(\s*)-(?:\s+(.*))?$/);
+    if (!m) return null;
+    if (indent < 0) indent = m[1].length;
+    else if (m[1].length !== indent) return null;
+    const v = blockItem((m[2] || '').trim());
+    if (v === null) return null;
+    if (v !== '') items.push(v);
+  }
+  return items;
+}
 
 /* A scalar, an inline list, or a wikilink (which is a scalar, not a list). */
 function parseScalar(val) {
@@ -100,11 +169,25 @@ function parseFrontmatter(text) {
       const key = line.slice(0, ci).trim();
       const rest = line.slice(ci + 1).trim();
       const next = lines[i + 1] ?? '';
-      /* A key whose value lives on the FOLLOWING lines (block sequence,
-         nested map, block scalar) or which the user left empty is structure
-         we cannot represent. Model nothing — pass the line through and let
-         its continuation lines follow as raw. */
-      if (rest === '' || rest === '>' || rest === '|' || /^\s+\S/.test(next)) { raw(line); continue; }
+      /* A key whose value lives on the FOLLOWING lines, or which the user
+         left empty. A block sequence of scalars is what Obsidian's Properties
+         panel writes for every list: read it. An empty `key:` is kept out of
+         `fm` but remembered, so setting it later replaces the line instead of
+         appending a second one. Anything else (nested map, block scalar, list
+         of maps) we cannot represent — pass it through whole. */
+      if (rest === '' || rest === '>' || rest === '|' || /^\s+\S/.test(next)) {
+        const end = continuationEnd(lines, i, rest === '');
+        const block = lines.slice(i, end);
+        const seq = rest === '' ? readBlockSeq(block.slice(1)) : null;
+        if (seq) {
+          if (seq.length) fm[key] = seq;
+          layout.push({ kind: 'block', key, lines: block });
+        } else {
+          layout.push({ kind: 'opaque', key, lines: block });
+        }
+        i = end - 1;
+        continue;
+      }
       fm[key] = parseScalar(rest);
       layout.push({ kind: 'key', key });
     }
@@ -140,21 +223,50 @@ const yamlVal = v => {
    not appear, but a key that came from the USER'S FILE with an empty value
    is theirs and deleting it destroys their data. The layout recorded at
    parse time is what tells the two apart; a plain object built in code has
-   no layout and behaves exactly as before. */
+   no layout and behaves exactly as before.
+
+   A key already in the file is only ever REPLACED where it sits (see the
+   layout note at FM_LAYOUT); the append loop at the end is for keys the file
+   never had. */
+const isEmptyFm = v => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+/* Same value for the purpose of "did the plugin change this?": numbers match
+   their digit strings (a form re-saving `[4, 5, 6]` over `- 4` is no edit). */
+function sameFm(a, b) {
+  if (isEmptyFm(a) || isEmptyFm(b)) return isEmptyFm(a) && isEmptyFm(b);
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) return a.length === b.length && a.every((x, i) => String(x) === String(b[i]));
+  return String(a) === String(b);
+}
+const hasKey = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+
 function serializeFrontmatter(fm) {
   const layout = fm ? fm[FM_LAYOUT] : null;
   const lines = [];
   const done = new Set();
   const emit = (k, v) => {
-    if (v === null || v === undefined || v === '') return;
-    if (Array.isArray(v) && v.length === 0) return;
+    if (isEmptyFm(v)) return;
     lines.push(`${k}: ${yamlVal(v)}`);
   };
   if (layout) {
     for (const part of layout) {
       if (part.kind === 'raw') { lines.push(...part.lines); continue; }
+      /* A key the file holds twice (an earlier save wrote one) is written
+         once, so the next save heals the note instead of re-emitting it. */
+      if (done.has(part.key)) continue;
       done.add(part.key);
-      emit(part.key, fm[part.key]);
+      const cur = hasKey(fm, part.key) ? fm[part.key] : undefined;
+      if (part.kind === 'block') {
+        /* Unchanged → the user's own lines, byte for byte. */
+        if (sameFm(cur, readBlockSeq(part.lines.slice(1)))) lines.push(...part.lines);
+        else emit(part.key, cur);
+      } else if (part.kind === 'opaque') {
+        /* The plugin cannot read this key; it only replaces it if it was
+           told to write a real value there. */
+        if (isEmptyFm(cur)) lines.push(...part.lines);
+        else emit(part.key, cur);
+      } else {
+        emit(part.key, cur);
+      }
     }
   }
   /* Keys the plugin added since the file was read go after what was there. */
