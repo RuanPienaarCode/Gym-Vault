@@ -37,6 +37,26 @@ function render(ctx, root) {
         + 'Plans and goals reference exercises by name, so rename one to be sure which is used.')));
   }
 
+  /* The other half of the same hazard: a plan line or goal names an exercise
+     that has no note — the note was renamed or deleted in Obsidian. Nothing
+     rewrites the plans (that is the user's call), but the break must not be
+     silent: the plan line goes inert, the goal reads "no data", and history
+     stops lining up. */
+  const missing = data.missingExercises || [];
+  if (missing.length) {
+    const SHOW = 5;
+    const where = m => [
+      m.plans.length ? `${m.plans.length === 1 ? 'plan' : 'plans'} ${m.plans.slice(0, 3).join(', ')}${m.plans.length > 3 ? ', …' : ''}` : '',
+      m.goals.length ? `${m.goals.length === 1 ? 'goal' : 'goals'} ${m.goals.slice(0, 3).join(', ')}${m.goals.length > 3 ? ', …' : ''}` : '',
+    ].filter(Boolean).join('; ');
+    const named = missing.slice(0, SHOW).map(m => `"${m.name}" (${where(m)})`).join(', ');
+    root.append(el('div', { class: 'gv-warn-line' },
+      ico('triangle-alert'),
+      el('span', {}, `${missing.length === 1 ? '1 exercise is' : `${missing.length} exercises are`} named in a plan or goal but ${missing.length === 1 ? 'has' : 'have'} no exercise note: `
+        + `${named}${missing.length > SHOW ? `, and ${missing.length - SHOW} more` : ''}. `
+        + 'Renamed or deleted? Rename the note back, or edit the plan line or goal.')));
+  }
+
   const chips = el('div', { class: 'gv-chips' });
   const allChip = el('button', { class: `gv-chip${ui.muscle === '' ? ' on' : ''}`, type: 'button' }, 'all');
   allChip.addEventListener('click', () => { ui.muscle = ''; ctx.rerender(); });
@@ -168,7 +188,10 @@ function openAdd(ctx) {
 function openEdit(ctx, ex) {
   new FormModal(ctx.app, {
     title: `Edit ${ex.name}`,
-    fields: exerciseFields(ex.fm, ex.name).filter(f => f.key !== 'name'), // rename = rename the note, like every entity here
+    /* No Name field: plans, goals and every logged row reference an exercise
+       BY NAME, so renaming the note (the only way to rename one) detaches all
+       of them — the missing-exercise warning above says so when it happens. */
+    fields: exerciseFields(ex.fm, ex.name).filter(f => f.key !== 'name'),
     onSubmit: async v => {
       ex.fm = {
         ...ex.fm, type: v.type, muscles: parseMuscles(v.muscles), equipment: parseEquipment(v.equipment), unit: v.unit,

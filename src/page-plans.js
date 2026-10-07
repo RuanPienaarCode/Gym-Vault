@@ -13,6 +13,43 @@ const { FormModal, ConfirmModal } = require('./modals');
 const { todayISO, weekdayKey } = require('./dates');
 const { sameName } = require('./stats');
 
+/* SAVES OF ONE PLAN ARE SERIAL, AND THE REFRESH WAITS FOR THEM (L2-01).
+
+   Edit mode saves on every `change`, and the row's `focusout` reloads the
+   page. Both used to fire in the same task: the reload read the note while the
+   save was still landing (Obsidian's cachedRead serves the OLD text until the
+   write resolves), rebuilt the model from that stale text, and the NEXT edit
+   then saved the stale model over the first one — the user typed 5 sets and
+   the note kept 3. So: one queue per plan record (a new save waits for the
+   previous; every save writes the whole model, so a later one carries every
+   earlier edit), and anything that reloads first waits for the queue to drain. */
+const saveTail = new WeakMap();   // plan record -> tail of its save queue (never rejects)
+
+function saveSerial(ctx, plan) {
+  const run = (saveTail.get(plan) || Promise.resolve()).then(() => ctx.io.savePlan(plan));
+  const tail = run.catch(() => {});
+  saveTail.set(plan, tail);
+  tail.then(() => { if (saveTail.get(plan) === tail) saveTail.delete(plan); });
+  return run;
+}
+
+async function savesSettled(plan) {
+  for (;;) {
+    const tail = saveTail.get(plan);
+    if (!tail) return;
+    await tail;
+    if (saveTail.get(plan) === tail) return;   // nothing newer was queued while we waited
+  }
+}
+
+/* A structural edit (add/remove/move): save, wait out any other save in
+   flight, then show the note as it now is. A refused save (the note changed
+   outside the app — savePlan has already said so) lands on the same reload. */
+async function saveThenReload(ctx, plan) {
+  try { await saveSerial(ctx, plan); }
+  finally { await savesSettled(plan); ctx.reload(); }
+}
+
 function render(ctx, root) {
   const { data } = ctx;
   const openName = ctx.state.params && ctx.state.params.plan;
@@ -316,10 +353,28 @@ function planItemRow(ctx, it) {
    field's `change` event does. `change` fires on blur, so tabbing from Sets
    straight into Target used to call ctx.reload() — a full re-render of the
    whole page — right as focus landed in Target, throwing the caret back out
-   to the page mid-tab. The write itself still happens on every change. */
+   to the page mid-tab. The write itself still happens on every change, and
+   that deferred reload waits for the write (saveSerial / savesSettled above). */
 function editableItem(ctx, plan, day, it, idx) {
-  const persist = () => ctx.io.savePlan(plan);
-  const save = async () => { await persist(); ctx.reload(); };
+  /* Resolves true when the note was saved. When it was not — the note changed
+     outside the app and savePlan refused (it has told the user), or the write
+     failed — the screen is showing a model the note no longer matches, so
+     rebuild it from disk now and resolve false. */
+  const persist = async () => {
+    try {
+      if ((await saveSerial(ctx, plan)) !== false) return true;
+    } catch (e) {
+      console.error('gym-vault plan save', e);
+      ctx.notice(`could not save the plan (${e.message || e})`);
+    }
+    ctx.reload();
+    return false;
+  };
+  const save = async () => {
+    if (!(await persist())) return;
+    await savesSettled(plan);
+    ctx.reload();
+  };
 
   const setsInput = el('input', {
     class: 'gv-set-input gv-edititem-sets', type: 'number', inputmode: 'numeric', min: '1', step: '1',
@@ -384,7 +439,7 @@ function editableItem(ctx, plan, day, it, idx) {
      rebuild waits. */
   row.addEventListener('focusout', e => {
     if (e.relatedTarget && row.contains(e.relatedTarget)) return;
-    ctx.reload();
+    savesSettled(plan).then(() => ctx.reload());
   });
   return row;
 }
@@ -393,8 +448,7 @@ function removeItemBtn(ctx, plan, day, idx) {
   const b = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'Remove' }, ico('x'));
   b.addEventListener('click', async () => {
     removeItemAt(day, idx);
-    await ctx.io.savePlan(plan);
-    ctx.reload();
+    await saveThenReload(ctx, plan);
   });
   return b;
 }
@@ -436,8 +490,7 @@ function openAddDay(ctx, plan) {
     validate: v => (!v.name.trim() ? 'Give the day a name.' : null),
     onSubmit: async v => {
       plan.model.days.push({ name: v.name.trim(), weekday: v.weekday, parts: [], notes: [], items: [] });
-      await ctx.io.savePlan(plan);
-      ctx.reload();
+      await saveThenReload(ctx, plan);
     },
   }).open();
 }
@@ -458,8 +511,7 @@ function openAddItem(ctx, plan, day) {
     onSubmit: async v => {
       const sets = parseInt(v.sets, 10);
       addItem(day, { exercise: String(v.exercise).trim(), sets: Number.isFinite(sets) && sets > 0 ? sets : null, target: v.target.trim() });
-      await ctx.io.savePlan(plan);
-      ctx.reload();
+      await saveThenReload(ctx, plan);
     },
   }).open();
 }

@@ -2,20 +2,23 @@
 /* Vault IO — every read and write of the Gym folder goes through here.
 
    Uses the Vault API only (works on desktop and iOS; no Node APIs anywhere in
-   src/). Writes are stamped on plugin._lastWrite so the controller's vault
-   watcher can tell our own writes from the user's edits and skip a pointless
-   reload storm. Note BODIES the user may have edited are never rebuilt except
-   where the body IS the plugin's own structure (plan day lists, the two flat
-   tables) — and even then prose lines round-trip verbatim via plan-parse. */
+   src/). Writes are recorded per PATH in plugin._ownWrites (and stamped on
+   plugin._lastWrite) so the controller's vault watcher can tell our own
+   writes from the user's edits and skip a pointless reload storm without also
+   swallowing a real edit to a DIFFERENT note. Note BODIES the user may have
+   edited are never rebuilt except where the body IS the plugin's own structure
+   (plan day lists, the two flat tables) — and even then prose lines
+   round-trip verbatim via plan-parse. A save is applied to the file's CURRENT
+   text (vault.process), never to the copy loaded at the last reload. */
 
-const { normalizePath, TFile, TFolder, requestUrl } = require('obsidian');
+const { normalizePath, TFile, TFolder, requestUrl, Notice } = require('obsidian');
 const { parseFrontmatter, serializeFrontmatter, tableToObjects, buildMdTable, replaceFirstTable, tableHeaderLabels } = require('./markdown');
 const { parsePlanBody, serializePlanBody } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
 const { clipFileName, keyFromFileName } = require('./voice-pack');
-const { workoutDate } = require('./stats');
+const { workoutDate, sameName } = require('./stats');
 
 /* Windows/OSX-illegal filename characters, folded to '-' so an exercise or
    plan named from user input always lands on disk. */
@@ -27,6 +30,70 @@ const safeName = s => {
   const cleaned = (s || '').toString().replace(/[\\/:*?"<>|#^\[\]]/g, '-').replace(/\s+/g, ' ').trim();
   return cleaned.slice(0, 200).trim() || '-';
 };
+
+/* ---- what the app last knew about a note ---------------------------------
+
+   A save must change what the APP changed and nothing else: the file may have
+   been edited elsewhere since the last reload (another device over iCloud, an
+   editor pane), and writing the loaded copy back erases that. So loadAll()
+   records, on each frontmatter object, the values it parsed (and the body, or
+   for a plan the whole text). A save compares the record against that baseline
+   to find the keys the app touched, and applies only those to the file's
+   current text.
+
+   The baseline rides on the fm object under a Symbol, the way markdown.js's
+   layout does: spread (`{ ...ex.fm, type }`, which every Edit form does)
+   copies enumerable symbols, so it survives the record's fm being replaced;
+   Object.entries / JSON.stringify never see it. */
+const FM_BASE = Symbol.for('gv.fmBase');
+
+/* "Empty" is what serializeFrontmatter drops, so an absent key, '' and [] are
+   one state; scalars compare as text ('60' from a file equals 60 from a form). */
+const isBlank = x => x === null || x === undefined || x === '' || (Array.isArray(x) && x.length === 0);
+const comparable = x => (isBlank(x) ? '' : Array.isArray(x) ? JSON.stringify(x.map(String)) : String(x));
+
+function rememberLoaded(fm, body, text) {
+  const vals = {};
+  for (const k of Object.keys(fm)) vals[k] = Array.isArray(fm[k]) ? fm[k].slice() : fm[k];
+  Object.defineProperty(fm, FM_BASE, { value: { vals, body, text }, enumerable: true, writable: true, configurable: true });
+}
+
+/* The current file's frontmatter with only the app's changes laid over it. A
+   key the app changed wins over an outside edit of that same key (the user
+   just did it on purpose); every other key — and the file's own key order and
+   unmodelled lines — is the file's. With no baseline (a record the app built
+   itself) every non-empty key is the app's. */
+function mergeFrontmatter(currentFm, fm) {
+  const base = (fm && fm[FM_BASE]) || null;
+  const before = base ? base.vals : {};
+  const next = { ...currentFm };
+  const keys = new Set([...Object.keys(before), ...Object.keys(fm)]);
+  for (const k of keys) {
+    if (comparable(before[k]) === comparable(fm[k])) continue;
+    if (isBlank(fm[k])) delete next[k]; else next[k] = fm[k];
+  }
+  return next;
+}
+
+/* Exercises a plan line or an exercise goal names that have no exercise note —
+   what renaming a note in Obsidian leaves behind. Compared with sameName, the
+   one name rule. Returns [{ name, plans: [plan names], goals: [goal names] }],
+   in the order first met. */
+function findMissingExercises(data) {
+  const found = [];
+  const note = (raw, kind, owner) => {
+    const name = String(raw === null || raw === undefined ? '' : raw).trim();
+    if (!name || data.exercises.some(e => sameName(e.name, name))) return;
+    let entry = found.find(m => sameName(m.name, name));
+    if (!entry) { entry = { name, plans: [], goals: [] }; found.push(entry); }
+    if (entry[kind].indexOf(owner) < 0) entry[kind].push(owner);
+  };
+  for (const p of data.plans) for (const d of p.model.days) for (const it of d.items) note(it.exercise, 'plans', p.name);
+  /* Only goals that MEASURE an exercise (the rule stats.goalIssue uses): a
+     leftover `exercise:` on a workouts-per-week goal is read by nothing. */
+  for (const g of data.goals) if (/^exercise-/.test(g.fm.metric || '')) note(g.fm.exercise, 'goals', g.name);
+  return found;
+}
 
 function makeIo(plugin) {
   const app = plugin.app;
@@ -46,11 +113,71 @@ function makeIo(plugin) {
     voice: () => `${root()}/Voice`,
   };
 
-  const stamp = () => { plugin._lastWrite = Date.now(); };
+  /* Record a write of `path`. The watcher (controller.js) skips a vault event
+     only for a path that has an own-write within the last 1.5 s, so an outside
+     edit to some OTHER note in that window is no longer dropped. _lastWrite
+     stays for the watcher's fallback when no per-path map exists. */
+  const stamp = path => {
+    const now = Date.now();
+    plugin._lastWrite = now;
+    if (!path) return;
+    const own = plugin._ownWrites || (plugin._ownWrites = new Map());
+    own.set(path, now);
+    if (own.size > 200) for (const [k, t] of own) if (now - t > 10000) own.delete(k);
+  };
+
+  /* Stamp before the write (the vault event can fire before its promise
+     resolves) AND after it (a slow iCloud write must not outlive the window). */
+  const tracked = async (path, write) => {
+    stamp(path);
+    const out = await write();
+    stamp(path);
+    return out;
+  };
+
+  /* One save at a time per path. A save compares the file's current text with
+     what the app last knew, and records what it wrote as the new baseline —
+     two overlapping saves of one note would see each other's write as an
+     outside edit. The tail never rejects, so one failed save does not wedge
+     the queue. */
+  const queues = new Map();
+  function exclusive(path, work) {
+    const run = (queues.get(path) || Promise.resolve()).then(work);
+    const tail = run.catch(() => {});
+    queues.set(path, tail);
+    tail.then(() => { if (queues.get(path) === tail) queues.delete(path); });
+    return run;
+  }
+
+  const tell = msg => {
+    try { new Notice(`Gym: ${msg}`, 8000); } catch (e) { /* no host Notice (headless tests) */ }
+  };
+
+  /* Apply `change(currentText)` to the file's CURRENT text on disk
+     (vault.process), never to a copy read earlier. `change` returns the new
+     text, or null to leave the file alone. Never creates: a note deleted
+     outside the app resolves { gone: true } instead of coming back from the
+     dead (a path that vanishes between the lookup and the write rejects out of
+     process() and is read the same way). */
+  async function applyToFile(path, change) {
+    const f = path ? v.getFileByPath(path) : null;
+    if (!f) return { gone: true };
+    let text = null;
+    try {
+      await tracked(path, () => v.process(f, current => {
+        text = change(current);
+        return text === null ? current : text;
+      }));
+    } catch (e) {
+      if (!v.getFileByPath(path)) return { gone: true };
+      throw e;
+    }
+    return { gone: false, text };
+  }
 
   async function ensureFolder(path) {
     if (v.getFolderByPath(path)) return;
-    try { stamp(); await v.createFolder(path); }
+    try { stamp(path); await v.createFolder(path); }
     catch (e) { if (!v.getFolderByPath(path)) throw e; } // swallow create races
   }
 
@@ -65,17 +192,14 @@ function makeIo(plugin) {
     const slash = path.lastIndexOf('/');
     const dir = slash > 0 ? v.getFolderByPath(path.slice(0, slash)) : null;
     if (dir && (dir.children || []).some(c => (c.path || '').toLowerCase() === path.toLowerCase())) return false;
-    stamp();
-    await v.create(path, content);
+    await tracked(path, () => v.create(path, content));
     return true;
   }
 
   /* Overwrite-or-create for files the plugin owns structurally. */
   async function writeFile(path, content) {
     const f = v.getFileByPath(path);
-    stamp();
-    if (f) await v.modify(f, content);
-    else await v.create(path, content);
+    await tracked(path, () => (f ? v.modify(f, content) : v.create(path, content)));
   }
 
   async function readNotesIn(folderPath) {
@@ -96,7 +220,7 @@ function makeIo(plugin) {
   /* ---- load everything ------------------------------------------------ */
 
   async function loadAll() {
-    const data = { profile: { fm: {}, body: '' }, body: [], exercises: [], plans: [], goals: [], workouts: [], present: false, unreadable: 0, unreadablePaths: [], duplicateExercises: [], rootExists: false };
+    const data = { profile: { fm: {}, body: '' }, body: [], exercises: [], plans: [], goals: [], workouts: [], present: false, unreadable: 0, unreadablePaths: [], duplicateExercises: [], missingExercises: [], rootExists: false };
     /* Mid-index (a fresh device, a big iCloud sync) an individual read can
        fail while the rest are fine. Skipping the file that failed and
        counting it beats losing the entire load to one bad read. */
@@ -113,6 +237,7 @@ function makeIo(plugin) {
       const text = await read(profileFile);
       if (text !== null) {
         const { fm, body } = parseFrontmatter(text);
+        rememberLoaded(fm, body);
         data.profile = { fm, body, file: profileFile };
         data.present = true;
       }
@@ -141,6 +266,7 @@ function makeIo(plugin) {
          page and is deliberately NOT done mid-release — but the clash must
          not stay silent, so record it and let the UI say so. */
       if (data.exercises.some(e => e.name === f.basename)) data.duplicateExercises.push(f.path);
+      rememberLoaded(fm, body);
       data.exercises.push({ name: f.basename, file: f, fm, body });
       data.present = true;
     }
@@ -148,6 +274,9 @@ function makeIo(plugin) {
       const text = await read(f);
       if (text === null) continue;
       const { fm, body } = parseFrontmatter(text);
+      /* A plan's body is regenerated from the model on save, so its baseline
+         is the WHOLE text: savePlan refuses if the note is no longer that. */
+      rememberLoaded(fm, undefined, text);
       data.plans.push({ name: f.basename, file: f, fm, model: parsePlanBody(body) });
       data.present = true;
     }
@@ -155,6 +284,7 @@ function makeIo(plugin) {
       const text = await read(f);
       if (text === null) continue;
       const { fm, body } = parseFrontmatter(text);
+      rememberLoaded(fm, body);
       data.goals.push({ name: f.basename, file: f, fm, body });
       data.present = true;
     }
@@ -178,14 +308,44 @@ function makeIo(plugin) {
       const x = workoutDate(a) || '', y = workoutDate(b) || '';
       return x < y ? -1 : x > y ? 1 : 0;
     });
+    /* Plans and goals name exercises; a renamed or deleted note leaves the
+       name pointing at nothing. Said out loud on the Exercises page. */
+    data.missingExercises = findMissingExercises(data);
     return data;
   }
 
   /* ---- writes --------------------------------------------------------- */
 
+  /* The three NOTE writers below (profile, exercise, goal) and savePlan share
+     one rule: the change is applied to the file's current text inside
+     vault.process(), so an edit made elsewhere since the last reload survives.
+     Each returns true when it wrote, and false when it deliberately did not —
+     in which case the user has already been told why (a Notice), because
+     several callers only log a failure and a phone has no console. */
   async function saveProfile(fm, body) {
     await ensureFolder(root());
-    await writeFile(paths.profile(), serializeFrontmatter(fm) + '\n' + (body || ''));
+    const path = paths.profile();
+    const base = fm[FM_BASE] || null;
+    if (!v.getFileByPath(path)) {
+      /* No note and none was loaded: this save CREATES the profile (first
+         run). A profile that WAS loaded and is gone now is not ours to
+         resurrect. */
+      if (base) { tell('your profile note was deleted or moved outside the app — nothing was saved.'); return false; }
+      await tracked(path, () => v.create(path, serializeFrontmatter(fm) + '\n' + (body || '')));
+      return true;
+    }
+    return exclusive(path, async () => {
+      const res = await applyToFile(path, current => {
+        const cur = parseFrontmatter(current);
+        /* The body the caller hands back is the one it loaded; only a body
+           it actually changed replaces the file's own. */
+        const nextBody = base && body !== undefined && body !== base.body ? (body || '') : cur.body;
+        return serializeFrontmatter(mergeFrontmatter(cur.fm, fm)) + '\n' + nextBody;
+      });
+      if (res.gone) { tell('your profile note was deleted or moved outside the app — nothing was saved.'); return false; }
+      rememberLoaded(fm, body);
+      return true;
+    });
   }
 
   async function appendBodyRow(row) {
@@ -232,9 +392,24 @@ function makeIo(plugin) {
     return writeIfAbsent(path, serializeFrontmatter(fm) + '\n' + (ex.note ? ex.note + '\n' : ''));
   }
 
-  async function saveExercise(exRec) {
-    await writeFile(exRec.file.path, serializeFrontmatter(exRec.fm) + '\n' + (exRec.body || ''));
+  /* Exercise and goal notes: patch the keys the app changed, keep the file's
+     current body (the app never edits it) — see mergeFrontmatter. */
+  async function saveNote(rec) {
+    const path = rec.file && rec.file.path;
+    return exclusive(path, async () => {
+      const res = await applyToFile(path, current => {
+        const cur = parseFrontmatter(current);
+        const base = rec.fm[FM_BASE] || null;
+        const nextBody = base && rec.body !== undefined && rec.body !== base.body ? (rec.body || '') : cur.body;
+        return serializeFrontmatter(mergeFrontmatter(cur.fm, rec.fm)) + '\n' + nextBody;
+      });
+      if (res.gone) { tell(`"${rec.name}" was deleted or moved outside the app — nothing was saved.`); return false; }
+      rememberLoaded(rec.fm, rec.body);
+      return true;
+    });
   }
+
+  const saveExercise = exRec => saveNote(exRec);
 
   async function createGoal(goal) {
     await ensureFolder(paths.goals());
@@ -242,9 +417,7 @@ function makeIo(plugin) {
     return writeIfAbsent(path, serializeFrontmatter(goal.fm) + '\n' + (goal.note ? goal.note + '\n' : ''));
   }
 
-  async function saveGoal(goalRec) {
-    await writeFile(goalRec.file.path, serializeFrontmatter(goalRec.fm) + '\n' + (goalRec.body || ''));
-  }
+  const saveGoal = goalRec => saveNote(goalRec);
 
   async function createPlan(name, fm, body) {
     await ensureFolder(paths.plans());
@@ -252,8 +425,24 @@ function makeIo(plugin) {
     return writeIfAbsent(path, serializeFrontmatter(fm || {}) + '\n' + (body || ''));
   }
 
+  /* A plan's body is rebuilt from its model, so it cannot be patched key by
+     key: if the note is no longer the text this record was loaded from (or
+     last wrote), something else edited it, and rebuilding would erase that.
+     Leave the file alone, say so, and let the caller reload. */
   async function savePlan(planRec) {
-    await writeFile(planRec.file.path, serializeFrontmatter(planRec.fm) + '\n' + serializePlanBody(planRec.model));
+    const path = planRec.file && planRec.file.path;
+    return exclusive(path, async () => {
+      const base = planRec.fm[FM_BASE] || null;
+      let outside = false;
+      const res = await applyToFile(path, current => {
+        if (base && typeof base.text === 'string' && current !== base.text) { outside = true; return null; }
+        return serializeFrontmatter(planRec.fm) + '\n' + serializePlanBody(planRec.model);
+      });
+      if (res.gone) { tell(`"${planRec.name}" was deleted or moved outside the app — nothing was saved.`); return false; }
+      if (outside) { tell(`"${planRec.name}" changed outside the app — reloaded. Make your edit again.`); return false; }
+      rememberLoaded(planRec.fm, undefined, res.text);
+      return true;
+    });
   }
 
   /* Exactly one plan active: activating one deactivates the rest, so
@@ -263,15 +452,22 @@ function makeIo(plugin) {
       const want = p === target;
       const is = String(p.fm.active) === 'true';
       if (want === is) continue;
-      p.fm.active = want;
       /* Patch the FRONTMATTER only. savePlan re-serializes the body from the
          parsed model, so flipping a flag used to rewrite every other plan's
          prose and list formatting too — a plan switch has no business
-         touching a body the user wrote. */
-      const text = await v.cachedRead(p.file);
-      const { fm, body } = parseFrontmatter(text);
-      fm.active = want;
-      await writeFile(p.file.path, serializeFrontmatter(fm) + '\n' + body);
+         touching a body the user wrote. Applied to the file's current text,
+         like every save here, and the new text becomes the record's baseline
+         so a later savePlan does not mistake this write for an outside edit. */
+      await exclusive(p.file.path, async () => {
+        const res = await applyToFile(p.file.path, current => {
+          const { fm, body } = parseFrontmatter(current);
+          fm.active = want;
+          return serializeFrontmatter(fm) + '\n' + body;
+        });
+        if (res.gone) { tell(`"${p.name}" was deleted or moved outside the app — nothing was saved.`); return; }
+        p.fm.active = want;
+        rememberLoaded(p.fm, undefined, res.text);
+      });
     }
   }
 
@@ -282,22 +478,22 @@ function makeIo(plugin) {
     // A second session the same day gets a numbered file, not an overwrite.
     for (let n = 2; v.getFileByPath(path); n++) path = `${paths.workouts()}/${base} ${n}.md`;
     const fm = { date: session.date, plan: session.plan, day: session.day, duration_min: session.duration_min };
-    stamp();
-    await v.create(path, serializeFrontmatter(fm) + '\n' + buildMdTable(WORKOUT_COLUMNS, session.rows) + '\n');
+    await tracked(path, () => v.create(path, serializeFrontmatter(fm) + '\n' + buildMdTable(WORKOUT_COLUMNS, session.rows) + '\n'));
     return path;
   }
 
-  /* An export is a normal vault note so it can be opened, synced and sent
-     on through Obsidian's own share sheet. Never overwrites: a second
-     export the same day gets a numbered name. */
+  /* An export is saved as a REAL file of its own kind: the markdown summary
+     is a note, a CSV is a .csv and a JSON is a .json, each holding exactly
+     the text the page previewed (a markdown fence inside a .csv or .json
+     meant nothing could read it). Never overwrites: a second export the same
+     day gets a numbered name. */
   async function saveExport(text, kind, ext) {
     await ensureFolder(paths.exports());
     const { todayISO } = require('./dates');
     const base = `${todayISO()} gym ${kind}`;
     let path = `${paths.exports()}/${safeName(base)}.${ext}`;
     for (let n = 2; v.getFileByPath(path); n++) path = `${paths.exports()}/${safeName(base)} ${n}.${ext}`;
-    stamp();
-    await v.create(path, ext === 'md' ? text : '```' + (ext === 'json' ? 'json' : 'csv') + '\n' + text + '```\n');
+    await tracked(path, () => v.create(path, text));
     return path;
   }
 
@@ -337,8 +533,7 @@ function makeIo(plugin) {
       const { fm, body } = parseFrontmatter(res.text);
       const nextFm = { ...fm, active: false };
       delete nextFm.name;                       // the filename carries the name
-      stamp();
-      await v.create(planPath, serializeFrontmatter(nextFm) + '\n' + body);
+      await tracked(planPath, () => v.create(planPath, serializeFrontmatter(nextFm) + '\n' + body));
       out.plan = planPath;
     }
     for (const name of entry.exercises || []) {
@@ -347,8 +542,7 @@ function makeIo(plugin) {
       try {
         const res = await requestUrl({ url: `${repoBase()}/exercises/${encodeURIComponent(name)}.md`, throw: true });
         await ensureFolder(paths.exercises());
-        stamp();
-        await v.create(exPath, res.text);
+        await tracked(exPath, () => v.create(exPath, res.text));
         out.exercisesAdded++;
       } catch (e) {
         /* A missing exercise definition is survivable — the plan still works,
@@ -377,12 +571,14 @@ function makeIo(plugin) {
         on iOS. trashFile reads that setting and does what the user asked
         for. vault.trash stays as the fallback for older API surfaces.
 
-     3. NOT STAMPED, unlike every other write here. loadAll() walks the
-        in-memory folder tree, and Obsidian drops a deleted file from it a
-        tick after the promise resolves — so a reload fired immediately can
-        still list the note. Stamping made that stale entry permanent by
-        suppressing the vault `delete` event that would have corrected it.
-        Instead of racing, we WAIT below for the tree to catch up. */
+     3. NOT STAMPED, unlike every other write here — neither _lastWrite nor a
+        path in _ownWrites, since the watcher skips events for both.
+        loadAll() walks the in-memory folder tree, and Obsidian drops a
+        deleted file from it a tick after the promise resolves — so a reload
+        fired immediately can still list the note. Stamping made that stale
+        entry permanent by suppressing the vault `delete` event that would
+        have corrected it. Instead of racing, we WAIT below for the tree to
+        catch up; the delete event stays as the backstop if that times out. */
   async function trash(file) {
     const path = file && file.path;
     const target = path ? v.getAbstractFileByPath(path) : null;
@@ -466,8 +662,7 @@ function makeIo(plugin) {
     const base = path.replace(/\.[^.]+$/, '');
     const suffix = path.slice(base.length);
     for (let n = 2; v.getFileByPath(path); n++) path = `${base} ${n}${suffix}`;
-    stamp();
-    await v.createBinary(path, data);
+    await tracked(path, () => v.createBinary(path, data));
     return path;
   }
 
@@ -504,9 +699,7 @@ function makeIo(plugin) {
     await ensureFolder(paths.voice());
     const path = `${paths.voice()}/${clipFileName(key)}`;
     const f = v.getFileByPath(path);
-    stamp();
-    if (f) await v.modifyBinary(f, data);
-    else await v.createBinary(path, data);
+    await tracked(path, () => (f ? v.modifyBinary(f, data) : v.createBinary(path, data)));
     return path;
   }
 
@@ -515,6 +708,20 @@ function makeIo(plugin) {
 
   /* ---- first-run scaffold --------------------------------------------- */
 
+  /* Does the vault already have a plan that drives Today? One flagged active,
+     or any main (non-parallel, non-fallback) plan — Today falls back to the
+     first of those when none is flagged (controller.js isImplicitActive). A
+     note that cannot be read counts as yes: when unsure, do not take over. */
+  async function vaultHasTodaysPlan() {
+    for (const f of await readNotesIn(paths.plans())) {
+      let fm;
+      try { fm = parseFrontmatter(await v.cachedRead(f)).fm; } catch (e) { return true; }
+      if (String(fm.active) === 'true') return true;
+      if (String(fm.parallel) !== 'true' && String(fm.fallback) !== 'true') return true;
+    }
+    return false;
+  }
+
   async function scaffold() {
     await ensureFolder(root());
     await ensureFolder(paths.exercises());
@@ -522,7 +729,12 @@ function makeIo(plugin) {
     await ensureFolder(paths.workouts());
     await ensureFolder(paths.goals());
     for (const ex of SEED_EXERCISES) await createExercise(ex);
-    await createPlan(SEED_PLAN.name, SEED_PLAN.fm, SEED_PLAN.body);
+    /* The starter plan arrives ACTIVE only when nothing else could drive
+       Today. Re-running setup used to re-create a deleted starter flagged
+       active beside the user's own plan, and Today switched to it. (An
+       existing starter is never touched: createPlan is write-if-absent.) */
+    const starterActive = !(await vaultHasTodaysPlan());
+    await createPlan(SEED_PLAN.name, { ...SEED_PLAN.fm, active: starterActive }, SEED_PLAN.body);
     /* The running plan starts its ladder from the Monday of the current
        week, so week 1 is the week you set the plugin up. */
     const { todayISO, startOfWeek } = require('./dates');
@@ -625,8 +837,7 @@ function makeIo(plugin) {
             const res = await requestUrl({ url: u, throw: true });
             await ensureFolder(paths.attachments());
             await ensureFolder(dir);
-            stamp();
-            await v.createBinary(localPath, res.arrayBuffer);
+            await tracked(localPath, () => v.createBinary(localPath, res.arrayBuffer));
             out.saved++;
           } catch (e) {
             console.error('gym-vault download', u, e);
@@ -657,4 +868,4 @@ function makeIo(plugin) {
   };
 }
 
-module.exports = { makeIo, safeName };
+module.exports = { makeIo, safeName, findMissingExercises };

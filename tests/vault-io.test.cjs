@@ -33,8 +33,8 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'data.js'), 'utf8'
   const fn = src.match(/async function trash\([^)]*\)\s*\{[\s\S]*?\n  \}/);
   assert.ok(fn, 'trash() not found in data.js — has it been renamed?');
   assert.ok(
-    !/\bstamp\(\)/.test(fn[0]),
-    'trash() must not stamp _lastWrite: stamping suppresses the vault delete event that ' +
+    !/\bstamp\(|\btracked\(/.test(fn[0]),
+    'trash() must not stamp _lastWrite or record an _ownWrites path: stamping suppresses the vault delete event that ' +
     'corrects the stale list, and deleted notes stay on screen. See the comment above trash().',
   );
 }
@@ -52,11 +52,24 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'data.js'), 'utf8'
 }
 
 /* Writes that are NOT deletions must still stamp, or every save triggers a
-   reload storm through the watcher. */
-assert.ok(
-  /const stamp = \(\) => \{ plugin\._lastWrite = Date\.now\(\); \};/.test(src),
-  'the stamp() helper is gone — writes will no longer be distinguishable from user edits',
-);
+   reload storm through the watcher. The stamp is now PER PATH
+   (plugin._ownWrites, cross-lane contract #1 — controller.js skips an event
+   only for a path with an own-write in the last 1.5 s) AND still sets the
+   global _lastWrite, which the watcher falls back to when no map exists. */
+{
+  const stampFn = src.match(/const stamp = path => \{[\s\S]*?\n  \};/);
+  assert.ok(stampFn, 'the stamp(path) helper is gone — writes will no longer be distinguishable from user edits');
+  assert.match(stampFn[0], /plugin\._lastWrite = /, 'stamp() must still set plugin._lastWrite (the watcher fallback)');
+  assert.match(stampFn[0], /plugin\._ownWrites/, 'stamp() must record the path in plugin._ownWrites');
+  assert.match(stampFn[0], /\.set\(path, now\)/, 'stamp() must key the own-write by its PATH');
+  /* Every write goes through stamp() via tracked(); a bare vault write with
+     no stamp is the reload storm (or a swallowed outside edit) again. */
+  const writeLines = src.split('\n').filter(l => /\bv\.(create|createBinary|modify|modifyBinary|process)\(/.test(l) && !/^\s*(\/\*|\*|\/\/)/.test(l));
+  const untracked = writeLines.filter(l => !/\btracked\(/.test(l));
+  assert.ok(writeLines.length > 0 && untracked.length === 0,
+    `${untracked.length} vault write call(s) in data.js are not wrapped in tracked(path, …) — each one must record ` +
+    `its own path in plugin._ownWrites:\n${untracked.join('\n')}`);
+}
 
 /* TRIPWIRE: trash() must WAIT for the vault tree to drop the path.
 

@@ -2,9 +2,11 @@
 /* Export — hand the training log to a coach, or paste it into a chat.
 
    Two ways out, because neither works everywhere: copy to clipboard (fast,
-   but a long export can be awkward on mobile) and save a note into
-   Gym/Exports/ (always works, and on iOS the note can then go out through
-   Obsidian's own share sheet). */
+   but a long export can be awkward on mobile) and save into Gym/Exports/
+   (always works). What lands there is a REAL file of its own kind: the summary
+   is a markdown note (on iOS it can go out through Obsidian's own share
+   sheet); a CSV or JSON export is a .csv / .json file, which is not a note —
+   it is shared from the Files app or Finder. */
 
 const { el, ico, clickableCard, toggleRow } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
@@ -16,6 +18,17 @@ const FORMATS = [
   ['json', 'Everything (JSON)', 'Full structured data, best for analysis.', 'json'],
 ];
 const RANGES = [[30, 'Last 30 days'], [90, 'Last 90 days'], [0, 'Everything']];
+
+/* Where the saved export is and how to send it on — true for the file that
+   format actually produces. */
+function savedNote(format) {
+  const ext = (FORMATS.find(f => f[0] === format) || [])[3] || 'md';
+  if (ext === 'md') {
+    return 'Saved exports land in Gym/Exports. On a phone, open that note and use Obsidian’s share button to send it on.';
+  }
+  return `Saved to Gym/Exports as a .${ext} file, not a note, so Obsidian may not list it. `
+    + 'On a phone share it from the Files app; on a Mac, from Finder.';
+}
 
 function render(ctx, root) {
   const ui = ctx.state.exportUi || (ctx.state.exportUi = {
@@ -117,8 +130,7 @@ function render(ctx, root) {
     }
   });
   root.append(el('div', { class: 'gv-export-actions' }, copyBtn, saveBtn));
-  root.append(el('p', { class: 'gv-dim gv-export-note' },
-    'Saved exports land in Gym/Exports. On a phone, open that note and use Obsidian’s share button to send it on.'));
+  root.append(el('p', { class: 'gv-dim gv-export-note' }, savedNote(ui.format)));
 }
 
 /* The switch row itself now lives in dom.js — the guided-session setup
