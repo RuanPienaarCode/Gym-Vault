@@ -37,6 +37,8 @@ const liveCameraAvailable = () => !!(
   && typeof navigator.mediaDevices.getUserMedia === 'function'
 );
 
+const stopTracks = stream => { for (const track of stream.getTracks()) track.stop(); };
+
 /* The pose outline, as an SVG the caller can lay over anything. */
 function guideSvg(pose, cls) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -84,16 +86,24 @@ class PhotoCaptureModal extends Modal {
     this.onCaptured = typeof opts.onCaptured === 'function' ? opts.onCaptured : () => {};
     this.showGhost = !!this.ghostSrc;
     this.stream = null;
+    /* Which getUserMedia request is the live one. A request that resolves
+       after it was superseded (a re-render asked again) or after the modal
+       closed holds a camera nobody will ever stop — see renderLive. */
+    this.streamToken = 0;
+    this.closed = false;
     this.pending = null;          // {bytes, url} awaiting confirm in handoff mode
   }
 
   onOpen() {
+    this.closed = false;
     this.modalEl.addClass('gv-app');
     this.modalEl.addClass('gv-photo-modal');
     this.render();
   }
 
   onClose() {
+    this.closed = true;
+    this.streamToken++;           // any request still in flight is now stale
     this.stopStream();
     if (this.pending && this.pending.url) URL.revokeObjectURL(this.pending.url);
     clear(this.contentEl);
@@ -104,7 +114,7 @@ class PhotoCaptureModal extends Modal {
      long after the modal is gone. */
   stopStream() {
     if (!this.stream) return;
-    for (const track of this.stream.getTracks()) track.stop();
+    stopTracks(this.stream);
     this.stream = null;
   }
 
@@ -121,14 +131,19 @@ class PhotoCaptureModal extends Modal {
 
   /* ---- path 1: live preview, guide drawn over it ---- */
   renderLive(host) {
+    /* The <video> this stream fed was just thrown away with the rest of the
+       modal body, so release the camera now and ask again below; the token
+       makes any earlier request that is still pending stop itself on arrival
+       instead of overwriting this.stream and being orphaned. */
+    this.stopStream();
+    const token = ++this.streamToken;
     const video = el('video', { class: 'gv-photo-video', playsinline: 'true', muted: 'true', autoplay: 'true' });
     video.muted = true;                       // attribute alone is not enough on iOS
-    const stage = el('div', { class: 'gv-photo-stage' }, video);
-    if (this.ghostSrc && this.showGhost) {
-      stage.append(el('img', { class: 'gv-photo-ghost', src: this.ghostSrc, alt: '' }));
-    } else {
-      stage.append(guideSvg(this.pose));
-    }
+    const overlayNode = () => (this.ghostSrc && this.showGhost
+      ? el('img', { class: 'gv-photo-ghost', src: this.ghostSrc, alt: '' })
+      : guideSvg(this.pose));
+    let overlay = overlayNode();
+    const stage = el('div', { class: 'gv-photo-stage' }, video, overlay);
     host.append(stage);
 
     const shoot = el('button', { class: 'gv-btn gv-photo-shoot', type: 'button' },
@@ -141,16 +156,31 @@ class PhotoCaptureModal extends Modal {
     });
 
     const actions = el('div', { class: 'gv-photo-actions' }, shoot);
-    if (this.ghostSrc) actions.append(this.ghostToggle(() => this.render()));
+    /* The overlay chip swaps ONLY the overlay node. It used to re-render the
+       whole modal, which opened a second camera stream and orphaned the
+       first — the camera stayed on after close. */
+    if (this.ghostSrc) {
+      actions.append(this.ghostToggle(() => {
+        const next = overlayNode();
+        overlay.replaceWith(next);
+        overlay = next;
+      }));
+    }
     host.append(actions);
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 } }, audio: false })
       .then(stream => {
-        if (!this.contentEl.isConnected) { for (const t of stream.getTracks()) t.stop(); return; }
+        /* Closed, or a newer request owns the screen: this stream has no
+           video element to feed and nothing will ever stop it but us. */
+        if (this.closed || token !== this.streamToken || !this.contentEl.isConnected) { stopTracks(stream); return; }
+        this.stopStream();            // never leave an earlier stream orphaned
         this.stream = stream;
         video.srcObject = stream;
       })
       .catch(() => {
+        /* A refusal for a request that is no longer the live one must not
+           tear down the screen the newer request is driving. */
+        if (this.closed || token !== this.streamToken) return;
         /* Permission refused, or the WebView simply won't do it. Not an
            error state — it is the other supported path. */
         this.stopStream();
@@ -225,13 +255,26 @@ class PhotoCaptureModal extends Modal {
     host.append(el('div', { class: 'gv-photo-actions' }, keep, retake, this.ghostToggle(() => this.render())));
   }
 
+  /* The overlay on/off chip. It repaints itself (rebuilt through el(), so a
+     fresh chip keeps the host-button opt-out el() gives every button) and then
+     calls `after` — which decides how much of the screen has to change. */
   ghostToggle(after) {
-    const b = el('button', {
-      class: `gv-chip${this.showGhost ? ' on' : ''}`, type: 'button',
-      'aria-pressed': this.showGhost ? 'true' : 'false',
-    }, el('span', {}, this.showGhost ? 'Overlay on' : 'Overlay off'));
-    b.addEventListener('click', () => { this.showGhost = !this.showGhost; after(); });
-    return b;
+    const build = () => {
+      const b = el('button', {
+        class: `gv-chip${this.showGhost ? ' on' : ''}`, type: 'button',
+        'aria-pressed': this.showGhost ? 'true' : 'false',
+      }, el('span', {}, this.showGhost ? 'Overlay on' : 'Overlay off'));
+      b.addEventListener('click', () => {
+        this.showGhost = !this.showGhost;
+        const next = build();
+        const hadFocus = document.activeElement === b;
+        b.replaceWith(next);
+        if (hadFocus && typeof next.focus === 'function') next.focus();
+        after();
+      });
+      return b;
+    };
+    return build();
   }
 
   commit(bytes) {

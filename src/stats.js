@@ -109,23 +109,32 @@ function weekStreak(dates, weekStart, today) {
 
 const sameName = (a, b) => (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
 
+/* THE one rule for "which logged rows belong to this exercise": every row of
+   every workout whose name matches (case/space-folded), undated workouts
+   included. exerciseBests and best1RM both walk rows through this, so the
+   tiles on one page can never be built from different row sets. */
+function forEachExerciseRow(workouts, exercise, fn) {
+  for (const w of workouts) {
+    for (const r of w.rows || []) {
+      if (sameName(r.exercise, exercise)) fn(r, w);
+    }
+  }
+}
+
 /* Scan every logged set of `exercise` for maxima. Returns nulls when the
    exercise was never logged — "no data" and "zero" must stay distinct. */
 function exerciseBests(workouts, exercise) {
   let reps = null, weight = null, seconds = null, distance = null, lastDate = null;
   let totalDistance = 0;
-  for (const w of workouts) {
-    for (const r of w.rows || []) {
-      if (!sameName(r.exercise, exercise)) continue;
-      const rp = num(r.reps), wt = num(r.weight_kg), sc = num(r.seconds), di = num(r.distance_km);
-      if (rp !== null && (reps === null || rp > reps)) reps = rp;
-      if (wt !== null && (weight === null || wt > weight)) weight = wt;
-      if (sc !== null && (seconds === null || sc > seconds)) seconds = sc;
-      if (di !== null && (distance === null || di > distance)) distance = di;
-      if (di !== null) totalDistance += di;
-      if (w.fm && w.fm.date && (!lastDate || w.fm.date > lastDate)) lastDate = w.fm.date;
-    }
-  }
+  forEachExerciseRow(workouts, exercise, (r, w) => {
+    const rp = num(r.reps), wt = num(r.weight_kg), sc = num(r.seconds), di = num(r.distance_km);
+    if (rp !== null && (reps === null || rp > reps)) reps = rp;
+    if (wt !== null && (weight === null || wt > weight)) weight = wt;
+    if (sc !== null && (seconds === null || sc > seconds)) seconds = sc;
+    if (di !== null && (distance === null || di > distance)) distance = di;
+    if (di !== null) totalDistance += di;
+    if (w.fm && w.fm.date && (!lastDate || w.fm.date > lastDate)) lastDate = w.fm.date;
+  });
   /* totalDistance stays 0-vs-null honest: null distance means never run. */
   return { reps, weight, seconds, distance, totalDistance: Math.round(totalDistance * 10) / 10, lastDate };
 }
@@ -134,6 +143,25 @@ function exerciseBests(workouts, exercise) {
 function epley1RM(weight, reps) {
   if (!weight || !reps) return null;
   return Math.round(weight * (1 + reps / 30) * 10) / 10;
+}
+
+/* The exercise's best estimated 1RM: the highest Epley figure of any ONE set,
+   weight and reps taken from the same row. Never epley1RM(best weight, best
+   reps) off exerciseBests — those two maxima usually come from different sets
+   (a heavy single and a light 20-rep back-off made 140 kg x 1 + 60 kg x 20
+   read as 233.3 kg, a lift nobody did). A row without a positive weight AND a
+   positive rep count is not a set an estimate can be drawn from. Null when no
+   row qualifies — "no data" stays distinct from zero. Rows come through
+   forEachExerciseRow, the same selection exerciseBests uses. */
+function best1RM(workouts, exercise) {
+  let best = null;
+  forEachExerciseRow(workouts, exercise, r => {
+    const rp = num(r.reps), wt = num(r.weight_kg);
+    if (rp === null || wt === null || rp <= 0 || wt <= 0) return;
+    const est = epley1RM(wt, rp);
+    if (est !== null && (best === null || est > best)) best = est;
+  });
+  return best;
 }
 
 function sessionVolume(rows) {
@@ -259,7 +287,7 @@ function bmi(weightKg, heightCm) {
 }
 
 module.exports = {
-  num, workoutDates, workoutDate, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM,
+  num, workoutDates, workoutDate, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM, best1RM,
   sessionVolume, sessionSets, setCounts, distanceInWeek, ladderWeek,
   goalCurrent, goalIssue, goalProgress, weightSeries, bmi,
 };

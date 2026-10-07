@@ -12,7 +12,7 @@
 
 const { MarkdownRenderer } = require('obsidian');
 const { el, ico, fmt, fmtSeconds, backButton } = require('./dom');
-const { exerciseBests, epley1RM, sameName } = require('./stats');
+const { exerciseBests, best1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
 const { recordHistory, KINDS } = require('./records');
 const { editExercise } = require('./page-exercises');
@@ -78,7 +78,9 @@ function render(ctx, root) {
 
   /* Bests */
   const bests = exerciseBests(ctx.data.workouts, ex.name);
-  const orm = epley1RM(bests.weight, bests.reps);
+  /* One set's own weight and reps — never the best weight with the best reps,
+     which come from different sets (stats.best1RM says why). */
+  const orm = best1RM(ctx.data.workouts, ex.name);
   const isRun = (ex.fm.unit || '') === 'km';
   /* A run has no "best weight" or 1RM — showing those as dashes is noise.
      Longest time is deliberately NOT divided by longest distance to make a
