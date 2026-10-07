@@ -6,6 +6,7 @@ const { Notice, normalizePath } = require('obsidian');
 const { el, ico, clear } = require('./dom');
 const { makeIo } = require('./data');
 const { ConfirmModal } = require('./modals');
+const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
 const pages = {
@@ -133,7 +134,7 @@ function mountApp(view) {
        belongs to, and consumed exactly once by the next fresh session built
        for that SAME draft (see page-session.js's render() and its own
        comment, 0.11.2 journey audit finding L9). */
-    state: { page: 'dashboard', params: {}, logDraft: null, session: null, setup: null, setupUi: null, pageCleanup: null, sessionCarry: null },
+    state: { page: 'dashboard', params: {}, session: null, setup: null, setupUi: null, pageCleanup: null, sessionCarry: null },
     _interval: null,
     /* Set by ctx.nav() only (never by a plain ctx.rerender() from local UI
        state — ticking a set, toggling a switch — which must NOT steal focus
@@ -141,6 +142,43 @@ function mountApp(view) {
        ctx.rerender(). */
     _focusPageOnRender: false,
   };
+
+  /* THE SESSION IN PROGRESS IS KEPT ON THIS DEVICE (0.12.1, audit L3-01). It
+     used to live only in memory, so an iOS kill after the Music button, a
+     call, closing the tab or a plugin update lost every finished set; see
+     draft-store.js for what is kept, where, and why not in the vault.
+
+     logDraft is an ACCESSOR so that every existing assignment site — Start,
+     Discard, "Discard and start", Finish — keeps or clears the stored copy
+     without being touched one by one. The edits that do NOT assign (a set
+     ticked, a figure typed, an exercise added) are caught where they all
+     funnel: ctx.rerender, every nav, ctx.persistDraft for typed figures that
+     must not re-render, and the page going to the background. Clearing is
+     tied to THIS controller having held a draft: a second Gym view with none
+     of its own must never wipe the first one's. */
+  const draftStore = makeDraftStore(app);
+  let logDraft = null;
+  let draftStatus = EMPTY;
+  /* Never throws: the store catches its own storage failures, but the
+     snapshot is taken before it gets there, and a workout must never fail
+     because its safety copy did. A copy that could not be taken is LOST, so
+     the close notice stays honest. */
+  const keepDraft = () => {
+    if (!logDraft) return draftStatus;
+    try { draftStatus = draftStore.save(logDraft); } catch (e) { draftStatus = LOST; }
+    return draftStatus;
+  };
+  Object.defineProperty(ctx.state, 'logDraft', {
+    enumerable: true, configurable: true,
+    get: () => logDraft,
+    set: next => {
+      const had = !!logDraft;
+      logDraft = next || null;
+      if (logDraft) keepDraft();
+      else if (had) { draftStore.clear(); draftStatus = EMPTY; }
+    },
+  });
+  ctx.persistDraft = keepDraft;
 
   const rootEl = view.contentEl;
   rootEl.addClass('gv-app');
@@ -360,7 +398,20 @@ function mountApp(view) {
     heading.focus({ preventScroll: true });
   }
 
+  /* Has Obsidian's metadata cache finished its first pass? `initialized` is
+     false until it has (it is not in the published typings, so only an
+     EXPLICIT false counts as "still indexing" — a host that does not say is
+     treated as done, because the cost of guessing wrong that way is a setup
+     card that a reload corrects, and the cost of the other way was an endless
+     wait). The `resolved` event is the other signal: it fires when the cache
+     settles, and start() sets this when it does. */
+  let cacheSettled = false;
+  const stillIndexing = () => !cacheSettled && !!app.metadataCache && app.metadataCache.initialized === false;
+
   ctx.rerender = () => {
+    /* Every tick, untick, added set and finished set re-renders, and so does
+       every nav (applyNav ends here) — the one place all of them pass. */
+    keepDraft();
     if (ctx._interval) { window.clearInterval(ctx._interval); ctx._interval = null; }
     if (!pageEl) return;
     clear(pageEl);
@@ -376,10 +427,15 @@ function mountApp(view) {
     if (!ctx.data || ctx.loadError) {
       renderNotReady(ctx, pageEl);
     } else if (!ctx.data.present) {
-      /* The gym folder existing but reading empty means Obsidian has not
-         finished indexing — offering "create my gym" there would be wrong
-         and alarming. Only a genuinely absent folder is a fresh start. */
-      if (ctx.data.rootExists || ctx.data.unreadable) {
+      /* The gym folder existing but reading empty MEANS Obsidian has not
+         finished indexing — but only while it has not. Offering "create my
+         gym" mid-index would be wrong and alarming; refusing it for ever once
+         indexing is done (an existing folder with no gym in it yet, e.g. the
+         Gym folder setting pointed at an empty "Training") left a "Waiting"
+         card with a Try again that could never succeed (0.12.1, audit L2-06).
+         Files that could not be read still wait: that is a sync landing, not
+         an empty folder. */
+      if (ctx.data.unreadable || (ctx.data.rootExists && stillIndexing())) {
         renderNotReady(ctx, pageEl);
       } else {
         renderSetup(ctx, pageEl);
@@ -508,7 +564,25 @@ function mountApp(view) {
   }
 
   /* Vault watcher: reload when a gym file changes and the change wasn't one
-     of our own writes (write-guard, same pattern as the budget plugin). */
+     of our own writes (write-guard, same pattern as the budget plugin).
+
+     OWN WRITES ARE TRACKED PER PATH (0.12.1, audit L2-04). A single
+     "we wrote something in the last 1.5 s" stamp hid EVERY gym-folder event
+     for that long, so an edit to a DIFFERENT note landing in the window — an
+     iCloud edit from the other device — was never reloaded, and the next save
+     of that note wrote the stale copy over it. data.js records each path it
+     writes (a rename under both names) in plugin._ownWrites, a
+     Map<vaultPath, ms>; an event is ours only when ITS path, or on a rename
+     its old path, was written inside the window. The map is read at event
+     time because data.js creates it lazily; with none at all the old blanket
+     stamp still applies. */
+  const OWN_WRITE_MS = 1500;
+  const isOwnWrite = (...paths) => {
+    const now = Date.now();
+    const own = plugin._ownWrites;
+    if (!(own instanceof Map)) return now - (plugin._lastWrite || 0) < OWN_WRITE_MS;
+    return paths.some(p => !!p && own.has(p) && now - own.get(p) < OWN_WRITE_MS);
+  };
   let debounceTimer = null;
   const onVaultEvent = (f, oldPath) => {
     if (!f || !f.path) return;
@@ -517,7 +591,7 @@ function mountApp(view) {
     /* rename passes (file, oldPath) — a note dragged OUT of the gym folder
        only matches on its OLD path, and missing it leaves stale data. */
     if (!inGym(f.path) && !inGym(oldPath)) return;
-    if (Date.now() - (plugin._lastWrite || 0) < 1500) return;
+    if (isOwnWrite(f.path, oldPath)) return;
     if (debounceTimer) window.clearTimeout(debounceTimer);
     debounceTimer = window.setTimeout(() => { debounceTimer = null; ctx.reload(); }, 400);
   };
@@ -535,11 +609,47 @@ function mountApp(view) {
     resizeObs.observe(rootEl);
   };
 
+  /* THE LAST CHANCE BEFORE iOS MAY KILL US. A page that goes to the
+     background (the Music button, a call, the app switcher) gets no further
+     code once the system evicts it, so the session is written at the moment
+     it becomes hidden — and again on pagehide, which covers the paths that
+     skip visibilitychange. The document and window come from the view's own
+     root so a pop-out window's events are the ones listened to; both are
+     removed in stop(). */
+  const hostDoc = rootEl.ownerDocument || (typeof document !== 'undefined' ? document : null);
+  const hostWin = (hostDoc && hostDoc.defaultView) || (typeof window !== 'undefined' ? window : null);
+  const onVisibility = () => { if (hostDoc && hostDoc.visibilityState === 'hidden') keepDraft(); };
+  const onPageHide = () => { keepDraft(); };
+
+  /* Another open Gym view already holding a live draft owns it. Restoring the
+     stored copy here too would give one session two independent lives, and
+     banking both would save it twice. */
+  const siblingHoldsDraft = () => {
+    let held = false;
+    if (typeof plugin.forEachView !== 'function') return false;
+    try {
+      plugin.forEachView(ctl => { if (ctl && ctl.ctx !== ctx && typeof ctl.hasDraft === 'function' && ctl.hasDraft()) held = true; });
+    } catch (e) { console.error('gym-vault sibling views', e); }
+    return held;
+  };
+
+  /* A session that was in progress when the app went away comes back as the
+     same Today "Session in progress" card an in-memory one gets (ctx.
+     resumeDraft is the way in). Assigned through the accessor, which writes
+     it straight back — with the clock already corrected for a long gap. */
+  const restoreSession = () => {
+    if (logDraft || siblingHoldsDraft()) return;
+    const back = draftStore.load();
+    if (back) ctx.state.logDraft = back;
+  };
+
   return {
     ctx,
     async start() {
       buildShell();
       watchWidth();
+      if (hostDoc) hostDoc.addEventListener('visibilitychange', onVisibility);
+      if (hostWin) hostWin.addEventListener('pagehide', onPageHide);
       for (const evt of ['modify', 'create', 'delete', 'rename']) {
         view.registerEvent(app.vault.on(evt, onVaultEvent));
       }
@@ -550,12 +660,21 @@ function mountApp(view) {
          until some unrelated file event happens to shake it loose. */
       if (app.metadataCache && app.metadataCache.on) {
         view.registerEvent(app.metadataCache.on('resolved', () => {
+          /* The cache has settled: from here an existing-but-empty gym folder
+             is a fresh start, not "still indexing" (see stillIndexing). */
+          cacheSettled = true;
           if (!ctx.data || ctx.loadError || !ctx.data.present) ctx.reload();
         }));
       }
+      restoreSession();
       await ctx.reload();
     },
     stop() {
+      /* Closing the view, unloading or updating the plugin: keep what is on
+         the screen, then let go of the page-level listeners. */
+      keepDraft();
+      if (hostDoc) hostDoc.removeEventListener('visibilitychange', onVisibility);
+      if (hostWin) hostWin.removeEventListener('pagehide', onPageHide);
       if (resizeObs) resizeObs.disconnect();
       if (ctx._interval) window.clearInterval(ctx._interval);
       if (debounceTimer) window.clearTimeout(debounceTimer);
@@ -567,6 +686,10 @@ function mountApp(view) {
       }
     },
     hasDraft: () => !!ctx.state.logDraft,
+    /* Write the session to the device NOW and say what became of it — KEPT,
+       EMPTY (nothing logged yet) or LOST (there was work and the device
+       would not take it). view.js words its close notice from this. */
+    keepDraft,
     reload: () => ctx.reload(),
   };
 }
@@ -603,6 +726,13 @@ function renderSetup(ctx, root) {
     el('p', { class: 'gv-setup-sub' },
       `This creates plain markdown files under "${ctx.settings.gymFolder}/" — a starter exercise library, `,
       'the Get Over The Bar plan, goals to chase, a profile and a body log. Everything stays in your vault.'),
+    /* The folder is already here but reads empty. Obsidian may be done
+       indexing while a sync is still downloading the vault to this device —
+       the app cannot tell that from "really empty", and Create would write
+       starter notes beside ones still on their way (duplicate copies). */
+    ctx.data && ctx.data.rootExists ? el('p', { class: 'gv-setup-sub' },
+      `"${ctx.settings.gymFolder}/" is already here but empty. If this vault is still syncing to this device, `,
+      'wait for that to finish first — creating files now can leave duplicate copies.') : null,
     el('button', {
       class: 'gv-btn gv-btn-hero', type: 'button',
       onclick: async () => {

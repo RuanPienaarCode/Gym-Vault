@@ -166,10 +166,12 @@ assert.ok(
   text.indexOf('A · Pull Priority') !== -1 && text.indexOf('Get Over The Bar') !== -1,
   `the slab names the day and the plan, so the user knows what they are going back into. Got: ${text.slice(0, 200)}`,
 );
+/* Since 0.12.1 the draft survives a kill (kept device-local, draft-store.js),
+   so "nothing is saved" would now be false — but it is still NOT in the vault
+   until Finish, and that is the fact that makes resuming matter. */
 assert.ok(
-  text.indexOf('Nothing is saved until you finish it') !== -1,
-  'the slab must say the work is not saved yet. That is the whole reason resuming matters rather than ' +
-  'starting again, and it is the one fact the old silent behaviour hid.',
+  text.indexOf('Kept on this device') !== -1 && text.indexOf('saved to your vault when you finish') !== -1,
+  'the slab must say where the work is: kept on this device, and not in the vault until Finish. Got: ' + text.slice(0, 200),
 );
 
 (resume.listeners.click || []).forEach(fn => fn({}));

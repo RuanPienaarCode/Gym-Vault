@@ -133,6 +133,13 @@ contacted unless you tap the button, and the plugin never reads what you are
 playing. The share token Spotify appends to a copied link (`?si=…`) identifies
 whoever shared it and is stripped before the link is saved.
 
+**A session in progress.** Until you finish or discard it, the sets you have
+logged are kept in Obsidian's local storage on that device only — not in your
+vault and not synced — so closing the Gym tab, an app update or the phone
+closing Obsidian in the background does not lose them; Today offers the
+session back. Finishing writes it to your vault as a workout note and clears
+the stored copy; discarding clears it too.
+
 **Clipboard.** The Export page's *Copy* button writes the export you are
 looking at to the clipboard. The plugin never reads the clipboard.
 

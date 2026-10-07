@@ -31,7 +31,7 @@ const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey } = require('./motion-count');
 const { resolveExerciseImages } = require('./page-exercise-detail');
-const { buildRows, finishSession } = require('./page-log');
+const { buildRows, finishSession, keepDraft } = require('./page-log');
 const { EndSessionModal } = require('./modals');
 const { nextFrameIndex } = require('./media-cycle');
 const { musicButton } = require('./music-picker');
@@ -46,6 +46,15 @@ const MEDIA_CYCLE_MS = 1100; // time each frame holds before crossfading to the 
    frames is unchanged, because slice() takes what is there. Beyond four the
    cycle outlasts a working set and starts reading as a slideshow. */
 const MEDIA_MAX_FRAMES = 4;
+
+/* WHAT A LIVE SET HAS OBSERVED. The tap counter watches reps and the hold's
+   stopwatch watches seconds — see applyCompletion for what the list means and
+   why it is a list. Named once because there are now two ways a live figure
+   reaches applyCompletion (the Done button, and commitLiveSet when the session
+   is ended with a set still on screen) and they must claim exactly the same
+   thing: a second copy of this rule is how the trust seam would drift. */
+const OBSERVED_REPS = Object.freeze({ observed: Object.freeze(['reps']) });
+const OBSERVED_SECONDS = Object.freeze({ observed: Object.freeze(['seconds']) });
 
 function render(ctx, root) {
   const draft = ctx.state.logDraft;
@@ -179,6 +188,47 @@ function progressBar(draft) {
   return el('div', { class: 'gv-bar gv-session-bar' }, el('div', { class: 'gv-bar-fill', style: `width:${pct}%` }));
 }
 
+/* THE SET ON SCREEN IS PART OF THE SESSION (0.12.1, audit L3-02). With twelve
+   taps on the counter and no Done yet, "Bank it" saved the sets already ticked
+   and silently dropped the twelve; "Back to the log" left an empty set behind;
+   a hold that was running (a 50-second plank) saved nothing. What the user was
+   looking at is not what landed.
+
+   So the two exits that KEEP the work commit the live figure first, through
+   applyCompletion with the same observed kind the Done button uses — the tap
+   count observed reps, a running stopwatch observed seconds. Nothing new about
+   what may claim a record. "Keep going" never reaches this (it only closes the
+   sheet) and Discard must not: both leave the live set exactly as it was.
+
+   Only the set-by-set screen has a live set. A hold still in its count-in has
+   not started, an empty counter has nothing, a run's km and minutes are
+   written into the set as they are typed, and a timed interval completes only
+   when its clock does — none of those commit anything. Returns whether it
+   committed. */
+function commitLiveSet(ctx, draft) {
+  const sess = ctx.state.session;
+  if (!sess || sess.phase !== 'active' || (draft.timed && sess.timed)) return false;
+  const cur = flow.currentSet(draft, sess.pos);
+  if (!cur) return false;
+  const { entry, set } = cur;
+  const key = setKey(sess.pos);
+  if (entry.distance) return false;
+  if (entry.duration) {
+    const hold = sess.hold;
+    if (!hold || sess.holdFor !== key || !hold.running) return false;
+    const secs = Math.round(heldSeconds(hold));
+    if (secs <= 0) return false;
+    hold.running = false;
+    hold.frozenSeconds = secs;
+    applyCompletion(ctx, draft, sess, set, entry, { seconds: String(secs) }, OBSERVED_SECONDS);
+    return true;
+  }
+  const counter = sess.counter;
+  if (!counter || sess.counterFor !== key || !(counter.count > 0)) return false;
+  applyCompletion(ctx, draft, sess, set, entry, { reps: String(counter.count) }, OBSERVED_REPS);
+  return true;
+}
+
 /* The one sheet both ways out of a session go through. X used to nav
    straight to the overview, which made the ONLY exit from the live screen an
    icon that reads as cancel — and the save then hid behind "Bank it" under
@@ -186,9 +236,9 @@ function progressBar(draft) {
    `review` keeps the old behaviour available as one of the three answers. */
 function endSession(ctx, draft, { review } = {}) {
   new EndSessionModal(ctx.app, {
-    onSave: () => finishSession(ctx, draft),
+    onSave: () => { commitLiveSet(ctx, draft); return finishSession(ctx, draft); },
     onDiscard: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
-    onReview: review ? () => ctx.nav('log') : null,
+    onReview: review ? () => { commitLiveSet(ctx, draft); ctx.nav('log'); } : null,
   }).open();
 }
 
@@ -636,13 +686,13 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   });
 
   const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
-  /* observed: ['reps'] ALWAYS — this button is shared by a plain reps entry
+  /* OBSERVED_REPS ALWAYS — this button is shared by a plain reps entry
      AND a weighted one (weightedBody wraps this same body). The tap counter
      watched the reps either way; it never watched the weight, so this list
      must not grow a 'weight' entry just because the entry is weighted —
      that would be right back to finding 2 (an untouched @60kg prefill
      claiming a false record). */
-  doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }, { observed: ['reps'] }));
+  doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }, OBSERVED_REPS));
 
   /* SIX BUTTONS BECAME FOUR, AND THEN THREE. Motion, Type and the explainer
      are decisions made once, at the start of a set — they sat at thumb
@@ -714,9 +764,15 @@ function weightedBody(ctx, draft, sess, entry, set) {
   const weightInput = numericInput({
     class: 'gv-set-input gv-session-weight', placeholder: 'kg', value: set.weight_kg ?? '',
     'aria-label': `Weight in kilograms — ${entry.exercise}`,
-  }, v => { set.weight_kg = v; set.touched = true; });
+  }, v => { set.weight_kg = v; set.touched = true; keepDraft(ctx); });
   const weightRow = el('div', { class: 'gv-session-weightrow' }, weightInput, el('span', { class: 'gv-set-unit' }, 'kg'));
   return repsBody(ctx, draft, sess, entry, set, weightRow);
+}
+
+/* How long a hold has run: the wall clock while it is running, the frozen
+   figure otherwise. The Done path and commitLiveSet both read it here. */
+function heldSeconds(hold) {
+  return hold.running ? Math.max(0, (Date.now() - hold.startedAt) / 1000) : hold.frozenSeconds;
 }
 
 /* Duration/holds: tap to start, tap to stop — stop IS the completion action
@@ -758,7 +814,7 @@ function durationBody(ctx, draft, sess, entry, set) {
   const powerUp = meter ? attachPowerUp(zone, 'Time reached') : null;
   if (target) zone.append(el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(target)}`));
 
-  const currentSeconds = () => (hold.running ? Math.max(0, (Date.now() - hold.startedAt) / 1000) : hold.frozenSeconds);
+  const currentSeconds = () => heldSeconds(hold);
 
   let holdCountIn = null;
 
@@ -777,10 +833,10 @@ function durationBody(ctx, draft, sess, entry, set) {
       const secs = Math.round(currentSeconds());
       hold.running = false;
       hold.frozenSeconds = secs;
-      /* observed: ['seconds'] — the stopwatch above genuinely ran for this
+      /* OBSERVED_SECONDS — the stopwatch above genuinely ran for this
          many seconds; unlike a timed interval's clock, it was started and
          stopped by the user's own taps, not merely allowed to elapse. */
-      completeSet(ctx, draft, sess, set, entry, { seconds: String(secs) }, { observed: ['seconds'] });
+      completeSet(ctx, draft, sess, set, entry, { seconds: String(secs) }, OBSERVED_SECONDS);
     }
   };
   attachTapZone(zone, startStop);
@@ -877,11 +933,11 @@ function distanceBody(ctx, draft, sess, entry, set) {
   const kmInput = numericInput({
     class: 'gv-set-input gv-session-distance', placeholder: 'km', value: set.distance_km ?? '',
     'aria-label': `Distance in kilometres — ${entry.exercise}`,
-  }, v => { set.distance_km = v; set.touched = true; });
+  }, v => { set.distance_km = v; set.touched = true; keepDraft(ctx); });
   const minInput = numericInput({
     class: 'gv-set-input gv-session-distance', placeholder: 'min', value: set.minutes ?? '',
     'aria-label': `Minutes — ${entry.exercise}`,
-  }, v => { set.minutes = v; set.touched = true; });
+  }, v => { set.minutes = v; set.touched = true; keepDraft(ctx); });
 
   const row = el('div', { class: 'gv-session-runrow' },
     el('div', { class: 'gv-session-runfield' }, kmInput, el('span', { class: 'gv-set-unit' }, 'km')),
@@ -1443,6 +1499,7 @@ function timedFigures(ctx, entry, set, iv) {
     }, v => {
       set[key] = v;
       set.touched = true;
+      keepDraft(ctx);
       wrap.classList.remove('gv-timed-prefill'); // typed — it reads as a result now, not a suggestion
     });
     wrap.append(input, el('span', { class: 'gv-set-unit' }, unit));

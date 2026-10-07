@@ -51,8 +51,14 @@ class GymView extends ItemView {
 
   async onClose() {
     if (this.appCtl) {
-      if (this.appCtl.hasDraft()) {
-        new Notice('Gym: the view closed mid-workout — that session was not saved.', 8000);
+      /* The session is written to the device first, so the notice can say what
+         actually became of it: "kept" only when the device took it. A closed
+         view with nothing logged yet has nothing to say. */
+      const kept = this.appCtl.keepDraft();
+      if (kept === 'kept') {
+        new Notice('Gym: the view closed mid-workout — your session is kept on this device and offered back when Gym reopens.', 8000);
+      } else if (kept === 'lost') {
+        new Notice('Gym: the view closed mid-workout and this device could not hold on to it — that session was not saved.', 8000);
       }
       this.appCtl.stop();
     }

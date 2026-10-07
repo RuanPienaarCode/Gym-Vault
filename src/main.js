@@ -19,6 +19,9 @@ class GymPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
     this._lastWrite = 0; // shared write-guard timestamp (see data.js / controller.js)
+    /* Per-path own-write record: data.js stamps every path it writes, the
+       controller's vault watcher skips an event only for a path in here. */
+    this._ownWrites = new Map();
 
     this.registerView(VIEW_TYPE, leaf => new GymView(leaf, this));
     this.addRibbonIcon('dumbbell', 'Open gym', () => this.activateView());

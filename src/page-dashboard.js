@@ -53,7 +53,7 @@ function render(ctx, root) {
       el('div', { class: 'gv-alsotoday-main' },
         el('div', { class: 'gv-kicker' }, 'Session in progress'),
         el('div', { class: 'gv-alsotoday-name' }, ctx.describeDraft()),
-        el('div', { class: 'gv-alsotoday-plan' }, 'Nothing is saved until you finish it')),
+        el('div', { class: 'gv-alsotoday-plan' }, 'Kept on this device — saved to your vault when you finish')),
       el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.resumeDraft() },
         ico('play'), el('span', {}, 'Resume'))));
   }

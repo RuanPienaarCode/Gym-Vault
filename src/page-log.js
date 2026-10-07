@@ -1,7 +1,10 @@
 'use strict';
-/* Workout logging — the live session screen. The draft lives in memory on
-   ctx.state.logDraft and nothing touches disk until Finish, so backing out
-   never leaves a half-written session note. */
+/* Workout logging — the live session screen. The draft lives on
+   ctx.state.logDraft and nothing touches the VAULT until Finish, so backing
+   out never leaves a half-written session note. It is not memory-only any
+   more: the controller keeps a device-local copy (src/draft-store.js) so a
+   killed app offers the session back — see keepDraft below for the edits
+   that have to ask for it. */
 
 const { el, ico, fmtSeconds, numericInput } = require('./dom');
 const { todayISO, fmtShort } = require('./dates');
@@ -33,6 +36,14 @@ function startDraft(ctx, plan, day, opts) {
     startedAt: Date.now(),
     entries,
   };
+}
+
+/* A figure typed into the draft changes it in place and must NOT re-render
+   (the input would lose focus), so it cannot rely on ctx.rerender to write the
+   device-local copy; it asks directly. A no-op under a ctx that has no
+   controller behind it (the unit guards render these pages against a stub). */
+function keepDraft(ctx) {
+  if (ctx && typeof ctx.persistDraft === 'function') ctx.persistDraft();
 }
 
 function makeEntry(ctx, exercise, sets, target) {
@@ -219,7 +230,7 @@ function setRow(ctx, entry, set, si) {
        nothing to anyone not looking at the colour. */
     'aria-label': `${INPUT_LABELS[key] || placeholder} — ${entry.exercise}, set ${si + 1}`
       + (isPrefill && String(set[key] ?? '').trim() ? ', from the plan, not yet logged' : ''),
-  }, v => { set[key] = v; set.touched = true; });
+  }, v => { set[key] = v; set.touched = true; keepDraft(ctx); });
 
   if (entry.distance) {
     /* Two inputs in one row — narrower so km + min + the 48px tick still
@@ -401,4 +412,4 @@ async function finishSession(ctx, draft) {
   ctx.reload();
 }
 
-module.exports = { render, startDraft, buildRows, finishSession };
+module.exports = { render, startDraft, buildRows, finishSession, keepDraft };
