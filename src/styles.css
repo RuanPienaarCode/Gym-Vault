@@ -28,7 +28,10 @@
   --gv-ink-dim: #5b6551;
   --gv-lime: #84cc16;
   --gv-lime-hi: #a3e635;
-  --gv-lime-deep: #4d7c0f;
+  /* Small accent text on white AND, in dark mode, on the near-white block
+     --gv-ink flips to (#eef3e6): #4d7c0f was 4.42:1 there, 0.08 short of AA
+     for 10-14px text (0.12.1, L5-02). contrast.test.cjs measures both. */
+  --gv-lime-deep: #4b790e;
   --gv-lime-ghost: #f4fbe8;
   --gv-danger: #b91c1c;
   /* Fire, for the counter's flames and the streak flame. NOT an accent: the
@@ -566,6 +569,9 @@ body.is-phone .gv-app .gv-page {
 }
 .theme-dark .gv-app .gv-add-line { border-color: var(--gv-line-2); color: var(--gv-ink); }
 .gv-app .gv-add-line:hover { background: var(--gv-lime-ghost); color: var(--gv-lime-deep); }
+/* lime-deep is a dark green: on the dark ghost it is 3.1:1 (volt 2.3) — the
+   same flip every other lime-deep text rule in this file already makes. */
+.theme-dark .gv-app .gv-add-line:hover { color: var(--gv-lime); }
 .gv-add-line .gv-ico svg { width: 14px; height: 14px; }
 
 /* Floor slab progress bar — acting register even at rest, because it's a
@@ -1148,6 +1154,13 @@ body.is-phone .gv-app .gv-page {
 .gv-rung.now { background: var(--gv-ink); }
 .gv-rung.now .gv-rung-km { color: var(--gv-lime-hi); font-size: 17px; }
 .gv-rung.now .gv-rung-wk { color: var(--gv-lime-hi); }
+/* --gv-ink is near-white in dark mode, which left lime-hi text on it at
+   1.34:1 (volt 1.17) — the current week, the one rung that matters, was
+   unreadable. Flip the block to the accent flood and put fixed ink on it,
+   as .gv-head-btn.on and .gv-nav-btn.on do. */
+.theme-dark .gv-app .gv-rung.now { background: var(--gv-lime); }
+.theme-dark .gv-app .gv-rung.now .gv-rung-km,
+.theme-dark .gv-app .gv-rung.now .gv-rung-wk { color: var(--gv-ink-fixed); }
 .gv-ladder-note { margin-top: 8px; line-height: 1.5; }
 
 /* ---------- history ---------- */
@@ -1202,6 +1215,7 @@ body.is-phone .gv-app .gv-page {
 .gv-trend-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .gv-trend-delta { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); }
 .gv-trend-delta.downs { color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-trend-delta.downs { color: var(--gv-lime); }
 .gv-trend-delta.ups { color: var(--gv-ink); }
 .gv-spark { width: 100%; height: 72px; }
 .gv-spark-line { fill: none; stroke: var(--gv-lime); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -1281,7 +1295,6 @@ body.is-phone .gv-app .gv-page {
 .gv-log-set.done .gv-set-num { color: var(--gv-lime-hi); }
 .theme-dark .gv-app .gv-log-set.done .gv-set-num { color: var(--gv-lime-deep); }
 .gv-app .gv-set-input {
-  width: 82px;
   min-height: 46px;
   padding: 0 4px;
   border: 2px solid var(--gv-ink);
@@ -1298,15 +1311,41 @@ body.is-phone .gv-app .gv-page {
    weight fields as page-log.js's numInput(), rendered by the guided
    (page-session.js) renderer instead — they must match .gv-set-input-narrow
    px-for-px or the two renderers visibly disagree on the same field. */
-.gv-app .gv-set-input-narrow, .gv-app .gv-session-distance, .gv-app .gv-session-weight { width: 66px; font-size: 17px; }
+.gv-app .gv-set-input-narrow, .gv-app .gv-session-distance, .gv-app .gv-session-weight { font-size: 17px; }
+/* THE WIDTHS. Obsidian's phone stylesheet has
+       .is-mobile input[type='text'] { width: 100% }      (0,2,1)
+   and numericInput() boxes ARE type="text", so on a phone a plain
+   `.gv-app .gv-set-input { width: 82px }` (0,2,0) lost: every box asked for
+   the whole row and the flex row crushed the set-tick button to 24px and the
+   tap-count button to 22px (0.12.1, L5-01). The element type plus a leading
+   `body` take these to (0,2,2): ahead of the host rule outright, not tied
+   with it and left to load order. Kept in ONE block, base first, because the
+   rules after the first are the same specificity and rely on coming later:
+   the sets box (type=number) and the rep-target box also carry
+   .gv-set-input, and must keep their own widths.
+   tests/host-input-width.test.cjs holds the host selector as data and runs
+   this cascade against it. */
+body .gv-app input.gv-set-input { width: 82px; }
+body .gv-app input.gv-set-input-narrow,
+body .gv-app input.gv-session-distance,
+body .gv-app input.gv-session-weight { width: 66px; }
+body .gv-app input.gv-timed-input { width: 84px; }
+body .gv-app input.gv-edititem-sets { width: 56px; }
+body .gv-app input.gv-rc-targetinput { width: 118px; }
 /* Flex items refuse to shrink below their automatic minimum; on sub-390px
    phones the fullest rows need the inputs to give up a few px gracefully
    instead of hard-overflowing the row. */
 .gv-app .gv-log-set .gv-set-input { min-width: 0; }
 .gv-set-unit { font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); }
 .gv-log-set.done .gv-set-unit { color: #b8c4a8; }
+/* The done row is the ink block, near-white in dark mode, where that pale sage
+   was 1.62:1. flood-dim is the accent's own dark shade, kept for dim text on
+   a bright surface. */
+.theme-dark .gv-app .gv-log-set.done .gv-set-unit { color: var(--gv-flood-dim); }
 .gv-app .gv-set-done {
   margin-left: auto;
+  /* Never squeezed by a crowded row: the tick is THE action of this screen. */
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1320,6 +1359,8 @@ body.is-phone .gv-app .gv-page {
 .theme-dark .gv-app .gv-set-done { border-color: var(--gv-line-2); }
 .gv-set-done .gv-ico svg { width: 22px; height: 22px; }
 .gv-app .gv-log-set.done .gv-set-done { background: var(--gv-lime); border-color: var(--gv-lime); color: var(--gv-ink-fixed); }
+/* The tap-count button, for the same reason as the tick above. */
+.gv-app .gv-log-set .gv-icon-btn { flex: 0 0 auto; }
 .gv-add-set { margin-top: 0; border-top: 0; }
 .gv-log-tally {
   display: flex;
@@ -1354,6 +1395,8 @@ body.is-phone .gv-app .gv-page {
   padding: 0 25px;
 }
 .gv-app .gv-btn-finish:hover { background: var(--gv-ink); color: var(--gv-lime-hi); }
+/* Dark: the hover block is near-white, so the label is fixed ink (1.34:1 before). */
+.theme-dark .gv-app .gv-btn-finish:hover { color: var(--gv-ink-fixed); }
 .gv-app .gv-btn-discard {
   margin-top: 10px;
   width: 100%;
@@ -1387,6 +1430,8 @@ body.is-phone .gv-app .gv-page {
   background: var(--gv-ink);
   color: var(--gv-lime-hi);
 }
+/* Same flip as .gv-logo .gv-ico: lime-hi on dark mode's near-white ink was 1.34:1. */
+.theme-dark .gv-app .gv-setup-logo { background: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-setup-logo .gv-ico svg { width: 30px; height: 30px; }
 .gv-setup-title { font-family: var(--gv-display); font-size: 30px; font-weight: 400; text-transform: uppercase; margin: 0 0 8px; line-height: 0.95; }
 .gv-setup-sub { font-size: 13.5px; color: var(--gv-ink-dim); line-height: 1.55; margin: 0 0 18px; }
@@ -1827,6 +1872,7 @@ body.is-phone .gv-app .gv-page {
   font-family: var(--gv-display); font-size: 22px; line-height: 1;
   color: var(--gv-lime-deep);
 }
+.theme-dark .gv-app .gv-recrow-margin { color: var(--gv-lime); }
 
 /* A labelled filter row on the plans list. The label is part of the row, not
    a heading above it, so two rows stack without doubling the vertical space
@@ -1843,7 +1889,8 @@ body.is-phone .gv-app .gv-page {
 .gv-edititem { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .gv-edititem-name { flex: 1 1 100%; font-weight: 700; }
 .gv-edititem-rx { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
-.gv-app .gv-edititem-sets { width: 56px; text-align: center; flex: 0 0 auto; }
+/* width: see THE WIDTHS block (under .gv-set-input) — it has to out-rank the host. */
+.gv-app .gv-edititem-sets { text-align: center; flex: 0 0 auto; }
 .gv-app .gv-edititem-target { flex: 1 1 auto; min-width: 0; text-align: left; }
 .gv-edititem-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .gv-edititem-actions .gv-icon-btn[disabled] { opacity: 0.3; cursor: default; }
@@ -1943,7 +1990,8 @@ body.is-phone .gv-app .gv-page {
    list's, and thumb-sized. */
 .gv-rc-targetstep .gv-chip { min-width: 58px; min-height: 48px; font-size: 15px; }
 .gv-rc-targetcustom { display: flex; align-items: center; gap: 8px; }
-.gv-app .gv-rc-targetinput { width: 118px; text-align: center; }
+/* width: see THE WIDTHS block (under .gv-set-input). */
+.gv-app .gv-rc-targetinput { text-align: center; }
 .gv-app .gv-rc-targetopen { margin-top: 4px; }
 
 /* Reduced motion: the fill still fills and still changes colour by stage —
@@ -2548,7 +2596,8 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
    this file), so this needs no separate .theme-dark rule of its own. */
 .gv-timed-field.gv-timed-prefill .gv-set-input { color: var(--gv-ink-dim); opacity: 0.75; }
 .gv-timed-field.gv-timed-prefill .gv-set-unit { opacity: 0.6; }
-.gv-app .gv-timed-input { width: 84px; text-align: center; }
+/* width: see THE WIDTHS block (under .gv-set-input). */
+.gv-app .gv-timed-input { text-align: center; }
 .gv-timed-target {
   font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--gv-ink-dim);
@@ -2738,6 +2787,9 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 .gv-app.gv-skin-editorial .gv-day.today { background: var(--gv-surface); box-shadow: inset 0 -5px 0 var(--gv-lime-deep); }
 .gv-app.gv-skin-editorial .gv-day.today .gv-day-name { color: var(--gv-ink); }
 .gv-app.gv-skin-editorial .gv-day.today .gv-day-dot { color: var(--gv-lime-deep); }
+/* Editorial's today cell is the SURFACE, which is dark in dark mode: lime-deep
+   is 3.5:1 there (volt 2.5). Same flip as the floor skin's twins. */
+.theme-dark .gv-app.gv-skin-editorial .gv-day.today .gv-day-dot { color: var(--gv-lime); }
 
 /* Stats: the numbers ARE the artwork — bigger, no icons. */
 .gv-app.gv-skin-editorial .gv-tile-ico { display: none; }
@@ -2787,6 +2839,9 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
   box-shadow: inset 4px 0 0 var(--gv-lime);
 }
 .gv-app.gv-skin-editorial .gv-log-set.done .gv-set-num { color: var(--gv-lime-deep); }
+/* On the dark ghost fill lime-deep is 3.1:1; the dark-mode rule above this one
+   ties it on specificity and loses on order, hence the extra class. */
+.theme-dark .gv-app.gv-skin-editorial .gv-log-set.done .gv-set-num { color: var(--gv-lime); }
 .gv-app.gv-skin-editorial .gv-log-set.done .gv-set-unit { color: var(--gv-ink-dim); }
 .gv-app.gv-skin-editorial .gv-set-input {
   border: 0;
