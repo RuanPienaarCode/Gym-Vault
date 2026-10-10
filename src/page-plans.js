@@ -50,14 +50,57 @@ async function saveThenReload(ctx, plan) {
   finally { await savesSettled(plan); ctx.reload(); }
 }
 
+/* WHAT A PLAN IS DOING FOR YOU RIGHT NOW. The same split controller.js uses to
+   build Today (ctx.parallelPlans / ctx.fallbackPlans: fallback wins over
+   parallel), plus "active" meaning the plan Today actually runs —
+   ctx.activePlan(), which falls back to the first main plan when nothing is
+   flagged — so the list never badges a different plan than Today follows. */
+function planRole(p, activePlan) {
+  if (String(p.fm.fallback) === 'true') return 'fills-gaps';
+  if (String(p.fm.parallel) === 'true') return 'alongside';
+  return activePlan && p === activePlan ? 'active' : '';
+}
+const ROLE_RANK = { active: 0, alongside: 1, 'fills-gaps': 2, '': 3 };
+const ROLE_BADGE = { active: 'active', alongside: 'alongside', 'fills-gaps': 'fills gaps' };
+
+/* Plans in use lead the list (active, then the ones running alongside it,
+   then the gap-filler); everything else keeps the order it had. */
+function orderPlans(plans, activePlan) {
+  return plans
+    .map((p, i) => ({ p, i, r: ROLE_RANK[planRole(p, activePlan)] }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map(x => x.p);
+}
+
+/* Search matches the plan name or any of its day names ("swim" finds the
+   plan with a Swim day), case-insensitively. */
+function planMatches(p, q) {
+  const needle = String(q || '').trim().toLowerCase();
+  if (!needle) return true;
+  if (String(p.name).toLowerCase().includes(needle)) return true;
+  return ((p.model && p.model.days) || []).some(d => String(d.name || '').toLowerCase().includes(needle));
+}
+
 function render(ctx, root) {
   const { data } = ctx;
   const openName = ctx.state.params && ctx.state.params.plan;
   const open = data.plans.find(p => p.name === openName);
   if (open) return renderDetail(ctx, root, open);
 
+  const ui = ctx.state.plansListUi || (ctx.state.plansListUi = { kit: '', focus: '', q: '' });
+  if (ui.q === undefined) ui.q = '';
+
+  /* The search box redraws only the card list, never the page, so the
+     input keeps focus between keystrokes — the exercise library's pattern. */
+  let renderList = () => {};
+  const search = data.plans.length ? el('input', {
+    class: 'gv-search', type: 'search', placeholder: 'Search plans…', value: ui.q, 'aria-label': 'Search plans',
+    oninput: e => { ui.q = e.target.value; renderList(); },
+  }) : null;
+
   const bar = el('div', { class: 'gv-toolbar' },
     el('h2', { class: 'gv-toolbar-title' }, 'Training plans'),
+    search || '',
     el('button', { class: 'gv-btn gv-btn-ghost', type: 'button', onclick: () => ctx.nav('browse') },
       ico('search'), el('span', {}, 'Browse')),
     el('button', { class: 'gv-btn', type: 'button', onclick: () => openAddPlan(ctx) }, ico('plus'), el('span', {}, 'Plan')));
@@ -76,7 +119,6 @@ function render(ctx, root) {
      moment a note is edited. Same chip pattern, and the same "only offer
      values actually in use" rule, as the exercise library: a vault with
      three plans must not render fourteen dead chips. */
-  const ui = ctx.state.plansListUi || (ctx.state.plansListUi = { kit: '', focus: '' });
   const facets = new Map();
   for (const p of data.plans) {
     const names = planExerciseNames(p);
@@ -100,23 +142,41 @@ function render(ctx, root) {
     root.append(facetChips(ctx, 'Focus', MUSCLE_GROUPS.filter(m => usedFocus.has(m)), m => m, () => ui.focus, v => { ui.focus = v; }));
   }
 
-  const shown = data.plans.filter(matches);
-  if (!shown.length) {
-    root.append(el('div', { class: 'gv-empty-line' }, 'No plan matches both filters — clear one to widen the search.'));
-    return;
-  }
+  const activeNow = typeof ctx.activePlan === 'function' ? ctx.activePlan() : null;
+  const ordered = orderPlans(data.plans, activeNow);
+  const listWrap = el('div', {});
+  root.append(listWrap);
 
+  renderList = () => {
+    while (listWrap.firstChild) listWrap.removeChild(listWrap.firstChild);
+    const shown = ordered.filter(p => matches(p) && planMatches(p, ui.q));
+    if (!shown.length) {
+      const q = String(ui.q || '').trim();
+      listWrap.append(el('div', { class: 'gv-empty-line' }, q
+        ? `No plan matches “${q}”${ui.kit || ui.focus ? ' with these filters' : ''}.`
+        : 'No plan matches both filters — clear one to widen the search.'));
+      return;
+    }
+    listWrap.append(planCards(ctx, shown, activeNow));
+  };
+  renderList();
+}
+
+function planCards(ctx, shown, activeNow) {
+  const { data } = ctx;
   const list = el('div', { class: 'gv-card-list' });
   for (const p of shown) {
-    const active = String(p.fm.active) === 'true';
+    const role = planRole(p, activeNow);
+    const active = role === 'active';
     const days = p.model.days;
     const c = clickableCard(
-      { class: `gv-card gv-plan-card${active ? ' active' : ''}`, 'aria-label': `Open ${p.name}` },
+      { class: `gv-card gv-plan-card${active ? ' active' : ''}`,
+        'aria-label': `Open ${p.name}${role ? `, ${ROLE_BADGE[role]}` : ''}` },
       () => ctx.nav('plans', { plan: p.name }),
       el('div', { class: 'gv-plan-main' },
         el('div', { class: 'gv-plan-name' },
           el('span', {}, p.name),
-          active ? el('span', { class: 'gv-badge' }, 'active') : ''),
+          role ? el('span', { class: 'gv-badge' }, ROLE_BADGE[role]) : ''),
         el('div', { class: 'gv-plan-meta' },
           `${days.length} day${days.length === 1 ? '' : 's'} / week · ${days.reduce((n, d) => n + d.items.length, 0)} exercises`),
         /* What the whole plan asks you to own, so you can tell at a glance
@@ -128,7 +188,7 @@ function render(ctx, root) {
       el('div', { class: 'gv-card-actions' }, ico('chevron-right', 'gv-dim')));
     list.append(c);
   }
-  root.append(list);
+  return list;
 }
 
 /* Every muscle group a plan's exercises name, from the exercise notes —
@@ -516,4 +576,4 @@ function openAddItem(ctx, plan, day) {
   }).open();
 }
 
-module.exports = { render };
+module.exports = { render, planRole, orderPlans, planMatches };

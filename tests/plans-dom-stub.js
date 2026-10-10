@@ -23,6 +23,8 @@ function mkNode(tag) {
     },
     addEventListener(ev, fn) { (n.listeners[ev] ||= []).push(fn); },
     append(...kids) { for (const k of kids) n.children.push(k); },
+    get firstChild() { return n.children[0] || null; },
+    removeChild(k) { n.children = n.children.filter(c => c !== k); return k; },
     contains(other) {
       if (other === n) return true;
       return n.children.some(c => c && typeof c.contains === 'function' && c.contains(other));

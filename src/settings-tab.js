@@ -86,10 +86,10 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Style')
-      .setDesc('How the gym looks. Both styles use the same data.')
+      .setDesc('How the gym looks. Every style uses the same data.')
       .addDropdown(d => {
         for (const [key, label] of SKINS) d.addOption(key, label);
-        d.setValue(this.plugin.settings.skin || 'floor')
+        d.setValue(this.plugin.settings.skin || 'apex')
           .onChange(async v => {
             this.plugin.settings.skin = v;
             await this.plugin.saveSettings();

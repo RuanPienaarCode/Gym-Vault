@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Apex progress elements harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .lab{font:600 11px/1.6 system-ui;color:#555;letter-spacing:.05em;text-transform:uppercase;margin:0 0 4px}
+  .frame{border:1px solid #bbb;background:#fff;overflow:hidden;width:390px}
+  .frame .gv-app{display:flex;flex-direction:column;height:760px}
+  .frame .gv-page{overflow:auto;padding:12px}
+  .col{display:flex;flex-direction:column}
+</style></head>
+<body>
+<script src="bundle.js"></script>
+<script>
+  /* Synthetic data only. Dates are built relative to the real today so the
+     week ring and the streak are alive whenever this is opened. */
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const addD = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const now = new Date();
+  const monday = addD(now, -((now.getDay() + 6) % 7));
+  const WK = ['mon','tue','wed','thu','fri','sat','sun'];
+  const todayKey = WK[(now.getDay() + 6) % 7];
+
+  const row = (exercise, o) => Object.assign({ exercise, set: 1, reps: '', weight_kg: '', seconds: '', distance_km: '' }, o);
+  const w = (d, rows) => ({ name: iso(d), fm: { date: iso(d) }, rows });
+  const exercises = [
+    { name: 'Dips', fm: { unit: 'reps', muscles: ['chest'] }, file: null },
+    { name: 'Bench Press', fm: { unit: 'kg', muscles: ['chest'] }, file: null },
+    { name: 'Plank', fm: { unit: 'seconds', muscles: ['core'] }, file: null },
+  ];
+  /* a streak of three weeks, one session so far this week */
+  const workouts = [
+    w(addD(monday, -20), [row('Dips', { reps: '9' }), row('Bench Press', { weight_kg: '70' })]),
+    w(addD(monday, -13), [row('Dips', { reps: '10' }), row('Plank', { seconds: '120' })]),
+    w(addD(monday, -6), [row('Dips', { reps: '12' }), row('Bench Press', { weight_kg: '77.5' })]),
+    w(monday, [row('Plank', { seconds: '150' })]),
+  ];
+  const lift = { name: 'A · Push Priority', weekday: todayKey, notes: [], items: [
+    { exercise: 'Dips', sets: 3, target: 'AMRAP' }, { exercise: 'Bench Press', sets: 4, target: '8-12' }, { exercise: 'Plank', sets: 3, target: '45s' }] };
+  const rest = { name: 'Rest & recovery', weekday: 'wed', notes: [], items: [] };
+  const plan = { name: 'Harness plan', fm: { active: 'true' }, model: { days: [lift], intro: [] } };
+  const sched = new Set([todayKey, WK[(WK.indexOf(todayKey) + 2) % 7], WK[(WK.indexOf(todayKey) + 3) % 7], WK[(WK.indexOf(todayKey) + 5) % 7]]);
+
+  function frame(label, theme) {
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = label;
+    const f = document.createElement('div'); f.className = 'frame' + (theme ? ' theme-dark' : '');
+    const app = document.createElement('div'); app.className = 'gv-app gv-skin-floor gv-accent-lime gv-narrow';
+    const page = document.createElement('main'); page.className = 'gv-page';
+    app.append(page); f.append(app);
+    const col = document.createElement('div'); col.className = 'col'; col.append(lab, f); document.body.append(col);
+    return { app, page };
+  }
+  const base = () => ({
+    app: {}, data: { workouts, exercises, goals: [], body: [] }, settings: { weekStart: 'mon', soundMode: 'off' },
+    state: { logDraft: null }, io: {}, nav() {}, notice() {}, reload() {}, rerender() {}, backTo: f => f,
+  });
+
+  /* 1. Today */
+  const t = frame('Today · ticker, PB in reach, week ring, streak nag');
+  const todayCtx = Object.assign(base(), {
+    activePlan: () => plan, activePlanIsImplicit: () => false, mainPlans: () => [plan], parallelPlans: () => [], fallbackPlans: () => [],
+    daysOn: wk => (sched.has(wk) ? [{ plan, day: lift }] : [{ plan, day: rest }]),
+    startGuided() {}, startLog() {},
+  });
+  /* only scheduled days train; others are rest */
+  window.__pages.dashboard.render(todayCtx, t.page);
+
+  /* 2. Live set (reps), and 3. live hold */
+  function live(label, exercise, entryOver, ex) {
+    const f = frame(label);
+    const ctx = Object.assign(base(), { plugin: {}, view: { contentEl: f.app } });
+    ctx.data.exercises = ex;
+    ctx.state.page = 'session';
+    ctx.state.logDraft = { date: iso(now), plan: 'P', day: 'D', startedAt: Date.now(), entries: [Object.assign(
+      { exercise, target: '', duration: false, weighted: false, distance: false,
+        sets: [{ reps: '', weight_kg: '', seconds: '', done: false, touched: false }, { reps: '', weight_kg: '', seconds: '', done: false, touched: false }] }, entryOver)] };
+    ctx._interval = null;
+    ctx.setPageInterval = (fn, ms) => { if (ctx._interval) clearInterval(ctx._interval); ctx._interval = setInterval(fn, ms); };
+    ctx.rerender = () => { if (ctx._interval) { clearInterval(ctx._interval); ctx._interval = null; } while (f.page.firstChild) f.page.removeChild(f.page.firstChild); f.app.classList.remove('gv-focus'); window.__pages.session.render(ctx, f.page); };
+    ctx.nav = () => {};
+    window.__live = window.__live || {}; window.__live[exercise] = ctx;
+    window.__pages.session.render(ctx, f.page);
+    return f;
+  }
+  const dipsFrame = live('Live set · reps, Dips (best 12)', 'Dips', {}, exercises);
+  const plankFrame = live('Live set · hold, Plank (best 150 s)', 'Plank', { duration: true, target: '60s' }, exercises);
+
+  /* Optional self-drive, for a headless run with no pointer: #taps=N taps the
+     Dips counter N times (the first tap only skips the count-in) and #hold=1
+     taps the Plank zone once so the hold clock runs. */
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const fire = z => z.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }));
+  if (hash.get('taps')) {
+    const z = dipsFrame.page.querySelector('.gv-session-zone');
+    let n = Number(hash.get('taps')) + 1;
+    const tick = () => { if (n-- > 0) { fire(z); setTimeout(tick, 700); } };
+    tick();
+  }
+  if (hash.get('hold')) fire(plankFrame.page.querySelector('.gv-session-zone'));
+
+  /* 4. Completion: records produced by the REAL applyCompletion */
+  const c = frame('Session complete · PB moment');
+  {
+    const sess = { workoutsAtStart: workouts, records: [], goalCount: 0, muted: true, metGoals: new Set(), completionCelebrated: true };
+    const ctx = Object.assign(base(), { view: { contentEl: c.app }, state: { logDraft: null } });
+    const apply = (entry, values) => window.__pages.session.applyCompletion(ctx, { entries: [] }, sess,
+      { reps: '', weight_kg: '', seconds: '', done: false, touched: false }, Object.assign({ duration: false, weighted: false, distance: false }, entry), values, { observed: ['reps', 'seconds'] });
+    apply({ exercise: 'Dips' }, { reps: '14' });
+    apply({ exercise: 'Plank', duration: true }, { seconds: '165' });
+    const draft = { startedAt: Date.now() - 41 * 60000, entries: [{ sets: [{ done: true, touched: true, reps: '14' }] }] };
+    window.__pages.session.renderComplete(ctx, c.page, draft, sess);
+    window.__completeSess = sess;
+  }
+
+  /* 5. Records */
+  const r = frame('Records · newest beaten record');
+  {
+    const ctx = Object.assign(base(), { state: { recordsUi: { q: '', muscle: '' } } });
+    ctx.data.workouts = workouts.concat([w(now, [row('Dips', { reps: '14' })])]);
+    window.__pages.records.render(ctx, r.page);
+  }
+</script>
+</body></html>

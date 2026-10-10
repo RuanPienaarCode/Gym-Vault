@@ -144,7 +144,7 @@ const WIDTHS = [
 const failures = [];
 let checked = 0;
 for (const theme of ['dark', 'light']) {
-  for (const skin of ['floor', 'editorial']) {
+  for (const skin of ['floor', 'editorial', 'apex']) {
     for (const [ctxLabel, host] of [['phone', PHONE], ['desktop', []]]) {
       for (const narrow of [true, false]) {
         const o = { theme, skin, accent: 'lime', host, narrow };
@@ -186,4 +186,4 @@ for (const theme of ['dark', 'light']) {
 assert.deepStrictEqual(failures, [],
   `${failures.length} of ${checked} cascade checks failed (src/styles.css vs ${HOST.from}):\n` + failures.join('\n'));
 
-console.log(`host input width OK (${checked} cascade checks: 7 box kinds + tick/counter, phone + desktop, both themes, both skins)`);
+console.log(`host input width OK (${checked} cascade checks: 7 box kinds + tick/counter, phone + desktop, both themes, all three skins)`);

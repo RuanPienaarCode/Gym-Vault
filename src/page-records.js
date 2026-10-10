@@ -15,7 +15,8 @@
 
 const { el, ico, fmtSeconds, clickableCard, backButton } = require('./dom');
 const { MUSCLE_GROUPS } = require('./constants');
-const { allRecords } = require('./records');
+const { allRecords, latestRecord } = require('./records');
+const { pbDelta, marginText } = require('./progress');
 const { fmtShort } = require('./dates');
 
 const KIND_LABEL = { reps: 'reps', weight: 'weight', seconds: 'hold' };
@@ -77,6 +78,14 @@ function render(ctx, root) {
   const listWrap = el('div', { class: 'gv-card-list' });
   root.append(listWrap);
 
+  /* THE NEWEST RECORD, if any best has ever been beaten. records.latestRecord
+     is built on the same allRecords/recordHistory the rows come from, so the
+     row it marks carries the value and date printed beside it. Computed from
+     ALL records, not the filtered view: a search that hides the newest record
+     must not hand its mark to whichever row is left. */
+  const latest = latestRecord(data.workouts, data.exercises);
+  const latestDelta = latest ? pbDelta(latest.prev, latest.value) : null;
+
   const draw = () => {
     while (listWrap.firstChild) listWrap.removeChild(listWrap.firstChild);
     const q = ui.q.trim().toLowerCase();
@@ -97,8 +106,12 @@ function render(ctx, root) {
     const ordered = shown.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     for (const r of ordered) {
       const ex = data.exercises.find(e => e.name === r.exercise);
+      const isNew = !!latest && latest.exercise === r.exercise && latest.kind === r.kind;
       listWrap.append(clickableCard(
-        { class: 'gv-card gv-recrow', 'aria-label': `Open ${r.exercise}` },
+        /* The "Latest" badge is CSS content on .gv-rec-new, which assistive
+           tech does not reliably read - and this aria-label REPLACES the row's
+           own text anyway. So the badge is said here, in words. */
+        { class: `gv-card gv-recrow${isNew ? ' gv-rec-new' : ''}`, 'aria-label': isNew ? `Open ${r.exercise}, latest record` : `Open ${r.exercise}` },
         () => ctx.nav('exercise', { exercise: r.exercise, path: ex && ex.file ? ex.file.path : null }),
         el('div', { class: 'gv-recrow-main' },
           el('div', { class: 'gv-recrow-name' }, r.exercise),
@@ -107,7 +120,10 @@ function render(ctx, root) {
                "record" overstates it — it is the only figure there is, and
                saying so is the honest version. */
             `${KIND_LABEL[r.kind]} · ${r.times === 1 ? 'first logged' : `beaten ${r.times - 1}×`}`
-            + (r.date ? ` · ${fmtShort(r.date)}` : ''))),
+            + (r.date ? ` · ${fmtShort(r.date)}` : ''),
+            /* What the newest record beat, and by how much. */
+            ...(isNew ? [' · ', el('s', { class: 'gv-rec-prev' }, figure(r.kind, latest.prev)),
+              ' ', latestDelta ? el('span', { class: 'gv-rec-delta' }, marginText(r.kind, latestDelta.abs)) : ''] : []))),
         el('div', { class: 'gv-recrow-margin' }, figure(r.kind, r.value))));
     }
   };

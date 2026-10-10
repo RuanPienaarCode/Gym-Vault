@@ -189,7 +189,7 @@ function mountApp(view) {
     for (const cls of [...rootEl.classList]) {
       if (cls.indexOf('gv-skin-') === 0 || cls.indexOf('gv-accent-') === 0) rootEl.classList.remove(cls);
     }
-    rootEl.classList.add(`gv-skin-${plugin.settings.skin || 'floor'}`, `gv-accent-${plugin.settings.accent || 'lime'}`);
+    rootEl.classList.add(`gv-skin-${plugin.settings.skin || 'apex'}`, `gv-accent-${plugin.settings.accent || 'lime'}`);
   };
   syncChrome();
 

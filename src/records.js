@@ -164,4 +164,27 @@ function allRecords(workouts, exercises) {
   return out;
 }
 
-module.exports = { previousBest, isRecord, recordHistory, allRecords, inDateOrder, claimableKinds, KINDS, COLUMN };
+/* The most recently BEATEN best across every exercise, for the Records page's
+   "new" row: {exercise, kind, value, prev, date}, or null.
+
+   Built from allRecords + recordHistory, never a scan of its own: the row it
+   names must carry the same value and date the page prints beside it, and
+   `claimableKinds` has already filtered what allRecords returns. A best set
+   once and never beaten (times === 1) is a baseline - the first time you did
+   something is not a record broken - so it cannot be "new". A record with no
+   readable date cannot be placed in time and is skipped. Ties on the date keep
+   the first row in allRecords order, which is also the order the page's stable
+   newest-first sort leaves them in. */
+function latestRecord(workouts, exercises) {
+  let pick = null;
+  for (const r of allRecords(workouts, exercises)) {
+    if (r.times < 2 || !r.date) continue;
+    if (!pick || r.date > pick.date) pick = r;
+  }
+  if (!pick) return null;
+  const history = recordHistory(workouts, pick.exercise, pick.kind);
+  const last = history[history.length - 1];
+  return { exercise: pick.exercise, kind: pick.kind, value: pick.value, prev: last.prev, date: pick.date };
+}
+
+module.exports = { previousBest, isRecord, recordHistory, allRecords, latestRecord, inDateOrder, claimableKinds, KINDS, COLUMN };

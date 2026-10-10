@@ -31,7 +31,7 @@ class RepCounterModal extends Modal {
     super(app);
     opts = opts || {};
     this.exerciseName = opts.exerciseName || '';
-    this.skin = opts.skin || 'floor';
+    this.skin = opts.skin || 'apex';
     this.accent = opts.accent || 'lime';
     /* The whole settings object, not a copy of soundMode: sound.js reads
        both soundMode and voiceURI, and a modal holding a snapshot of one of

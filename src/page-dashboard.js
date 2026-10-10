@@ -5,12 +5,13 @@
 
 const { el, ico, fmt, fmtSeconds, clickableCard } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
-const { todayISO, weekdayKey, startOfWeek, addDays, fmtShort } = require('./dates');
+const { todayISO, weekdayKey, fmtShort } = require('./dates');
 const { workoutDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { itemSets, isRestDay } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
 const { PlanPickerModal } = require('./modals');
+const { pbInReach, reachText, weekPlan, weekProgress, streakRisk, streakRiskText } = require('./progress');
 
 /* The kit today's session needs, as chips under the prescription. Nothing
    when it's all bodyweight — "No equipment" is worth saying on the setup
@@ -103,7 +104,7 @@ function render(ctx, root) {
   const restToday = todays.length && isRestDay(todays[0].day);
   if (restToday) {
     const { plan: dayPlan, day } = todays[0];
-    hero.append(el('h2', { class: 'gv-display gv-hero-title' }, el('span', { class: 'gv-mark' }, day.name)));
+    hero.append(el('h2', { class: heroTitleClass(day.name) }, el('span', { class: 'gv-mark' }, day.name)));
     const prose = (day.notes || []).join(' ').trim();
     hero.append(el('p', { class: 'gv-hero-sub' }, prose || 'Rest is where the adaptation happens.'));
     if (day.items.length) {
@@ -123,17 +124,25 @@ function render(ctx, root) {
     }, ico('circle-check'), el('span', {}, 'Log recovery')));
   } else if (todays.length) {
     const { plan: dayPlan, day } = todays[0];
-    hero.append(el('h2', { class: 'gv-display gv-hero-title' }, el('span', { class: 'gv-mark' }, day.name)));
+    hero.append(el('h2', { class: heroTitleClass(day.name) }, el('span', { class: 'gv-mark' }, day.name)));
     const prose = (day.notes || []).join(' ').trim();
     hero.append(el('p', { class: 'gv-hero-sub' },
       doneToday ? 'Logged for today — nice work.' : prose || `${day.items.length} exercises on the plan.`));
 
+    hero.append(ticker());
+
+    /* ONE exercise carries the PB-in-reach line (progress.pbInReach owns which,
+       and why: the first item whose session kind has a prior best). The line
+       sits inside the name span, under the name, and the row gets a hook of its
+       own so the skin can light the whole row. */
+    const reach = pbInReach(day.items, data.workouts, data.exercises);
     const rx = el('ul', { class: 'gv-rx' });
-    for (const it of day.items) {
-      rx.append(el('li', {},
-        el('span', {}, it.exercise),
+    day.items.forEach((it, i) => {
+      const hit = reach && reach.index === i ? reach : null;
+      rx.append(el('li', { class: hit ? 'gv-rx-reach' : '' },
+        el('span', {}, it.exercise, hit ? el('span', { class: 'gv-pb-reach' }, reachText(hit)) : ''),
         el('b', {}, it.sets != null ? `${it.sets} × ${it.target}` : it.target || '')));
-    }
+    });
     hero.append(rx);
     const kit = kitChips(ctx, day);
     if (kit) hero.append(kit);
@@ -186,14 +195,11 @@ function render(ctx, root) {
         ico('play'), el('span', {}, 'Start'))));
   }
 
-  /* Week strip — typographic: big initial, plan-day tag beneath. */
-  const weekStart = startOfWeek(today, settings.weekStart);
+  /* Week strip — typographic: big initial, plan-day tag beneath. The day
+     each cell is planned for comes from progress.weekPlan, the same rule the
+     week's target counts with, so the dots and the "x/4" cannot disagree. */
   const strip = el('div', { class: 'gv-week', role: 'group', 'aria-label': 'This week' });
-  for (let i = 0; i < 7; i++) {
-    const iso = addDays(weekStart, i);
-    const wk = weekdayKey(iso);
-    const scheduled = (ctx.daysOn(wk)[0] || {}).day || null;
-    const planDay = scheduled && !isRestDay(scheduled) ? scheduled : null;
+  for (const { iso, wk, planDay } of weekPlan(ctx.daysOn, today, settings.weekStart)) {
     const done = dates.includes(iso);
     const cls = ['gv-day', done ? 'done' : planDay ? 'planned' : 'rest', iso === today ? 'today' : ''].join(' ');
     const tag = el('div', { class: 'gv-day-dot' });
@@ -224,7 +230,14 @@ function render(ctx, root) {
      this week and in an ordinary week both figures are 1. Two 1s stacked
      with near-identical labels read as the same number printed twice; the
      labels have to do the work the digits cannot. */
+  /* This week against its target, then the flame, then the nag: the ring
+     answers "how far", the flame "how long", the nag "what is at stake". The
+     nag reads the SAME `streak` the flame is given. */
+  const wp = weekProgress({ workouts: data.workouts, goals: data.goals, daysOn: ctx.daysOn, today, weekStart: settings.weekStart });
+  if (wp) root.append(weekProgressBlock(wp));
   root.append(streakFlame(streak, { label: streak === 1 ? 'week in a row' : 'weeks in a row' }));
+  const risk = streakRisk(streak, wp, today, settings.weekStart);
+  if (risk) root.append(el('p', { class: 'gv-streak-risk' }, streakRiskText(risk)));
 
   /* Three tiles in a two-column grid leaves a hole, and an empty cell reads
      as a figure that failed to load. The last-session tile spans instead. */
@@ -263,6 +276,70 @@ function render(ctx, root) {
     root.append(wrap);
     root.append(el('p', { class: 'gv-microcopy' }, 'No zero days.'));
   }
+}
+
+/* The ticker strip over the Rx list: short static words, decoration only (so
+   hidden from assistive tech). Two passes of the same three words so a skin
+   that scrolls it has a seamless loop; one that does not simply clips it. */
+function ticker() {
+  const words = ['Lock in', 'No days off', 'Earn it'];
+  return el('div', { class: 'gv-ticker', 'aria-hidden': 'true' },
+    el('div', {}, ...words.concat(words).map(w => el('span', {}, w))));
+}
+
+/* A day name is the USER'S text ("A · Pull Priority" ... or a whole sentence),
+   and Apex sets the hero title at up to 92px: an unbroken 95-character name
+   wrapped to ten lines and pushed Start 400px down the screen. CSS cannot count
+   characters, so the length steps are classes: past HERO_LONG the title steps
+   down once, past HERO_XLONG twice. A name up to HERO_LONG (a normal day name,
+   and the mockup's) is untouched. Floor and Editorial ignore the classes. */
+const HERO_LONG = 44;
+const HERO_XLONG = 70;
+function heroTitleClass(name) {
+  const n = String(name || '').trim().length;
+  return `gv-display gv-hero-title${n > HERO_XLONG ? ' is-xlong' : n > HERO_LONG ? ' is-long' : ''}`;
+}
+
+/* The weekly ring + "2/4" + "2 to go". The dash is measured against the real
+   circumference (2 * pi * r), exactly as dom.ring() does - NOT the SVG
+   `pathLength="100"` shortcut, which is unconfirmed for <circle> on iOS 15
+   WebKit and would quietly draw a full or empty ring if it were ignored.
+   dom.ring() is not reused: it prints a percentage inside and is shared with
+   Goals, whose look must not move. This keeps ring()'s radius-28 geometry and
+   its gv-ring classes, so Goals' ring styles still fit this one. `pct` is
+   0..100 (progress.weekProgress). */
+const WEEK_RING_R = 28;
+function weekRing(pct, label) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const c = 2 * Math.PI * WEEK_RING_R;
+  const dash = c * Math.max(0, Math.min(100, Number(pct) || 0)) / 100;
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 64 64');
+  svg.setAttribute('class', 'gv-ring gv-week-progress-ring');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', label);
+  const circle = (cls, fill) => {
+    const ci = document.createElementNS(NS, 'circle');
+    ci.setAttribute('cx', '32'); ci.setAttribute('cy', '32'); ci.setAttribute('r', String(WEEK_RING_R));
+    ci.setAttribute('class', cls);
+    if (fill) {
+      ci.setAttribute('stroke-dasharray', `${dash} ${c}`);
+      ci.setAttribute('transform', 'rotate(-90 32 32)');
+    }
+    svg.appendChild(ci);
+  };
+  circle('gv-ring-track', false);
+  circle('gv-ring-fill', true);
+  return svg;
+}
+
+function weekProgressBlock(wp) {
+  return el('div', { class: 'gv-week-progress' },
+    weekRing(wp.pct, `${wp.done} of ${wp.target} sessions this week`),
+    el('div', { class: 'gv-week-progress-text' },
+      el('span', { class: 'gv-week-progress-label' }, 'This week'),
+      el('b', { class: 'gv-week-progress-num' }, `${wp.done}/${wp.target}`),
+      el('span', { class: 'gv-week-progress-togo' }, wp.met ? 'Week done' : `${wp.toGo} to go`)));
 }
 
 /* "A · Pull Priority" → "A"; "Push + Volume" → "PUS". Short enough for a

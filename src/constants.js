@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
   weekStart: 'mon',      // 'mon' | 'sun'
   openOnStartup: false,
   onboarded: false,
-  skin: 'floor',         // keys of SKINS
+  skin: 'apex',          // keys of SKINS — Apex is the default; a saved choice is never migrated
   accent: 'lime',        // keys of ACCENTS
   musicApp: 'none',      // keys of MUSIC_APPS — 'none' hides the guided-view button
   /* How the app counts back at you. Keys of SOUND_MODES. The per-session
@@ -82,8 +82,10 @@ const GUIDE_REST = { min: 0, max: 300, step: 15 };
 const GUIDE_MINUTES = { min: 5, max: 90, step: 5 };
 
 /* Selectable styles. Each key maps to a gv-skin-<key> class on the app root;
-   the skin blocks live at the END of src/styles.css so they win ties. */
+   the skin blocks live at the END of src/styles.css so they win ties. Apex
+   is first because it is the default; the order is only the dropdown's. */
 const SKINS = [
+  ['apex', 'Apex — forward-leaning slabs, giant condensed italic, one accent'],
   ['floor', 'Editorial Floor — one lime flood per screen, hard edges where you act'],
   ['editorial', 'Editorial — magazine cover: huge type, hairlines, no floods'],
 ];

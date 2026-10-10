@@ -329,12 +329,28 @@ function ratio(a, b) { const [h, l] = [lum(a), lum(b)].sort((x, y) => y - x); re
    guessing a flat colour for it would be a made-up number. */
 function ownBackground(chain, rules, extra) {
   const hit = declarationsFor(chain, ['background', 'background-color'], rules, extra)[0];
-  if (!hit) return null;
-  const value = resolveVars(chain, hit.decl.value, rules, extra);
-  if (/gradient\(/.test(value)) throw new Error('css-cascade: gradient background on a probed element (' + hit.rule.selector + ')');
-  let colour = null;
-  for (const tok of splitTop(value.replace(/\s+/g, ' ').trim(), ' ')) { const c = parseColor(tok); if (c) { colour = c; break; } }
-  return { colour: colour || { r: 0, g: 0, b: 0, a: 0 }, rule: hit.rule };
+  let own = null;
+  if (hit) {
+    const value = resolveVars(chain, hit.decl.value, rules, extra);
+    if (/gradient\(/.test(value)) throw new Error('css-cascade: gradient background on a probed element (' + hit.rule.selector + ')');
+    let colour = null;
+    for (const tok of splitTop(value.replace(/\s+/g, ' ').trim(), ' ')) { const c = parseColor(tok); if (c) { colour = c; break; } }
+    own = { colour: colour || { r: 0, g: 0, b: 0, a: 0 }, rule: hit.rule };
+  }
+  /* A SLAB (the Apex skin) has a transparent background and paints its fill on
+     a leaning ::before from the custom property --gv-slab. Read ONLY what a
+     rule declares on this very element, never an inherited value: a slab's
+     child is not painted by its parent's pseudo-element. */
+  if (!own || own.colour.a === 0) {
+    const slab = declarationsFor(chain, ['--gv-slab'], rules, extra)[0];
+    if (slab) {
+      const value = resolveVars(chain, slab.decl.value, rules, extra);
+      const colour = parseColor(value);
+      if (!colour) throw new Error('css-cascade: cannot read --gv-slab "' + value + '" (' + slab.rule.selector + ')');
+      if (colour.a !== 0) return { colour, rule: slab.rule };
+    }
+  }
+  return own;
 }
 
 /* What is actually painted behind the last element: its own background over

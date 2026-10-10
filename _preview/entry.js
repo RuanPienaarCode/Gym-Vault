@@ -67,6 +67,10 @@ window.__pages = {
   voice: require('../src/page-voice'),
   running: require('../src/page-running'),
   profile: require('../src/page-profile'),
+  /* dashboard + records, for _preview/apex-progress.html - the Apex progress
+     and personal-best elements on Today and Records, against a stub ctx. */
+  dashboard: require('../src/page-dashboard'),
+  records: require('../src/page-records'),
 };
 window.__voicePack = require('../src/voice-pack');
 window.__voiceRecord = require('../src/voice-record');

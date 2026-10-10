@@ -40,6 +40,10 @@
      error state rather than as fire. Amber stays amber. */
   --gv-amber: #d97706;
   --gv-ember: #ea580c;
+  /* Amber as TEXT. --gv-amber above is a decorative tone (3.2:1 on white, no
+     good for 12px type); a streak warning is small text, so it gets its own
+     darker light-theme value. Still not accent-tied. */
+  --gv-amber-text: #92400e;
   /* Dim text sitting ON an accent flood (stats line in the action slab,
      target text in a log exercise bar). Re-pointed per accent below. */
   --gv-flood-dim: #2b3a12;
@@ -76,6 +80,7 @@
   /* Brighter on a dark ground — the light-mode amber reads as brown here. */
   --gv-amber: #fbbf24;
   --gv-ember: #f97316;
+  --gv-amber-text: #fbbf24;
 }
 
 /* Host-cascade override — see header comment. */
@@ -1025,6 +1030,14 @@ body.is-phone .gv-app .gv-page {
   border-bottom: 1px dashed var(--gv-lime-deep);
 }
 .theme-dark .gv-app .gv-planswap { color: var(--gv-lime); border-bottom-color: var(--gv-lime); }
+/* The label is a 13-14px text link in a kicker line. Its TOUCH box is a transparent
+   pseudo-element 16px taller on each side (45px or more), which neither moves the
+   line nor changes how the link looks; a click on the pseudo-element is a click on
+   the button. */
+/* z-index: the title under it is positioned and later in the tree, so without this it
+   paints over (and swallows taps on) the lower half of the touch box. */
+.gv-app .gv-planswap { position: relative; z-index: 1; }
+.gv-planswap::before { content: ''; position: absolute; top: -16px; bottom: -16px; left: -6px; right: -6px; }
 .gv-planswap .gv-ico svg { width: 12px; height: 12px; }
 .gv-optrow-static { cursor: default; opacity: 0.75; }
 .gv-optrow-static:hover { background: var(--gv-surface); }
@@ -1095,9 +1108,13 @@ body.is-phone .gv-app .gv-page {
   background: var(--gv-ink-dim);
   transition: left 0.15s ease, background 0.15s ease;
 }
-.theme-dark .gv-app .gv-switch::after { background: var(--gv-line-2); }
+/* The dark OFF thumb is --gv-ink-dim, not --gv-line-2: the track's border is line-2
+   already, and a line-2 thumb on the surface read 1.7:1. An ON thumb needs its own
+   dark twin or the (0,3,1) rule above wins and paints it line-2 on the accent. */
+.theme-dark .gv-app .gv-switch::after { background: var(--gv-ink-dim); }
 .gv-switch.on { background: var(--gv-lime); border-color: var(--gv-lime); }
 .gv-switch.on::after { left: 22px; background: var(--gv-ink-fixed); }
+.theme-dark .gv-app .gv-switch.on::after { background: var(--gv-ink-fixed); }
 
 .gv-export-size { margin-bottom: 8px; }
 .gv-export-preview {
@@ -1177,10 +1194,16 @@ body.is-phone .gv-app .gv-page {
 .gv-session-card { padding: 0; overflow: hidden; margin-bottom: -1px; }
 .gv-session-head { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; }
 .gv-session-head:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
-.gv-session-when { flex: 0 0 auto; }
+/* The head is date/day on the left, a one-line summary, then the actions. The
+   actions are FIXED (a clipped trash button is a delete you cannot reach) and
+   both text blocks may shrink and wrap: day and plan names are the user's own
+   text and ran to 288px on their own at 390 (`flex: 0 0 auto`), pushing the
+   buttons out to x=416. */
+.gv-session-head .gv-card-actions { flex: 0 0 auto; }
+.gv-session-when { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .gv-session-date { font-family: var(--gv-display); font-size: 18px; text-transform: uppercase; line-height: 1; }
 .gv-session-day { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 4px; }
-.gv-session-meta { flex: 1 1 auto; text-align: right; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink-dim); }
+.gv-session-meta { flex: 0 1 auto; min-width: 0; max-width: 40%; overflow-wrap: break-word; text-align: right; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink-dim); }
 .gv-set-table { border-top: 1px solid var(--gv-line); padding: 10px 16px 14px; }
 .gv-set-ex { font-family: var(--gv-display); font-size: 15px; text-transform: uppercase; margin: 10px 0 4px; }
 .gv-set-row { display: flex; gap: 12px; font-size: 13px; padding: 3px 0; }
@@ -1288,7 +1311,11 @@ body.is-phone .gv-app .gv-page {
 .gv-log-set.prefill .gv-set-unit { opacity: 0.6; }
 /* An exercise with nothing logged says so on its own head. */
 .gv-app .gv-log-card.unlogged { border-style: dashed; }
-.gv-log-card.unlogged .gv-log-ex-name { color: var(--gv-ink-dim); }
+/* The head is an accent FLOOD in Floor and Apex, so "nothing logged yet" dims the
+   name with the flood's own small-text ink, never --gv-ink-dim (1.57:1 on the dark
+   accent, 2-3:1 on several light ones). Editorial's head is bare page, where
+   ink-dim is the right dim. */
+.gv-log-card.unlogged .gv-log-ex-name { color: var(--gv-flood-dim); }
 .gv-log-set.done { background: var(--gv-ink); color: var(--gv-surface); }
 .theme-dark .gv-app .gv-log-set.done { color: var(--gv-ink-fixed); }
 .gv-log-set .gv-set-num { width: 26px; font-family: var(--gv-display); font-size: 14px; color: var(--gv-ink-dim); }
@@ -1510,6 +1537,22 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   white-space: nowrap;
 }
 .gv-rc-controls { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+/* SEVEN CONTROLS DO NOT FIT A PHONE BAR. Motion, mute, help, type, undo, done and
+   the close X are ~400px at the 44px touch size, in a 366px bar: the X, last in the
+   row, hung 12px off the screen. On a phone-width modal the bar wraps: the label and
+   the close X stay on the top row (X always at the right edge, where a thumb looks
+   for it) and the other six wrap beneath, so nothing is ever clipped. A wide modal
+   keeps the single row. `display: contents` lets the controls take part in the
+   bar's own wrapping without a second wrapper. */
+.gv-rc-bar { flex-wrap: wrap; row-gap: 6px; }
+@media (max-width: 480px) {
+  .gv-rc-bar { justify-content: flex-end; gap: 6px; }
+  .gv-app .gv-rc-bar .gv-rc-controls .gv-btn.gv-btn-small { padding-left: 10px; padding-right: 10px; }
+  .gv-rc-label { flex: 1 1 calc(100% - 56px); }
+  .gv-rc-controls { display: contents; }
+  .gv-rc-controls > * { order: 2; }
+  .gv-rc-controls > .gv-icon-btn[aria-label="Cancel"] { order: 1; }
+}
 .gv-rc-controls .gv-btn-small { padding: 8px 10px; }
 .gv-rc-controls .gv-btn[disabled],
 .gv-rc-controls .gv-icon-btn[disabled] { opacity: 0.4; cursor: default; pointer-events: none; }
@@ -2131,8 +2174,13 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
    everything stacking at natural size and shoving the controls off-screen. */
 .gv-session-page { display: flex; flex-direction: column; min-height: 100%; }
 
-.gv-session-top { margin: 12px -18px 14px; padding: 0 18px 10px; border-bottom: 1px solid var(--gv-line); }
-body.is-phone .gv-app .gv-session-top { margin: 8px -18px 8px; padding: 0 18px 8px; }
+/* FULL-BLEED, TO THE PAGE'S REAL PADDING. The bar pulls out by the page gutter and
+   puts it back as its own padding; a literal -18px inside a narrow page (12px) hung
+   6px past the viewport on the live, rest and complete screens. */
+.gv-app { --gv-page-gutter: 18px; }
+.gv-app.gv-narrow { --gv-page-gutter: 12px; }
+.gv-session-top { margin: 12px calc(-1 * var(--gv-page-gutter)) 14px; padding: 0 var(--gv-page-gutter) 10px; border-bottom: 1px solid var(--gv-line); }
+body.is-phone .gv-app .gv-session-top { margin: 8px calc(-1 * var(--gv-page-gutter)) 8px; padding: 0 var(--gv-page-gutter) 8px; }
 .gv-session-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .gv-session-top-extra { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 auto; min-width: 0; }
 .gv-session-ord {
@@ -2235,7 +2283,10 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
 .gv-session-rest-next { margin: 14px 0; }
 .gv-session-rest-nextname { font-family: var(--gv-display); font-size: clamp(22px, 7vw, 32px); text-transform: uppercase; margin-top: 4px; }
 .gv-session-rest-nextset { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 4px; }
-.gv-session-nextwrap { margin-top: 14px; }
+/* Floor's flood bar bleeds by the page gutter, not the hero's literal -17px (that was
+   1px past a narrow page, 5px short of a wide one): the rest and complete screens are
+   not inside a hero. Editorial and Apex zero the side margins themselves. */
+.gv-session-nextwrap { margin-top: 14px; margin-left: calc(-1 * var(--gv-page-gutter)); margin-right: calc(-1 * var(--gv-page-gutter)); }
 .gv-app .gv-session-nextwrap .gv-btn-go { margin-top: 0; }
 
 /* The quiet way out of a session, under Next. Ghost and narrower than the
@@ -2339,7 +2390,7 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
    WINDOW, so a desktop split-pane 300px wide would keep the full-label nav
    and hide half of it behind an invisible scrollbar. */
 
-.gv-app.gv-narrow .gv-page, .gv-app.gv-narrow .gv-head { padding-left: 12px; padding-right: 12px; }
+.gv-app.gv-narrow .gv-page, .gv-app.gv-narrow .gv-head { padding-left: var(--gv-page-gutter); padding-right: var(--gv-page-gutter); }
 .gv-app.gv-narrow .gv-nav { padding-left: 12px; padding-right: 12px; }
 .gv-app.gv-narrow .gv-logtop { margin-left: -12px; margin-right: -12px; padding-left: 14px; padding-right: 14px; }
 /* ONLY the label — `ico()` builds a <span class="gv-ico">, so a bare
@@ -2539,6 +2590,11 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 .theme-dark .gv-app .gv-guidesetup .gv-dial-value { color: var(--gv-ink); }
 .gv-app .gv-guidesetup .gv-dial-step:hover { background: var(--gv-line); }
 .gv-app .gv-guidesetup .gv-switch.on { background: var(--gv-ink); border-color: var(--gv-ink); }
+/* That ink track is the page's text colour, so the thumb must be the OPPOSITE of it:
+   the surface in light (the fixed ink thumb was ink on ink, 1.0:1), the fixed ink in
+   dark where --gv-ink is near-white. */
+.gv-app .gv-guidesetup .gv-switch.on::after { background: var(--gv-surface); }
+.theme-dark .gv-app .gv-guidesetup .gv-switch.on::after { background: var(--gv-ink-fixed); }
 .gv-app .gv-guidesetup .gv-dial-range::-webkit-slider-thumb { background: var(--gv-ink); }
 
 /* Only shown once the plan's own counts have been overridden. */
@@ -2754,6 +2810,266 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 .gv-voice-row-actions { display: flex; gap: 6px; flex: 0 0 auto; }
 
 /* ============================================================================
+   PROGRESS + PERSONAL-BEST ELEMENTS — drawn by page-dashboard.js,
+   page-session.js and page-records.js (progress.js owns every number; nothing
+   here decides one). Written in the Floor register so every skin has a sound
+   baseline; Editorial and Apex adjust below. Colour is tokens only, so all
+   five accents and both themes flow through, and every pair is measured in
+   tests/contrast.test.cjs.
+   ============================================================================ */
+
+/* The ticker strip is Apex's. Floor and Editorial draw nothing for it. */
+.gv-ticker { display: none; }
+
+/* Today: the one plan line that is a personal best away. */
+.gv-pb-reach {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gv-lime-deep);
+}
+.theme-dark .gv-app .gv-pb-reach { color: var(--gv-lime); }
+.gv-rx li.gv-rx-reach {
+  padding-left: 10px;
+  background-color: var(--gv-lime-ghost);
+  box-shadow: inset 4px 0 0 var(--gv-lime);
+}
+
+/* Today: this week against its target. */
+.gv-week-progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 14px 0 4px;
+  padding: 12px 0;
+  border-top: 1px solid var(--gv-line);
+  border-bottom: 1px solid var(--gv-line);
+}
+.gv-week-progress-ring { flex: 0 0 auto; }
+.gv-week-progress-text { display: flex; flex-direction: column; min-width: 0; }
+.gv-week-progress-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+.gv-week-progress-num { margin-top: 2px; font-family: var(--gv-display); font-weight: 400; font-size: 36px; line-height: 1; color: var(--gv-ink); }
+.gv-week-progress-togo {
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gv-lime-deep);
+}
+.theme-dark .gv-app .gv-week-progress-togo { color: var(--gv-lime); }
+
+/* What a lapsed week would cost the streak. Amber, because it is a warning
+   about the streak and nothing else on the page is amber. */
+.gv-streak-risk {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gv-amber-text);
+}
+
+/* Live set: the record this set is chasing. A grid so the three words and the
+   bar sit the same whether or not a wrapper sits between them. */
+.gv-pb-target {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "label now" "label togo" "bar bar";
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: end;
+  margin: 10px 0;
+  padding: 10px 14px 12px;
+  background: var(--gv-surface);
+  border: 2px solid var(--gv-ink);
+  box-shadow: inset 4px 0 0 var(--gv-lime);
+  color: var(--gv-ink);
+}
+.theme-dark .gv-app .gv-pb-target { border-color: var(--gv-line-2); }
+.gv-pb-target-label {
+  grid-area: label;
+  font-family: var(--gv-display);
+  font-size: clamp(30px, 10vw, 42px);
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: var(--gv-lime-deep);
+}
+.theme-dark .gv-app .gv-pb-target-label { color: var(--gv-lime); }
+.gv-pb-target-now {
+  grid-area: now;
+  text-align: right;
+  font-family: var(--gv-display);
+  font-size: 20px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.gv-pb-target-togo {
+  grid-area: togo;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gv-lime-deep);
+}
+.theme-dark .gv-app .gv-pb-target-togo { color: var(--gv-lime); }
+.gv-pb-target-bar {
+  grid-area: bar;
+  margin-top: 8px;
+  height: 14px;
+  overflow: hidden;
+  background: var(--gv-lime-ghost);
+  border: 2px solid var(--gv-ink);
+}
+.theme-dark .gv-app .gv-pb-target-bar { border-color: var(--gv-line-2); }
+.gv-pb-target-fill { height: 100%; background: var(--gv-lime); transition: width 0.3s ease; }
+/* Beaten: the set is already past the record, and that is the moment on this
+   screen — the target floods. */
+.gv-pb-target.is-beaten { background: var(--gv-lime); border-color: var(--gv-lime); box-shadow: none; color: var(--gv-ink-fixed); }
+.theme-dark .gv-app .gv-pb-target.is-beaten { border-color: var(--gv-lime); }
+.gv-pb-target.is-beaten .gv-pb-target-label,
+.theme-dark .gv-app .gv-pb-target.is-beaten .gv-pb-target-label,
+.gv-pb-target.is-beaten .gv-pb-target-togo,
+.theme-dark .gv-app .gv-pb-target.is-beaten .gv-pb-target-togo { color: var(--gv-ink-fixed); }
+.gv-pb-target.is-beaten .gv-pb-target-bar,
+.theme-dark .gv-app .gv-pb-target.is-beaten .gv-pb-target-bar { background: var(--gv-lime-hi); border-color: var(--gv-ink-fixed); }
+.gv-pb-target.is-beaten .gv-pb-target-fill { background: var(--gv-ink-fixed); }
+
+/* Session complete: one block per record broken. */
+.gv-pb-moment {
+  margin: 12px 0;
+  padding: 14px 16px;
+  text-align: left;
+  background: var(--gv-surface);
+  border: 2px solid var(--gv-ink);
+  color: var(--gv-ink);
+}
+.theme-dark .gv-app .gv-pb-moment { border-color: var(--gv-line-2); }
+.gv-pb-moment-kicker {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gv-lime-deep);
+}
+.theme-dark .gv-app .gv-pb-moment-kicker { color: var(--gv-lime); }
+.gv-pb-moment-kicker { margin: 0; }
+/* An <h3>: Obsidian's bare `h3` rule also sets colour, letter-spacing,
+   font-style and font-variant from the theme's --h3-* variables (app.css, in
+   1.14.4 at :13187), and a theme that tints headings would tint this. */
+.gv-pb-moment-name {
+  margin: 4px 0 8px;
+  font-weight: 400;
+  font-family: var(--gv-display);
+  font-size: 24px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: inherit;
+  letter-spacing: normal;
+  font-style: normal;
+  font-variant: normal;
+}
+.gv-pb-old {
+  position: relative;
+  display: inline-block;
+  font-family: var(--gv-display);
+  font-size: 34px;
+  line-height: 0.9;
+  text-decoration: none;
+  color: var(--gv-ink-dim);
+}
+/* A struck figure: the line is drawn, not text-decoration, so it can lean. */
+.gv-pb-old::after {
+  content: '';
+  position: absolute;
+  top: 44%;
+  left: -3px;
+  right: -3px;
+  height: 4px;
+  background-color: currentColor;
+  transform: rotate(-9deg);
+}
+.gv-pb-arrow { display: inline-block; margin: 0 8px; vertical-align: middle; color: var(--gv-ink-dim); }
+/* ico() puts gv-ico AND gv-pb-arrow on the SAME span, so the svg is its
+   direct child: `.gv-pb-arrow .gv-ico svg` never matched (guarded by
+   tests/apex-review-notes.test.cjs against the emitted DOM). */
+.gv-pb-arrow svg { width: 26px; height: 26px; }
+.gv-pb-new {
+  display: inline-block;
+  font-weight: 400;
+  font-family: var(--gv-display);
+  font-size: clamp(54px, 19vw, 84px);
+  line-height: 0.9;
+  vertical-align: middle;
+  color: var(--gv-lime-deep);
+}
+.theme-dark .gv-app .gv-pb-new { color: var(--gv-lime); }
+.gv-pb-unit {
+  margin-left: 4px;
+  font-family: var(--gv-display);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+.gv-pb-delta {
+  display: inline-block;
+  margin: 8px 6px 0 0;
+  padding: 3px 10px;
+  background: var(--gv-lime);
+  color: var(--gv-ink-fixed);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Records: the newest broken best, and what it beat. There is no recency
+   window, so the badge says "Latest", never "today" or "this week". */
+.gv-recrow.gv-rec-new {
+  position: relative;
+  padding-top: 26px;
+  background: var(--gv-lime-ghost);
+  box-shadow: inset 4px 0 0 var(--gv-lime);
+}
+.gv-recrow.gv-rec-new::after {
+  content: 'Latest';
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gv-lime-deep);
+}
+.theme-dark .gv-app .gv-recrow.gv-rec-new::after { color: var(--gv-lime); }
+.gv-pb-moment-swap { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 4px 10px; }
+.gv-pb-moment-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.gv-rec-prev { margin-right: 6px; font-size: 12px; color: var(--gv-ink-dim); }
+.gv-rec-delta {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: var(--gv-lime);
+  color: var(--gv-ink-fixed);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ============================================================================
    SKIN: EDITORIAL — settings › Style. Pure 01 "Editorial Athlete": magazine
    cover, hairlines everywhere, NO floods — the accent survives only as the
    highlighter sweep, thin fills and display numerals. Kept at the end of the
@@ -2825,6 +3141,7 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 .gv-app.gv-skin-editorial .gv-log-ex-head { background: transparent; color: var(--gv-ink); padding: 0 0 8px; }
 .gv-app.gv-skin-editorial .gv-log-ex-name { font-size: clamp(22px, 6.4vw, 30px); }
 .gv-app.gv-skin-editorial .gv-log-ex-target { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-editorial .gv-log-card.unlogged .gv-log-ex-name { color: var(--gv-ink-dim); }
 .gv-app.gv-skin-editorial .gv-log-ex-head .gv-icon-btn-small { border-color: var(--gv-line-2); color: var(--gv-ink-dim); }
 .gv-app.gv-skin-editorial .gv-log-set {
   border: 0;
@@ -2850,7 +3167,915 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
   font-size: 26px;
   min-height: 44px;
 }
+/* Editorial's underline replaced the base focus colour the same way Apex's border did
+   (its `border-bottom` shorthand ties and comes later): focus recolours the underline. */
+.gv-app.gv-skin-editorial .gv-set-input:focus { border-bottom-color: var(--gv-lime-deep); }
+.theme-dark .gv-app.gv-skin-editorial .gv-set-input:focus { border-bottom-color: var(--gv-lime); }
 .gv-app.gv-skin-editorial .gv-set-done { width: 44px; height: 44px; border-color: var(--gv-line-2); }
 .gv-app.gv-skin-editorial .gv-log-set.done .gv-set-done { background: var(--gv-lime); border-color: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-app.gv-skin-editorial .gv-add-set { border: 2px dashed var(--gv-line-2); color: var(--gv-ink-dim); margin-top: 10px; }
 .gv-app.gv-skin-editorial .gv-btn-finish { letter-spacing: 0.1em; }
+
+/* Progress + PB elements: hairlines and a highlight, never a flood. */
+.gv-app.gv-skin-editorial .gv-pb-target { border: 1px solid var(--gv-line); }
+.gv-app.gv-skin-editorial .gv-pb-target-bar { height: 4px; border: 0; background: var(--gv-line); }
+.gv-app.gv-skin-editorial .gv-pb-target.is-beaten { background: var(--gv-lime-ghost); border-color: var(--gv-lime-deep); box-shadow: inset 4px 0 0 var(--gv-lime-deep); color: var(--gv-ink); }
+.theme-dark .gv-app.gv-skin-editorial .gv-pb-target.is-beaten { border-color: var(--gv-lime); box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-app.gv-skin-editorial .gv-pb-target.is-beaten .gv-pb-target-label,
+.gv-app.gv-skin-editorial .gv-pb-target.is-beaten .gv-pb-target-togo { color: var(--gv-lime-deep); }
+.theme-dark .gv-app.gv-skin-editorial .gv-pb-target.is-beaten .gv-pb-target-label,
+.theme-dark .gv-app.gv-skin-editorial .gv-pb-target.is-beaten .gv-pb-target-togo { color: var(--gv-lime); }
+.gv-app.gv-skin-editorial .gv-pb-target.is-beaten .gv-pb-target-bar { background: var(--gv-line); border-color: transparent; }
+.gv-app.gv-skin-editorial .gv-pb-target.is-beaten .gv-pb-target-fill { background: var(--gv-lime); }
+.gv-app.gv-skin-editorial .gv-pb-moment { border: 1px solid var(--gv-line); }
+.gv-app.gv-skin-editorial .gv-pb-delta,
+.gv-app.gv-skin-editorial .gv-rec-delta { background: var(--gv-lime-ghost); color: var(--gv-lime-deep); }
+.theme-dark .gv-app.gv-skin-editorial .gv-pb-delta,
+.theme-dark .gv-app.gv-skin-editorial .gv-rec-delta { color: var(--gv-lime); }
+
+/* ============================================================================
+   SKIN: APEX — settings › Style, and the DEFAULT. Design 10 "Lock-In Apex"
+   (design/10-lock-in-apex.html): 07's layout (one giant condensed-italic word
+   or number per screen, forward-leaning slabs, a ticker strip) in 09's skin
+   (graphite, ONE accent, amber for the streak only, glow only on a personal
+   best). Kept at the end of the file so its rules win ties.
+
+   THE MOCKUP IS DARK; THIS SKIN FOLLOWS OBSIDIAN'S THEME. Dark (.theme-dark)
+   is the mockup. Light is the same geometry and type on white paper with
+   near-black ink; the accent floods the actions and carries dark ink, and
+   small accent TEXT uses the deep tone (--gv-accent-text) so it holds AA on
+   paper. Every colour below is a token, so all five accents work:
+     flood        background --gv-lime, text --gv-ink-fixed
+     accent text  --gv-accent-text  (deep on paper, the bright tone on graphite)
+     amber        --gv-amber, the streak and nothing else; never accent-tied
+
+   NO clip-path (css-guards.test.cjs: the review linter flags it, and it clips
+   focus rings). A SLAB is an element with a transparent background whose
+   ::before paints a forward-leaning parallelogram behind its own content:
+       position: relative; isolation: isolate;
+       --gv-slab: <fill>;  --gv-slab-edge: <inset box-shadow>;  --gv-skew: <deg>
+   The label stays upright, the box stays a plain rectangle (so the host's
+   focus ring and every touch target are unchanged), and tests/css-cascade.js
+   reads --gv-slab as the colour painted behind the text, so the contrast gate
+   measures what the pseudo-element really draws. A slab element must NOT have
+   overflow: hidden (it would clip its own ::before) or its own ::before.
+
+   Reading surfaces (plan prose, exercise how-to, markdown) keep the calm
+   register: hairlines, no slabs. Slabs go on acting surfaces and heroes.
+   ============================================================================ */
+
+.gv-app.gv-skin-apex {
+  /* paper (light) */
+  --gv-bg: #f2f3f5;
+  --gv-surface: #ffffff;
+  --gv-line: #d9dde2;
+  --gv-line-2: #8b95a0;
+  --gv-ink: #0a0b0d;
+  --gv-ink-dim: #4a525b;
+  --gv-amber: #a15c07;
+  --gv-ember: #c2410c;
+  --gv-amber-text: var(--gv-amber);
+  /* Small accent text on paper: the accent's deep tone. */
+  --gv-accent-text: var(--gv-lime-deep);
+  /* Apex-only surfaces. A control, a week cell, a bar track, the hero's two
+     ends, and the darkening laid over a tile's fill. One value cannot serve
+     both themes, so each has a twin in the dark block below. */
+  --gv-apex-chip: #e3e6ea;
+  --gv-apex-cell: #e9ecef;
+  --gv-apex-track: #d3d8de;
+  --gv-apex-hero-hi: #ffffff;
+  --gv-apex-hero-lo: #e8ebee;
+  --gv-apex-sheen: rgba(10, 11, 13, 0.04);
+  --gv-apex-gutter: 18px;
+  --gv-apex-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Barlow Condensed is embedded (src/font.css); Anton and the system
+     condensed faces are the fallback if it ever fails to parse. */
+  --gv-display: 'Barlow Condensed', 'Anton', 'Avenir Next Condensed', Impact, 'Arial Narrow', sans-serif;
+  /* The plugin's palette, offered to anything Obsidian paints inside the
+     view (form fields, rendered markdown, checkboxes) instead of the host's
+     own. */
+  --text-normal: var(--gv-ink);
+  --text-muted: var(--gv-ink-dim);
+  --text-on-accent: var(--gv-ink-fixed);
+  --background-primary: var(--gv-bg);
+  --background-modifier-form-field: var(--gv-surface);
+  --background-modifier-border: var(--gv-line);
+  --interactive-accent: var(--gv-lime);
+  --interactive-accent-hover: var(--gv-lime-hi);
+  color-scheme: light;
+  background-image: radial-gradient(90% 260px at 50% -40px, var(--gv-lime-ghost), var(--gv-bg) 70%);
+}
+.gv-app.gv-skin-apex.gv-narrow { --gv-apex-gutter: 12px; }
+
+/* graphite (dark) — the mockup's own values */
+.theme-dark .gv-app.gv-skin-apex {
+  --gv-bg: #0a0b0d;
+  --gv-surface: #16191d;
+  --gv-line: #262b31;
+  --gv-line-2: #3b424a;
+  --gv-ink: #f2f4f5;
+  --gv-ink-dim: #aeb5bd;
+  --gv-amber: #f2b53c;
+  --gv-ember: #f97316;
+  --gv-accent-text: var(--gv-lime);
+  --gv-apex-chip: #20252b;
+  --gv-apex-cell: #1a1e23;
+  --gv-apex-track: #1e2227;
+  --gv-apex-hero-hi: #1d2228;
+  --gv-apex-hero-lo: #0e1013;
+  --gv-apex-sheen: rgba(0, 0, 0, 0.28);
+  color-scheme: dark;
+}
+
+/* Lime, tuned toward the mockup's #C3F04A. Scoped to .gv-accent-lime so the
+   other four palettes (above) stay exactly as the user picked them. The deep
+   and ghost tones are the shared ones and still hold AA. */
+.gv-app.gv-skin-apex.gv-accent-lime {
+  --gv-lime: #c3f04a;
+  --gv-lime-hi: #e4ff8c;
+}
+
+/* ---------- slabs: the one place the parallelogram is drawn ---------- */
+
+.gv-app.gv-skin-apex .gv-btn::before,
+.gv-app.gv-skin-apex .gv-btn-go::before,
+.gv-app.gv-skin-apex .gv-btn-finish::before,
+.gv-app.gv-skin-apex .gv-btn-hero-ghost::before,
+.gv-app.gv-skin-apex .gv-icon-btn::before,
+.gv-app.gv-skin-apex .gv-head-btn::before,
+.gv-app.gv-skin-apex .gv-set-done::before,
+.gv-app.gv-skin-apex .gv-dial-step::before,
+.gv-app.gv-skin-apex .gv-timed-play::before,
+.gv-app.gv-skin-apex .gv-chip::before,
+.gv-app.gv-skin-apex .gv-segmented-btn::before,
+.gv-app.gv-skin-apex .gv-tag::before,
+.gv-app.gv-skin-apex .gv-badge::before,
+.gv-app.gv-skin-apex .gv-ex-best::before,
+.gv-app.gv-skin-apex .gv-day::before,
+.gv-app.gv-skin-apex .gv-tile::before,
+.gv-app.gv-skin-apex .gv-logo .gv-ico::before,
+.gv-app.gv-skin-apex .gv-setup-logo::before,
+.gv-app.gv-skin-apex .gv-session-complete-ico::before,
+.gv-app.gv-skin-apex .gv-week-progress::before,
+.gv-app.gv-skin-apex .gv-pb-target::before,
+.gv-app.gv-skin-apex .gv-pb-moment::before,
+.gv-app.gv-skin-apex .gv-pb-delta::before,
+.gv-app.gv-skin-apex .gv-rec-delta::before,
+.gv-app.gv-skin-apex .gv-recrow.gv-rec-new::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab, transparent);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0), var(--gv-slab-sheen, rgba(0, 0, 0, 0)));
+  box-shadow: var(--gv-slab-edge, none);
+  transform: skewX(var(--gv-skew, -12deg));
+}
+/* A control whose TOUCH box is 44px but whose drawn slab is shorter names the
+   difference in --gv-slab-pull: the slab is pulled in top and bottom, the
+   button (what a thumb hits) keeps the full box. */
+.gv-app.gv-skin-apex .gv-btn::before,
+.gv-app.gv-skin-apex .gv-hero-manual::before,
+.gv-app.gv-skin-apex .gv-chip::before,
+.gv-app.gv-skin-apex .gv-segmented-btn::before { top: var(--gv-slab-pull, 0px); bottom: var(--gv-slab-pull, 0px); }
+
+/* The same elements: transparent themselves, positioned, isolated so the
+   ::before's z-index:-1 stays inside them, and border-free (the slab draws
+   any edge). Each one then names its own --gv-slab below. The three custom
+   properties are RESET here because custom properties inherit: a chip inside
+   a panel would otherwise wear the panel's edge and sheen. The dark twins
+   are not decoration: base rules like `.theme-dark .gv-app .gv-chip.on` paint
+   a rectangle at (0,4,0), and only a rule that is also (0,4,0) and later
+   takes it back. (They carry no resets: a (0,4,0) reset would out-rank the
+   (0,3,0) rules that set each slab's own fill.) */
+.gv-app.gv-skin-apex .gv-btn,
+.gv-app.gv-skin-apex .gv-btn-go,
+.gv-app.gv-skin-apex .gv-btn-finish,
+.gv-app.gv-skin-apex .gv-btn-hero-ghost,
+.gv-app.gv-skin-apex .gv-icon-btn,
+.gv-app.gv-skin-apex .gv-head-btn,
+.gv-app.gv-skin-apex .gv-set-done,
+.gv-app.gv-skin-apex .gv-dial-step,
+.gv-app.gv-skin-apex .gv-timed-play,
+.gv-app.gv-skin-apex .gv-chip,
+.gv-app.gv-skin-apex .gv-segmented-btn,
+.gv-app.gv-skin-apex .gv-tag,
+.gv-app.gv-skin-apex .gv-badge,
+.gv-app.gv-skin-apex .gv-ex-best,
+.gv-app.gv-skin-apex .gv-day,
+.gv-app.gv-skin-apex .gv-tile,
+.gv-app.gv-skin-apex .gv-logo .gv-ico,
+.gv-app.gv-skin-apex .gv-setup-logo,
+.gv-app.gv-skin-apex .gv-session-complete-ico,
+.gv-app.gv-skin-apex .gv-week-progress,
+.gv-app.gv-skin-apex .gv-pb-target,
+.gv-app.gv-skin-apex .gv-pb-moment,
+.gv-app.gv-skin-apex .gv-pb-delta,
+.gv-app.gv-skin-apex .gv-rec-delta,
+.gv-app.gv-skin-apex .gv-recrow.gv-rec-new {
+  --gv-slab-edge: none;
+  --gv-slab-sheen: transparent;
+  --gv-slab-pull: 0px;
+  --gv-skew: -12deg;
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  background-color: transparent;
+}
+.theme-dark .gv-app.gv-skin-apex .gv-btn,
+.theme-dark .gv-app.gv-skin-apex .gv-btn-go,
+.theme-dark .gv-app.gv-skin-apex .gv-btn-finish,
+.theme-dark .gv-app.gv-skin-apex .gv-btn-hero-ghost,
+.theme-dark .gv-app.gv-skin-apex .gv-icon-btn,
+.theme-dark .gv-app.gv-skin-apex .gv-head-btn,
+.theme-dark .gv-app.gv-skin-apex .gv-set-done,
+.theme-dark .gv-app.gv-skin-apex .gv-dial-step,
+.theme-dark .gv-app.gv-skin-apex .gv-timed-play,
+.theme-dark .gv-app.gv-skin-apex .gv-chip,
+.theme-dark .gv-app.gv-skin-apex .gv-segmented-btn,
+.theme-dark .gv-app.gv-skin-apex .gv-tag,
+.theme-dark .gv-app.gv-skin-apex .gv-badge,
+.theme-dark .gv-app.gv-skin-apex .gv-ex-best,
+.theme-dark .gv-app.gv-skin-apex .gv-day,
+.theme-dark .gv-app.gv-skin-apex .gv-tile,
+.theme-dark .gv-app.gv-skin-apex .gv-logo .gv-ico,
+.theme-dark .gv-app.gv-skin-apex .gv-setup-logo,
+.theme-dark .gv-app.gv-skin-apex .gv-session-complete-ico,
+.theme-dark .gv-app.gv-skin-apex .gv-week-progress,
+.theme-dark .gv-app.gv-skin-apex .gv-pb-target,
+.theme-dark .gv-app.gv-skin-apex .gv-pb-moment,
+.theme-dark .gv-app.gv-skin-apex .gv-pb-delta,
+.theme-dark .gv-app.gv-skin-apex .gv-rec-delta,
+.theme-dark .gv-app.gv-skin-apex .gv-recrow.gv-rec-new {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  background-color: transparent;
+}
+
+/* Panels are tall, so they lean less: the lean is the same few pixels a
+   58px button gets, not the same angle. */
+.gv-app.gv-skin-apex .gv-tile,
+.gv-app.gv-skin-apex .gv-week-progress,
+.gv-app.gv-skin-apex .gv-pb-target,
+.gv-app.gv-skin-apex .gv-pb-moment,
+.gv-app.gv-skin-apex .gv-recrow.gv-rec-new { --gv-skew: -4deg; }
+.gv-app.gv-skin-apex .gv-tag,
+.gv-app.gv-skin-apex .gv-badge,
+.gv-app.gv-skin-apex .gv-pb-delta,
+.gv-app.gv-skin-apex .gv-rec-delta { --gv-skew: -16deg; }
+
+/* ---------- type ---------- */
+
+.gv-app.gv-skin-apex .gv-display { font-weight: 900; line-height: 0.86; letter-spacing: -0.005em; }
+.gv-app.gv-skin-apex .gv-kicker { font-size: 11.5px; letter-spacing: 0.14em; }
+.gv-app.gv-skin-apex .gv-toolbar-title {
+  font-size: clamp(36px, 12vw, 60px);
+  font-weight: 900;
+  line-height: 0.86;
+  letter-spacing: -0.005em;
+}
+.gv-app.gv-skin-apex .gv-section-title { font-size: 22px; font-weight: 900; letter-spacing: 0.02em; }
+.gv-app.gv-skin-apex .gv-section-title .gv-ico { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-microcopy { font-weight: 800; letter-spacing: 0.16em; }
+
+/* ---------- head + nav ---------- */
+
+.gv-app.gv-skin-apex .gv-logo-text { font-size: 24px; font-weight: 900; letter-spacing: 0.02em; }
+.gv-app.gv-skin-apex .gv-logo .gv-ico { --gv-slab: var(--gv-lime); padding: 6px; color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-head-btn { --gv-slab: transparent; flex: 0 0 auto; color: var(--gv-ink-dim); }
+.gv-app.gv-skin-apex .gv-head-btn:hover { --gv-slab: var(--gv-apex-chip); color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-head-btn.on { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+
+.gv-app.gv-skin-apex .gv-nav { border-bottom: 1px solid var(--gv-line); }
+.gv-app.gv-skin-apex .gv-nav-btn {
+  position: relative;
+  font-family: var(--gv-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.gv-app.gv-skin-apex .gv-nav-btn:hover { background-color: transparent; color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-nav-btn.on { background-color: transparent; color: var(--gv-accent-text); }
+/* The active tab: a short leaning bar sitting ON the bottom rule (the mockup's
+   tab). bottom: 0, never negative: .gv-nav scrolls sideways (overflow-x: auto
+   makes overflow-y compute to auto) and a pseudo-element poking 1px out of
+   it adds a vertical scroll. */
+.gv-app.gv-skin-apex .gv-nav-btn.on::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 0;
+  height: 4px;
+  background-color: var(--gv-lime);
+  transform: skewX(-24deg);
+}
+
+/* ---------- controls ---------- */
+
+.gv-app.gv-skin-apex .gv-btn {
+  --gv-slab: var(--gv-lime);
+  --gv-slab-pull: 2px;
+  min-height: 44px;
+  padding: 8px 18px;
+  color: var(--gv-ink-fixed);
+  font-family: var(--gv-display);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+.gv-app.gv-skin-apex .gv-btn:hover { --gv-slab: var(--gv-lime-hi); filter: none; }
+.gv-app.gv-skin-apex .gv-btn.gv-btn-small { --gv-slab-pull: 5px; min-height: 44px; padding: 6px 14px; font-size: 14px; }
+.gv-app.gv-skin-apex .gv-btn.gv-btn-ghost { --gv-slab: var(--gv-apex-chip); color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-btn.gv-btn-ghost:hover { --gv-slab: var(--gv-line); }
+.gv-app.gv-skin-apex .gv-btn.gv-btn-danger-ghost { --gv-slab: var(--gv-apex-chip); color: var(--gv-danger); }
+
+/* flex: 0 0 auto on both: their 44px (touch) box is only a ceiling in a crowded
+   flex row, and the session header squeezed the End button to 42. */
+.gv-app.gv-skin-apex .gv-icon-btn { --gv-slab: var(--gv-apex-chip); flex: 0 0 auto; color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-icon-btn:hover { --gv-slab: var(--gv-line); }
+.gv-app.gv-skin-apex .gv-icon-btn-on,
+.gv-app.gv-skin-apex .gv-icon-btn-on:hover { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+
+.gv-app.gv-skin-apex .gv-chips { gap: 8px; }
+.gv-app.gv-skin-apex .gv-chip {
+  --gv-slab: var(--gv-apex-chip);
+  --gv-slab-pull: 3px;
+  min-height: 44px;
+  padding: 8px 16px;
+  color: var(--gv-ink);
+  font-family: var(--gv-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.gv-app.gv-skin-apex .gv-chip.on { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-segmented-btn {
+  --gv-slab: var(--gv-apex-chip);
+  --gv-slab-pull: 5px;
+  min-height: 44px;
+  padding: 6px 14px;
+  color: var(--gv-ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+.gv-app.gv-skin-apex .gv-segmented-btn.on { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+
+.gv-app.gv-skin-apex .gv-tag { --gv-slab: var(--gv-lime-ghost); padding: 3px 11px; color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-tag.gv-tag-type { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-badge { --gv-slab: var(--gv-lime); padding: 3px 11px; color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-ex-best {
+  --gv-slab: var(--gv-lime);
+  padding: 4px 14px;
+  color: var(--gv-ink-fixed);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.gv-app.gv-skin-apex .gv-search { border-color: var(--gv-line-2); }
+.gv-app.gv-skin-apex .gv-add-line { font-family: var(--gv-display); font-size: 16px; font-weight: 800; letter-spacing: 0.1em; }
+.gv-app.gv-skin-apex .gv-btn-discard { font-family: var(--gv-display); font-size: 15px; font-weight: 800; letter-spacing: 0.1em; }
+
+/* Progress bar: a leaning track, the same hatched fill the other skins use. */
+.gv-app.gv-skin-apex .gv-bar { height: 14px; border: 0; background-color: var(--gv-apex-track); transform: skewX(-14deg); }
+.gv-app.gv-skin-apex .gv-bar-fill { transition: width 0.4s ease; }
+.gv-app.gv-skin-apex .gv-ring-track { stroke: var(--gv-apex-track); stroke-width: 8; }
+.gv-app.gv-skin-apex .gv-ring-fill { stroke-width: 8; stroke-linecap: butt; }
+
+/* ---------- Today: the poster ---------- */
+
+/* Full-bleed hero (it also opens the Running page): a graphite poster with
+   the mockup's hairline stripes and one leaning band, in tokens. */
+.gv-app.gv-skin-apex .gv-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0 calc(-1 * var(--gv-apex-gutter));
+  padding: 14px var(--gv-apex-gutter) 20px;
+  border: 0;
+  background-color: var(--gv-surface);
+  background-image: linear-gradient(165deg, var(--gv-apex-hero-hi) 0%, var(--gv-apex-hero-lo) 100%);
+}
+.gv-app.gv-skin-apex .gv-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(100deg, var(--gv-lime-ghost) 0, var(--gv-lime-ghost) 2px, transparent 2px, transparent 24px);
+}
+.gv-app.gv-skin-apex .gv-hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -34px;
+  bottom: 0;
+  width: 112px;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-lime-ghost);
+  transform: skewX(-18deg);
+}
+.gv-app.gv-skin-apex .gv-hero-title {
+  margin: 8px 0 0;
+  font-size: clamp(52px, 19vw, 92px);
+  font-weight: 900;
+  line-height: 0.84;
+  color: var(--gv-ink);
+  overflow-wrap: break-word;
+}
+/* Long day names step down (page-dashboard.js heroTitleClass: > 44, > 70 chars) so
+   the title cannot push Start off a phone. Numbers measured at 320 and 390 wide
+   against a 95-character name: tests/apex-review-notes.test.cjs. */
+.gv-app.gv-skin-apex .gv-hero-title.is-long { font-size: clamp(36px, 12vw, 60px); }
+.gv-app.gv-skin-apex .gv-hero-title.is-xlong { font-size: clamp(30px, 9.2vw, 44px); }
+/* The highlighter sweep is Floor's; Apex's mark is a leaning bar under the word. */
+.gv-app.gv-skin-apex .gv-mark,
+.theme-dark .gv-app.gv-skin-apex .gv-mark { background: none; }
+.gv-app.gv-skin-apex .gv-hero-title::after {
+  content: '';
+  display: block;
+  width: 64px;
+  height: 8px;
+  margin-top: 12px;
+  background-color: var(--gv-lime);
+  transform: skewX(-24deg);
+  transform-origin: left bottom;
+}
+.gv-app.gv-skin-apex .gv-hero-sub { margin-top: 10px; }
+/* Guided setup: Start is followed by the Equipment block; Apex's hero-action has no padding, so the slab touched its label. */
+.gv-app.gv-skin-apex .gv-setup-start { margin-bottom: 18px; }
+
+/* The ticker: a leaning lime band. The track is twice the strip's width, so
+   the loop is seamless at any pane width (the words are repeated once). */
+.gv-app.gv-skin-apex .gv-ticker {
+  display: block;
+  position: relative;
+  z-index: 2;
+  margin: 16px calc(-1 * var(--gv-apex-gutter)) 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  background-color: var(--gv-lime);
+  color: var(--gv-ink-fixed);
+  transform: rotate(-1.5deg);
+}
+.gv-app.gv-skin-apex .gv-ticker > div {
+  display: flex;
+  width: max-content;
+  min-width: 200%;
+  animation: gv-apex-marquee 18s linear infinite;
+}
+.gv-app.gv-skin-apex .gv-ticker span {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  font-family: var(--gv-display);
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.gv-app.gv-skin-apex .gv-ticker span::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  margin: 0 16px;
+  background-color: var(--gv-ink-fixed);
+  transform: skewX(-20deg);
+}
+@keyframes gv-apex-marquee { to { transform: translateX(-50%); } }
+
+/* The prescription: name left, volume right, hairline between. */
+.gv-app.gv-skin-apex .gv-rx { margin-top: 12px; border-top: 0; }
+.gv-app.gv-skin-apex .gv-rx li {
+  align-items: center;
+  min-height: 46px;
+  padding: 6px 0;
+  font-family: var(--gv-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.gv-app.gv-skin-apex .gv-rx b {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-apex .gv-rx-rest b {
+  font-family: var(--gv-apex-body);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gv-ink-dim);
+}
+.gv-app.gv-skin-apex .gv-pb-reach {
+  margin-top: 4px;
+  font-family: var(--gv-apex-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gv-accent-text);
+}
+/* PB in reach lights the whole row, bleeding to the poster's edges. */
+.gv-app.gv-skin-apex .gv-rx li.gv-rx-reach {
+  margin: 0 calc(-1 * var(--gv-apex-gutter));
+  padding-left: calc(var(--gv-apex-gutter) + 6px);
+  padding-right: var(--gv-apex-gutter);
+}
+.gv-app.gv-skin-apex .gv-rx li.gv-rx-reach b { color: var(--gv-accent-text); }
+
+/* The action: the CTA is the slab; the band behind it is gone. */
+.gv-app.gv-skin-apex .gv-hero-action {
+  margin-right: 0;
+  margin-left: 0;
+  padding: 0;
+  overflow: visible;
+  background-color: transparent;
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-apex .gv-speed { display: none; }
+.gv-app.gv-skin-apex .gv-shout { font-size: 11.5px; color: var(--gv-ink-dim); }
+.gv-app.gv-skin-apex .gv-btn-go {
+  --gv-slab: var(--gv-lime);
+  min-height: 58px;
+  color: var(--gv-ink-fixed);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.gv-app.gv-skin-apex .gv-btn-go:hover { --gv-slab: var(--gv-lime-hi); background-color: transparent; }
+/* A slow pulse behind Today's CTA only (not the rest or finish screens). */
+.gv-app.gv-skin-apex .gv-hero > .gv-hero-action .gv-btn-go::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-color: var(--gv-lime);
+  opacity: 0;
+  animation: gv-apex-pulse 1.9s ease-out infinite;
+}
+@keyframes gv-apex-pulse {
+  0%   { transform: skewX(-12deg) scale(1, 1); opacity: 0.6; }
+  100% { transform: skewX(-12deg) scale(1.06, 1.4); opacity: 0; }
+}
+.gv-app.gv-skin-apex .gv-btn-hero-ghost {
+  --gv-slab: var(--gv-apex-chip);
+  color: var(--gv-ink);
+  font-family: var(--gv-display);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+.gv-app.gv-skin-apex .gv-btn-hero-ghost:hover { --gv-slab: var(--gv-line); }
+.gv-app.gv-skin-apex .gv-hero-manual { --gv-slab-pull: 2px; min-height: 44px; font-size: 15px; }
+
+/* The week: seven leaning cells. Today is the inverse (ink); done is the
+   flood; a day that is both keeps the flood and gains an ink edge. */
+.gv-app.gv-skin-apex .gv-week { gap: 4px; margin-top: 14px; border: 0; background-color: transparent; }
+.gv-app.gv-skin-apex .gv-day {
+  --gv-slab: var(--gv-apex-cell);
+  min-height: 52px;
+  padding: 8px 0 7px;
+}
+.gv-app.gv-skin-apex .gv-day-name { font-size: 22px; font-weight: 900; }
+.gv-app.gv-skin-apex .gv-day-dot { font-family: var(--gv-display); font-size: 12px; font-weight: 800; letter-spacing: 0.06em; }
+.gv-app.gv-skin-apex .gv-day.rest { --gv-slab: transparent; }
+.gv-app.gv-skin-apex .gv-day.rest .gv-day-name { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-apex .gv-day.today { --gv-slab: var(--gv-ink); --gv-slab-edge: inset 0 0 0 2px var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-day.today .gv-day-name,
+.theme-dark .gv-app.gv-skin-apex .gv-day.today .gv-day-name { color: var(--gv-surface); }
+.gv-app.gv-skin-apex .gv-day.today .gv-day-dot,
+.theme-dark .gv-app.gv-skin-apex .gv-day.today .gv-day-dot { color: var(--gv-surface); }
+.gv-app.gv-skin-apex .gv-day.done { --gv-slab: var(--gv-lime); }
+.gv-app.gv-skin-apex .gv-day.done .gv-day-name,
+.theme-dark .gv-app.gv-skin-apex .gv-day.done .gv-day-name,
+.gv-app.gv-skin-apex .gv-day.done .gv-day-dot,
+.theme-dark .gv-app.gv-skin-apex .gv-day.done .gv-day-dot { color: var(--gv-ink-fixed); }
+
+/* Today: the week's target. */
+.gv-app.gv-skin-apex .gv-week-progress {
+  --gv-slab: var(--gv-surface);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  gap: 16px;
+  margin: 12px 0 4px;
+  padding: 12px 20px;
+}
+.gv-app.gv-skin-apex .gv-week-progress-ring { width: 76px; height: 76px; }
+.gv-app.gv-skin-apex .gv-week-progress-label { font-size: 11.5px; }
+.gv-app.gv-skin-apex .gv-week-progress-num { font-size: 44px; font-weight: 900; line-height: 0.86; }
+.gv-app.gv-skin-apex .gv-week-progress-togo { font-family: var(--gv-display); font-size: 18px; font-weight: 800; letter-spacing: 0.04em; color: var(--gv-accent-text); }
+
+/* The streak: the flame is the picture, the number is amber. */
+.gv-app.gv-skin-apex .gv-streak-num { font-weight: 900; color: var(--gv-amber); }
+.gv-app.gv-skin-apex .gv-streak-risk {
+  margin: 6px 0 10px;
+  font-family: var(--gv-display);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* Stats: leaning tiles, numerals as the artwork. */
+/* margin-top: the Apex tiles sat 0-4px under whatever came before them (Running's week list, the streak, the profile card). */
+.gv-app.gv-skin-apex .gv-tiles { gap: 6px; margin-top: 14px; margin-bottom: 14px; border: 0; background-color: transparent; }
+.gv-app.gv-skin-apex .gv-tile {
+  --gv-slab: var(--gv-surface);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  --gv-slab-sheen: var(--gv-apex-sheen);
+  padding: 14px 18px 15px;
+}
+.gv-app.gv-skin-apex .gv-tile-ico { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-tile-big { font-size: clamp(36px, 11vw, 48px); font-weight: 900; line-height: 0.86; }
+.gv-app.gv-skin-apex .gv-goal-mini-nums { font-weight: 900; }
+
+/* ---------- lists ---------- */
+
+.gv-app.gv-skin-apex .gv-ex-name { font-size: clamp(22px, 6vw, 28px); font-weight: 800; }
+.gv-app.gv-skin-apex .gv-plan-name { font-weight: 800; }
+.gv-app.gv-skin-apex .gv-session-date,
+.gv-app.gv-skin-apex .gv-runday-day,
+.gv-app.gv-skin-apex .gv-day-title { font-weight: 800; }
+.gv-app.gv-skin-apex .gv-heat-cell { width: 14px; height: 12px; background-color: var(--gv-apex-cell); transform: skewX(-10deg); }
+.gv-app.gv-skin-apex .gv-heat-cell.on { background-color: var(--gv-lime); }
+.gv-app.gv-skin-apex .gv-heat-cell.future { background-color: transparent; }
+
+/* ---------- logging ---------- */
+
+.gv-app.gv-skin-apex .gv-logtop {
+  background-color: var(--gv-surface);
+  color: var(--gv-ink);
+  border-bottom: 3px solid var(--gv-lime);
+}
+.gv-app.gv-skin-apex .gv-logtop-title { font-size: clamp(24px, 7vw, 30px); font-weight: 900; }
+.gv-app.gv-skin-apex .gv-logtop-sub,
+.theme-dark .gv-app.gv-skin-apex .gv-logtop-sub { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-log-clock,
+.theme-dark .gv-app.gv-skin-apex .gv-log-clock { color: var(--gv-accent-text); font-weight: 900; }
+.gv-app.gv-skin-apex .gv-logtop .gv-icon-btn,
+.theme-dark .gv-app.gv-skin-apex .gv-logtop .gv-icon-btn { color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-logtop .gv-btn-ghost,
+.theme-dark .gv-app.gv-skin-apex .gv-logtop .gv-btn-ghost { background-color: transparent; color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-log-ex-name { font-weight: 900; }
+.gv-app.gv-skin-apex .gv-log-ex-head .gv-icon-btn-small { --gv-slab: transparent; color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-log-set { border-color: var(--gv-line-2); }
+.gv-app.gv-skin-apex .gv-log-set.done {
+  background-color: var(--gv-lime-ghost);
+  color: var(--gv-ink);
+  box-shadow: inset 4px 0 0 var(--gv-lime);
+}
+.gv-app.gv-skin-apex .gv-log-set.done .gv-set-num,
+.theme-dark .gv-app.gv-skin-apex .gv-log-set.done .gv-set-num { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-log-set.done .gv-set-unit,
+.theme-dark .gv-app.gv-skin-apex .gv-log-set.done .gv-set-unit { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-apex .gv-set-input { border-color: var(--gv-line-2); background-color: var(--gv-apex-cell); font-size: 24px; font-weight: 900; }
+.gv-app.gv-skin-apex .gv-set-input-narrow,
+.gv-app.gv-skin-apex .gv-session-distance,
+.gv-app.gv-skin-apex .gv-session-weight { font-size: 20px; }
+/* The rule above recolours the border at (0,3,0) and, coming later, beat the base
+   `.gv-set-input:focus` (also (0,3,0)): a focused box looked exactly like an idle one.
+   Focus is the accent's text tone on the border PLUS a 1px outer ring, in both themes
+   (--gv-accent-text is lime-deep on paper, the accent on graphite). Plain :focus - the
+   invalid-at-15.0 :focus-visible is not needed for a text box, which always shows it. */
+.gv-app.gv-skin-apex .gv-set-input:focus { border-color: var(--gv-accent-text); box-shadow: 0 0 0 1px var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-set-done { --gv-slab: var(--gv-apex-chip); color: var(--gv-ink-dim); }
+.gv-app.gv-skin-apex .gv-log-set.done .gv-set-done { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-btn-finish {
+  --gv-slab: var(--gv-lime);
+  min-height: 64px;
+  color: var(--gv-ink-fixed);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+.gv-app.gv-skin-apex .gv-btn-finish:hover,
+.theme-dark .gv-app.gv-skin-apex .gv-btn-finish:hover { --gv-slab: var(--gv-lime-hi); background-color: transparent; color: var(--gv-ink-fixed); }
+
+/* ---------- the live session ---------- */
+
+.gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(32px, 10vw, 52px); font-weight: 900; line-height: 0.86; }
+/* The phone rule above in the file compresses the name to give the tap zone
+   its height; Apex keeps that intent and only swaps the face's scale. */
+body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9vw, 40px); }
+.gv-app.gv-skin-apex .gv-session-top { border-bottom-color: var(--gv-line); }
+.gv-app.gv-skin-apex .gv-session-zone { border-color: var(--gv-line-2); }
+.gv-app.gv-skin-apex .gv-session-zone.gv-session-zone-live { border-color: var(--gv-lime); }
+.gv-app.gv-skin-apex .gv-rc-zone {
+  background-image: repeating-linear-gradient(100deg, var(--gv-lime-ghost) 0, var(--gv-lime-ghost) 2px, transparent 2px, transparent 26px);
+}
+.gv-app.gv-skin-apex .gv-rc-count { font-weight: 900; line-height: 0.95; }
+.gv-app.gv-skin-apex .gv-session-count { font-size: clamp(88px, 30vw, 190px); }
+.gv-app.gv-skin-apex .gv-session-complete-title { font-size: clamp(44px, 15vw, 76px); font-weight: 900; line-height: 0.86; }
+.gv-app.gv-skin-apex .gv-session-rest-clock-wrap { font-weight: 900; }
+.gv-app.gv-skin-apex .gv-timed-count { font-weight: 900; }
+.gv-app.gv-skin-apex .gv-timed-play { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-timed-play:hover { --gv-slab: var(--gv-lime-hi); }
+.gv-app.gv-skin-apex .gv-dial-step { --gv-slab: var(--gv-apex-chip); color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-dial-step:hover { --gv-slab: var(--gv-line); }
+.gv-app.gv-skin-apex .gv-guidesetup .gv-dial-step:hover,
+.theme-dark .gv-app.gv-skin-apex .gv-guidesetup .gv-dial-step:hover { background-color: transparent; }
+.gv-app.gv-skin-apex .gv-dial-value { font-weight: 900; }
+.gv-app.gv-skin-apex .gv-logo .gv-ico,
+.gv-app.gv-skin-apex .gv-setup-logo,
+.gv-app.gv-skin-apex .gv-session-complete-ico { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-session-callout { background-color: var(--gv-lime-ghost); }
+
+/* Live set: the target slab. Lime edge at rest; floods and glows once the
+   set is past the record. The glow is a pseudo-element shadow (it follows the
+   leaning shape) and exists in the dark theme only: a glow on paper is a
+   smudge. */
+.gv-app.gv-skin-apex .gv-pb-target {
+  --gv-slab: var(--gv-surface);
+  --gv-slab-edge: inset 4px 0 0 var(--gv-lime), inset 0 0 0 1px var(--gv-line);
+  --gv-slab-sheen: var(--gv-apex-sheen);
+  margin: 10px 0 12px;
+  padding: 10px 22px 12px;
+  box-shadow: none;
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-apex .gv-pb-target-label { font-size: clamp(34px, 11vw, 46px); font-weight: 900; line-height: 0.82; color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-pb-target-now { font-size: 22px; font-weight: 900; color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-pb-target-togo { font-size: 12.5px; letter-spacing: 0.1em; color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-pb-target-bar { margin-top: 10px; height: 14px; border: 0; background-color: var(--gv-apex-track); transform: skewX(-14deg); }
+.gv-app.gv-skin-apex .gv-pb-target.is-beaten,
+.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten {
+  --gv-slab: var(--gv-lime);
+  --gv-slab-edge: none;
+  --gv-slab-sheen: transparent;
+  color: var(--gv-ink-fixed);
+}
+.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-label,
+.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-label,
+.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-now,
+.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-togo,
+.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-togo { color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-bar,
+.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-bar { background-color: var(--gv-lime-hi); border-color: transparent; }
+.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-fill { background-color: var(--gv-ink-fixed); }
+/* The halo is a FIXED shadow on a leaning pseudo-element behind the slab; only
+   its opacity moves. Animating filter or box-shadow itself repaints the shadow
+   every frame, for as long as the screen is open, on a phone. */
+.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -2;
+  pointer-events: none;
+  box-shadow: 0 0 26px 2px var(--gv-lime);
+  opacity: 0.8;
+  transform: skewX(var(--gv-skew, -4deg));
+  animation: gv-apex-halo 2.4s ease-in-out infinite;
+}
+@keyframes gv-apex-halo {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
+/* A SHORT PHONE (iPhone SE, 375x667, less the host's own bars). The target is
+   ~87px tall and the tap zone is the one thing on this screen that flexes to
+   fit, so on a hold screen the controls under it slipped below the fold and
+   the page began to scroll. Same words, tighter box: ~50px, so the zone gets
+   the difference back. height-based on purpose: width is no clue to this. */
+@media (max-height: 700px) {
+  .gv-app.gv-skin-apex .gv-pb-target { margin: 6px 0 8px; padding: 6px 20px 8px; row-gap: 0; }
+  .gv-app.gv-skin-apex .gv-pb-target-label { font-size: clamp(28px, 9vw, 34px); }
+  .gv-app.gv-skin-apex .gv-pb-target-now { font-size: 18px; }
+  .gv-app.gv-skin-apex .gv-pb-target-togo { font-size: 11.5px; }
+  .gv-app.gv-skin-apex .gv-pb-target-bar { margin-top: 6px; height: 10px; }
+}
+
+/* Session complete: the glow moment. Dark = a graphite slab with a lime edge
+   and a huge glowing new value; light = the accent flood with ink on it. */
+.gv-app.gv-skin-apex .gv-pb-moment {
+  --gv-slab: var(--gv-lime);
+  --gv-slab-edge: none;
+  --gv-slab-sheen: transparent;
+  margin: 14px 0;
+  padding: 16px 22px 14px;
+  color: var(--gv-ink-fixed);
+}
+.theme-dark .gv-app.gv-skin-apex .gv-pb-moment {
+  --gv-slab: var(--gv-surface);
+  --gv-slab-edge: inset 0 0 0 2px var(--gv-lime);
+  --gv-slab-sheen: var(--gv-apex-sheen);
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-apex .gv-pb-moment-kicker { margin: 0; font-size: 12px; letter-spacing: 0.16em; color: var(--gv-ink-fixed); }
+.theme-dark .gv-app.gv-skin-apex .gv-pb-moment-kicker { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-pb-moment-name { margin: 4px 0 6px; font-size: 32px; font-weight: 900; line-height: 0.86; color: inherit; }
+.gv-app.gv-skin-apex .gv-pb-moment-swap { margin-top: 2px; }
+.gv-app.gv-skin-apex .gv-pb-old { padding-bottom: 6px; font-size: 52px; font-weight: 900; color: var(--gv-flood-dim); }
+.theme-dark .gv-app.gv-skin-apex .gv-pb-old { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-apex .gv-pb-old::after { height: 5px; }
+.gv-app.gv-skin-apex .gv-pb-arrow { margin: 0 0 14px; color: inherit; }
+.gv-app.gv-skin-apex .gv-pb-arrow svg { width: 30px; height: 30px; stroke-width: 3.4; }
+.gv-app.gv-skin-apex .gv-pb-new {
+  font-size: clamp(84px, 28vw, 128px);
+  font-weight: 900;
+  line-height: 0.8;
+  color: var(--gv-ink-fixed);
+}
+.theme-dark .gv-app.gv-skin-apex .gv-pb-new {
+  position: relative;
+  isolation: isolate;
+  color: var(--gv-accent-text);
+  text-shadow: 0 0 28px var(--gv-lime);
+}
+/* The pulse: a soft lime bloom BEHIND the figure whose opacity breathes. The
+   figure's own text-shadow above is fixed (a 128px glyph's shadow repainted
+   every frame was the most expensive thing on this screen). */
+.theme-dark .gv-app.gv-skin-apex .gv-pb-new::after {
+  content: '';
+  position: absolute;
+  top: -10%;
+  right: -14%;
+  bottom: -10%;
+  left: -14%;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(closest-side, var(--gv-lime), transparent);
+  opacity: 0.2;
+  animation: gv-apex-glow 2.6s ease-in-out infinite;
+}
+@keyframes gv-apex-glow {
+  0%, 100% { opacity: 0.1; }
+  50%      { opacity: 0.32; }
+}
+.gv-app.gv-skin-apex .gv-pb-unit { margin: 0 0 8px; font-size: 22px; font-weight: 800; color: var(--gv-flood-dim); }
+.theme-dark .gv-app.gv-skin-apex .gv-pb-unit { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-apex .gv-pb-delta {
+  --gv-slab: var(--gv-ink-fixed);
+  margin: 0;
+  padding: 5px 14px 4px;
+  color: var(--gv-lime);
+  font-family: var(--gv-display);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+.theme-dark .gv-app.gv-skin-apex .gv-pb-delta { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+/* The page already lists each record as a moment above; the older row list
+   would print every one twice. Floor and Editorial still show it. */
+.gv-app.gv-skin-apex .gv-session-records { display: none; }
+
+/* ---------- Records ---------- */
+
+.gv-app.gv-skin-apex .gv-recrow-name { font-family: var(--gv-display); font-size: 21px; font-weight: 800; text-transform: uppercase; }
+.gv-app.gv-skin-apex .gv-recrow-margin { font-size: 30px; font-weight: 900; color: var(--gv-ink); }
+.gv-app.gv-skin-apex .gv-session-records .gv-recrow-margin { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-recrow.gv-rec-new {
+  --gv-slab: var(--gv-lime-ghost);
+  --gv-slab-edge: inset 4px 0 0 var(--gv-lime);
+  margin: 4px -6px 8px;
+  padding: 26px 24px 12px 26px;
+  box-shadow: none;
+}
+.gv-app.gv-skin-apex .gv-rec-new .gv-recrow-margin { font-size: 52px; line-height: 0.85; color: var(--gv-accent-text); }
+.theme-dark .gv-app.gv-skin-apex .gv-rec-new .gv-recrow-margin { text-shadow: 0 0 24px var(--gv-lime); }
+.gv-app.gv-skin-apex .gv-recrow.gv-rec-new::after { left: 26px; }
+.gv-app.gv-skin-apex .gv-rec-prev { font-family: var(--gv-display); font-size: 15px; font-weight: 800; color: var(--gv-ink-dim); }
+.gv-app.gv-skin-apex .gv-rec-delta {
+  --gv-slab: var(--gv-lime);
+  margin-left: 6px;
+  padding: 3px 12px 2px;
+  color: var(--gv-ink-fixed);
+  font-family: var(--gv-display);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- motion: everything that moves on its own stops ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Stopped, the track must START on a whole word: its spans are 200%-wide flex items
+     that centre their text, which left the first word cropped ("OCK IN"). Natural width,
+     left-aligned, with the gutter the separators already use. */
+  .gv-app.gv-skin-apex .gv-ticker > div { animation: none; min-width: 0; }
+  .gv-app.gv-skin-apex .gv-ticker span { flex: 0 0 auto; padding-left: 16px; }
+  .gv-app.gv-skin-apex .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
+  .theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten::after { animation: none; }
+  .theme-dark .gv-app.gv-skin-apex .gv-pb-new::after { animation: none; }
+  .gv-app.gv-skin-apex .gv-bar-fill,
+  .gv-app.gv-skin-apex .gv-pb-target-fill { transition: none; }
+}

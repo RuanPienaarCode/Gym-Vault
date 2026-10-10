@@ -105,7 +105,7 @@ stay in the device voice.
 
 **Worth turning on.** Settings → *Download images for offline*, so the
 exercise library works with no connection. There's also an accent colour and
-a second visual style.
+three visual styles (Apex is the default; Floor and Editorial are still there).
 
 ## Privacy and network use
 

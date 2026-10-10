@@ -3,6 +3,13 @@ licensed under the SIL Open Font License 1.1 (https://openfontlicense.org).
 It is embedded as a data URI in styles.css (source: src/font.css) so the
 plugin renders identically on desktop and iOS with no network dependency.
 
+Gym Vault also bundles the "Barlow Condensed" typeface (latin subset, woff2,
+800 italic and 900 italic) by the Barlow Project Authors
+(https://github.com/jpt/barlow), licensed under the SIL Open Font License 1.1
+(https://openfontlicense.org). The files come from Fontsource
+(@fontsource/barlow-condensed 5.3.0) and are embedded as data URIs in
+styles.css (source: src/font.css), for the Apex style, the same way as Anton.
+
 Seed exercise demonstration images are linked from the free-exercise-db
 project (https://github.com/yuhonas/free-exercise-db), released under the
 Unlicense (public domain).

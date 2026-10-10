@@ -36,6 +36,7 @@ const { EndSessionModal } = require('./modals');
 const { nextFrameIndex } = require('./media-cycle');
 const { musicButton } = require('./music-picker');
 const timedPlan = require('./timed-plan');
+const { classifyKind, liveBest, pbTarget, pbDelta, marginText, pctText } = require('./progress');
 
 const FLASH_MS = 180;
 const HOLD_CHECKPOINT_S = 15;
@@ -527,6 +528,57 @@ function muteButton(ctx, sess, onToggle) {
   return btn;
 }
 
+/* THE LIVE "BEAT YOUR BEST" TARGET. A small block above the counter: "Beat
+   12 / You're on 6 / 7 to go" and a bar that fills to the best.
+
+   Built once per render and then updated IN PLACE by set(current) from the
+   same places that already update the meter and the numeral - never by
+   re-rendering, which would restart the count-in and the power-up. `best`
+   comes from progress.liveBest, so the block only exists where this screen
+   would also celebrate the figure (applyCompletion's trust rule), and `beaten`
+   is records.isRecord via pbTarget: the flag turns on at the moment Done would
+   record the set, not a rep earlier or later.
+
+   `kind` only decides how a figure is written ('seconds' as 0:45-style times,
+   everything else as plain numbers). */
+function pbTargetBlock(best, kind) {
+  if (best === null || best === undefined) return null;
+  const say = v => (kind === 'seconds' ? fmtSeconds(v) : String(v));
+  const label = el('span', { class: 'gv-pb-target-label' });
+  const now = el('span', { class: 'gv-pb-target-now' });
+  const togo = el('span', { class: 'gv-pb-target-togo' });
+  const fill = el('div', { class: 'gv-pb-target-fill' });
+  /* The aria-label below is rewritten every rep and a label is never spoken
+     on its own, so a VoiceOver user would hear nothing when the record falls.
+     This polite region is the announcement, and it speaks on the TRANSITION
+     into beaten only - never per rep (the count is already announced by the
+     numeral's own live region, and "new personal best" nine reps in a row is
+     noise). The first set() is the baseline: a re-render that finds the set
+     already past the record has announced it before and must not again. It is
+     emptied when the set drops back under, so a later crossing speaks again
+     and the stale words are never left to be read. */
+  const live = el('span', { class: 'gv-sr-only', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
+  let wasBeaten = null;
+  const node = el('div', { class: 'gv-pb-target', role: 'group' }, label, now, togo,
+    el('div', { class: 'gv-pb-target-bar' }, fill), live);
+  const set = current => {
+    const t = pbTarget(best, current);
+    if (!t) return;
+    if (wasBeaten === false && t.beaten) live.textContent = 'New personal best';
+    else if (!t.beaten) live.textContent = '';
+    wasBeaten = t.beaten;
+    node.classList.toggle('is-beaten', t.beaten);
+    label.textContent = t.beaten ? 'New PB' : `Beat ${say(t.best)}`;
+    now.textContent = `You're on ${say(t.current)}`;
+    togo.textContent = t.beaten ? `${say(t.over)} over` : `${say(t.toGo)} to go`;
+    fill.setAttribute('style', `width:${t.pct}%`);
+    node.setAttribute('aria-label', t.beaten
+      ? `New personal best: ${say(t.current)}, beating ${say(t.best)}`
+      : `Personal best target: beat ${say(t.best)}, you are on ${say(t.current)}, ${say(t.toGo)} to go`);
+  };
+  return { node, set };
+}
+
 /* Plain reps: an embedded tap zone (same rules as rep-counter-modal.js, via
    rep-counter-shared.js) plus a small control bar. `extraTop` lets
    weightedBody prepend a weight field above the SAME zone/bar instead of
@@ -547,6 +599,11 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      at all rather than an empty one that never fills. */
   const target = counterTarget.targetFromEntry(entry);
   const meter = attachFillMeter(zone, target);
+  /* The best to beat, when this screen would celebrate beating it. Present for
+     a plain reps entry with history; absent for a weighted one (its record is
+     weight, which the tap counter does not observe), a run, or an exercise
+     never logged. Kept in step wherever the meter is. */
+  const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_REPS.observed), 'reps');
   /* The detonation the meter charges towards — only exists when the meter
      does, and fires once via markHit's own guard. */
   const powerUp = meter ? attachPowerUp(zone, 'Reps reached') : null;
@@ -575,6 +632,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     if (flashTimer) window.clearTimeout(flashTimer);
     flashTimer = window.setTimeout(() => { zone.classList.remove('gv-rc-flash'); flashTimer = null; }, FLASH_MS);
     if (meter && meter.set(sess.counter.count) === 'done') markHit();
+    if (pb) pb.set(sess.counter.count);
     if (!sess.muted) sound.announce(sess.counter.count, ctx.settings);
   };
   /* THE TAP THAT SAYS "READY" IS NOT REP ONE. While the count-in is running
@@ -659,6 +717,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      re-render after a typed count — so the bar is never behind the number
      above it. */
   if (meter) meter.set(sess.counter.count);
+  if (pb) pb.set(sess.counter.count);
 
   /* No bare numeral on it any more: "− 1" beside a big live count is what
      read as a stepper. Inside the sheet it has a written label, so the icon
@@ -669,6 +728,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     sess.counter = undo(sess.counter);
     countEl.textContent = String(sess.counter.count);
     if (meter) meter.set(sess.counter.count);
+    if (pb) pb.set(sess.counter.count);
   });
 
   /* Typed counts are for the sets the sensor and the taps both missed — a
@@ -682,6 +742,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     set: n => {
       sess.counter = { count: n, lastTapAt: sess.counter.lastTapAt };
       if (meter) meter.set(n);
+      if (pb) pb.set(n);
     },
   });
 
@@ -726,7 +787,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     settingsBtn, muteButton(ctx, sess), doneBtn);
   /* Both sheets host on the BODY, not the zone: they have to cover the
      controls as well, or the button stays visible under its own panel. */
-  const body = el('div', { class: 'gv-session-body gv-xp-host' }, extraTop || '', zone, bar);
+  const body = el('div', { class: 'gv-session-body gv-xp-host' }, extraTop || '', pb ? pb.node : '', zone, bar);
   focusMode(ctx);
   return body;
 }
@@ -814,6 +875,12 @@ function durationBody(ctx, draft, sess, entry, set) {
   const powerUp = meter ? attachPowerUp(zone, 'Time reached') : null;
   if (target) zone.append(el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(target)}`));
 
+  /* The hold's best to beat, against the same whole seconds the stop button
+     will record (Math.round of the clock), so the flag flips on the second
+     Done would call it a record. */
+  const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_SECONDS.observed), 'seconds');
+  if (pb) pb.set(Math.round(hold.running ? heldSeconds(hold) : (hold.frozenSeconds || 0)));
+
   const currentSeconds = () => heldSeconds(hold);
 
   let holdCountIn = null;
@@ -845,6 +912,7 @@ function durationBody(ctx, draft, sess, entry, set) {
     if (!hold.running) return;
     const secs = currentSeconds();
     countEl.textContent = fmtSeconds(secs);
+    if (pb) pb.set(Math.round(secs));
     if (meter && meter.set(secs) === 'done' && hold.targetHit !== true) {
       /* Once, at the moment the hold reaches its target — the seconds after
          it are bonus, not a second announcement. */
@@ -904,7 +972,7 @@ function durationBody(ctx, draft, sess, entry, set) {
 
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(ctx, sess));
   focusMode(ctx);
-  return el('div', { class: 'gv-session-body' }, zone, checkpointEl, bar);
+  return el('div', { class: 'gv-session-body' }, pb ? pb.node : '', zone, checkpointEl, bar);
 }
 
 function lastRunForExercise(ctx, name) {
@@ -951,12 +1019,9 @@ function distanceBody(ctx, draft, sess, entry, set) {
 
 /* ---------- completing a set: write, celebrate, transition ---------- */
 
-function classifyKind(entry) {
-  if (entry.distance) return null; // no record concept for runs (v1)
-  if (entry.duration) return 'seconds';
-  if (entry.weighted) return 'weight';
-  return 'reps';
-}
+/* classifyKind lives in progress.js now, so Today can ask the same question
+   about a plan line that this screen asks about the entry built from it; it is
+   still exported from here (see the foot of the file). */
 
 function valueForKind(set, kind) {
   if (kind === 'seconds') return set.seconds;
@@ -973,18 +1038,12 @@ function describeRecord(kind, val, prev) {
 }
 
 /* BY HOW MUCH — the number the completion screen leads with, because "21
-   reps" only means something next to "was 14". Rounded to one decimal: a
-   2.5kg jump is real, a 2.4999999999 one is a float artifact.
-
-   Same three-kind switch as describeRecord, deliberately extending it rather
-   than starting a fourth formatter somewhere else. */
+   reps" only means something next to "was 14". The arithmetic and the wording
+   are progress.pbDelta / progress.marginText, shared with the PB moment's chips
+   and the Records page, so the same margin cannot read two ways. */
 function describeMargin(kind, val, prev) {
-  const d = Math.round((parseFloat(val) - parseFloat(prev)) * 10) / 10;
-  if (!Number.isFinite(d)) return '';
-  if (kind === 'reps') return `+${d} rep${d === 1 ? '' : 's'}`;
-  if (kind === 'weight') return `+${d} kg`;
-  if (kind === 'seconds') return `+${fmtSeconds(d)}`;
-  return '';
+  const d = pbDelta(prev, val);
+  return d ? marginText(kind, d.abs) : '';
 }
 
 /* Newly-met goals since the session started: compares the goal's progress
@@ -1533,6 +1592,40 @@ function tile(icon, big, label) {
     el('div', { class: 'gv-tile-label' }, label));
 }
 
+/* THE PERSONAL-BEST MOMENT: the big "12 -> 14" the completion screen leads
+   with, one per record in sess.records (so exactly the records applyCompletion
+   already detected - this builds nothing of its own to celebrate).
+
+   The old value is struck through and the arrow shown only when there IS an old
+   value; a first-ever best has nothing to be measured against, so it prints no
+   old figure, no arrow, and neither chip (a "+14 reps" from nothing, or a
+   percentage of zero, would be a made-up number). The chips come from
+   progress.pbDelta, the margin rule the record row below uses too. */
+const PB_UNIT = { reps: 'reps', weight: 'kg', seconds: 's' };
+function pbFigure(v) { const n = parseFloat(v); return Number.isFinite(n) ? String(n) : String(v); }
+
+function pbMoment(r) {
+  const unit = PB_UNIT[r.kind] || '';
+  const hasOld = r.prev !== null && r.prev !== undefined && Number.isFinite(parseFloat(r.prev));
+  const delta = pbDelta(r.prev, r.val);
+  const swap = el('div', { class: 'gv-pb-moment-swap' });
+  if (hasOld) swap.append(el('s', { class: 'gv-pb-old' }, pbFigure(r.prev)), ico('arrow-right', 'gv-pb-arrow'));
+  swap.append(el('b', { class: 'gv-pb-new' }, pbFigure(r.val)), el('small', { class: 'gv-pb-unit' }, unit));
+  const chips = el('div', { class: 'gv-pb-moment-chips' });
+  if (delta) {
+    chips.append(el('span', { class: 'gv-pb-delta' }, marginText(r.kind, delta.abs)));
+    if (delta.pct !== null) chips.append(el('span', { class: 'gv-pb-delta' }, pctText(delta.pct)));
+  }
+  return el('div', {
+    class: 'gv-pb-moment', role: 'group',
+    'aria-label': `New personal best: ${r.exercise}, ${hasOld ? `${pbFigure(r.prev)} to ` : ''}${pbFigure(r.val)} ${unit}`.trim(),
+  },
+    el('p', { class: 'gv-pb-moment-kicker' }, 'Personal best'),
+    el('h3', { class: 'gv-pb-moment-name' }, r.exercise),
+    swap,
+    chips);
+}
+
 function renderComplete(ctx, root, draft, sess) {
   /* Floored at 1, same as page-log.finishSession's own duration_min — a
      session logged in under a minute is 1 minute, not 0. The tile here and
@@ -1588,6 +1681,7 @@ function renderComplete(ctx, root, draft, sess) {
     el('div', { class: 'gv-session-complete-ico' }, ico('trophy')),
     el('h2', { class: 'gv-display gv-session-complete-title' }, 'Session done'),
     wins.length ? el('div', { class: 'gv-session-wins' }, wins.join(' · ')) : '',
+    ...broken.map(pbMoment),
     recordList,
     el('div', { class: 'gv-tiles gv-session-complete-tiles' },
       tile(ico('check'), String(doneSets), 'sets done'),

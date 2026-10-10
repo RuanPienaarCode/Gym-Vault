@@ -67,7 +67,7 @@ for (const [name, p] of Object.entries(palettes)) {
 
 const rules = cx.load();
 const THEMES = ['dark', 'light'];
-const SKINS = ['floor', 'editorial'];
+const SKINS = ['floor', 'editorial', 'apex'];
 const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
 
 /* kind 'glyph' = an icon (3:1). Everything else is text, classed by the size
@@ -120,6 +120,15 @@ const PROBES = [
   text('.gv-session-target', ['div.gv-session-exblock', 'div.gv-session-target']),
   text('.gv-log-ex-name on the exercise head', [...LOGSET.slice(0, 1), 'div.gv-log-ex-head', 'div.gv-log-ex-name']),
   text('.gv-log-ex-target on the exercise head', [...LOGSET.slice(0, 1), 'div.gv-log-ex-head', 'div.gv-log-ex-target']),
+  /* An exercise with nothing logged yet (page-log's `.unlogged` card, the state
+     every card is in when a session is first opened). Its name used to take
+     --gv-ink-dim, which on the accent head is 1.57:1 in dark: the audit's
+     BLOCKER. The head is an accent flood in every theme, so everything on it
+     takes the fixed ink. */
+  text('.gv-log-ex-name on the exercise head (nothing logged yet)', ['div.gv-card.gv-log-card.unlogged', 'div.gv-log-ex-head', 'div.gv-log-ex-name'], 'blocker'),
+  text('.gv-log-ex-target on the exercise head (nothing logged yet)', ['div.gv-card.gv-log-card.unlogged', 'div.gv-log-ex-head', 'div.gv-log-ex-target'], 'blocker'),
+  glyph('.gv-log-ex-head remove button glyph (logged)', ['div.gv-card.gv-log-card', 'div.gv-log-ex-head', 'button.gv-icon-btn.gv-icon-btn-small', 'span.gv-ico', 'svg'], 'blocker'),
+  glyph('.gv-log-ex-head remove button glyph (nothing logged yet)', ['div.gv-card.gv-log-card.unlogged', 'div.gv-log-ex-head', 'button.gv-icon-btn.gv-icon-btn-small', 'span.gv-ico', 'svg'], 'blocker'),
   text('.gv-log-set number (not done)', [...LOGSET, 'div.gv-log-set', 'span.gv-set-num']),
   text('.gv-log-set unit (not done)', [...LOGSET, 'div.gv-log-set', 'span.gv-set-unit']),
   glyph('.gv-set-done tick (not done)', [...LOGSET, 'div.gv-log-set', 'button.gv-set-done', 'span.gv-ico', 'svg']),
@@ -130,6 +139,62 @@ const PROBES = [
   text('.gv-planswap link', ['button.gv-planswap']),
   text('.gv-add-line label', ['button.gv-add-line', 'span']),
   text('.gv-tile-ico caption-free numeral', ['div.gv-tiles', 'div.gv-tile', 'div.gv-tile-big']),
+
+  /* ---- progress + personal-best elements (every skin), and the Apex skin's
+     own surfaces. Chains follow the markup page-dashboard / page-session /
+     page-records emit. The Apex ones sit on slabs: tests/css-cascade.js reads
+     --gv-slab as the fill the leaning ::before paints. ---- */
+  text('PB in reach line', ['div.gv-hero', 'ul.gv-rx', 'li.gv-rx-reach', 'span', 'span.gv-pb-reach'], 'progress'),
+  text('PB in reach row value', ['div.gv-hero', 'ul.gv-rx', 'li.gv-rx-reach', 'b'], 'progress'),
+  text('ticker word', ['div.gv-hero', 'div.gv-ticker', 'div', 'span'], 'apex'),
+  text('week progress label', ['div.gv-week-progress', 'div.gv-week-progress-text', 'span.gv-week-progress-label'], 'progress'),
+  text('week progress number', ['div.gv-week-progress', 'div.gv-week-progress-text', 'b.gv-week-progress-num'], 'progress'),
+  text('week progress to-go', ['div.gv-week-progress', 'div.gv-week-progress-text', 'span.gv-week-progress-togo'], 'progress'),
+  text('streak risk line', ['p.gv-streak-risk'], 'progress'),
+  text('streak number', ['div.gv-streak', 'div.gv-streak-read', 'div.gv-streak-num'], 'apex'),
+  text('live target label', ['div.gv-pb-target', 'span.gv-pb-target-label'], 'progress'),
+  text('live target now', ['div.gv-pb-target', 'span.gv-pb-target-now'], 'progress'),
+  text('live target to-go', ['div.gv-pb-target', 'span.gv-pb-target-togo'], 'progress'),
+  text('live target label (beaten)', ['div.gv-pb-target.is-beaten', 'span.gv-pb-target-label'], 'progress'),
+  text('live target now (beaten)', ['div.gv-pb-target.is-beaten', 'span.gv-pb-target-now'], 'progress'),
+  text('live target to-go (beaten)', ['div.gv-pb-target.is-beaten', 'span.gv-pb-target-togo'], 'progress'),
+  text('PB moment kicker', ['div.gv-session-complete', 'div.gv-pb-moment', 'p.gv-pb-moment-kicker'], 'progress'),
+  text('PB moment name', ['div.gv-session-complete', 'div.gv-pb-moment', 'h3.gv-pb-moment-name'], 'progress'),
+  text('PB moment old value', ['div.gv-session-complete', 'div.gv-pb-moment', 'div.gv-pb-moment-swap', 's.gv-pb-old'], 'progress'),
+  glyph('PB moment arrow', ['div.gv-session-complete', 'div.gv-pb-moment', 'div.gv-pb-moment-swap', 'span.gv-ico.gv-pb-arrow', 'svg'], 'progress'),
+  text('PB moment new value', ['div.gv-session-complete', 'div.gv-pb-moment', 'div.gv-pb-moment-swap', 'b.gv-pb-new'], 'progress'),
+  text('PB moment unit', ['div.gv-session-complete', 'div.gv-pb-moment', 'div.gv-pb-moment-swap', 'small.gv-pb-unit'], 'progress'),
+  text('PB moment delta chip', ['div.gv-session-complete', 'div.gv-pb-moment', 'div.gv-pb-moment-chips', 'span.gv-pb-delta'], 'progress'),
+  text('newest record: name', ['div.gv-card-list', 'div.gv-card.gv-recrow.gv-rec-new', 'div.gv-recrow-main', 'div.gv-recrow-name'], 'progress'),
+  text('newest record: what it beat', ['div.gv-card-list', 'div.gv-card.gv-recrow.gv-rec-new', 'div.gv-recrow-main', 'div.gv-recrow-was', 's.gv-rec-prev'], 'progress'),
+  text('newest record: delta chip', ['div.gv-card-list', 'div.gv-card.gv-recrow.gv-rec-new', 'div.gv-recrow-main', 'div.gv-recrow-was', 'span.gv-rec-delta'], 'progress'),
+  text('newest record: value', ['div.gv-card-list', 'div.gv-card.gv-recrow.gv-rec-new', 'div.gv-recrow-margin'], 'progress'),
+  text('older record: value', ['div.gv-card-list', 'div.gv-card.gv-recrow', 'div.gv-recrow-margin']),
+  text('Today title', ['div.gv-hero', 'h2.gv-display.gv-hero-title']),
+  text('Today sub', ['div.gv-hero', 'p.gv-hero-sub']),
+  text('hero shout line', ['div.gv-hero', 'div.gv-hero-action', 'div.gv-hero-action-line', 'span.gv-shout']),
+  text('rest-day ghost button', ['div.gv-hero', 'button.gv-btn-hero-ghost', 'span']),
+  text('.gv-day.rest label', ['div.gv-week', 'div.gv-day.rest', 'div.gv-day-name']),
+  text('.gv-day.planned name', ['div.gv-week', 'div.gv-day.planned', 'div.gv-day-name']),
+  text('.gv-day.planned label', ['div.gv-week', 'div.gv-day.planned', 'div.gv-day-dot']),
+  text('.gv-day.done.today name', ['div.gv-week', 'div.gv-day.done.today', 'div.gv-day-name']),
+  text('.gv-ex-best', ['div.gv-ex-list', 'div.gv-ex-card', 'span.gv-ex-best']),
+  text('.gv-chip (off)', ['div.gv-chips', 'button.gv-chip']),
+  text('.gv-segmented-btn (off)', ['div.gv-segmented', 'button.gv-segmented-btn']),
+  text('.gv-segmented-btn.on', ['div.gv-segmented', 'button.gv-segmented-btn.on']),
+  text('.gv-nav-btn (off)', ['nav.gv-nav', 'button.gv-nav-btn', 'span.gv-nav-label']),
+  glyph('.gv-icon-btn glyph', ['div.gv-toolbar', 'button.gv-icon-btn', 'span.gv-ico', 'svg']),
+  glyph('.gv-icon-btn-on glyph', ['div.gv-rc-controls', 'button.gv-icon-btn.gv-icon-btn-on', 'span.gv-ico', 'svg']),
+  glyph('.gv-head-btn glyph (off)', ['div.gv-head-actions', 'button.gv-head-btn', 'span.gv-ico', 'svg']),
+  glyph('.gv-timed-play glyph', ['div.gv-timed-controls', 'button.gv-timed-play', 'span.gv-ico', 'svg']),
+  glyph('.gv-dial-step glyph', ['div.gv-dial-row', 'button.gv-dial-step', 'span.gv-ico', 'svg']),
+  text('.gv-logo text', ['div.gv-head', 'div.gv-logo', 'span.gv-logo-text']),
+  text('set number box', [...LOGSET, 'div.gv-log-set', 'input.gv-set-input']),
+  text('.gv-log-set.done input', [...LOGSET, 'div.gv-log-set.done', 'input.gv-set-input']),
+  text('.gv-btn-go on the rest screen', ['div.gv-session-rest', 'div.gv-hero-action.gv-session-nextwrap', 'button.gv-btn-go']),
+  text('.gv-session-complete title', ['div.gv-session-complete', 'h2.gv-display.gv-session-complete-title']),
+  text('.gv-btn-go hover', ['div.gv-hero-action', 'button.gv-btn-go:hover', 'span']),
+  text('.gv-btn hover', ['button.gv-btn:hover', 'span']),
 ];
 
 const need = (probe, size, weight) => (probe.kind === 'glyph' ? 3 : (size >= 24 || (size >= 18.66 && weight >= 700)) ? 3 : 4.5);
