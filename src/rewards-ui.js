@@ -28,6 +28,11 @@ const F = require('./rewards-flow');
 
 const isGone = node => !!node && node.isConnected === false;
 const safe = (what, fn) => { try { return fn(); } catch (e) { console.error(`gym-vault rewards ${what}`, e); return undefined; } };
+/* Remove a node's trailing children until `keep` leading ones are left. */
+const clearFrom = (node, keep) => {
+  if (!node || !node.children) return;
+  while (node.children.length > keep && node.lastChild) node.removeChild(node.lastChild);
+};
 
 /* ---- parts ---- */
 
@@ -90,20 +95,32 @@ function chipNode(chip) {
   return el('span', { class: 'gv-rw-xpchip', title: chip.title, 'aria-label': chip.title }, chip.label);
 }
 
-/* Fill Today's slots. Slots are the empty nodes page-dashboard rendered; the fill happens now when
-   the ledger is already read (no flicker) and when the read lands otherwise. */
+/* Fill Today's slots. Slots are the empty nodes page-dashboard rendered. They are filled at once
+   when the ledger is already read this cycle (no flicker) AND at once from the last good ledger
+   (ctx.state.rewardsLast, which outlives a reload) while the fresh read is in flight; when it
+   lands the slots are redrawn only if it says something different. A failed read leaves whatever
+   is drawn exactly as it is. */
 function mountToday(ctx, o) {
   safe('today', () => {
     if (!F.enabled(ctx)) return;
+    safe('retry', () => { F.retryPending(ctx, 'today'); });
     const c = F.readLedger(ctx);
-    const paint = () => {
-      if (c.failed || isGone(o.level)) return;
+    let shown = null;
+    const paint = ledger => {
+      if (!ledger || isGone(o.level)) return;
       safe('today paint', () => {
-        const summary = F.summaryFor(ctx, c.value);
+        const summary = F.summaryFor(ctx, ledger);
         const row = V.levelRow(summary.level);
+        const quest = V.questCard(F.questFor(ctx, ledger));
+        const sig = JSON.stringify([row, quest]);
+        if (sig === shown) return;
+        const firstPaint = shown === null;
+        shown = sig;
+        clearFrom(o.level, 0);
+        clearFrom(o.quest, 0);
         if (o.level && row) o.level.append(levelNode(row));
-        const quest = V.questCard(F.questFor(ctx, c.value));
         if (o.quest && quest) o.quest.append(questNode(quest));
+        if (!firstPaint) return;
         const chip = o.day ? V.xpChipFor(o.day, ctx.settings) : null;
         if (o.chip && chip) {
           o.chip.append(chipNode(chip));
@@ -112,7 +129,9 @@ function mountToday(ctx, o) {
         }
       });
     };
-    if (c.done) paint(); else c.promise.then(paint);
+    if (c.done) { if (!c.failed) paint(c.value); return; }
+    if (c.stale) paint(c.stale);
+    c.promise.then(() => { if (!c.failed) paint(c.value); });
   });
 }
 
@@ -164,10 +183,17 @@ function mountComplete(ctx, slot, o) {
     if (!slot || !F.enabled(ctx)) return;
     const p = F.preview(ctx, o.draft, o.sess, o.rows || []);
     if (!p) return;
-    const paint = () => {
-      if (p.failed || !p.value || isGone(slot)) return;
+    /* `early` (the preview against the last good ledger) is drawn now so the card is there
+       when the screen is; the fresh read replaces it only if the card differs. */
+    let shown = null;
+    const paint = value => {
+      if (!value || isGone(slot)) return;
       safe('complete paint', () => {
-        const card = V.xpCard(p.value);
+        const card = V.xpCard(value);
+        const sig = card ? JSON.stringify(card) : '';
+        if (sig === (shown === null ? '' : shown)) return;
+        shown = sig;
+        clearFrom(slot, 1);                       // the live region stays
         if (!card) return;
         slot.append(xpCardNode(card));
         for (const m of card.medals) slot.append(unlockNode(m));
@@ -178,7 +204,9 @@ function mountComplete(ctx, slot, o) {
         }
       });
     };
-    if (p.done) paint(); else p.promise.then(paint);
+    if (p.done) { paint(p.value); return; }
+    if (p.early) paint(p.early);
+    p.promise.then(() => { if (!p.failed) paint(p.value); });
   });
 }
 

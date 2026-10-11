@@ -11,7 +11,7 @@
      F6  an unreadable ledger cannot fail the finish
      F7  the records a guided session found become PB lines (live session, and the carry for the SAME draft only)
      F8  the notice carries the XP when it was paid
-     F9  appendRewards is called from one place in src/ (so an abandoned session has nothing to write it)
+     F9  appendRewards is called from rewards-flow only, from the two places that can hold a SAVED session (the finish and the retry of a failed finish), so an abandoned session has nothing to write it
      F10 the same finish from the log page (no guided session): sets and session lines, no PB */
 const assert = require('node:assert');
 const fs = require('node:fs');
@@ -149,12 +149,17 @@ check('F8 the notice carries the XP when it was paid', async () => {
   assert.deepStrictEqual(notices, ['Session logged. Strong work. +115 XP']);
 });
 
-check('F9 appendRewards is called from one place in src/', () => {
+check('F9 appendRewards is called only from rewards-flow, finish and retry', () => {
   const dir = path.join(__dirname, '..', 'src');
   const hits = fs.readdirSync(dir).filter(f => f.endsWith('.js') && /appendRewards\s*\(/.test(fs.readFileSync(path.join(dir, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')));
   assert.deepStrictEqual(hits.sort(), ['data.js', 'rewards-flow.js'], `appendRewards callers: ${hits}`);
   const src = fs.readFileSync(path.join(dir, 'rewards-flow.js'), 'utf8');
-  assert.strictEqual((src.match(/appendRewards\(/g) || []).length, 1, 'one call site in rewards-flow');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.strictEqual((code.match(/appendRewards\(/g) || []).length, 2, 'two call sites in rewards-flow: the finish and the retry');
+  /* the retry can only work on a job the finish queued, and the finish only queues once the workout note exists */
+  const fin = code.slice(code.indexOf('async function awardFinished'), code.indexOf('async function retryOne'));
+  assert.strictEqual((code.match(/queueRetry\(ctx, job\);/g) || []).length, (fin.match(/queueRetry\(ctx, job\);/g) || []).length, 'queueRetry is called from awardFinished only');
+  assert.ok((fin.match(/appendRewards\(/g) || []).length === 1, 'the finish has the first call site');
   const log = fs.readFileSync(path.join(dir, 'page-log.js'), 'utf8');
   assert.ok(/saveWorkout\([\s\S]*?\}\);[\s\S]*?awardWithin\(/.test(log), 'finishSession awards AFTER the note is saved');
 });

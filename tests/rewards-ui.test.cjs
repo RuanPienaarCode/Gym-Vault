@@ -37,6 +37,8 @@ const mkNode = tag => {
     append(...kids) { for (const k of kids.flat()) { if (k == null) continue; if (k.nodeType === 1) k.parent = n; n.children.push(k); } },
     appendChild(k) { n.append(k); return k; },
     get firstChild() { return n.children[0] || null; },
+    get lastChild() { return n.children[n.children.length - 1] || null; },
+    removeChild(k) { const i = n.children.indexOf(k); if (i >= 0) n.children.splice(i, 1); return k; },
     get isConnected() { return n._connected; },
     get textContent() { return n.children.map(c => (c.nodeType === 3 ? c.text : c.textContent)).join(''); },
     set textContent(t) { n.children = [{ nodeType: 3, text: String(t), parent: n }]; },

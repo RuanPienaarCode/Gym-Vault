@@ -599,6 +599,21 @@ const PLANK2 = '## D (any)\n\n- Plank | 2 x 60s\n';
     assert.ok(dial.children.some(c => c.matches('.gv-rc-hint')), 'the line is a child of the dial');
   });
 
+  await check('R9. the rest\'s Paused line is a polite live region, present before it speaks, and it speaks on pause', async () => {
+    const b = await resting();
+    const line = q(b, '.gv-rc-hint');
+    assert.ok(line, 'fixture: the rest has its hint line');
+    assert.strictEqual(line.getAttribute('aria-live'), 'polite', 'a screen-reader user hears the pause (the circuit\'s and the hold\'s already do)');
+    assert.strictEqual(line.getAttribute('aria-atomic'), 'true');
+    assert.notStrictEqual(line.getAttribute('aria-live'), 'assertive', 'a pause must not interrupt');
+    assert.strictEqual(line.textContent.trim(), '', 'it is in the page, silent, before the pause (a region filled on creation is not announced)');
+    H.click(pauseBtn(b));
+    assert.ok(line === q(b, '.gv-rc-hint'), 'the SAME node is updated in place, or the region would be re-created and not announced');
+    assert.strictEqual(line.textContent, 'Paused');
+    H.click(resumeBtn(b));
+    assert.strictEqual(line.textContent.trim(), '');
+  });
+
   /* ---- report ---- */
   let bad = 0;
   for (const [name, err] of results) {

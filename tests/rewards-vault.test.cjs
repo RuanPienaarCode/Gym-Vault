@@ -19,7 +19,24 @@
      V13 the other device's line lands BETWEEN our read and our write: it is kept (the write applies to the current text)
      V14 two devices create the file at once: the loser appends to the winner's file
      V15 a failing vault write rejects with ITS error and does not wedge the queue
-     V16 the file deleted mid-append: ours is created fresh, nothing is lost or thrown */
+     V16 the file deleted mid-append: ours is created fresh, nothing is lost or thrown
+
+   iCloud safety (0.14.0 review) - a ledger that is on disk but not usable must never be replaced:
+     V17 size > 0 but the text reads empty (undownloaded / partly synced): readRewards says unreadable, not "empty ledger"
+     V18 ... and appendRewards REFUSES ({unreadable}): no header written over it, no write call of any kind
+     V19 once the file has downloaded, the append lands after the file's own lines
+     V20 a file that is genuinely empty (size 0) is NOT unreadable: it is a fresh ledger and takes the first award
+     V21 on disk but not in the vault index: the award goes into THEIR file through the adapter, their lines kept, no create attempt written over it
+     V22 ... and an award already in it is not written twice (no adapter write at all)
+     V23 ... readRewards sees that file too (the level row must not read 0 XP while the file is there)
+     V24 unindexed and unreadable through the adapter (size > 0, reads empty): {unavailable}, nothing written
+     V25 unindexed and the adapter cannot read it at all: {unavailable}, nothing written
+     V26 a create failure with NO such file on disk still rejects with the vault's own error (V15 unchanged)
+     V27 two appends racing onto an unindexed file both land (the adapter path is serialised too)
+     V28 a host adapter without process() still appends (read-checked text, written back)
+     V29 the indexed file turns unreadable BETWEEN our read and our write: refused, the file untouched
+     V30 the unindexed file changes between our read and our write: their new line is kept (applied to the current text)
+     V31 the unindexed file turns unreadable between our read and our write: unavailable, untouched */
 const assert = require('node:assert');
 const { loadSrc, makeVault, makePlugin, makeRunner } = require('./gym-fake-vault');
 const { makeIo } = loadSrc('data.js');
@@ -250,6 +267,163 @@ check('V16 the file deleted mid-append: ours is created fresh, nothing thrown', 
   assert.deepStrictEqual(res.appended.map(x => x.key), ['sets:a']);
   assert.strictEqual(res.created, true);
   assert.deepStrictEqual(L.parseLedger(v._disk.get(PATH)).entries.map(x => x.key), ['sets:a']);
+});
+
+const refused = res => assert.deepStrictEqual([res.appended.length, res.created], [0, false], JSON.stringify(res));
+
+check('V17 size > 0 but the text reads empty: unreadable, not an empty ledger', async () => {
+  const text = L.appendToText(null, [e('session:a', 100)]).text;
+  const { v, io } = setup([[PATH, text]], { emptyRead: [PATH] });
+  assert.ok(v.getFileByPath(PATH).stat.size > 0, 'fixture: the file has bytes');
+  const r = await io.readRewards();
+  assert.deepStrictEqual([r.unreadable, r.exists, r.entries.length], [true, true, 0]);
+});
+
+check('V18 appendRewards refuses to write over a file it cannot read', async () => {
+  const text = L.appendToText(null, [e('session:a', 100), e('sets:a', 70, 'sets')]).text;
+  const { v, io, plugin } = setup([[PATH, text]], { emptyRead: [PATH] });
+  v._log.length = 0;
+  const res = await io.appendRewards([e('session:b', 100)]);
+  assert.strictEqual(res.unreadable, true, JSON.stringify(res));
+  refused(res);
+  assert.strictEqual(v._disk.get(PATH), text, 'the ledger on disk was touched');
+  assert.strictEqual(writes(v).length, 0, `a write was attempted: ${JSON.stringify(writes(v))}`);
+  assert.ok(!plugin._ownWrites || !plugin._ownWrites.has(PATH), 'a refused write must not be stamped as ours');
+  /* and it does not wedge the queue */
+  v.download(PATH);
+  assert.strictEqual((await io.appendRewards([e('session:b', 100)])).appended.length, 1);
+});
+
+check('V19 once downloaded, the append lands after the file\'s own lines', async () => {
+  const text = L.appendToText(null, [e('session:a', 100)]).text;
+  const { v, io } = setup([[PATH, text]], { emptyRead: [PATH] });
+  assert.strictEqual((await io.appendRewards([e('session:b', 100)])).unreadable, true, 'fixture: refused while it will not read');
+  v.download(PATH);
+  const res = await io.appendRewards([e('session:b', 100)]);
+  assert.deepStrictEqual(res.appended.map(x => x.key), ['session:b']);
+  assert.ok(v._disk.get(PATH).startsWith(text));
+  assert.deepStrictEqual(L.parseLedger(v._disk.get(PATH)).entries.map(x => x.key), ['session:a', 'session:b']);
+});
+
+check('V20 a genuinely empty file (size 0) is a fresh ledger, not unreadable', async () => {
+  const { v, io } = setup([[PATH, '']]);
+  const r = await io.readRewards();
+  assert.deepStrictEqual([r.unreadable, r.exists], [false, true]);
+  const res = await io.appendRewards([e('session:a', 100)]);
+  assert.deepStrictEqual(res.appended.map(x => x.key), ['session:a']);
+  assert.deepStrictEqual(L.parseLedger(v._disk.get(PATH)).entries.map(x => x.key), ['session:a']);
+});
+
+const THEIRS = L.appendToText(null, [e('session:phone', 100, 'session', '2026-10-10')]).text;
+
+check('V21 on disk but not indexed: the award goes into THEIR file, their lines kept', async () => {
+  const { v, io } = setup([], { unindexed: [[PATH, THEIRS]] });
+  assert.strictEqual(v.getFileByPath(PATH), null, 'fixture: not in the index');
+  v._log.length = 0;
+  const res = await io.appendRewards([e('session:a', 100)]);
+  assert.deepStrictEqual(res.appended.map(x => x.key), ['session:a'], JSON.stringify(res));
+  assert.strictEqual(res.created, false);
+  assert.ok(v._disk.get(PATH).startsWith(THEIRS), 'their text must stay as it was, with ours after it');
+  assert.deepStrictEqual(L.parseLedger(v._disk.get(PATH)).entries.map(x => x.key), ['session:phone', 'session:a']);
+  assert.ok(!writes(v).some(([op]) => op === 'create' || op === 'modify'), 'a create/modify would have replaced their file');
+  assert.ok(writes(v).every(([op, p]) => p === PATH && /^(create|adapter-process|adapter-write)$/.test(op)), JSON.stringify(writes(v)));
+});
+
+check('V22 ... and an award already in that file is not written twice', async () => {
+  const { v, io } = setup([], { unindexed: [[PATH, THEIRS]] });
+  v._log.length = 0;
+  const res = await io.appendRewards([e('session:phone', 100)]);
+  assert.deepStrictEqual([res.appended.length, res.skipped.length, !!res.unavailable], [0, 1, false]);
+  assert.strictEqual(v._disk.get(PATH), THEIRS);
+  assert.ok(!writes(v).some(([op]) => op === 'adapter-write' || op === 'adapter-process'), 'a no-op append must not write');
+});
+
+check('V23 ... and readRewards sees that file too', async () => {
+  const { io } = setup([], { unindexed: [[PATH, THEIRS]] });
+  const r = await io.readRewards();
+  assert.deepStrictEqual(r.entries.map(x => x.key), ['session:phone']);
+  assert.deepStrictEqual([r.exists, r.unreadable], [true, false]);
+});
+
+check('V24 unindexed and unreadable (size > 0, reads empty): unavailable, nothing written', async () => {
+  const { v, io } = setup([], { unindexed: [[PATH, THEIRS]], emptyRead: [PATH] });
+  v._log.length = 0;
+  const res = await io.appendRewards([e('session:a', 100)]);
+  assert.strictEqual(res.unavailable, true, JSON.stringify(res));
+  refused(res);
+  assert.strictEqual(v._disk.get(PATH), THEIRS);
+  assert.ok(!writes(v).some(([op]) => op !== 'create'), JSON.stringify(writes(v)));
+  const r = await io.readRewards();
+  assert.strictEqual(r.unreadable, true, 'the read says so too');
+});
+
+check('V25 unindexed and the adapter cannot read it: unavailable, nothing written', async () => {
+  const { v, io } = setup([], { unindexed: [[PATH, THEIRS]] });
+  v.adapter.read = async () => { throw new Error('EIO'); };
+  const res = await io.appendRewards([e('session:a', 100)]);
+  assert.strictEqual(res.unavailable, true, JSON.stringify(res));
+  assert.strictEqual(v._disk.get(PATH), THEIRS);
+});
+
+check('V26 a create failure with no such file on disk still rejects with the vault\'s own error', async () => {
+  const { v, io } = setup();
+  v.create = async () => { throw new Error('disk full'); };
+  await assert.rejects(() => io.appendRewards([e('session:a', 100)]), /disk full/);
+  const bare = setup([], { noAdapter: true });
+  bare.v.create = async () => { throw new Error('disk full'); };
+  await assert.rejects(() => bare.io.appendRewards([e('session:a', 100)]), /disk full/);
+});
+
+check('V27 racing appends onto an unindexed file both land', async () => {
+  for (const delay of [0, 5]) {
+    const { v, io } = setup([], { unindexed: [[PATH, THEIRS]], delay });
+    await Promise.all([1, 2, 3, 4].map(i => io.appendRewards([e(`session:n${i}`, 100)])));
+    const keys = L.parseLedger(v._disk.get(PATH)).entries.map(x => x.key).sort();
+    assert.deepStrictEqual(keys, ['session:n1', 'session:n2', 'session:n3', 'session:n4', 'session:phone'], `delay ${delay}`);
+  }
+});
+
+check('V28 an adapter without process() still appends to the file\'s own text', async () => {
+  const { v, io } = setup([], { unindexed: [[PATH, THEIRS]] });
+  delete v.adapter.process;
+  const res = await io.appendRewards([e('session:a', 100)]);
+  assert.deepStrictEqual(res.appended.map(x => x.key), ['session:a']);
+  assert.ok(v._disk.get(PATH).startsWith(THEIRS));
+  assert.ok(writes(v).some(([op]) => op === 'adapter-write'));
+});
+
+check('V29 the indexed file turns unreadable between our read and our write: refused, untouched', async () => {
+  const text = L.appendToText(null, [e('session:a', 100)]).text;
+  const { v, io } = setup([[PATH, text]]);
+  afterNextRead(v, () => v.undownload(PATH));
+  const res = await io.appendRewards([e('session:b', 100)]);
+  assert.strictEqual(res.unreadable, true, JSON.stringify(res));
+  assert.strictEqual(v._disk.get(PATH), text);
+});
+
+check('V30 the unindexed file changes between our read and our write: their new line is kept', async () => {
+  const { v, io } = setup([], { unindexed: [[PATH, THEIRS]] });
+  const read = v.adapter.read.bind(v.adapter);
+  let armed = true;
+  v.adapter.read = async p => {
+    const t = await read(p);
+    if (armed) { armed = false; v.diskWrite(PATH, L.appendToText(THEIRS, [e('session:tablet', 100)]).text); }
+    return t;
+  };
+  const res = await io.appendRewards([e('session:a', 100)]);
+  assert.deepStrictEqual(res.appended.map(x => x.key), ['session:a']);
+  assert.deepStrictEqual(L.parseLedger(v._disk.get(PATH)).entries.map(x => x.key), ['session:phone', 'session:tablet', 'session:a']);
+  assert.ok(writes(v).some(([op]) => op === 'adapter-process'), 'the change must be applied through process() to the current text');
+});
+
+check('V31 the unindexed file turns unreadable between our read and our write: unavailable, untouched', async () => {
+  const { v, io } = setup([], { unindexed: [[PATH, THEIRS]] });
+  const read = v.adapter.read.bind(v.adapter);
+  let armed = true;
+  v.adapter.read = async p => { const t = await read(p); if (armed) { armed = false; v.undownload(PATH); } return t; };
+  const res = await io.appendRewards([e('session:a', 100)]);
+  assert.strictEqual(res.unavailable, true, JSON.stringify(res));
+  assert.strictEqual(v._disk.get(PATH), THEIRS);
 });
 
 run('rewards-vault');

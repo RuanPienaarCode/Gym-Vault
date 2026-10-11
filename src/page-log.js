@@ -38,6 +38,8 @@ function startDraft(ctx, plan, day, opts) {
     startedAt: Date.now(),
     entries,
   };
+  /* Starting a session is the second chance for an award that failed to save (rewards-flow.js). */
+  try { rewardsFlow.retryPending(ctx, 'start'); } catch (e) { /* never in the way of a session */ }
 }
 
 /* A figure typed into the draft changes it in place and must NOT re-render

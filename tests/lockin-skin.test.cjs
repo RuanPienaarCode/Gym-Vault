@@ -51,14 +51,19 @@ const bannerLine = css.slice(0, banner).split('\n').length;
 /* Apex and Lock In share one set of rules, written once against `.gv-skin-poster` inside the Apex section (before the
    Lock In banner). The cascade engine reads each as one rule per skin, so every guard below sees the rules Lock In
    wears - its own AND the shared ones - as `.gv-app.gv-skin-lockin ...`: that is `lock`. `region` is only what sits
-   under the Lock In banner. */
+   under the Lock In banner. Both stop at the cross-skin REVIEW FIXES block (0.14.0) at the end of the file: small
+   rules for the keyboard class and the host-tint resets, which name Apex, Lock In and the shared classes by design
+   and are guarded by their own tests (keyboard-nav, host-tints, live-weight-width). */
 const apexBanner = css.indexOf('SKIN: APEX');
 const apexBannerLine = css.slice(0, apexBanner).split('\n').length;
-const lock = rules.filter(r => r.line >= apexBannerLine && /gv-skin-lockin/.test(r.selector));
-const region = rules.filter(r => r.line >= bannerLine);
-const lockText = bare.slice(banner);
+const tailAt = css.indexOf('---------- REVIEW FIXES (0.14.0)');
+const endAt = tailAt > banner ? tailAt : css.length;
+const endLine = css.slice(0, endAt).split('\n').length;
+const lock = rules.filter(r => r.line >= apexBannerLine && r.line < endLine && /gv-skin-lockin/.test(r.selector));
+const region = rules.filter(r => r.line >= bannerLine && r.line < endLine);
+const lockText = bare.slice(banner, endAt);
 /* the text any Lock In rule can live in: the Apex section (shared rules) and the Lock In section */
-const skinText = bare.slice(apexBanner);
+const skinText = bare.slice(apexBanner, endAt);
 assert.ok(lock.length > 120, `the Lock In section parsed to almost nothing (${lock.length} rules)`);
 const THEMES = ['light', 'dark'];
 const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];

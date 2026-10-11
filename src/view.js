@@ -23,7 +23,14 @@ class GymView extends ItemView {
   /* Mobile keyboard fix (same shape as the budget plugin): Obsidian's pane
      doesn't shrink when the iOS soft keyboard opens, so cap the app's height
      to the visible area while the keyboard is up so the focused set input
-     can scroll into view. */
+     can scroll into view.
+
+     The root also carries `gv-kb` for as long as the keyboard is up. Apex and
+     Lock In keep their tab bar at the BOTTOM of this root, so on a keyboard-cut
+     view it took ~56px the focused set needed; the stylesheet hides that bar
+     under gv-kb. The class is owned HERE (the page's own gv-focus is cleared on
+     every re-render and must not be confused with it) and is removed with the
+     height on teardown. */
   setupKeyboardViewport() {
     const vv = window.visualViewport;
     if (!vv) return;
@@ -35,6 +42,7 @@ class GymView extends ItemView {
         const top = root.getBoundingClientRect().top;
         const h = (vv.offsetTop + vv.height) - top;
         if (h > 120) root.style.height = `${h}px`;
+        root.classList.add('gv-kb');
         window.setTimeout(() => {
           const a = document.activeElement;
           if (a && root.contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) {
@@ -43,13 +51,19 @@ class GymView extends ItemView {
         }, 60);
       } else {
         root.style.height = '';
+        root.classList.remove('gv-kb');
       }
     };
     this.registerDomEvent(vv, 'resize', adjust);
     this.registerDomEvent(vv, 'scroll', adjust);
+    this.teardownKeyboardViewport = () => {
+      root.style.height = '';
+      root.classList.remove('gv-kb');
+    };
   }
 
   async onClose() {
+    if (this.teardownKeyboardViewport) this.teardownKeyboardViewport();
     if (this.appCtl) {
       /* The session is written to the device first, so the notice can say what
          actually became of it: "kept" only when the device took it. A closed

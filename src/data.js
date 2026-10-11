@@ -421,52 +421,141 @@ function makeIo(plugin) {
     return (dir && (dir.children || []).find(c => c instanceof TFile && (c.path || '').toLowerCase() === lower)) || null;
   }
 
+  /* WHEN A LEDGER IS NOT READABLE, IT MUST NEVER BE REPLACED. On iCloud a file can
+     be known (size > 0) before its text has arrived, and it can be on disk before
+     the vault index lists it. Reading '' from a file with bytes is therefore "not
+     here yet", never "an empty ledger": appending a fresh header over it would
+     discard every award the file holds. A file that is truly empty (size 0) is a
+     fresh ledger. `bytes` is the size the platform reported for it. */
+  const notHereYet = (text, bytes) => text === '' && bytes > 0;
+  /* Thrown from inside a process() callback to ABORT the write: returning the text
+     unchanged would write '' back over a file whose text had not arrived. */
+  const NOT_HERE_YET = new Error('Rewards ledger is not readable yet');
+
+  /* The ledger when the vault index has no entry for it but the disk may: Obsidian's
+     adapter reads the disk directly. Resolves null when no such file exists (or the
+     host has no adapter), else {text, bytes, path} where `bytes` is what the disk
+     says the file weighs. A read that throws is {error: true}. */
+  async function ledgerOnDisk() {
+    const ad = v.adapter;
+    const path = paths.rewards();
+    if (!ad || typeof ad.exists !== 'function' || typeof ad.read !== 'function') return null;
+    let there = false;
+    try { there = await ad.exists(path); } catch (e) { return null; }
+    if (!there) return null;
+    try {
+      const text = await ad.read(path);
+      let bytes = 0;
+      try { const st = typeof ad.stat === 'function' ? await ad.stat(path) : null; bytes = (st && st.size) || 0; } catch (e) { /* size unknown: 0 */ }
+      return { text: typeof text === 'string' ? text : '', bytes: typeof text === 'string' ? bytes : 1, path };
+    } catch (e) { return { error: true, path }; }
+  }
+
   /* The parsed ledger: parseLedger's result plus {exists, disabled, unreadable}. */
   async function readRewards() {
     const base = (text, extra) => Object.assign(rewardsLedger.parseLedger(text), { exists: false, disabled: false, unreadable: false }, extra);
     if (!rewardsEnabled(plugin.settings)) return base('', { disabled: true });
     const f = findRewardsFile();
-    if (!f) return base('');
-    try { return base(await v.read(f), { exists: true }); }
-    catch (e) { return base('', { exists: true, unreadable: true }); }
+    if (!f) {
+      const d = await ledgerOnDisk();
+      if (!d) return base('');
+      if (d.error || notHereYet(d.text, d.bytes)) return base('', { exists: true, unreadable: true });
+      return base(d.text, { exists: true });
+    }
+    try {
+      const text = await v.read(f);
+      if (notHereYet(text, f.stat && f.stat.size)) return base('', { exists: true, unreadable: true });
+      return base(text, { exists: true });
+    } catch (e) { return base('', { exists: true, unreadable: true }); }
   }
 
   /* entries: [{date, kind, key, xp, note}] (rewards.awardsForSession's output).
-     Resolves {appended, skipped, created, disabled}; rejects only when the vault
-     itself fails, so the caller should catch - a failed award must not fail a
-     finished session. */
+     Resolves {appended, skipped, created, disabled} - plus `unreadable: true` when
+     the ledger exists but will not read yet, and `unavailable: true` when it is on
+     disk but neither the vault index nor the adapter can give it to us. In both of
+     those NOTHING was written and nothing was lost: the caller keeps the awards and
+     tries again. It rejects only when the vault itself fails, so the caller should
+     catch - a failed award must not fail a finished session. */
   async function appendRewards(entries) {
     const list = Array.isArray(entries) ? entries : [];
     if (!rewardsEnabled(plugin.settings)) return { appended: [], skipped: [], created: false, disabled: true };
     if (!list.length) return { appended: [], skipped: [], created: false, disabled: false };
     await ensureFolder(root());
+    const none = extra => Object.assign({ appended: [], skipped: [], created: false, disabled: false }, extra);
     return exclusive(paths.rewards(), async () => {
       for (let attempt = 0; attempt < 3; attempt++) {
         const f = findRewardsFile();
         if (f) {
           /* Nothing new on disk -> no write at all (no mtime churn for sync). */
-          const pre = rewardsLedger.appendToText(await v.read(f), list);
-          if (!pre.appended.length) return { appended: [], skipped: pre.skipped, created: false, disabled: false };
-          let result = null;
-          const res = await applyToFile(f.path, current => {
-            result = rewardsLedger.appendToText(current, list);
-            return result.appended.length ? result.text : null;
-          });
+          const had = await v.read(f);
+          if (notHereYet(had, f.stat && f.stat.size)) return none({ unreadable: true });
+          const pre = rewardsLedger.appendToText(had, list);
+          if (!pre.appended.length) return none({ skipped: pre.skipped });
+          let result = null, res;
+          try {
+            res = await applyToFile(f.path, current => {
+              /* The file may have gone back to "not here yet" since the read above. */
+              if (notHereYet(current, f.stat && f.stat.size)) throw NOT_HERE_YET;
+              result = rewardsLedger.appendToText(current, list);
+              return result.appended.length ? result.text : null;
+            });
+          } catch (e) {
+            if (e === NOT_HERE_YET) return none({ unreadable: true });
+            throw e;
+          }
           if (res.gone) continue;                      // deleted under us: create it next round
           return { appended: result.appended, skipped: result.skipped, created: false, disabled: false };
         }
         const made = rewardsLedger.appendToText(null, list);
-        if (!made.appended.length) return { appended: [], skipped: made.skipped, created: false, disabled: false };
+        if (!made.appended.length) return none({ skipped: made.skipped });
         try {
           await tracked(paths.rewards(), () => v.create(paths.rewards(), made.text));
           return { appended: made.appended, skipped: made.skipped, created: true, disabled: false };
         } catch (e) {
           /* Another device created it first: append to theirs on the next round. */
-          if (!findRewardsFile()) throw e;
+          if (findRewardsFile()) continue;
+          /* "Already exists" while the vault index has no such file: it is on disk
+             and the index has not caught up (a fresh iCloud sync). Never drop the
+             award and never create over it: go to the disk through the adapter. */
+          const onDisk = await appendOnDisk(list);
+          if (onDisk) return onDisk;
+          throw e;
         }
       }
       throw new Error(`Rewards: could not write "${paths.rewards()}".`);
     });
+  }
+
+  /* The unindexed-file append: Obsidian's adapter, which reads and writes the disk
+     itself. Resolves null when there is no such file on disk (the create failed for
+     some other reason: the caller rethrows), {unavailable} when the file is there
+     but will not read (nothing written), else the append's result. Runs inside
+     appendRewards' exclusive(), so two appends do not interleave. */
+  async function appendOnDisk(list) {
+    const d = await ledgerOnDisk();
+    if (!d) return null;
+    const none = extra => Object.assign({ appended: [], skipped: [], created: false, disabled: false }, extra);
+    if (d.error || notHereYet(d.text, d.bytes)) return none({ unavailable: true });
+    const pre = rewardsLedger.appendToText(d.text, list);
+    if (!pre.appended.length) return none({ skipped: pre.skipped });
+    let result = null;
+    const change = current => {
+      if (notHereYet(current, d.bytes)) throw NOT_HERE_YET;
+      result = rewardsLedger.appendToText(current, list);
+      return result.appended.length ? result.text : current;
+    };
+    try {
+      await tracked(d.path, async () => {
+        /* adapter.process applies the change to the file's text as it is when it runs;
+           a host without it gets read-then-write of the text just checked. */
+        if (typeof v.adapter.process === 'function') await v.adapter.process(d.path, change);
+        else await v.adapter.write(d.path, change(d.text));
+      });
+    } catch (e) {
+      if (e === NOT_HERE_YET) return none({ unavailable: true });
+      throw e;
+    }
+    return { appended: result.appended, skipped: result.skipped, created: false, disabled: false };
   }
 
   async function createExercise(ex) {

@@ -6026,3 +6026,40 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   .gv-app.gv-skin-lockin .gv-ticker > div { animation: none; min-width: 0; }
     .gv-app.gv-skin-lockin .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
   }
+
+/* ---------- REVIEW FIXES (0.14.0) ---------- */
+
+/* The keyboard is up: view.js shrank the root to the visible viewport and set gv-kb on it.
+   The bottom tab bar of Apex and Lock In (narrow) is a flex child of that root and would
+   keep ~56px of a view the keyboard already cut down. display:none, not height:0: a
+   collapsed item still holds its gap and its tab stops (same reason as gv-focus). */
+.gv-app.gv-skin-apex.gv-narrow.gv-kb .gv-nav,
+.gv-app.gv-skin-lockin.gv-narrow.gv-kb .gv-nav { display: none; }
+
+/* Obsidian's own bare `h2`, `h3`, `b` and `strong` rules (app.css) colour and style these nodes
+   from the theme's --h2-*, --h3-* and --bold-color wherever the plugin sets no value of its own:
+   invisible in a default theme (those variables are `inherit` / `normal` there), a coloured,
+   italic or small-caps heading in a tinted community theme. Reset exactly the named nodes, with
+   the plugin's own value where a skin sets one (those rules are more specific than these) and the
+   surrounding ink otherwise. Plan prose, how-to text and rendered markdown are NOT in this list
+   on purpose: they keep the user's theme headings and bold. */
+h2.gv-session-complete-title,
+h3.gv-rw-sec-title,
+h3.gv-rw-profile-level,
+.gv-app.gv-skin-apex h2.gv-live-name,
+.gv-app.gv-skin-lockin h2.gv-live-name {
+  color: inherit;
+  font-style: normal;
+  font-variant: normal;
+}
+strong.gv-rw-unlock-name,
+b.gv-rw-level-title,
+b.gv-badge-num { color: inherit; }
+
+/* The live set's weight figure: 46px italic Barlow Condensed in an input sized 4.2ch. "102.5" needs 86.1px of
+   the 86.0px it gets (clipped by a hair on a slower rasteriser), and "102.25" or "1002.5" need 106.8px and
+   overflow by 21px. 1ch is the width of "0" (20.47px at this size), so the longest realistic entry
+   is ~5.22ch; 5.4ch carries it with a few px to spare. Checked at 390, 360 and 320px wide: the minus and plus
+   buttons keep their 12px margins and nothing collides. */
+.gv-app.gv-skin-apex .gv-live-weightval input.gv-session-weight,
+.gv-app.gv-skin-lockin .gv-live-weightval input.gv-session-weight { min-width: 5.4ch; }
