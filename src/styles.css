@@ -624,6 +624,9 @@ body.is-phone .gv-app .gv-page {
   background: linear-gradient(180deg, transparent 56%, var(--gv-lime-deep) 56%, var(--gv-lime-deep) 93%, transparent 93%);
 }
 .gv-hero-sub { margin: 12px 0 0; font-size: 14px; color: var(--gv-ink-dim); max-width: 40ch; }
+/* Today's design-fidelity hooks (page-dashboard.js). Floor and Editorial draw none of them; the Apex and Lock In blocks at the end of this file switch them on. Slots stay empty until the rewards work fills them. */
+.gv-hero-chips, .gv-hero-badge, .gv-week-head, .gv-records-count { display: none; }
+.gv-slot-level:empty, .gv-slot-quest:empty, .gv-slot-xp-chip:empty { display: none; }
 .gv-rx { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--gv-line); }
 .gv-rx li {
   display: flex;
@@ -3876,6 +3879,315 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 .gv-app.gv-skin-apex .gv-tile-big { font-size: clamp(36px, 11vw, 48px); font-weight: 900; line-height: 0.86; }
 .gv-app.gv-skin-apex .gv-goal-mini-nums { font-weight: 900; }
 
+/* ---------- Today, design 10 layout (design fidelity) ----------
+   The poster (graphite gradient, hairline stripes, leaning band) is the HEAD
+   only: kicker, title, chips, badge and sub. The list, the Start slab and the
+   week sit on the page's own colour, as in the mockup. The ticker straddles
+   the head's lower edge. page-dashboard.js: div.gv-hero.gv-hero-today >
+   div.gv-hero-head, then ticker, list, kit, slab, manual button. The other
+   pages' heroes (Running, Your voice) have no head and keep their own poster. */
+.gv-app.gv-skin-apex .gv-hero.gv-hero-today {
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  background-color: transparent;
+  background-image: none;
+}
+.gv-app.gv-skin-apex .gv-hero.gv-hero-today::before,
+.gv-app.gv-skin-apex .gv-hero.gv-hero-today::after { display: none; }
+.gv-app.gv-skin-apex .gv-hero-head {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0 calc(-1 * var(--gv-apex-gutter));
+  padding: 14px var(--gv-apex-gutter) 40px;
+  background-color: var(--gv-surface);
+  background-image: linear-gradient(165deg, var(--gv-apex-hero-hi) 0%, var(--gv-apex-hero-lo) 100%);
+}
+.gv-app.gv-skin-apex .gv-hero-head::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(100deg, var(--gv-lime-ghost) 0, var(--gv-lime-ghost) 2px, transparent 2px, transparent 24px);
+}
+.gv-app.gv-skin-apex .gv-hero-head::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -34px;
+  bottom: 0;
+  width: 112px;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-lime-ghost);
+  transform: skewX(-18deg);
+}
+
+/* The title: a giant first word, the rest smaller and outlined in the accent
+   (page-dashboard.js splitTitle; --gv-t1-n / --gv-t2-n are the two words'
+   character counts, so a longer word steps the type down instead of leaving
+   the screen). A name that cannot split keeps the single title above. */
+.gv-app.gv-skin-apex .gv-hero-stage { position: relative; }
+.gv-app.gv-skin-apex .gv-hero-stage.has-badge,
+.gv-app.gv-skin-apex .gv-hero-stage.has-chips { min-height: 112px; }
+.gv-app.gv-skin-apex .gv-hero-title.is-split::after { display: none; }
+.gv-app.gv-skin-apex .gv-hero-title.is-split { font-size: 1px; }
+.gv-app.gv-skin-apex .gv-hero-title.is-split .gv-mark { display: block; }
+.gv-app.gv-skin-apex .gv-title-first {
+  display: block;
+  font-size: clamp(48px, calc(132vw / var(--gv-t1-n)), 112px);
+  line-height: 0.84;
+}
+.gv-app.gv-skin-apex .gv-title-rest {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(26px, calc((100vw - 280px) * 2 / var(--gv-t2-n)), 56px);
+  line-height: 0.84;
+  color: var(--gv-accent-text);
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 2px var(--gv-accent-text);
+}
+.gv-app.gv-skin-apex .gv-hero-stage.has-badge .gv-title-rest { display: flex; align-items: flex-end; min-height: 92px; max-width: calc(100% - 96px); }
+.gv-app.gv-skin-apex .gv-hero-stage.has-chips .gv-title-rest {
+  display: flex;
+  align-items: flex-end;
+  min-height: 92px;
+  max-width: calc(100% - 244px);
+}
+/* A name that cannot split keeps one title; the chips and badge then get their own row under it. */
+.gv-app.gv-skin-apex .gv-hero-stage.has-chips:not(.is-split) { padding-bottom: 76px; }
+.gv-app.gv-skin-apex .gv-hero-stage.has-badge:not(.is-split) { padding-bottom: 114px; }
+
+/* "13 sets · ~48 min": ONE leaning slab beside the title's second line (it
+   replaces the text line under the list). The XP slot below it is empty until
+   the rewards work fills it. */
+.gv-app.gv-skin-apex .gv-hero-chips {
+  position: absolute;
+  right: 100px;
+  bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.gv-app.gv-skin-apex .gv-hero-chip-row {
+  --gv-slab: var(--gv-apex-chip);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  gap: 8px;
+  padding: 7px 14px;
+  font-family: var(--gv-display);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-apex .gv-hero-chip-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+  transform: skewX(-12deg);
+}
+.gv-app.gv-skin-apex .gv-hero-chip-min::before { content: '\00B7'; margin-right: 8px; }
+/* A 320px phone cannot hold the one-line chip, the outlined word and the badge: the chip stacks. */
+@media (max-width: 359px) {
+  .gv-app.gv-skin-apex .gv-hero-chip-row { flex-direction: column; gap: 3px; }
+  .gv-app.gv-skin-apex .gv-hero-chip-min::before { content: none; }
+  .gv-app.gv-skin-apex .gv-hero-stage.has-chips .gv-title-rest { max-width: calc(100% - 190px); }
+}
+
+/* The streak badge: an amber hexagon drawn without clip-path (a rectangle plus
+   one border triangle above and one below, twice: the amber ring, then the
+   graphite inside), the number inside it and "wk streak" under it. */
+.gv-app.gv-skin-apex .gv-hero-badge {
+  position: absolute;
+  right: 16px;
+  bottom: 0;
+  z-index: 2;
+  display: block;
+  width: 76px;
+  height: 108px;
+}
+.gv-app.gv-skin-apex .gv-badge-fig {
+  position: absolute;
+  top: 22px;
+  left: 0;
+  width: 76px;
+  height: 44px;
+  background-color: var(--gv-amber);
+  color: var(--gv-amber-text);
+}
+.gv-app.gv-skin-apex .gv-badge-fig::before,
+.gv-app.gv-skin-apex .gv-badge-fig::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-left: 38px solid transparent;
+  border-right: 38px solid transparent;
+}
+.gv-app.gv-skin-apex .gv-badge-fig::before { top: -22px; border-bottom: 22px solid var(--gv-amber); }
+.gv-app.gv-skin-apex .gv-badge-fig::after { bottom: -22px; border-top: 22px solid var(--gv-amber); }
+.gv-app.gv-skin-apex .gv-badge-in {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 38px;
+  background-color: var(--gv-bg);
+}
+.gv-app.gv-skin-apex .gv-badge-in::before,
+.gv-app.gv-skin-apex .gv-badge-in::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-left: 34px solid transparent;
+  border-right: 34px solid transparent;
+}
+.gv-app.gv-skin-apex .gv-badge-in::before { top: -20px; border-bottom: 20px solid var(--gv-bg); }
+.gv-app.gv-skin-apex .gv-badge-in::after { bottom: -20px; border-top: 20px solid var(--gv-bg); }
+.gv-app.gv-skin-apex .gv-badge-num {
+  position: relative;
+  z-index: 1;
+  font-family: var(--gv-display);
+  font-size: 44px;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 0.85;
+  color: var(--gv-amber-text);
+}
+.gv-app.gv-skin-apex .gv-badge-label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  font-family: var(--gv-display);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--gv-amber-text);
+  transform: translateX(-50%);
+}
+/* The flame tile lower down would say the same thing twice. */
+.gv-app.gv-skin-apex .gv-streak-dup { display: none; }
+
+/* The ticker straddles the head's lower edge. */
+.gv-app.gv-skin-apex .gv-hero-today > .gv-ticker { margin-top: -22px; margin-bottom: 8px; }
+.gv-app.gv-skin-apex .gv-hero-today > .gv-rx { margin-top: 10px; }
+/* The sets / minutes live in the chip now; "Last:" stays above Start. */
+.gv-app.gv-skin-apex .gv-shout-est { display: none; }
+.gv-app.gv-skin-apex .gv-hero-action-line { justify-content: center; }
+.gv-app.gv-skin-apex .gv-btn-go { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.gv-app.gv-skin-apex .gv-go-arrow .gv-ico,
+.gv-app.gv-skin-apex .gv-go-arrow svg { width: 30px; height: 30px; stroke-width: 3; }
+
+/* "This week" over the cells. */
+.gv-app.gv-skin-apex .gv-week-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+.gv-app.gv-skin-apex .gv-week-head-title {
+  font-family: var(--gv-display);
+  font-size: 20px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.gv-app.gv-skin-apex .gv-week-head-note {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+.gv-app.gv-skin-apex .gv-week-head + .gv-week { margin-top: 10px; }
+
+/* ---------- bottom tab bar + sticky Start (design fidelity) ----------
+   In a narrow pane (.gv-narrow: a phone, or any pane <= 480px) the tab bar is
+   the mockups' bottom bar: the six tabs with icon over label, the active one
+   marked by a leaning bar on the bar's top edge. The root is a flex column, so
+   `order` alone moves it (the DOM and tab order are untouched). Wider panes
+   keep the top bar.
+
+   HOST CLEARANCE: Obsidian mobile's floating navbar overlaps the bottom of the
+   view. --view-bottom-spacing is the host's own clearance for it: a length
+   when the navbar floats, the unitless 0 otherwise. Used DIRECTLY as a value
+   (never inside calc(), where unitless 0 is invalid) it is correct in both
+   cases, so the bar carries the clearance and the page, which now ends above
+   the bar, gives up the clearance it used to carry (restored while the bar is
+   hidden in focus mode). Floor and Editorial keep the top bar and the page's own.
+
+   STICKY START: Today's page is one flex column; the Start slab is ordered
+   last and sticks to the bottom of the scroll area, so it is always one tap
+   away and, at the end of the page, simply sits in place. The page keeps its
+   24px of bottom padding for every other screen; a sticky offset stops at the
+   padding edge, so the slab takes -24px to sit flush on the bar (and carries
+   the 24px as its own padding, so its background reaches the bar). */
+.gv-app.gv-skin-apex.gv-narrow .gv-nav {
+  order: 2;
+  gap: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  border-top: 1px solid var(--gv-line);
+  border-bottom: 0;
+  background-color: var(--gv-bg);
+}
+.gv-app.gv-skin-apex.gv-narrow .gv-nav-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  min-height: 56px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 0 5px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.gv-app.gv-skin-apex.gv-narrow .gv-nav-label { display: block; }
+.gv-app.gv-skin-apex.gv-narrow .gv-nav-btn .gv-ico svg { width: 24px; height: 24px; }
+.gv-app.gv-skin-apex.gv-narrow .gv-nav-btn.on::after { top: 0; bottom: auto; }
+body.is-phone .gv-app.gv-skin-apex.gv-narrow .gv-nav { padding-bottom: var(--view-bottom-spacing, 0px); }
+body.is-phone .gv-app.gv-skin-apex.gv-narrow:not(.gv-focus) .gv-page { padding-bottom: 24px; }
+
+.gv-app.gv-skin-apex.gv-narrow .gv-today { display: flex; flex-direction: column; }
+.gv-app.gv-skin-apex.gv-narrow .gv-hero-today { display: contents; }
+.gv-app.gv-skin-apex.gv-narrow .gv-hero-today > .gv-hero-action {
+  order: 99;
+  position: sticky;
+  bottom: -24px;
+  z-index: 4;
+  margin: 0 calc(-1 * var(--gv-page-gutter)) -8px;
+  padding: 14px var(--gv-page-gutter) 32px;
+  background-image: linear-gradient(180deg, transparent 0, var(--gv-bg) 14px);
+}
+/* In the sticky layout "Last:" goes: the Last-session tile below says it. */
+.gv-app.gv-skin-apex.gv-narrow .gv-hero-today .gv-hero-action-line { display: none; }
+
 /* ---------- lists ---------- */
 
 .gv-app.gv-skin-apex .gv-ex-name { font-size: clamp(22px, 6vw, 28px); font-weight: 800; }
@@ -4134,6 +4446,25 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   font-weight: 900;
   letter-spacing: 0.06em;
 }
+
+/* Records, design layout (design fidelity): a giant title on its own line under
+   the back arrow, the count beneath it, the figures in the accent on hairline
+   rows (the newest record keeps its slab). */
+.gv-app.gv-skin-apex .gv-toolbar-records .gv-toolbar-title {
+  order: 2;
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: clamp(52px, 24vw, 96px);
+  line-height: 0.84;
+}
+.gv-app.gv-skin-apex .gv-toolbar-records .gv-records-count { display: block; order: 3; flex: 1 0 100%; margin-top: 8px; }
+.gv-app.gv-skin-apex .gv-toolbar-records .gv-search { order: 4; flex: 1 0 100%; }
+.gv-app.gv-skin-apex .gv-card-list > .gv-recrow:not(.gv-rec-new) {
+  background-color: transparent;
+  border-width: 0 0 1px;
+  box-shadow: none;
+}
+.gv-app.gv-skin-apex .gv-card-list > .gv-recrow:not(.gv-rec-new) .gv-recrow-margin { color: var(--gv-accent-text); font-size: 36px; }
 
 /* ---------- motion: everything that moves on its own stops ---------- */
 
@@ -4571,7 +4902,8 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   background-color: var(--gv-li-band);
   transform: skewX(-18deg);
 }
-.gv-app.gv-skin-lockin .gv-hero > .gv-kicker { color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-lockin .gv-hero > .gv-kicker,
+.gv-app.gv-skin-lockin .gv-hero-head > .gv-kicker { color: var(--gv-ink-fixed); }
 .gv-app.gv-skin-lockin .gv-hero .gv-planswap,
 .theme-dark .gv-app.gv-skin-lockin .gv-hero .gv-planswap { color: var(--gv-ink-fixed); border-bottom-color: var(--gv-ink-fixed); }
 .gv-app.gv-skin-lockin .gv-hero-title {
@@ -4616,6 +4948,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 .gv-app.gv-skin-lockin .gv-hero.gv-hero-rest::before,
 .gv-app.gv-skin-lockin .gv-hero.gv-hero-rest::after { display: none; }
 .gv-app.gv-skin-lockin .gv-hero.gv-hero-rest > .gv-kicker,
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-hero-head > .gv-kicker,
 .gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-hero-title,
 .gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-hero-sub { color: var(--gv-ink); }
 .gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-planswap,
@@ -4673,7 +5006,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   align-items: center;
   min-height: 46px;
   padding: 6px 0;
-  border-bottom-color: var(--gv-li-hair);
+  border-bottom-color: var(--gv-line);
   font-family: var(--gv-display);
   font-size: 22px;
   font-weight: 800;
@@ -4683,17 +5016,17 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 }
 .gv-app.gv-skin-lockin .gv-rx b,
 .theme-dark .gv-app.gv-skin-lockin .gv-rx b {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 900;
   letter-spacing: 0;
-  color: var(--gv-ink-fixed);
+  color: var(--gv-accent-text);
 }
 .gv-app.gv-skin-lockin .gv-rx-rest b,
 .theme-dark .gv-app.gv-skin-lockin .gv-rx-rest b {
   font-family: var(--gv-li-body);
   font-size: 12px;
   font-weight: 700;
-  color: var(--gv-ink-fixed);
+  color: var(--gv-ink-dim);
 }
 .gv-app.gv-skin-lockin .gv-pb-reach,
 .theme-dark .gv-app.gv-skin-lockin .gv-pb-reach {
@@ -4703,27 +5036,26 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--gv-ink-fixed);
+  color: var(--gv-accent-text);
 }
-/* PB in reach turns the whole row into a black band, bleeding to the poster's
-   edges, with the accent on its value (accent on black holds in every palette). */
+/* PB in reach lights the whole row on the page's own colour (the list is no
+   longer on the flood): the surface tone, bleeding to the edges, with an
+   accent bar down its left and the accent on its value. */
 .gv-app.gv-skin-lockin .gv-rx li.gv-rx-reach {
   margin: 0 calc(-1 * var(--gv-li-gutter));
   padding-left: calc(var(--gv-li-gutter) + 6px);
   padding-right: var(--gv-li-gutter);
-  background-color: var(--gv-ink-fixed);
-  box-shadow: none;
-  color: var(--gv-li-paper);
+  background-color: var(--gv-surface);
+  box-shadow: inset 4px 0 0 var(--gv-lime);
+  color: var(--gv-ink);
 }
 .gv-app.gv-skin-lockin .gv-rx li.gv-rx-reach b,
-.theme-dark .gv-app.gv-skin-lockin .gv-rx li.gv-rx-reach b { color: var(--gv-lime); }
+.theme-dark .gv-app.gv-skin-lockin .gv-rx li.gv-rx-reach b { color: var(--gv-accent-text); }
 .gv-app.gv-skin-lockin .gv-rx li.gv-rx-reach .gv-pb-reach,
-.theme-dark .gv-app.gv-skin-lockin .gv-rx li.gv-rx-reach .gv-pb-reach { color: var(--gv-lime); }
-/* BRING: the label takes the ink, the chips are black chips on the flood. */
-.gv-app.gv-skin-lockin .gv-hero .gv-today-kit-label,
-.theme-dark .gv-app.gv-skin-lockin .gv-hero .gv-today-kit-label { color: var(--gv-ink-fixed); }
-.gv-app.gv-skin-lockin .gv-hero .gv-tag,
-.gv-app.gv-skin-lockin .gv-hero .gv-tag.gv-tag-type { --gv-slab: var(--gv-ink-fixed); color: var(--gv-li-paper); }
+.theme-dark .gv-app.gv-skin-lockin .gv-rx li.gv-rx-reach .gv-pb-reach { color: var(--gv-accent-text); }
+/* BRING: it sits on the page's own colour now (only the head is flooded), so
+   the label and chips keep their ordinary Lock In look. */
+.gv-app.gv-skin-lockin .gv-today-kit-label { color: var(--gv-ink-dim); }
 
 /* The action: the CTA is the slab; the band behind it is gone. */
 .gv-app.gv-skin-lockin .gv-hero-action {
@@ -4732,12 +5064,10 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   padding: 0;
   overflow: visible;
   background-color: transparent;
-  color: var(--gv-ink-fixed);
+  color: var(--gv-ink);
 }
 .gv-app.gv-skin-lockin .gv-speed { display: none; }
-.gv-app.gv-skin-lockin .gv-shout { font-size: 11.5px; }
-.gv-app.gv-skin-lockin .gv-hero .gv-shout,
-.theme-dark .gv-app.gv-skin-lockin .gv-hero .gv-shout { color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-lockin .gv-shout { font-size: 11.5px; color: var(--gv-ink-dim); }
 .gv-app.gv-skin-lockin .gv-btn-go {
   --gv-slab: var(--gv-lime);
   min-height: 58px;
@@ -4777,9 +5107,6 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   letter-spacing: 0.03em;
 }
 .gv-app.gv-skin-lockin .gv-btn-hero-ghost:hover { --gv-slab: var(--gv-line); }
-.gv-app.gv-skin-lockin .gv-hero .gv-btn-hero-ghost,
-.theme-dark .gv-app.gv-skin-lockin .gv-hero .gv-btn-hero-ghost { --gv-slab: var(--gv-li-wash); --gv-slab-edge: inset 0 0 0 2px var(--gv-ink-fixed); color: var(--gv-ink-fixed); }
-.gv-app.gv-skin-lockin .gv-hero .gv-btn-hero-ghost:hover { --gv-slab: var(--gv-li-wash-hi); }
 .gv-app.gv-skin-lockin .gv-hero-manual { --gv-slab-pull: 2px; min-height: 44px; font-size: 15px; }
 
 /* The week: seven leaning cells. Today is the inverse slab; done is the
@@ -4871,6 +5198,331 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 .gv-app.gv-skin-lockin .gv-tile-ico { color: var(--gv-accent-text); }
 .gv-app.gv-skin-lockin .gv-tile-big { font-size: clamp(36px, 11vw, 48px); font-weight: 900; line-height: 0.86; }
 .gv-app.gv-skin-lockin .gv-goal-mini-nums { font-weight: 900; }
+
+/* ---------- Today, design 07 layout (design fidelity) ----------
+   The flood is the HEAD only: kicker, title, chips, badge and sub sit on the
+   accent; the list, the Start slab and the week sit on the page's own colour
+   (white in light, black in dark). The ticker straddles the flood's lower edge.
+   page-dashboard.js: div.gv-hero.gv-hero-today > div.gv-hero-head, then ticker,
+   list, kit, slab, manual button. The other pages' heroes (Running, Your voice)
+   have no head and keep flooding whole. */
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-today {
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  background-color: transparent;
+  background-image: none;
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-today::before,
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-today::after { display: none; }
+.gv-app.gv-skin-lockin .gv-hero-head {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0 calc(-1 * var(--gv-li-gutter));
+  padding: 14px var(--gv-li-gutter) 40px;
+  background-color: var(--gv-lime);
+  background-image: linear-gradient(165deg, var(--gv-lime-hi) 0%, var(--gv-lime) 50%, var(--gv-li-lo) 100%);
+  color: var(--gv-ink-fixed);
+}
+.gv-app.gv-skin-lockin .gv-hero-head::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(100deg, var(--gv-li-stripe) 0, var(--gv-li-stripe) 2px, transparent 2px, transparent 24px);
+}
+.gv-app.gv-skin-lockin .gv-hero-head::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -34px;
+  bottom: 0;
+  width: 112px;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-li-band);
+  transform: skewX(-18deg);
+}
+/* A rest hero is not a flood (see .gv-hero-rest above): the head takes the page's colours. */
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-hero-head {
+  overflow: visible;
+  padding-bottom: 12px;
+  background-color: transparent;
+  background-image: none;
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-hero-head::before,
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-hero-head::after { display: none; }
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-hero-title.is-split .gv-title-rest {
+  color: var(--gv-ink);
+  -webkit-text-stroke-color: var(--gv-ink);
+}
+
+/* The title: a giant first word, the rest smaller and outlined (page-dashboard.js
+   splitTitle; --gv-t1-n / --gv-t2-n are the two words' character counts, so a
+   longer word steps the type down instead of leaving the screen). A name that
+   cannot split keeps the single title above. */
+.gv-app.gv-skin-lockin .gv-hero-stage { position: relative; }
+.gv-app.gv-skin-lockin .gv-hero-stage.has-badge,
+.gv-app.gv-skin-lockin .gv-hero-stage.has-chips { min-height: 104px; }
+.gv-app.gv-skin-lockin .gv-hero-title.is-split::after { display: none; }
+.gv-app.gv-skin-lockin .gv-hero-title.is-split { font-size: 1px; }
+.gv-app.gv-skin-lockin .gv-hero-title.is-split .gv-mark { display: block; }
+.gv-app.gv-skin-lockin .gv-title-first {
+  display: block;
+  font-size: clamp(52px, calc(174vw / var(--gv-t1-n)), 148px);
+  line-height: 0.82;
+}
+.gv-app.gv-skin-lockin .gv-title-rest {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(26px, calc((100vw - 260px) * 2 / var(--gv-t2-n)), 70px);
+  line-height: 0.84;
+  color: var(--gv-ink-fixed);
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 2px var(--gv-ink-fixed);
+}
+.gv-app.gv-skin-lockin .gv-hero.gv-hero-rest .gv-title-rest { -webkit-text-fill-color: transparent; }
+.gv-app.gv-skin-lockin .gv-hero-stage.has-badge .gv-title-rest { display: flex; align-items: flex-end; min-height: 92px; max-width: calc(100% - 112px); }
+.gv-app.gv-skin-lockin .gv-hero-stage.has-chips .gv-title-rest {
+  display: flex;
+  align-items: flex-end;
+  min-height: 92px;
+  max-width: calc(100% - 196px);
+}
+/* A name that cannot split keeps one title; the chips and badge then get their own row under it. */
+.gv-app.gv-skin-lockin .gv-hero-stage.has-chips:not(.is-split) { padding-bottom: 76px; }
+.gv-app.gv-skin-lockin .gv-hero-stage.has-badge:not(.is-split) { padding-bottom: 106px; }
+
+/* "13 sets" / "~48 min": two black slab chips beside the title's second line
+   (they replace the text line under the list). The XP slot is empty until the
+   rewards work fills it. */
+.gv-app.gv-skin-lockin .gv-hero-chips {
+  position: absolute;
+  right: 108px;
+  bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.gv-app.gv-skin-lockin .gv-hero-chip-row { display: contents; }
+.gv-app.gv-skin-lockin .gv-hero-chip {
+  --gv-slab: var(--gv-ink-fixed);
+  position: relative;
+  isolation: isolate;
+  padding: 7px 14px;
+  font-family: var(--gv-display);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gv-li-paper);
+}
+.gv-app.gv-skin-lockin .gv-hero-chip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+  transform: skewX(-12deg);
+}
+
+/* The streak badge: a starburst sticker (two squares turned 45 degrees apart,
+   no clip-path), amber, the fixed ink on it; the number and "wk streak" inside. */
+.gv-app.gv-skin-lockin .gv-hero-badge {
+  position: absolute;
+  right: 6px;
+  bottom: -8px;
+  z-index: 2;
+  display: block;
+  width: 98px;
+  height: 98px;
+}
+.gv-app.gv-skin-lockin .gv-badge-fig {
+  --gv-slab: var(--gv-li-star);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding-bottom: 16px;
+  color: var(--gv-ink-fixed);
+  transform: rotate(12deg);
+}
+.gv-app.gv-skin-lockin .gv-badge-fig::before,
+.gv-app.gv-skin-lockin .gv-badge-fig::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 66px;
+  height: 66px;
+  margin: -33px 0 0 -33px;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+}
+.gv-app.gv-skin-lockin .gv-badge-fig::before { transform: rotate(0deg); }
+.gv-app.gv-skin-lockin .gv-badge-fig::after { transform: rotate(45deg); }
+.gv-app.gv-skin-lockin .gv-badge-num {
+  display: block;
+  font-family: var(--gv-display);
+  font-size: 40px;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 0.85;
+}
+.gv-app.gv-skin-lockin .gv-badge-label {
+  position: absolute;
+  bottom: 25px;
+  left: 50%;
+  z-index: 1;
+  display: block;
+  white-space: nowrap;
+  transform: translateX(-50%) rotate(12deg);
+  font-family: var(--gv-display);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* The flame tile lower down would say the same thing twice. */
+.gv-app.gv-skin-lockin .gv-streak-dup { display: none; }
+
+/* The ticker straddles the flood's lower edge, ink hairlines above and below. */
+.gv-app.gv-skin-lockin .gv-hero-today > .gv-ticker {
+  margin-top: -22px;
+  margin-bottom: 8px;
+  border-top: 2px solid var(--gv-ink-fixed);
+  border-bottom: 2px solid var(--gv-ink-fixed);
+}
+.gv-app.gv-skin-lockin .gv-hero-today > .gv-rx { margin-top: 10px; }
+/* The sets / minutes live in the chips now; "Last:" stays above Start. */
+.gv-app.gv-skin-lockin .gv-shout-est { display: none; }
+.gv-app.gv-skin-lockin .gv-hero-action-line { justify-content: center; }
+.gv-app.gv-skin-lockin .gv-btn-go { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.gv-app.gv-skin-lockin .gv-go-arrow .gv-ico,
+.gv-app.gv-skin-lockin .gv-go-arrow svg { width: 30px; height: 30px; stroke-width: 3; }
+
+/* "This week" over the cells. */
+.gv-app.gv-skin-lockin .gv-week-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+.gv-app.gv-skin-lockin .gv-week-head-title {
+  font-family: var(--gv-display);
+  font-size: 20px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.gv-app.gv-skin-lockin .gv-week-head-note {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+.gv-app.gv-skin-lockin .gv-week-head + .gv-week { margin-top: 10px; }
+
+/* The other pages' heroes (Running, Running records, Your voice) are NOT floods in
+   design 07: only Today (and the live set) is. Its Running page is the light/black
+   page with the figure as the artwork, so they take the page's own colours and keep
+   the leaning mark, in the accent, as their underline. */
+.gv-app.gv-skin-lockin .gv-hero:not(.gv-hero-today) {
+  margin: 0;
+  padding: 6px 0 0;
+  overflow: visible;
+  background-color: transparent;
+  background-image: none;
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-lockin .gv-hero:not(.gv-hero-today)::before,
+.gv-app.gv-skin-lockin .gv-hero:not(.gv-hero-today)::after { display: none; }
+.gv-app.gv-skin-lockin .gv-hero:not(.gv-hero-today) > .gv-kicker { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-lockin .gv-hero:not(.gv-hero-today) .gv-hero-title { color: var(--gv-ink); }
+.gv-app.gv-skin-lockin .gv-hero:not(.gv-hero-today) .gv-hero-title::after { background-color: var(--gv-lime); }
+.gv-app.gv-skin-lockin .gv-hero:not(.gv-hero-today) .gv-hero-sub { color: var(--gv-ink-dim); }
+
+/* ---------- bottom tab bar + sticky Start (design fidelity) ----------
+   In a narrow pane (.gv-narrow: a phone, or any pane <= 480px) the tab bar is
+   the mockups' bottom bar: the six tabs with icon over label, the active one
+   marked by a leaning bar on the bar's top edge. The root is a flex column, so
+   `order` alone moves it (the DOM and tab order are untouched). Wider panes
+   keep the top bar.
+
+   HOST CLEARANCE: Obsidian mobile's floating navbar overlaps the bottom of the
+   view. --view-bottom-spacing is the host's own clearance for it: a length
+   when the navbar floats, the unitless 0 otherwise. Used DIRECTLY as a value
+   (never inside calc(), where unitless 0 is invalid) it is correct in both
+   cases, so the bar carries the clearance and the page, which now ends above
+   the bar, gives up the clearance it used to carry (restored while the bar is
+   hidden in focus mode). Floor and Editorial keep the top bar and the page's own.
+
+   STICKY START: Today's page is one flex column; the Start slab is ordered
+   last and sticks to the bottom of the scroll area, so it is always one tap
+   away and, at the end of the page, simply sits in place. The page keeps its
+   24px of bottom padding for every other screen; a sticky offset stops at the
+   padding edge, so the slab takes -24px to sit flush on the bar (and carries
+   the 24px as its own padding, so its background reaches the bar). */
+.gv-app.gv-skin-lockin.gv-narrow .gv-nav {
+  order: 2;
+  gap: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  border-top: 1px solid var(--gv-line);
+  border-bottom: 0;
+  background-color: var(--gv-bg);
+}
+.gv-app.gv-skin-lockin.gv-narrow .gv-nav-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  min-height: 56px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 0 5px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.gv-app.gv-skin-lockin.gv-narrow .gv-nav-label { display: block; }
+.gv-app.gv-skin-lockin.gv-narrow .gv-nav-btn .gv-ico svg { width: 24px; height: 24px; }
+.gv-app.gv-skin-lockin.gv-narrow .gv-nav-btn.on::after { top: 0; bottom: auto; }
+body.is-phone .gv-app.gv-skin-lockin.gv-narrow .gv-nav { padding-bottom: var(--view-bottom-spacing, 0px); }
+body.is-phone .gv-app.gv-skin-lockin.gv-narrow:not(.gv-focus) .gv-page { padding-bottom: 24px; }
+
+.gv-app.gv-skin-lockin.gv-narrow .gv-today { display: flex; flex-direction: column; }
+.gv-app.gv-skin-lockin.gv-narrow .gv-hero-today { display: contents; }
+.gv-app.gv-skin-lockin.gv-narrow .gv-hero-today > .gv-hero-action {
+  order: 99;
+  position: sticky;
+  bottom: -24px;
+  z-index: 4;
+  margin: 0 calc(-1 * var(--gv-page-gutter)) -8px;
+  padding: 14px var(--gv-page-gutter) 32px;
+  background-image: linear-gradient(180deg, transparent 0, var(--gv-bg) 14px);
+}
+.gv-app.gv-skin-lockin.gv-narrow .gv-hero-today .gv-hero-action-line { display: none; }
 
 /* ---------- lists ---------- */
 
@@ -5119,6 +5771,25 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   font-weight: 900;
   letter-spacing: 0.06em;
 }
+
+/* Records, design layout (design fidelity): a giant title on its own line under
+   the back arrow, the count beneath it, the figures in the accent on hairline
+   rows (the newest record keeps its slab). */
+.gv-app.gv-skin-lockin .gv-toolbar-records .gv-toolbar-title {
+  order: 2;
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: clamp(52px, 24vw, 96px);
+  line-height: 0.84;
+}
+.gv-app.gv-skin-lockin .gv-toolbar-records .gv-records-count { display: block; order: 3; flex: 1 0 100%; margin-top: 8px; }
+.gv-app.gv-skin-lockin .gv-toolbar-records .gv-search { order: 4; flex: 1 0 100%; }
+.gv-app.gv-skin-lockin .gv-card-list > .gv-recrow:not(.gv-rec-new) {
+  background-color: transparent;
+  border-width: 0 0 1px;
+  box-shadow: none;
+}
+.gv-app.gv-skin-lockin .gv-card-list > .gv-recrow:not(.gv-rec-new) .gv-recrow-margin { color: var(--gv-accent-text); font-size: 36px; }
 
 /* ---------- motion: everything that moves on its own stops ---------- */
 

@@ -115,8 +115,11 @@ const TOKEN_SEL = new Set(['.gv-app.gv-skin-lockin', '.theme-dark .gv-app.gv-ski
     ['primary button', ['button.gv-btn', 'span']],
     ['Finish', ['div.gv-log-foot', 'button.gv-btn-finish']],
     ['Start (not on the hero)', ['div.gv-session-nextwrap', 'button.gv-btn-go']],
-    ['hero title', ['div.gv-hero', 'h2.gv-display.gv-hero-title']],
-    ['hero sub', ['div.gv-hero', 'p.gv-hero-sub']],
+    /* the flood is the Today HEAD (design 07): kicker, title, sub. The list, Start and week sit on the page. */
+    ['hero title', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'div.gv-hero-stage', 'h2.gv-display.gv-hero-title']],
+    ['hero title: giant word', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'div.gv-hero-stage', 'h2.gv-display.gv-hero-title.is-split', 'span.gv-title-first']],
+    ['hero title: outlined rest', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'div.gv-hero-stage', 'h2.gv-display.gv-hero-title.is-split', 'span.gv-title-rest']],
+    ['hero sub', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'p.gv-hero-sub']],
     ['done day', ['div.gv-week', 'div.gv-day.done', 'div.gv-day-name']],
     ['PB moment name', ['div.gv-session-complete', 'div.gv-pb-moment', 'h3.gv-pb-moment-name']],
     ['PB moment new value', ['div.gv-session-complete', 'div.gv-pb-moment', 'div.gv-pb-moment-swap', 'b.gv-pb-new']],
@@ -136,6 +139,18 @@ const TOKEN_SEL = new Set(['.gv-app.gv-skin-lockin', '.theme-dark .gv-app.gv-ski
     }
   }
   assert.strictEqual(seen.size, 5, 'five accents must paint five different floods');
+  /* ...and ONLY the Today head: the list, the Start slab's row and the other pages' heroes are on the page's own colour */
+  for (const theme of THEMES) for (const accent of ACCENTS) {
+    const want = limeOf(theme, accent);
+    for (const [label, inner] of [
+      ['Today list name', ['div.gv-hero.gv-hero-today', 'ul.gv-rx', 'li', 'span']],
+      ['Today BRING label', ['div.gv-hero.gv-hero-today', 'div.gv-chips.gv-today-kit', 'span.gv-kicker.gv-today-kit-label']],
+      ['Running hero title', ['div.gv-hero', 'h2.gv-display.gv-hero-title']],
+      ['Running hero sub', ['div.gv-hero', 'p.gv-hero-sub']]]) {
+      const t = cx.textColor(cx.appChain({ theme, skin: 'lockin', accent }, ...inner), rules);
+      assert.notStrictEqual(cx.hex(t.bg), want, `${theme}/${accent}: ${label} is painted on the accent flood; only the Today head floods`);
+    }
+  }
 }
 
 /* ---------- 3 ---------- */
@@ -203,7 +218,9 @@ let slabs = [];
 {
   const rot = sel => { const r = lock.filter(x => x.selector === sel && x.decls.some(d => d.prop === 'transform')).pop(); assert.ok(r, `${sel} has no transform`); const m = /rotate\((-?\d+(?:\.\d+)?)deg\)/.exec(decl(r, 'transform')); assert.ok(m, `${sel} is not a rotate()`); return Number(m[1]); };
   for (const [host, a, b] of [['.gv-streak-num', '.gv-app.gv-skin-lockin .gv-streak-num::before', '.gv-app.gv-skin-lockin .gv-streak-num::after'],
-    ['.gv-pb-moment-kicker', '.gv-app.gv-skin-lockin .gv-pb-moment-kicker::before', '.gv-app.gv-skin-lockin .gv-pb-moment-kicker::after']]) {
+    ['.gv-pb-moment-kicker', '.gv-app.gv-skin-lockin .gv-pb-moment-kicker::before', '.gv-app.gv-skin-lockin .gv-pb-moment-kicker::after'],
+    /* Today's hero badge (design fidelity): the same two-squares starburst, on the hero's own sticker */
+    ['.gv-badge-fig', '.gv-app.gv-skin-lockin .gv-badge-fig::before', '.gv-app.gv-skin-lockin .gv-badge-fig::after']]) {
     const d = Math.abs(rot(b) - rot(a));
     assert.strictEqual(d, 45, `${host}: the two squares of the starburst must be turned 45 degrees apart (they are ${d})`);
     for (const sel of [a, b]) {
@@ -238,7 +255,7 @@ let slabs = [];
     ['.gv-timed-play', ['div.gv-session-page', 'button.gv-timed-play'], 'wh'],
   ];
   const DELIBERATE = [['.gv-icon-btn-small', ['div.gv-card', 'button.gv-icon-btn.gv-icon-btn-small'], 40]];
-  const PASSIVE = ['.gv-tag', '.gv-badge', '.gv-ex-best', '.gv-day', '.gv-tile', '.gv-logo .gv-ico', '.gv-setup-logo', '.gv-session-complete-ico',
+  const PASSIVE = ['.gv-tag', '.gv-badge', '.gv-ex-best', '.gv-day', '.gv-tile', '.gv-logo .gv-ico', '.gv-setup-logo', '.gv-session-complete-ico', '.gv-hero-chip',
     '.gv-week-progress', '.gv-pb-target', '.gv-pb-moment', '.gv-pb-delta', '.gv-rec-delta', '.gv-recrow.gv-rec-new'];
   const CONTROLS = ['.gv-btn', '.gv-btn-go', '.gv-btn-finish', '.gv-btn-hero-ghost', '.gv-icon-btn', '.gv-head-btn', '.gv-set-done', '.gv-dial-step', '.gv-timed-play', '.gv-chip', '.gv-segmented-btn'];
   /* TRIPWIRE: a new slab must be measured as a control or listed as passive */

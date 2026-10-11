@@ -386,6 +386,11 @@ function pxOf(value, viewport) {
   if (m) return Number(m[1]);
   m = /^clamp\(\s*(\d+(?:\.\d+)?)px\s*,\s*(\d+(?:\.\d+)?)vw\s*,\s*(\d+(?:\.\d+)?)px\s*\)$/.exec(v);
   if (m) return Math.max(Number(m[1]), Math.min(Number(m[2]) * (viewport || 390) / 100, Number(m[3])));
+  /* The split title's two words step down with their length: clamp(min, calc(<vw maths> / var(--gv-t1-n | --gv-t2-n)), max).
+     The size is the word's length divided into the width, so it is not one number; the FLOOR is the smallest it ever
+     draws, which is the conservative size to class a probe by (a text smaller than 24px would be held to 4.5:1). */
+  m = /^clamp\(\s*(\d+(?:\.\d+)?)px\s*,\s*calc\(.*var\(--gv-t[12]-n\)\)\s*,\s*(\d+(?:\.\d+)?)px\s*\)$/.exec(v);
+  if (m) return Number(m[1]);
   throw new Error('css-cascade: font-size "' + value + '" is not a plain px or clamp(px, vw, px) value');
 }
 
