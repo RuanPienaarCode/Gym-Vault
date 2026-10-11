@@ -258,6 +258,7 @@ function killProcess() {
    opts.view      -> merged over the stub view (registerEvent...)
    opts.storage   -> a makeStorage(); its two methods become app.saveLocalStorage/loadLocalStorage
    opts.data      -> patch merged over the synthetic vault (e.g. { present: false, rootExists: true })
+   opts.saveExercise -> replaces the no-op io.saveExercise (a recorder, for the guards that watch exercise-note writes)
    everything else (planBody, exercises, workouts...) feeds makeData(). */
 async function boot(opts) {
   const o = opts || {};
@@ -267,7 +268,7 @@ async function boot(opts) {
     scaffold: async () => { scaffolds++; },
     loadAll: async () => { loads++; return Object.assign(makeData(o), o.data || {}); },
     saveWorkout: async w => { saved.push(JSON.parse(JSON.stringify(w))); if (o.saveDelayMs) await new Promise(r => setT(r, o.saveDelayMs)); },
-    saveExercise: async () => {},
+    saveExercise: o.saveExercise || (async () => {}),
     listVoiceClips: async () => [],
     readVoiceClip: async () => new ArrayBuffer(0),
   };

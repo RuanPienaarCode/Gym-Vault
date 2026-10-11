@@ -13,6 +13,7 @@ const { targetFirstNumber, targetWeight, targetIsDuration, targetDurationSeconds
 
 const { FormModal, ConfirmModal, EndSessionModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
+const { motionPref, setMotionPref } = require('./motion-count');
 
 /* `opts.setsPerEntry` (an array, one count per day item) overrides the plan's
    prescribed set count. A TIMED guided session needs it: the schedule decides
@@ -254,6 +255,19 @@ function setRow(ctx, entry, set, si) {
   return row;
 }
 
+/* Remember (or forget) that motion counting is ON for an exercise, on its
+   note. Written only when it changes — the toggle reports every tap, the note
+   should only be touched when it actually differs. A plan line with no note
+   behind it has nothing to write to (the guided screen still honours the
+   toggle for the session; the log's counter simply starts fresh next time).
+   Shared with the guided screen so the two cannot disagree. */
+function saveMotionPref(ctx, ex, on) {
+  if (!ex || !ex.file) return;
+  if (motionPref(ex.fm) === !!on) return;
+  setMotionPref(ex.fm, !!on);
+  Promise.resolve(ctx.io.saveExercise(ex)).catch(e => console.error('gym-vault motion preference', e));
+}
+
 /* Hands-free rep counting for a single set: phone flat on the floor, nose
    taps the screen at the bottom of each rep. Opens seeded with the exercise
    name; on Done the count overwrites this set's reps and marks it touched
@@ -276,6 +290,10 @@ function counterBtn(ctx, entry, set) {
         ex.fm.motion_sensitivity = value;
         Promise.resolve(ctx.io.saveExercise(ex)).catch(e => console.error('gym-vault sensitivity', e));
       },
+      /* Whether motion counting is ON is remembered per exercise the same
+         way (`motion_counting` on the note). */
+      motionPref: motionPref(ex && ex.fm),
+      onMotionPref: on => saveMotionPref(ctx, ex, on),
       onDone: count => {
         set.reps = String(count);
         set.touched = true;
@@ -412,4 +430,4 @@ async function finishSession(ctx, draft) {
   ctx.reload();
 }
 
-module.exports = { render, startDraft, buildRows, finishSession, keepDraft };
+module.exports = { render, startDraft, buildRows, finishSession, keepDraft, saveMotionPref };

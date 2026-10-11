@@ -189,6 +189,87 @@ function feedSample(state, t, mag) {
   return { state: next, counted: false };
 }
 
+/* ---------- remembering the choice, per exercise ----------
+
+   Whether motion counting is ON is a property of the MOVEMENT, like its
+   sensitivity: a phone strapped to an arm counts curls and is useless for a
+   plank. So the choice is remembered on the exercise note as
+   `motion_counting: true`, and read back the next time that exercise comes
+   round, in any plan, on any screen. An absent key is OFF — every note that
+   predates this behaves exactly as before. OFF is written by REMOVING the
+   key, never as `false`: a note has one "off" state, and a note nobody has
+   turned motion on for stays free of it.
+
+   The session keeps its own record of what the user chose THIS session, per
+   exercise, in sess.motionChoices. That is what stops a toggle on exercise A
+   leaking into B (there used to be one flag for the whole session), and what
+   lets a plan line with no note behind it still be toggled for the session. */
+const MOTION_PREF_KEY = 'motion_counting';
+
+/* Same rule as stats.sameName — kept local so this module stays free of the
+   rest of the app. */
+const motionKey = name => String(name == null ? '' : name).trim().toLowerCase();
+
+/* Read the preference off an exercise note's frontmatter. Only a clear "true"
+   is ON: this value arrives from a text file a human edits, so anything else
+   (missing, blank, "false", "yes", a list) is OFF rather than an error. */
+function motionPref(fm) {
+  const v = fm && fm[MOTION_PREF_KEY];
+  if (v === true) return true;
+  return typeof v === 'string' && v.trim().toLowerCase() === 'true';
+}
+
+/* Write it: ON sets the key, OFF removes it. Mutates `fm` and returns it, the
+   same way the sensitivity picker mutates ex.fm before saveExercise. */
+function setMotionPref(fm, on) {
+  if (on) fm[MOTION_PREF_KEY] = true;
+  else delete fm[MOTION_PREF_KEY];
+  return fm;
+}
+
+/* THE RULE. On entering an exercise's screen, motion is ON iff the user
+   already chose it this session for THIS exercise, otherwise whatever the
+   exercise's note says. `remembered` is true only when the answer came from
+   the note — i.e. nobody tapped anything to get it, so there is no user
+   gesture behind the start (see motionFailureCopy). Pure: records nothing. */
+function initialMotion(sess, exerciseName, savedPref) {
+  const choices = sess && sess.motionChoices;
+  const key = motionKey(exerciseName);
+  if (choices && Object.prototype.hasOwnProperty.call(choices, key)) {
+    return { on: !!choices[key], remembered: false };
+  }
+  return { on: !!savedPref, remembered: !!savedPref };
+}
+
+/* Record what the user chose for this exercise this session, and mirror it on
+   sess.motionOn (the flag the screen's buttons and hint read). Also used when
+   a start fails: the exercise is then OFF for the rest of the session rather
+   than retried — and nagged about — on every set. */
+function chooseMotion(sess, exerciseName, on) {
+  if (!sess.motionChoices) sess.motionChoices = {};
+  sess.motionChoices[motionKey(exerciseName)] = !!on;
+  sess.motionOn = !!on;
+}
+
+/* What to tell the user when a motion start does not reach 'listening'.
+
+   `viaGesture` is true when the user tapped the button to get here. iOS only
+   shows its permission prompt from inside a tap, so a REMEMBERED start — the
+   exercise opens with motion already on, nobody has tapped anything — can be
+   refused for that reason alone, and motion-source reports it as 'denied',
+   the same word as a real "Don't allow". The two cannot be told apart safely
+   from here, so a start nobody tapped never says "declined": no notice, the
+   saved preference stays, and the hint says how to resume. A tap that fails
+   keeps the original notices. */
+const MOTION_DECLINED_NOTICE = 'Gym: motion access was declined — counting by tap instead. Enable Motion & Orientation for Obsidian in iOS Settings to use it.';
+const MOTION_NOSENSOR_NOTICE = 'Gym: this device has no motion sensor available — counting by tap instead.';
+const MOTION_RESUME_HINT = 'Tap the movement button to turn counting back on';
+const MOTION_NOSENSOR_HINT = 'No motion sensor here — counting by tap';
+function motionFailureCopy(status, viaGesture) {
+  if (viaGesture) return { notice: status === 'denied' ? MOTION_DECLINED_NOTICE : MOTION_NOSENSOR_NOTICE, hint: '' };
+  return { notice: null, hint: status === 'denied' ? MOTION_RESUME_HINT : MOTION_NOSENSOR_HINT };
+}
+
 /* The threshold the detector would use right now — for a sensitivity picker
    that wants to show its work, and for tests that assert on the band rather
    than on an internal field. */
@@ -207,5 +288,6 @@ function isWarmingUp(state, t) {
 
 module.exports = {
   createMotionDetector, feedSample, currentThreshold, isWarmingUp, sensitivityKey,
+  MOTION_PREF_KEY, motionKey, motionPref, setMotionPref, initialMotion, chooseMotion, motionFailureCopy,
   SENSITIVITY, WARMUP_MS, REFRACTORY_MS, MIN_THRESHOLD, MAX_THRESHOLD, STALL_MS,
 };

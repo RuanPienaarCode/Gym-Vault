@@ -17,7 +17,7 @@ const counterTarget = require('./counter-target');
 const { helpButton } = require('./explainer');
 const sound = require('./sound');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
-const { sensitivityKey } = require('./motion-count');
+const { sensitivityKey, motionFailureCopy } = require('./motion-count');
 const { Notice } = require('obsidian');
 
 const FLASH_MS = 180;
@@ -45,6 +45,13 @@ class RepCounterModal extends Modal {
        next time rather than for this set only. */
     this.sensitivity = sensitivityKey(opts.sensitivity);
     this.onSensitivity = typeof opts.onSensitivity === 'function' ? opts.onSensitivity : () => {};
+    /* Whether motion counting is ON is remembered the same way, per exercise
+       (`motion_counting` on the note): opts.motionPref is what the note says
+       right now, opts.onMotionPref(on) is told when the user flips the
+       toggle. The modal does not decide HOW it is stored. */
+    this.motionPref = !!opts.motionPref;
+    this.onMotionPref = typeof opts.onMotionPref === 'function' ? opts.onMotionPref : () => {};
+    this._motionHint = '';
 
     this.state = createCounter();
     this.muted = false;
@@ -52,9 +59,11 @@ class RepCounterModal extends Modal {
     this._wakeLock = null;
     this._flashTimer = null;
     this._detachTapZone = null;
-    /* Motion is OFF until asked for. It costs a permission prompt on iOS and
-       it cannot count a movement the phone is not attached to, so the tap
-       zone stays the default and this is the opt-in. */
+    /* Motion is OFF until asked for — or until this exercise's note says the
+       user asked for it last time (opts.motionPref, started at the end of
+       onOpen). It costs a permission prompt on iOS and it cannot count a
+       movement the phone is not attached to, so the tap zone stays the
+       default and this is the opt-in. */
     this.motion = false;
     this._stopMotion = null;
     this._countIn = null;
@@ -194,7 +203,7 @@ class RepCounterModal extends Modal {
       undoBtn.disabled = false;
       /* The count-in borrowed the numeral; hand it back to the real count. */
       this.renderCount();
-      this.setHint(this.motion ? 'Counting your movement — taps still work' : '');
+      this.setHint(this.motion ? 'Counting your movement — taps still work' : this._motionHint);
     };
 
     /* THREE STEPS, ONE TAP EACH: what are you going for, 3-2-1, count.
@@ -204,6 +213,17 @@ class RepCounterModal extends Modal {
     this.renderTargetStep(c, () => this.startCountIn());
 
     this._wakeLock = holdWakeLock();
+
+    /* A REMEMBERED start: nobody has tapped the toggle this time. On iOS the
+       permission call may therefore be refused for lack of a gesture — which
+       beginMotion(false) treats as "not now", never as "declined". */
+    if (this.motionPref && motionAvailable()) {
+      this.motion = true;
+      this.syncMotionButton();
+      this.renderSensitivity();
+      this.setHint('Asking for the motion sensor…');
+      this.beginMotion(false);
+    }
   }
 
   /* "What are you going for?" — the step before the counter. Reps only:
@@ -337,21 +357,30 @@ class RepCounterModal extends Modal {
   }
 
   toggleMotion() {
+    this._motionHint = '';
     if (this.motion) {
       this.stopMotion();
       this.syncMotionButton();
       this.renderSensitivity();
       this.setHint('');
+      this.saveMotionPref(false);
       return;
     }
     this.motion = true;
     this.syncMotionButton();
     this.renderSensitivity();
     this.setHint('Asking for the motion sensor…');
-    this.beginMotion();
+    this.beginMotion(true);
+    this.saveMotionPref(true);
   }
 
-  beginMotion() {
+  saveMotionPref(on) {
+    try { this.onMotionPref(on); } catch (e) { console.error('gym-vault motion preference', e); }
+  }
+
+  /* `viaGesture`: the start is inside a tap (the toggle, the sensitivity
+     picker). The remembered start at open is not — see motionFailureCopy. */
+  beginMotion(viaGesture) {
     startMotionCounter({
       sensitivity: this.sensitivity,
       onRep: () => this.registerMotionRep(),
@@ -362,10 +391,12 @@ class RepCounterModal extends Modal {
         this.motion = false;
         this.syncMotionButton();
         this.renderSensitivity();
-        this.setHint('');
-        new Notice(status === 'denied'
-          ? 'Gym: motion access was declined — counting by tap instead. Enable Motion & Orientation for Obsidian in iOS Settings to use it.'
-          : 'Gym: this device has no motion sensor available — counting by tap instead.', 6000);
+        const copy = motionFailureCopy(status, viaGesture);
+        this._motionHint = copy.hint;
+        /* The count-in owns this line until it hands over; _armZone puts the
+           soft hint back then. */
+        if (!(this._countIn && !this._countIn.armed())) this.setHint(copy.hint);
+        if (copy.notice) new Notice(copy.notice, 6000);
       },
     }).then(stop => {
       /* The toggle may have been switched off while the prompt was up. */
@@ -408,7 +439,7 @@ class RepCounterModal extends Modal {
     this.motion = true;
     this.syncMotionButton();
     this.setHint('Restarting at ' + this.sensitivity + ' sensitivity…');
-    this.beginMotion();
+    this.beginMotion(true);
   }
 
   syncMotionButton() {

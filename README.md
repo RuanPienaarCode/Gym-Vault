@@ -76,6 +76,15 @@ want to be guided:
   cool-down, shuffled order and between-exercise transitions are switches on
   the same screen, and it tells you up front how many rounds you'll get.
 
+On a phone, the **movement** button (the activity icon, under *Counter
+settings* in a guided session) lets the sensor count reps for you, with taps
+still working. The choice is remembered per exercise, in that exercise's note
+as `motion_counting: true` (turning it off removes the line), so the next time
+that exercise comes up, in any plan, counting starts on. The sensitivity you
+pick is kept the same way, as `motion_sensitivity`. On iPhone the first grant
+still comes from your tap on the button; if a remembered start can't begin
+without one, the button stays off and says so.
+
 Either way the session is saved to `Gym/Workouts/` when you're done, and you
 can switch to the plain log screen mid-session without losing a thing. Warm-up
 and cool-down are guidance and are deliberately **not** logged — the plan note
@@ -176,6 +185,7 @@ Gym/
                         # (only the table's lines are rewritten — headings and
                         #  prose you write around it are left alone)
   Exercises/<name>.md   # frontmatter: type, muscles, equipment, unit
+                        # (optional: motion_sensitivity, motion_counting)
                         # subfolders are read too, but the NAME must be unique:
                         # plans and goals refer to exercises by name
   Plans/<name>.md       # day sections + exercise lines (see above)
