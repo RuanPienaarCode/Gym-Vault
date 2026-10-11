@@ -2737,6 +2737,16 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 body.is-phone .gv-app .gv-timed-dial { width: min(64vw, 196px); margin: 2px auto 10px; }
 body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 
+/* PAUSED TIMERS. The circuit's "Paused" line lives in the ring, under
+   the numeral, out of flow: it costs no height (a line under the dial pushed
+   the controls off a small phone) and nothing moves when it appears. It is the
+   shared .gv-rc-hint (ink-dim, small caps), so the hold and the rest, which
+   use it in flow, read the same. Probed in tests/contrast.test.cjs. */
+.gv-app .gv-timed-dial .gv-rc-hint {
+  position: absolute; left: 0; right: 0; bottom: 14%;
+  margin: 0; padding: 0; pointer-events: none;
+}
+
 /* ============================================================================
    ACCENT PALETTES — settings › Accent color. Each block ONLY re-points the
    --gv-lime* tokens (names kept for history; read them as "accent"). The

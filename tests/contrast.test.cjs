@@ -204,6 +204,14 @@ const PROBES = [
   glyph('.gv-icon-btn-on glyph', ['div.gv-rc-controls', 'button.gv-icon-btn.gv-icon-btn-on', 'span.gv-ico', 'svg']),
   glyph('.gv-head-btn glyph (off)', ['div.gv-head-actions', 'button.gv-head-btn', 'span.gv-ico', 'svg']),
   glyph('.gv-timed-play glyph', ['div.gv-timed-controls', 'button.gv-timed-play', 'span.gv-ico', 'svg']),
+  /* PAUSED TIMERS: the "Paused" line on each timer, and the hold's Done. The hold's line sits in the
+     counter zone: probed here on the idle zone only, because the stage floods are painted by layers this cascade
+     probe does not model (tests/rc-zone-stages.test.cjs holds the hint on every stage, with the flood composited);
+     the circuit's is absolutely placed in the ring; the rest's is in flow under the button. */
+  text('paused line: hold (idle zone)', ['div.gv-session-body', 'div.gv-rc-zone.gv-session-zone', 'div.gv-rc-hint'], 'pause'),
+  text('paused line: circuit (in the ring)', ['div.gv-session-body.gv-timed', 'div.gv-timed-dial', 'div.gv-rc-hint'], 'pause'),
+  text('paused line: rest', ['div.gv-session-rest', 'div.gv-rc-hint'], 'pause'),
+  text('hold Done (ghost button, paused)', ['div.gv-session-body', 'div.gv-timed-controls', 'button.gv-btn.gv-btn-ghost.gv-hold-done', 'span'], 'pause'),
   glyph('.gv-dial-step glyph', ['div.gv-dial-row', 'button.gv-dial-step', 'span.gv-ico', 'svg']),
   text('.gv-logo text', ['div.gv-head', 'div.gv-logo', 'span.gv-logo-text']),
   text('set number box', [...LOGSET, 'div.gv-log-set', 'input.gv-set-input']),
