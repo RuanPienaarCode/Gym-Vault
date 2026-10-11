@@ -36,6 +36,7 @@ const { EndSessionModal } = require('./modals');
 const { nextFrameIndex } = require('./media-cycle');
 const { musicButton } = require('./music-picker');
 const timedPlan = require('./timed-plan');
+const timerState = require('./timer-state');
 const { classifyKind, liveBest, pbTarget, pbDelta, marginText, pctText } = require('./progress');
 
 const FLASH_MS = 180;
@@ -76,7 +77,9 @@ function render(ctx, root) {
       pos: flow.initialPosition(draft),
       phase: 'active',
       pendingPos: null,
-      restStartedAt: null,
+      /* The rest's clock (timer-state.js): null outside a rest. A clock
+         rather than a bare start stamp so the rest can be paused. */
+      rest: null,
       muted: false,
       counter: null, counterFor: null,
       /* Motion counting is per-SESSION, not per-render: the toggle must
@@ -109,15 +112,16 @@ function render(ctx, root) {
          interval list; the clock is kept as a start stamp plus the seconds
          banked before the last pause, so a pause is exact rather than
          drifting by however long the tick happened to be. */
-      timed: draft.timed ? {
+      timed: draft.timed ? Object.assign({
         index: timedPlan.initialIndex(draft.timed, draft, flow.isHandled),
-        startedAt: Date.now(),
-        bankedSeconds: 0,
-        paused: false,
         spokenAt: null,
         announcedFor: null,
-      } : null,
+      }, timerState.startClock(Date.now())) : null,
     };
+    /* A clock that was PAUSED when the user left comes back paused, at the
+       same value. A running one is not carried: it starts over, as it always
+       did. */
+    if (carryMatches) restorePaused(ctx.state.session, draft, carry.paused);
   }
   const sess = ctx.state.session;
 
@@ -163,7 +167,7 @@ function render(ctx, root) {
        will never match a later, genuinely new one. render()'s own fresh-
        session branch is the other half — it only ever applies this for the
        SAME draft, and only once. */
-    ctx.state.sessionCarry = { draft: ctx.state.logDraft, records: sess.records, goalCount: sess.goalCount, metGoals: sess.metGoals };
+    ctx.state.sessionCarry = { draft: ctx.state.logDraft, records: sess.records, goalCount: sess.goalCount, metGoals: sess.metGoals, paused: pausedSnapshot(sess) };
     ctx.state.session = null;
   };
   if (!sess.wakeLock) sess.wakeLock = holdWakeLock();
@@ -226,6 +230,7 @@ function commitLiveSet(ctx, draft) {
     const secs = Math.round(heldSeconds(hold));
     if (secs <= 0) return false;
     hold.running = false;
+    hold.paused = false;
     hold.frozenSeconds = secs;
     applyCompletion(ctx, draft, sess, set, entry, { seconds: String(secs) }, OBSERVED_SECONDS);
     return true;
@@ -278,6 +283,95 @@ function resetActiveState(sess) {
 }
 
 function setKey(pos) { return `${pos.entryIndex}:${pos.setIndex}`; }
+
+/* ---------- pausing a clock ----------
+
+   Three screens run a clock a user may need to stop (the hold, the rest and
+   the timed circuit's interval). They share one rule for what a pause does to
+   the clock — src/timer-state.js — and one look for the control, below: the
+   circuit's own play/pause button, so every skin already styles it. */
+
+/* The rest's "Paused" line sits UNDER its button and is never removed, only
+   blanked with a non-breaking space: an empty line would collapse, and the
+   screen would jump the moment the button was pressed (and a second tap at the
+   same spot would land on whatever slid under the thumb). The hold's line is
+   inside its zone and the circuit's inside its ring, where nothing can move. */
+const PAUSE_LINE_BLANK = '\u00a0';
+
+/* The circuit's button. Built here so the hold and the rest wear exactly the
+   same one: class, size, icon and the Pause/Resume label. */
+function playButton(paused) {
+  return el('button', {
+    class: 'gv-timed-play', type: 'button',
+    'aria-label': paused ? 'Resume' : 'Pause',
+  }, ico(paused ? 'play' : 'pause'));
+}
+
+/* Flip the same button in place (the hold and the rest update without
+   re-rendering, so keyboard focus stays on the control that was pressed). */
+function syncPlayButton(btn, paused) {
+  btn.setAttribute('aria-label', paused ? 'Resume' : 'Pause');
+  clear(btn);
+  btn.append(ico(paused ? 'play' : 'pause'));
+}
+
+/* WHAT A PAUSE LEAVES BEHIND WHEN THE USER LEAVES THE SESSION. pageCleanup
+   throws the session object away (see its comment), which would turn a paused
+   plank back into a fresh count-in — the one moment the pause exists to
+   protect. So a PAUSED clock is stashed beside the tally and put back by
+   restorePaused. A RUNNING clock is deliberately not carried: leaving with
+   one running already meant starting over, and that is not changed here.
+
+   Null when nothing is paused. */
+function pausedSnapshot(sess) {
+  const tp = sess.timed;
+  if (tp) {
+    return tp.paused
+      ? { kind: 'timed', index: tp.index, bankedSeconds: tp.bankedSeconds, spokenAt: tp.spokenAt, announcedFor: tp.announcedFor }
+      : null;
+  }
+  if (sess.phase === 'resting' && sess.rest && sess.rest.paused && sess.pendingPos) {
+    return { kind: 'rest', next: setKey(sess.pendingPos), bankedSeconds: sess.rest.bankedSeconds, callouts: (sess.pendingCallouts || []).slice() };
+  }
+  const h = sess.hold;
+  if (sess.phase === 'active' && h && h.running && h.paused && sess.holdFor) {
+    return { kind: 'hold', key: sess.holdFor, bankedSeconds: h.bankedSeconds, targetHit: h.targetHit === true, lastAnnounced: h.lastAnnounced, lastLiveAnnounced: h.lastLiveAnnounced };
+  }
+  return null;
+}
+
+/* Put a paused clock back on a FRESH session — only if the session lands on
+   the very thing that was paused. The overview may have been used in between
+   (a set logged by hand moves the first unhandled set on), and a pause that
+   belonged to set 1 must not turn up on set 2. */
+function restorePaused(sess, draft, snap) {
+  if (!snap) return;
+  if (snap.kind === 'timed') {
+    if (!sess.timed || sess.timed.index !== snap.index) return;
+    Object.assign(sess.timed, timerState.frozenClock(snap.bankedSeconds), { spokenAt: snap.spokenAt, announcedFor: snap.announcedFor });
+    return;
+  }
+  if (flow.isDone(draft, sess.pos)) return;
+  const key = setKey(sess.pos);
+  if (snap.kind === 'rest' && snap.next === key) {
+    sess.phase = 'resting';
+    sess.pendingPos = { entryIndex: sess.pos.entryIndex, setIndex: sess.pos.setIndex };
+    sess.pendingCallouts = snap.callouts;
+    sess.rest = timerState.frozenClock(snap.bankedSeconds);
+    return;
+  }
+  if (snap.kind === 'hold' && snap.key === key) {
+    const cur = flow.currentSet(draft, sess.pos);
+    if (!cur || !cur.entry.duration || cur.entry.distance) return;
+    sess.hold = Object.assign({
+      running: true, frozenSeconds: snap.bankedSeconds,
+      lastAnnounced: snap.lastAnnounced, lastLiveAnnounced: snap.lastLiveAnnounced, targetHit: snap.targetHit,
+    }, timerState.frozenClock(snap.bankedSeconds));
+    sess.holdFor = key;
+    /* It had already begun, so it must not count in again. */
+    sess.countedIn = key;
+  }
+}
 
 function findExercise(ctx, name) {
   return ctx.data.exercises.find(e => sameName(e.name, name));
@@ -906,26 +1000,41 @@ function weightedBody(ctx, draft, sess, entry, set) {
   return repsBody(ctx, draft, sess, entry, set, weightRow);
 }
 
-/* How long a hold has run: the wall clock while it is running, the frozen
-   figure otherwise. The Done path and commitLiveSet both read it here. */
+/* How long a hold has run: its clock (timer-state.js) while it is running —
+   which is exact across a pause, the paused time is never in it — and the
+   frozen figure otherwise. The stop path, the paused Done and commitLiveSet
+   all read it here, so a hold finished from a pause records what was held. */
 function heldSeconds(hold) {
-  return hold.running ? Math.max(0, (Date.now() - hold.startedAt) / 1000) : hold.frozenSeconds;
+  return hold.running ? timerState.elapsedSeconds(hold, Date.now()) : hold.frozenSeconds;
 }
 
 /* Duration/holds: tap to start, tap to stop — stop IS the completion action
-   (it records the elapsed seconds and advances), no separate Done button. */
+   (it records the elapsed seconds and advances), no separate Done button.
+
+   PAUSE. A separate control, because stop IS completion: a pause that
+   shared the zone's tap would save the set. The button freezes the clock (the
+   paused time is never counted — timer-state.js), the zone then reads
+   "tap to resume" so a stray tap on a paused hold can never complete it, and a
+   Done beside the button finishes the set from the pause, recording the frozen
+   seconds. The hold's fields: `running` means begun (it stays true while
+   paused, so ending the session still banks the figure), `paused` means
+   frozen, and startedAt / bankedSeconds are the clock. */
 function durationBody(ctx, draft, sess, entry, set) {
   if (!sess.hold || sess.holdFor !== setKey(sess.pos)) {
     /* NOT set.seconds — that is the plan's target sitting in the box, and
        seeding the stopwatch with it made the numeral say 0:30 before the
        clock had run. counter-target.resumeSeconds owns the rule: only a
        figure the user actually measured is a time to count on from. */
-    sess.hold = { running: false, startedAt: null, frozenSeconds: counterTarget.resumeSeconds(set), lastAnnounced: -1, lastLiveAnnounced: -1, targetHit: false };
+    sess.hold = { running: false, startedAt: null, bankedSeconds: 0, paused: false, frozenSeconds: counterTarget.resumeSeconds(set), lastAnnounced: -1, lastLiveAnnounced: -1, targetHit: false };
     sess.holdFor = setKey(sess.pos);
   }
   const hold = sess.hold;
 
-  const countEl = el('div', { class: 'gv-rc-count gv-session-count' }, fmtSeconds(hold.frozenSeconds || 0));
+  /* What the numeral shows: the running clock, else the frozen figure. A
+     screen rebuilt mid-hold (a re-render, or coming back to a paused one)
+     must open on the real value, not 0:00 until the next tick. */
+  const shownSeconds = () => (hold.running ? heldSeconds(hold) : (hold.frozenSeconds || 0));
+  const countEl = el('div', { class: 'gv-rc-count gv-session-count' }, fmtSeconds(shownSeconds()));
   const zone = el('div', {
     class: 'gv-rc-zone gv-session-zone', role: 'button', tabindex: '0',
     'aria-label': hold.running ? 'Tap to stop the hold' : 'Tap to start the hold',
@@ -945,6 +1054,7 @@ function durationBody(ctx, draft, sess, entry, set) {
      stages, driven by the tick below. "3 x 45s" fills towards 45. */
   const target = counterTarget.targetFromEntry(entry);
   const meter = attachFillMeter(zone, target);
+  if (meter && hold.running) meter.set(shownSeconds());
   /* A hold's target moment gets the same detonation a rep target does —
      the clock reaching the goal is no less of a reward than a tap. A hold
      is not reps, so the badge says what was actually reached. */
@@ -955,37 +1065,107 @@ function durationBody(ctx, draft, sess, entry, set) {
      will record (Math.round of the clock), so the flag flips on the second
      Done would call it a record. */
   const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_SECONDS.observed), 'seconds');
-  if (pb) pb.set(Math.round(hold.running ? heldSeconds(hold) : (hold.frozenSeconds || 0)));
+  if (pb) pb.set(Math.round(shownSeconds()));
 
   const currentSeconds = () => heldSeconds(hold);
+
+  /* The paused state, in one place: the zone's wording and live styling, a
+     visible "Paused" line (the hint line every counter already has, so every
+     skin and every stage already colours it), the button and the Done. Called
+     on build, on pause, on resume and on begin — so a screen rebuilt from
+     `hold` always reads right. */
+  const hintEl = el('div', { class: 'gv-rc-hint' });
+  zone.append(hintEl);
+  const playBtn = playButton(hold.paused === true);
+  const doneBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-hold-done', type: 'button' },
+    ico('check'), el('span', {}, 'Done'));
+  /* THE PLAY BUTTON NEVER MOVES. Done appears beside it only while paused, and
+     if it were added to a centred row the button just pressed would slide
+     left — so a second tap at the same spot would land on Done and end the
+     set. Done is therefore always in the row (hidden and disabled when not
+     paused), with an identical hidden twin on the other side to keep the play
+     button centred. No CSS: the visibility is written inline. */
+  const spacer = el('button', { class: 'gv-btn gv-btn-ghost gv-hold-spacer', type: 'button', disabled: 'true', tabindex: '-1', 'aria-hidden': 'true' },
+    ico('check'), el('span', {}, 'Done'));
+  spacer.disabled = true;
+  spacer.style.setProperty('visibility', 'hidden');
+  const controls = el('div', { class: 'gv-timed-controls' }, spacer, playBtn, doneBtn);
+  const paintState = () => {
+    const paused = hold.running && hold.paused === true;
+    zone.classList.toggle('gv-session-zone-live', hold.running && !paused);
+    zone.setAttribute('aria-label', paused ? 'Tap to resume the hold' : hold.running ? 'Tap to stop the hold' : 'Tap to start the hold');
+    hintEl.textContent = paused ? 'Paused · tap to resume' : '';
+    syncPlayButton(playBtn, paused);
+    /* Nothing to pause before the hold has begun (the count-in has Skip). */
+    playBtn.disabled = !hold.running;
+    doneBtn.disabled = !paused;
+    doneBtn.style.setProperty('visibility', paused ? 'visible' : 'hidden');
+    if (paused) doneBtn.removeAttribute('aria-hidden'); else doneBtn.setAttribute('aria-hidden', 'true');
+  };
 
   let holdCountIn = null;
 
   const beginHold = () => {
-    hold.running = true;
-    hold.startedAt = Date.now();
-    zone.setAttribute('aria-label', 'Tap to stop the hold');
-    zone.classList.add('gv-session-zone-live');
+    Object.assign(hold, timerState.startClock(Date.now()), { running: true });
+    paintState();
   };
+
+  /* THE ONE STOP PATH, for the zone's tap on a running hold and for the Done
+     beside a paused one. It reads heldSeconds, which is exact across a pause. */
+  const stopHold = () => {
+    const secs = Math.round(currentSeconds());
+    hold.running = false;
+    hold.paused = false;
+    hold.frozenSeconds = secs;
+    /* OBSERVED_SECONDS — the stopwatch above genuinely ran for this
+       many seconds; unlike a timed interval's clock, it was started and
+       stopped by the user's own taps, not merely allowed to elapse. */
+    completeSet(ctx, draft, sess, set, entry, { seconds: String(secs) }, OBSERVED_SECONDS);
+  };
+
+  const pauseHold = () => {
+    if (!hold.running || hold.paused) return;
+    Object.assign(hold, timerState.pauseClock(hold, Date.now()));
+    /* Whatever is mid-sentence (a count-back, the target word) stops with the
+       clock; nothing queued may play over the pause. */
+    sound.cancel();
+    /* Show the frozen figure NOW: the next tick is up to a second away and
+       does not paint while paused. Only the displays — the target moment and
+       the checkpoints belong to the tick, which does not run while paused. */
+    const secs = currentSeconds();
+    countEl.textContent = fmtSeconds(secs);
+    if (pb) pb.set(Math.round(secs));
+    if (meter) meter.set(secs);
+    paintState();
+    checkpointEl.textContent = 'Paused';
+  };
+
+  const resumeHold = () => {
+    if (!hold.running || !hold.paused) return;
+    Object.assign(hold, timerState.resumeClock(hold, Date.now()));
+    paintState();
+    checkpointEl.textContent = 'Resumed';
+  };
+
+  playBtn.addEventListener('click', () => { if (hold.paused) resumeHold(); else pauseHold(); });
+  doneBtn.addEventListener('click', () => { if (hold.running && hold.paused) stopHold(); });
 
   const startStop = () => {
     if (holdCountIn && !holdCountIn.armed()) { holdCountIn.skip(); return; }
-    if (!hold.running) {
-      beginHold();
-    } else {
-      const secs = Math.round(currentSeconds());
-      hold.running = false;
-      hold.frozenSeconds = secs;
-      /* OBSERVED_SECONDS — the stopwatch above genuinely ran for this
-         many seconds; unlike a timed interval's clock, it was started and
-         stopped by the user's own taps, not merely allowed to elapse. */
-      completeSet(ctx, draft, sess, set, entry, { seconds: String(secs) }, OBSERVED_SECONDS);
-    }
+    if (!hold.running) beginHold();
+    /* A tap on a PAUSED hold resumes it. Never completes: from the paused
+       state a stray tap must not be able to save a half-set — Done is the
+       deliberate way out. */
+    else if (hold.paused) resumeHold();
+    else stopHold();
   };
   attachTapZone(zone, startStop);
 
   ctx.setPageInterval(() => {
-    if (!hold.running) return;
+    /* A paused hold does nothing here: no numeral, no meter, no target
+       moment, no checkpoint. The interval keeps running (one slot, replaced
+       each render), but the clock it reads is frozen. */
+    if (!hold.running || hold.paused) return;
     const secs = currentSeconds();
     countEl.textContent = fmtSeconds(secs);
     if (pb) pb.set(Math.round(secs));
@@ -1046,9 +1226,10 @@ function durationBody(ctx, draft, sess, entry, set) {
     sess.stopCountIn = null;
   }
 
+  paintState();
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(ctx, sess));
   focusMode(ctx);
-  return el('div', { class: 'gv-session-body' }, pb ? pb.node : '', zone, checkpointEl, bar);
+  return el('div', { class: 'gv-session-body' }, pb ? pb.node : '', zone, controls, checkpointEl, bar);
 }
 
 function lastRunForExercise(ctx, name) {
@@ -1270,7 +1451,7 @@ function completeSet(ctx, draft, sess, set, entry, values, opts) {
   } else {
     sess.pendingPos = peek;
     sess.phase = 'resting';
-    sess.restStartedAt = Date.now();
+    sess.rest = timerState.startClock(Date.now());
     sess.pendingCallouts = callouts;
   }
   ctx.rerender();
@@ -1292,9 +1473,15 @@ function renderRest(ctx, root, draft, sess) {
      timers hard enough that the drift is visible inside one rest. Same rule
      the timed clock follows. */
   const restTotal = restSecondsFor(ctx);
-  const remaining = () => Math.max(0, restTotal - Math.round((Date.now() - sess.restStartedAt) / 1000));
+  /* PAUSE: the rest is a clock (timer-state.js), not a bare stamp, so it can
+     be frozen. Elapsed is banked at the pause and the time spent paused is
+     never in it — the remaining time on resume is exactly what was left. */
+  if (!sess.rest) sess.rest = timerState.startClock(Date.now());
+  const remaining = () => Math.max(0, restTotal - Math.round(timerState.elapsedSeconds(sess.rest, Date.now())));
   const elapsedEl = el('div', { class: 'gv-session-rest-clock' }, fmtSeconds(remaining()));
   ctx.setPageInterval(() => {
+    /* Frozen: it neither counts down nor ends the rest. */
+    if (!sess.rest || sess.rest.paused) return;
     const secs = remaining();
     elapsedEl.textContent = fmtSeconds(secs);
     /* At zero it advances on its own. goNext() clears the interval by
@@ -1322,10 +1509,30 @@ function renderRest(ctx, root, draft, sess) {
     sess.pendingPos = null;
     sess.pendingCallouts = [];
     sess.phase = 'active';
-    sess.restStartedAt = null;
+    sess.rest = null;
     resetActiveState(sess);
     ctx.rerender();
   };
+
+  /* The pause control: the circuit's own button, in the circuit's control
+     row, with the same "Paused" line the hold and the circuit show. Updated in
+     place so keyboard focus stays on the button. */
+  const hintEl = el('div', { class: 'gv-rc-hint' });
+  const playBtn = playButton(sess.rest.paused);
+  const paintRest = () => {
+    const paused = sess.rest.paused;
+    elapsedEl.textContent = fmtSeconds(remaining());
+    hintEl.textContent = paused ? 'Paused' : PAUSE_LINE_BLANK;
+    syncPlayButton(playBtn, paused);
+  };
+  playBtn.addEventListener('click', () => {
+    if (sess.phase !== 'resting' || !sess.rest) return;
+    const now = Date.now();
+    if (sess.rest.paused) sess.rest = timerState.resumeClock(sess.rest, now);
+    else { sess.rest = timerState.pauseClock(sess.rest, now); sound.cancel(); }
+    paintRest();
+  });
+  paintRest();
 
   /* Still here, and still the flood: "go now" is a real thing to want, and
      the recommendation was to stop REQUIRING the tap, not to remove it. */
@@ -1348,6 +1555,8 @@ function renderRest(ctx, root, draft, sess) {
        ctx.nav's focus-move needs to find. */
     el('h2', { class: 'gv-kicker gv-session-rest-title' }, 'Rest'),
     el('div', { class: 'gv-session-rest-clock-wrap' }, ico('timer'), elapsedEl),
+    el('div', { class: 'gv-timed-controls' }, playBtn),
+    hintEl,
     callouts,
     nextLabel,
     el('div', { class: 'gv-hero-action gv-session-nextwrap' }, nextBtn),
@@ -1369,16 +1578,13 @@ const TICK_MS = countdown.TICK_MS;
    200ms timer drifts, and iOS throttles background timers hard enough that
    the drift is visible within one session. */
 function timedElapsed(tp) {
-  if (tp.paused) return tp.bankedSeconds;
-  return tp.bankedSeconds + Math.max(0, (Date.now() - tp.startedAt) / 1000);
+  return timerState.elapsedSeconds(tp, Date.now());
 }
 
 function startInterval(sess, index) {
   const tp = sess.timed;
+  Object.assign(tp, timerState.startClock(Date.now()));
   tp.index = index;
-  tp.startedAt = Date.now();
-  tp.bankedSeconds = 0;
-  tp.paused = false;
   tp.spokenAt = null;
   tp.announcedFor = null;
 }
@@ -1509,7 +1715,13 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
      is to be readable at arm's length mid-set — a colour creeping by one
      percent a tick tells you nothing, a colour that changes tells you the
      interval is nearly out. */
-  const dial = el('div', { class: 'gv-timed-dial', 'data-urgency': 'calm' }, ring.svg, digits);
+  /* A visible Paused state (the hint line the counters use) INSIDE the ring,
+     under the numeral. Without it the only sign of a pause was the button's
+     icon. In the ring because it costs no height: a line under the dial pushed
+     the controls off an iPhone SE-sized screen, and a line that appears and
+     disappears moves them. Empty (so hidden) while running. */
+  const dial = el('div', { class: 'gv-timed-dial', 'data-urgency': 'calm' }, ring.svg, digits,
+    el('div', { class: 'gv-rc-hint' }, tp.paused ? 'Paused' : ''));
   let urgency = 'calm';
   body.append(dial);
 
@@ -1534,13 +1746,11 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   const backBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Previous interval' }, ico('skip-back'));
   backBtn.addEventListener('click', () => stepBack(ctx, sess));
 
-  const playBtn = el('button', {
-    class: 'gv-timed-play', type: 'button',
-    'aria-label': tp.paused ? 'Resume' : 'Pause',
-  }, ico(tp.paused ? 'play' : 'pause'));
+  const playBtn = playButton(tp.paused);
   playBtn.addEventListener('click', () => {
-    if (tp.paused) { tp.startedAt = Date.now(); tp.paused = false; }
-    else { tp.bankedSeconds = timedElapsed(tp); tp.paused = true; sound.cancel(); }
+    const now = Date.now();
+    if (tp.paused) { Object.assign(tp, timerState.resumeClock(tp, now)); tp.stateNote = 'Resumed'; }
+    else { Object.assign(tp, timerState.pauseClock(tp, now)); tp.stateNote = 'Paused'; sound.cancel(); }
     ctx.rerender();
   });
 
@@ -1556,6 +1766,9 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   if (callouts) { body.append(callouts); }
 
   root.append(body, live);
+
+  /* "Paused" / "Resumed", through the screen's own live region, once. */
+  if (tp.stateNote) { live.textContent = tp.stateNote; tp.stateNote = null; }
 
   /* Announce once per interval, not once per render — a mute toggle or a
      typed rep re-renders this screen and must not re-announce. */

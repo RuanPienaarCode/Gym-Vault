@@ -47,7 +47,10 @@ const { DEFAULT_SETTINGS, GUIDE_REST } = require('../src/constants');
 
   assert.match(src, /const restTotal = restSecondsFor\(ctx\);/,
     'the rest screen must know how long it is');
-  assert.match(src, /Math\.max\(0, restTotal - Math\.round\(\(Date\.now\(\) - sess\.restStartedAt\) \/ 1000\)\)/,
+  /* Still derived from a start stamp, never accumulated — now through the
+     shared pausable clock (timer-state.js), whose elapsed is banked-at-pause
+     plus time-since-start. tests/pause-timers.test.cjs pins the pause itself. */
+  assert.match(src, /Math\.max\(0, restTotal - Math\.round\(timerState\.elapsedSeconds\(sess\.rest, Date\.now\(\)\)\)\)/,
     'counting DOWN from a start stamp — accumulating ticks drifts, and iOS throttles background timers hard enough to show it');
   assert.match(src, /if \(secs <= 0 && sess\.phase === 'resting'\) goNext\(\);/,
     'at zero the rest must move on by ITSELF — that is the whole of "no extra Next"');
