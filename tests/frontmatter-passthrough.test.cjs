@@ -103,4 +103,42 @@ const roundTrip = text => {
   assert.match(out, /mynote:/, `user's empty-valued key was deleted:\n${out}`);
 }
 
+/* `motion_counting` (motion counting remembered per exercise) is a plugin key
+   that lives in a USER's note, next to keys the plugin cannot model. Turning
+   it ON appends exactly one line; OFF removes exactly one line; a note that
+   already carries it round-trips untouched; nothing else moves. */
+{
+  const { setMotionPref, motionPref } = require('../src/motion-count');
+  const text = '---\ntype: strength\ntags:\n  - gym\n  - push\nmotion_sensitivity: high\ncue: >\n  brace hard\n# keep this\nunit: reps\n---\n\nMy own notes about form.\n';
+  /* (a blank line after the frontmatter is how the app itself writes a note;
+     the writer adds one to a note that lacks it on its FIRST save of any key,
+     which is older than this key and not what is under test.) */
+  const ser = fm => serializeFrontmatter(fm);
+
+  const on = parseFrontmatter(text);
+  assert.strictEqual(motionPref(on.fm), false, 'a note without the key is OFF');
+  setMotionPref(on.fm, true);
+  const outOn = ser(on.fm) + '\n' + on.body;
+  assert.strictEqual(outOn, text.replace('unit: reps\n---', 'unit: reps\nmotion_counting: true\n---'),
+    `ON must add exactly one line and change nothing else:\n${outOn}`);
+
+  const again = parseFrontmatter(outOn);
+  assert.strictEqual(motionPref(again.fm), true, 'and it reads back ON');
+  assert.strictEqual(ser(again.fm) + '\n' + again.body, outOn, 'ON is a fixpoint');
+
+  setMotionPref(again.fm, false);
+  assert.strictEqual(ser(again.fm) + '\n' + again.body, text, 'OFF removes exactly that line: the note is byte-identical to the original');
+}
+
+/* ...and in its original position when the user put it in the middle. */
+{
+  const { setMotionPref } = require('../src/motion-count');
+  const text = '---\ntype: strength\nmotion_counting: true\ntags:\n  - gym\nunit: reps\n---\n\nBody.\n';
+  const rt = roundTrip(text);
+  assert.strictEqual(rt, text, 'a note that already has the key round-trips byte for byte');
+  const { fm, body } = parseFrontmatter(text);
+  setMotionPref(fm, false);
+  assert.strictEqual(serializeFrontmatter(fm) + '\n' + body, '---\ntype: strength\ntags:\n  - gym\nunit: reps\n---\n\nBody.\n');
+}
+
 console.log('frontmatter pass-through OK (block lists, nested maps, block scalars, comments survive a save)');

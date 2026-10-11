@@ -95,7 +95,10 @@ assert.ok(ctx.state.session, 'render must build sess.session on first entry');
    render-time teardown. */
 const staleStop = () => staleStop.calls.push('stale');
 staleStop.calls = [];
-ctx.state.session.motionOn = true;
+/* A user's toggle is recorded per exercise (motionChoices), and the reps
+   screen re-resolves it on every render — so the fixture records the choice
+   the way the toggle does, rather than poking the mirror flag alone. */
+require(path.join(SRC, 'motion-count')).chooseMotion(ctx.state.session, 'Push-ups', true);
 ctx.state.session.stopMotion = staleStop;
 
 pageSession.render(ctx, mkNode());

@@ -29,9 +29,9 @@ const { counterSettingsButton } = require('./counter-settings');
 const sound = require('./sound');
 const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
-const { sensitivityKey } = require('./motion-count');
+const { sensitivityKey, motionKey, motionPref, initialMotion, chooseMotion, motionFailureCopy } = require('./motion-count');
 const { resolveExerciseImages } = require('./page-exercise-detail');
-const { buildRows, finishSession, keepDraft } = require('./page-log');
+const { buildRows, finishSession, keepDraft, saveMotionPref } = require('./page-log');
 const { EndSessionModal } = require('./modals');
 const { nextFrameIndex } = require('./media-cycle');
 const { musicButton } = require('./music-picker');
@@ -81,8 +81,14 @@ function render(ctx, root) {
       counter: null, counterFor: null,
       /* Motion counting is per-SESSION, not per-render: the toggle must
          survive the re-render that every completed set causes. stopMotion is
-         the live subscription's teardown, replaced on each render. */
-      motionOn: false, stopMotion: null,
+         the live subscription's teardown, replaced on each render.
+
+         And it is per EXERCISE: motionOn is only what the exercise on screen
+         is doing right now. What the user chose, and for which exercise,
+         lives in motionChoices (see initialMotion), and each exercise's note
+         remembers it across sessions as `motion_counting`. motionHint is the
+         soft line shown when a remembered start could not begin. */
+      motionOn: false, motionChoices: {}, motionKey: '', motionHint: '', stopMotion: null,
       hold: null, holdFor: null,
       workoutsAtStart: ctx.data.workouts, // snapshot: never includes THIS session's own rows (they aren't saved until Finish)
       metGoals: carryMatches ? carry.metGoals : new Set(),
@@ -433,7 +439,39 @@ function saveExerciseSensitivity(ctx, name, value) {
   Promise.resolve(ctx.io.saveExercise(ex)).catch(e => console.error('gym-vault sensitivity', e));
 }
 
-function motionButton(ctx, sess, entry, onRep, hintEl, sensEl) {
+/* `motion_counting` on the exercise note is remembered the same way, for the
+   same reason, as the sensitivity above: whether the phone can count THIS
+   movement is a property of the movement. Written only when it changes.
+   A plan line with no note behind it has nothing to write to — there the
+   toggle still works for the session (sess.motionChoices), it just is not
+   remembered next time. */
+function exerciseMotionPref(ctx, name) {
+  const ex = findExercise(ctx, name);
+  return motionPref(ex && ex.fm);
+}
+
+function saveExerciseMotionPref(ctx, name, on) {
+  saveMotionPref(ctx, findExercise(ctx, name), on); // no note: nothing to write to
+}
+
+/* Decide, for the exercise this screen is about to show, whether motion is
+   ON — see initialMotion for the rule. Runs on EVERY render of the reps
+   screen, so a different exercise gets ITS answer rather than inheriting the
+   last one's, and a re-render of the same exercise gets the same answer back.
+   A device with no motion sensor stays off whatever the note says. */
+function resolveMotion(ctx, sess, entry) {
+  const r = initialMotion(sess, entry.exercise, exerciseMotionPref(ctx, entry.exercise));
+  sess.motionOn = r.on && motionAvailable();
+  sess.motionKey = motionKey(entry.exercise);
+  sess.motionHint = '';
+}
+
+/* What the hint line says while this exercise is not counting from motion:
+   normally nothing, or the soft line after a remembered start that could not
+   begin. */
+const motionHintText = sess => (sess.motionOn ? 'Counting your movement — taps still work' : (sess.motionHint || ''));
+
+function motionButton(ctx, sess, entry, onRep, hintEl, sensEl, countingIn) {
   const btn = el('button', {
     class: `gv-icon-btn${sess.motionOn ? ' gv-icon-btn-on' : ''}`, type: 'button',
     'aria-pressed': sess.motionOn ? 'true' : 'false',
@@ -446,12 +484,14 @@ function motionButton(ctx, sess, entry, onRep, hintEl, sensEl) {
   const stop = () => {
     if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
   };
+  const myKey = motionKey(entry.exercise);
   let sensitivity = exerciseSensitivity(ctx, entry.exercise);
-  const sync = () => {
-    btn.classList.toggle('gv-icon-btn-on', !!sess.motionOn);
-    btn.setAttribute('aria-pressed', sess.motionOn ? 'true' : 'false');
-    btn.setAttribute('aria-label', sess.motionOn ? 'Stop counting from movement' : 'Count reps from movement');
-    if (hintEl) hintEl.textContent = sess.motionOn ? 'Counting your movement — taps still work' : '';
+  /* The sensitivity picker only exists while motion is on: in tap mode it
+     would be a control over nothing. Drawn apart from sync() so a screen that
+     OPENS with motion on (a remembered preference, or the re-render after a
+     set) gets its picker without sync() also rewriting the hint line the
+     count-in is still using. */
+  const drawSensitivity = () => {
     if (!sensEl) return;
     clear(sensEl);
     if (!sess.motionOn) return;
@@ -468,23 +508,44 @@ function motionButton(ctx, sess, entry, onRep, hintEl, sensEl) {
         if (!sess.motionOn) return;
         stop();
         if (hintEl) hintEl.textContent = 'Restarting at ' + sensitivity + ' sensitivity…';
-        begin();
+        begin(true);
       },
       { label: 'Sensitivity' },
     ));
   };
-  const begin = () => {
+  const sync = () => {
+    btn.classList.toggle('gv-icon-btn-on', !!sess.motionOn);
+    btn.setAttribute('aria-pressed', sess.motionOn ? 'true' : 'false');
+    btn.setAttribute('aria-label', sess.motionOn ? 'Stop counting from movement' : 'Count reps from movement');
+    /* The soft line waits out the count-in: the numeral is already telling
+       you what is happening, and the count-in puts this line back itself
+       when it hands over (see repsBody). */
+    if (hintEl && !(!sess.motionOn && sess.motionHint && countingIn && countingIn())) hintEl.textContent = motionHintText(sess);
+    drawSensitivity();
+  };
+  /* `viaGesture`: this start is inside a tap (the toggle, the sensitivity
+     picker). A render that finds motion already on — a remembered
+     preference, or the re-render after a set — is NOT: iOS may refuse
+     requestPermission() there for that reason alone, and that must not be
+     reported as the user saying no. See motionFailureCopy. */
+  const begin = viaGesture => {
     startMotionCounter({
       onRep,
       sensitivity,
       onStatus: status => {
         if (status === 'listening') return;
-        sess.motionOn = false;
+        /* A late report from a screen the user has already left must not
+           switch off the exercise they are on now. */
+        if (sess.motionKey !== myKey) return;
+        /* OFF for the rest of this session for this exercise — not retried
+           (and not re-explained) on every set. Only the SESSION forgets: the
+           note's preference is untouched, so next time it tries again. */
+        chooseMotion(sess, entry.exercise, false);
         stop();
+        const copy = motionFailureCopy(status, viaGesture);
+        sess.motionHint = copy.hint;
         sync();
-        new Notice(status === 'denied'
-          ? 'Gym: motion access was declined — counting by tap instead. Enable Motion & Orientation for Obsidian in iOS Settings to use it.'
-          : 'Gym: this device has no motion sensor available — counting by tap instead.', 6000);
+        if (copy.notice) new Notice(copy.notice, 6000);
       },
     }).then(fn => { if (sess.motionOn) sess.stopMotion = fn; else fn(); });
   };
@@ -492,15 +553,25 @@ function motionButton(ctx, sess, entry, onRep, hintEl, sensEl) {
   /* A re-render lands here with motion already ON and no live subscription:
      render() tears down the previous render's sess.stopMotion explicitly,
      right next to the media-cycle timer — the listener is on window, not the
-     DOM, so nothing does that for free. Pick it back up here. */
-  if (sess.motionOn && !sess.stopMotion) begin();
+     DOM, so nothing does that for free. Pick it back up here. This is also
+     how an exercise whose note remembers motion starts counting. */
+  if (sess.motionOn) drawSensitivity();
+  if (sess.motionOn && !sess.stopMotion) begin(false);
 
   btn.addEventListener('click', () => {
-    if (sess.motionOn) { sess.motionOn = false; stop(); sync(); return; }
-    sess.motionOn = true;
+    if (sess.motionOn) {
+      chooseMotion(sess, entry.exercise, false);
+      sess.motionHint = '';
+      stop(); sync();
+      saveExerciseMotionPref(ctx, entry.exercise, false);
+      return;
+    }
+    chooseMotion(sess, entry.exercise, true);
+    sess.motionHint = '';
     sync();
     if (hintEl) hintEl.textContent = 'Asking for the motion sensor…';
-    begin();
+    begin(true);
+    saveExerciseMotionPref(ctx, entry.exercise, true);
   });
   return btn;
 }
@@ -588,6 +659,9 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     sess.counter = createCounter();
     sess.counterFor = setKey(sess.pos);
   }
+  /* BEFORE anything below reads sess.motionOn (the hint line, the count-in's
+     hint): which exercise is this, and does it count from motion? */
+  resolveMotion(ctx, sess, entry);
 
   /* aria-live: see rep-counter-modal.js's countEl for why speech isn't
      enough on its own. */
@@ -703,7 +777,9 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
       muted: () => sess.muted,
       settings: ctx.settings,
       hintEl,
-      hint: sess.motionOn ? 'Counting your movement — taps still work' : '',
+      /* A getter: a remembered start that fails during the count-in leaves
+         its soft line in sess.motionHint, to be shown when this hands over. */
+      hint: () => motionHintText(sess),
       onDone: () => {
         sess.countedIn = countInKey;
         countEl.textContent = String(sess.counter.count);
@@ -765,7 +841,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      "1", directly under the big count, it read as a second rep counter
      sitting at 1. It is a correction, not a counter. What stays on the floor
      is mute and Done — and neither of them is a number. */
-  const motionBtn = motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl);
+  const motionBtn = motionButton(ctx, sess, entry, registerMotionRep, hintEl, sensEl, () => !!countIn && !countIn.armed());
   const helpBtn = helpButton(() => body);
   const settingsBtn = counterSettingsButton(() => body, () => [
     { label: 'Undo a rep', hint: 'Takes one back off the count', node: undoBtn, closeOnUse: true },

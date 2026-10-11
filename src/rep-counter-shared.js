@@ -212,7 +212,9 @@ function attachCountIn(zone, countEl, opts) {
     onDone: () => {
       armed = true;
       restore();
-      if (o.hintEl) o.hintEl.textContent = o.hint || '';
+      /* `hint` may be a function, read NOW: what the line should say when
+         the count-in hands over can change while it runs. */
+      if (o.hintEl) o.hintEl.textContent = (typeof o.hint === 'function' ? o.hint() : o.hint) || '';
       if (o.onDone) o.onDone();
     },
   });
