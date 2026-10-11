@@ -86,6 +86,7 @@ const GUIDE_MINUTES = { min: 5, max: 90, step: 5 };
    is first because it is the default; the order is only the dropdown's. */
 const SKINS = [
   ['apex', 'Apex — forward-leaning slabs, giant condensed italic, one accent'],
+  ['lockin', 'Lock In — black + one hot accent, slanted slabs, giant italic type'],
   ['floor', 'Editorial Floor — one lime flood per screen, hard edges where you act'],
   ['editorial', 'Editorial — magazine cover: huge type, hairlines, no floods'],
 ];

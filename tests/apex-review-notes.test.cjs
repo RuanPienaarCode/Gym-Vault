@@ -97,7 +97,7 @@ function pathTo(pick) {
 const specOf = n => String(n.tagName).toLowerCase() + classesOf(n).map(c => '.' + c).join('');
 
 const THEMES = ['light', 'dark'];
-const SKINS = ['floor', 'editorial', 'apex'];
+const SKINS = ['floor', 'editorial', 'apex', 'lockin'];
 
 /* ---------- 1. the arrow's size lands on the emitted <svg> ---------- */
 {
@@ -106,7 +106,7 @@ const SKINS = ['floor', 'editorial', 'apex'];
   const arrow = trail[trail.length - 1];
   assert.deepStrictEqual(classesOf(arrow).sort(), ['gv-ico', 'gv-pb-arrow'],
     'ico() puts BOTH classes on one span: the selector must not expect a nested .gv-ico');
-  const want = { floor: 26, editorial: 26, apex: 30 };
+  const want = { floor: 26, editorial: 26, apex: 30, lockin: 30 };
   let n = 0;
   for (const theme of THEMES) for (const skin of SKINS) {
     /* the svg Obsidian's setIcon appends inside the span */
@@ -120,7 +120,7 @@ const SKINS = ['floor', 'editorial', 'apex'];
       n++;
     }
   }
-  assert.strictEqual(n, 12);
+  assert.strictEqual(n, 16);
 }
 
 /* ---------- 2. the host's bare h3 cannot colour or space the name ---------- */
@@ -506,4 +506,4 @@ const HOST_H3 = {
   assert.ok(parseFloat(decl(plain('.gv-app.gv-skin-apex .gv-tiles'), 'margin-top')) >= 12, 'the Apex stat tiles need room under what precedes them');
 }
 
-console.log('apex review notes OK (pass 1: arrow svg x 12, host h3 x 6, nav pseudo-elements, 44px touch boxes + flex, short-phone target; pass 2: hero title steps, history row actions, switch thumbs x 120, session-top bleed, rep-counter bar wrap, set-box focus x 30, planswap touch box, spacing nits)');
+console.log('apex review notes OK (pass 1: arrow svg x 16, host h3 x 8, nav pseudo-elements, 44px touch boxes + flex, short-phone target; pass 2: hero title steps, history row actions, switch thumbs x 160, session-top bleed, rep-counter bar wrap, set-box focus x 40, planswap touch box, spacing nits)');

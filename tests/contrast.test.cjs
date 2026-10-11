@@ -67,7 +67,7 @@ for (const [name, p] of Object.entries(palettes)) {
 
 const rules = cx.load();
 const THEMES = ['dark', 'light'];
-const SKINS = ['floor', 'editorial', 'apex'];
+const SKINS = ['floor', 'editorial', 'apex', 'lockin'];
 const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
 
 /* kind 'glyph' = an icon (3:1). Everything else is text, classed by the size
@@ -171,6 +171,23 @@ const PROBES = [
   text('newest record: value', ['div.gv-card-list', 'div.gv-card.gv-recrow.gv-rec-new', 'div.gv-recrow-margin'], 'progress'),
   text('older record: value', ['div.gv-card-list', 'div.gv-card.gv-recrow', 'div.gv-recrow-margin']),
   text('Today title', ['div.gv-hero', 'h2.gv-display.gv-hero-title']),
+  /* The REST hero (0.13.1): Lock In keeps it off the accent flood. */
+  text('rest hero title', ['div.gv-hero.gv-hero-rest', 'h2.gv-display.gv-hero-title']),
+  text('rest hero kicker', ['div.gv-hero.gv-hero-rest', 'p.gv-kicker']),
+  text('rest hero sub', ['div.gv-hero.gv-hero-rest', 'p.gv-hero-sub']),
+  text('rest hero plan switcher', ['div.gv-hero.gv-hero-rest', 'p.gv-kicker', 'button.gv-planswap']),
+  /* The Lock In hero is an accent FLOOD: everything the hero holds is read on it (the kicker, the plan switcher,
+     the BRING line and its chips, the rest-day list). Probed in every skin, where each is simply text on the hero. */
+  text('hero kicker', ['div.gv-hero', 'p.gv-kicker'], 'lockin'),
+  text('hero plan switcher', ['div.gv-hero', 'p.gv-kicker', 'button.gv-planswap', 'span'], 'lockin'),
+  text('hero BRING label', ['div.gv-hero', 'div.gv-chips.gv-today-kit', 'span.gv-kicker.gv-today-kit-label'], 'lockin'),
+  text('hero BRING chip', ['div.gv-hero', 'div.gv-chips.gv-today-kit', 'span.gv-tag'], 'lockin'),
+  text('hero rx name', ['div.gv-hero', 'ul.gv-rx', 'li', 'span'], 'lockin'),
+  text('hero rest-day value', ['div.gv-hero', 'ul.gv-rx.gv-rx-rest', 'li', 'b'], 'lockin'),
+  text('hero CTA label (on the flood)', ['div.gv-hero', 'div.gv-hero-action', 'button.gv-btn-go', 'span'], 'lockin'),
+  text('hero CTA label hover (on the flood)', ['div.gv-hero', 'div.gv-hero-action', 'button.gv-btn-go:hover', 'span'], 'lockin'),
+  text('hero Log manually button', ['div.gv-hero', 'button.gv-btn-hero-ghost.gv-hero-manual', 'span'], 'lockin'),
+  text('PB moment name', ['div.gv-session-complete', 'div.gv-pb-moment', 'h3.gv-pb-moment-name'], 'lockin'),
   text('Today sub', ['div.gv-hero', 'p.gv-hero-sub']),
   text('hero shout line', ['div.gv-hero', 'div.gv-hero-action', 'div.gv-hero-action-line', 'span.gv-shout']),
   text('rest-day ghost button', ['div.gv-hero', 'button.gv-btn-hero-ghost', 'span']),

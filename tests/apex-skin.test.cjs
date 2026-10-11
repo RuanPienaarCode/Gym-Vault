@@ -44,7 +44,7 @@ const rules = cx.load();
 /* ---------- 1 ---------- */
 const { SKINS, DEFAULT_SETTINGS } = require('../src/constants');
 assert.strictEqual(DEFAULT_SETTINGS.skin, 'apex', 'Apex must be the default skin');
-assert.deepStrictEqual(SKINS.map(s => s[0]), ['apex', 'floor', 'editorial'], 'dropdown order is apex, floor, editorial — none removed');
+assert.deepStrictEqual(SKINS.map(s => s[0]), ['apex', 'lockin', 'floor', 'editorial'], 'dropdown order is apex, lockin, floor, editorial — none removed (lockin is pinned by lockin-skin.test.cjs)');
 /* Floor IS the base stylesheet, so it has no block of its own. */
 for (const [key] of SKINS.filter(s => s[0] !== 'floor')) assert.ok(new RegExp(`gv-skin-${key}\\b`).test(bare), `no CSS for skin ${key}`);
 
@@ -64,7 +64,11 @@ assert.ok(/'Barlow Condensed',\s*'Anton'/.test(display[1]) && /sans-serif$/.test
 const banner = css.indexOf('SKIN: APEX');
 assert.ok(banner > 0, 'SKIN: APEX banner missing');
 const bannerLine = css.slice(0, banner).split('\n').length;
-const apex = rules.filter(r => r.line >= bannerLine);
+/* The Apex section ends where the Lock In banner begins: Lock In has its own token blocks and its own guard. */
+const lockBanner = css.indexOf('SKIN: LOCK IN');
+const lockLine = lockBanner > 0 ? css.slice(0, lockBanner).split('\n').length : Infinity;
+assert.ok(lockLine > bannerLine, 'the Lock In section must come after the Apex section');
+const apex = rules.filter(r => r.line >= bannerLine && r.line < lockLine);
 assert.ok(apex.length > 80, 'the Apex section parsed to almost nothing');
 const TOKEN_SEL = new Set(['.gv-app.gv-skin-apex', '.theme-dark .gv-app.gv-skin-apex', '.gv-app.gv-skin-apex.gv-accent-lime']);
 

@@ -102,6 +102,11 @@ function render(ctx, root) {
   }
 
   const restToday = todays.length && isRestDay(todays[0].day);
+  /* A rest hero says so, so a skin that floods the hero on training days
+     (Lock In) can keep it quiet on a day whose whole point is nothing to
+     attack. BOTH kinds: a rest day written into the plan, and a day with
+     nothing scheduled. tests/hero-rest-class.test.cjs. */
+  if (restToday || !todays.length) hero.classList.add('gv-hero-rest');
   if (restToday) {
     const { plan: dayPlan, day } = todays[0];
     hero.append(el('h2', { class: heroTitleClass(day.name) }, el('span', { class: 'gv-mark' }, day.name)));
