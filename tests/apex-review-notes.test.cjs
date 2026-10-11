@@ -502,7 +502,7 @@ const HOST_H3 = {
   const decl = (r, p) => r && (r.decls.find(d => d.prop === p) || {}).value;
   const RM = /prefers-reduced-motion:\s*reduce/;
   const rm = sel => rules.find(r => r.selector === sel && r.media && RM.test(r.media));
-  assert.strictEqual(decl(rm('.gv-app.gv-skin-apex .gv-ticker > div'), 'min-width'), '0', 'reduced motion: the stopped track must not stay 200% wide');
+  assert.strictEqual(decl(rm('.gv-app.gv-skin-apex .gv-ticker-band > div'), 'min-width'), '0', 'reduced motion: the stopped track must not stay 200% wide');
   assert.strictEqual(decl(rm('.gv-app.gv-skin-apex .gv-ticker span'), 'flex'), '0 0 auto', 'reduced motion: the words keep their natural width, so the first is whole');
   assert.ok(parseFloat(decl(rm('.gv-app.gv-skin-apex .gv-ticker span'), 'padding-left')) >= 8, 'reduced motion: the first word is inset from the strip edge');
   const plain = sel => rules.find(r => r.selector === sel && !r.media && r.decls.some(d => d.prop.startsWith('margin')));

@@ -99,7 +99,9 @@ const ruleOf = sel => {
 }
 
 /* ---------- 2 ---------- */
-const TOKEN_SEL = new Set(['.gv-app.gv-skin-lockin', '.theme-dark .gv-app.gv-skin-lockin', '.gv-app.gv-skin-lockin.gv-accent-blaze']);
+/* The DEEP-tone tunes: Lime and Electric each re-point --gv-lime-deep and nothing else (see the block in src/styles.css). */
+const DEEP_TUNES = ['.gv-app.gv-skin-lockin.gv-accent-lime', '.gv-app.gv-skin-lockin.gv-accent-electric'];
+const TOKEN_SEL = new Set(['.gv-app.gv-skin-lockin', '.theme-dark .gv-app.gv-skin-lockin', '.gv-app.gv-skin-lockin.gv-accent-blaze', ...DEEP_TUNES]);
 {
   const offenders = [];
   for (const r of lock) {
@@ -122,7 +124,10 @@ const TOKEN_SEL = new Set(['.gv-app.gv-skin-lockin', '.theme-dark .gv-app.gv-ski
   assert.strictEqual(blaze['--gv-lime-hi'], '#ff6b1a');
   assert.strictEqual(blaze['--gv-li-lo'], '#f23500', 'the flood runs to the mockup #F23500');
   assert.ok(blaze['--gv-lime-deep'] && blaze['--gv-flood-dim'], 'Blaze must also name its deep tone (small text on paper) and flood dim');
-  assert.deepStrictEqual(lock.filter(r => /gv-accent-/.test(r.selector) && !/gv-accent-blaze$/.test(r.selector)).map(r => r.selector), [], 'only Blaze is tuned: the other four accents work as picked');
+  /* Blaze is tuned in full. Lime and Electric move ONLY their deep tone (small accent text on the grey paper's sheen:
+     tests/contrast.test.cjs, "live: PB target scale, middle figure"); Volt and Punch work as picked. */
+  assert.deepStrictEqual(lock.filter(r => /gv-accent-/.test(r.selector) && !/gv-accent-blaze$/.test(r.selector)).map(r => r.selector).sort(), [...DEEP_TUNES].sort(), 'only Blaze is tuned in full, and only Lime and Electric deepen their small-text tone: Volt and Punch work as picked');
+  for (const sel of DEEP_TUNES) assert.deepStrictEqual(ruleOf(sel).decls.map(d => d.prop), ['--gv-lime-deep'], `${sel} may re-point the deep tone and nothing else (the flood is the accent the user picked)`);
   assert.deepStrictEqual(lock.filter(r => r.selector !== '.gv-app.gv-skin-lockin.gv-accent-blaze' && r.decls.some(d => d.prop === '--gv-lime')).map(r => `:${r.line} ${r.selector}`), [], 'no other Lock In rule may re-point --gv-lime');
 
   /* through the real cascade: each accent's own lime is what a primary slab paints, and BLACK ink is read on it */
@@ -375,7 +380,7 @@ let slabs = [];
   /* stopped, the ticker begins on a whole word */
   const RM = /prefers-reduced-motion:\s*reduce/;
   const rm = sel => lock.find(r => r.selector === sel && r.media && RM.test(r.media));
-  assert.strictEqual(decl(rm('.gv-app.gv-skin-lockin .gv-ticker > div'), 'min-width'), '0', 'reduced motion: the stopped track must not stay 200% wide');
+  assert.strictEqual(decl(rm('.gv-app.gv-skin-lockin .gv-ticker-band > div'), 'min-width'), '0', 'reduced motion: the stopped track must not stay 200% wide');
   assert.strictEqual(decl(rm('.gv-app.gv-skin-lockin .gv-ticker span'), 'flex'), '0 0 auto', 'reduced motion: the words keep their natural width, so the first is whole');
   assert.ok(parseFloat(decl(rm('.gv-app.gv-skin-lockin .gv-ticker span'), 'padding-left')) >= 8, 'reduced motion: the first word is inset from the strip edge');
   assert.ok(lock.some(r => r.media && RM.test(r.media) && /gv-pb-target-fill/.test(r.selector) && decl(r, 'transition') === 'none'), 'the live target fill stops transitioning under reduced motion');

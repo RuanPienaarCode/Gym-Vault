@@ -22,7 +22,7 @@ const { GUIDE_MODES, GUIDE_MINUTES, DEFAULT_SETTINGS } = require('./constants');
 const { equipmentFor } = require('./equipment');
 const { buildSchedule, workIntervals } = require('./timed-plan');
 const { musicRow } = require('./music-picker');
-const { sameName } = require('./stats');
+const { sameName, countLabel } = require('./stats');
 const { itemSets } = require('./plan-parse');
 const { startDraft } = require('./page-log');
 const sound = require('./sound');
@@ -371,6 +371,7 @@ function setsBlock(ctx, day, ui, onChange) {
   wrap.append(el('div', { class: 'gv-section-title' }, ico('list'), el('span', {}, 'Sets')));
 
   const countEl = el('div', { class: 'gv-dial-value', 'aria-live': 'polite' });
+  const unitEl = el('div', { class: 'gv-dial-unit' }, 'sets');
   const noteEl = el('div', { class: 'gv-dial-note' });
   const reset = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-setsall-reset', type: 'button' }, 'Back to the plan');
 
@@ -388,6 +389,7 @@ function setsBlock(ctx, day, ui, onChange) {
   const draw = () => {
     const n = uniformNow();
     countEl.textContent = n === null ? 'Mixed' : String(n);
+    unitEl.textContent = n === 1 ? 'set' : 'sets';
     /* The figure is the display face; the WORD is not. "Mixed" set in the
        condensed display face at 54px reads as a headline, not as a value —
        and it is not a value, it is the honest refusal to give one. */
@@ -410,7 +412,7 @@ function setsBlock(ctx, day, ui, onChange) {
        neither claims the plan is uniform: the readout above them is the one
        that answers "how many", and it says the word. */
     range.value = String(n === null ? mostCommonSets(planned) : n);
-    range.setAttribute('aria-valuetext', n === null ? 'Mixed' : `${n} sets`);
+    range.setAttribute('aria-valuetext', n === null ? 'Mixed' : countLabel(n, 'set'));
     reset.hidden = !differsFromPlan();
   };
 
@@ -441,7 +443,7 @@ function setsBlock(ctx, day, ui, onChange) {
   const dial = el('div', { class: 'gv-setup-dial gv-sets-dial' },
     el('div', { class: 'gv-dial-row' },
       minus,
-      el('div', { class: 'gv-dial-readout' }, countEl, el('div', { class: 'gv-dial-unit' }, 'sets')),
+      el('div', { class: 'gv-dial-readout' }, countEl, unitEl),
       plus),
     range, noteEl);
 
@@ -542,7 +544,7 @@ function previewText(ctx, day, ui) {
   if (!count) return 'Nothing on this day yet — add an exercise to the plan first.';
   if (ui.mode !== 'timed') {
     const sets = setsPerEntryFor(day, ui).reduce((n, v) => n + v, 0);
-    return `${count} exercise${count === 1 ? '' : 's'} · ${sets} sets · you set the pace`;
+    return `${countLabel(count, 'exercise')} · ${countLabel(sets, 'set')} · you set the pace`;
   }
   const schedule = scheduleFor(ctx, day, ui);
   const work = workIntervals(schedule).length;

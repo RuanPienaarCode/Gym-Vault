@@ -107,6 +107,9 @@ const lastWeek = () => addDays(WK, -3);
   const t = one(root, 'gv-ticker');
   assert.ok(t, 'a training day renders the .gv-ticker strip');
   assert.strictEqual(t.attrs['aria-hidden'], 'true', 'it is decoration: hidden from assistive tech');
+  const band = t.children[0];
+  assert.ok(band && clsOf(band).includes('gv-ticker-band'), 'the strip is the wrapper\'s band (the wrapper is the clip around its rotation)');
+  assert.strictEqual(t.children.length, 1, 'and it is the wrapper\'s only child');
   const spans = [];
   (function walk(n) { for (const c of n.children || []) { if (c.nodeType !== 1) continue; if (c.tag === 'span') spans.push(c); walk(c); } })(t);
   assert.ok(spans.length >= 3, 'a strip of spans');
@@ -247,6 +250,42 @@ const dashOf = (c, pct) => {
 {
   const root = render({ data: { workouts: inWeek(4).map(d => w(d)), exercises: [], goals: [], body: [] } });
   assert.strictEqual(one(root, 'gv-streak-risk'), null, 'target met, no nag');
+}
+
+/* ---------- 5. the counts read as words: one set, and a week past its target ---------- */
+{
+  /* "LAST . 1 SETS": last session was a single set. Both places that print it (the Start slab's line and the tile). */
+  const root = render({ data: { workouts: [w(lastWeek(), [{ exercise: 'Pull-ups', reps: '9' }])], exercises: [], goals: [], body: [] } });
+  const text = root.textContent;
+  assert.ok(/Last: [^·]* · 1 set(?!s)/.test(text), `the Start slab says "1 set": ${text.match(/Last: [^A-Z]*/)}`);
+  assert.ok(/last · 1 set(?!s)/.test(text), 'and so does the Last session tile');
+  assert.ok(!/(^|\D)1 sets/.test(text), 'nowhere on Today does "1 sets" appear');
+  const root2 = render({ data: { workouts: [w(lastWeek(), [{ exercise: 'Pull-ups', reps: '9' }, { exercise: 'Pull-ups', reps: '8' }])], exercises: [], goals: [], body: [] } });
+  assert.ok(/Last: [^·]* · 2 sets/.test(root2.textContent) && /last · 2 sets/.test(root2.textContent), 'two sets stays plural');
+}
+{
+  /* a day with ONE planned set: the hero chip and the shout line say "1 set" */
+  const one = { name: 'Solo', weekday: 'mon', items: [{ exercise: 'Dips', sets: 1, target: 'AMRAP' }], notes: [] };
+  const solo = { name: 'P1', fm: { active: 'true' }, model: { days: [one], intro: [] } };
+  const root = render({ activePlan: () => solo, mainPlans: () => [solo], daysOn: wk => (trainKeys.has(wk) ? [{ plan: solo, day: one }] : []) });
+  const chip = findAll(root, 'gv-hero-chip').map(c => c.textContent);
+  assert.ok(chip.includes('1 set'), `the hero chip says "1 set" (saw ${JSON.stringify(chip)})`);
+  assert.ok(/1 set · est\./.test(root.textContent) && !/(^|\D)1 sets/.test(root.textContent), 'and so does the shout line');
+}
+{
+  /* a week PAST its target (five sessions, a target of four): "4 of 4 done +1", never "5 of 4" */
+  const root = render({ data: { workouts: inWeek(5).map(d => w(d)), exercises: [], goals: [], body: [] } });
+  assert.strictEqual(one(root, 'gv-week-head-note').textContent, '4 of 4 done +1', 'the week header');
+  const wp = one(root, 'gv-week-progress');
+  assert.strictEqual(one(wp, 'gv-week-progress-num').textContent, '4/4', 'the ring figure');
+  assert.strictEqual(one(wp, 'gv-week-progress-togo').textContent, 'Week done +1', 'the ring caption');
+  assert.strictEqual(ringParts(wp).ring.attrs['aria-label'], '5 sessions this week, 1 over the target of 4', 'the ring is labelled with the real count');
+  dashOf(ringParts(wp).fill, 100); /* the ring was already capped at a full circle */
+  assert.ok(!/\b5 of 4\b|5\/4/.test(root.textContent), 'no "5 of 4" / "5/4" anywhere on Today');
+}
+{
+  const root = render({ data: { workouts: inWeek(2).map(d => w(d)), exercises: [], goals: [], body: [] } });
+  assert.strictEqual(one(root, 'gv-week-head-note').textContent, '2 of 4 done', 'under the target the header is as it was');
 }
 
 console.log('today apex progress OK (ticker, PB in reach, weekly ring and streak nag render real numbers, and stay away when they should)');

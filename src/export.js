@@ -12,7 +12,7 @@ const { BODY_COLUMNS, WORKOUT_COLUMNS, WEEKDAY_LABELS, WEEKDAYS } = require('./c
 const { todayISO, fmtShort, addDays, fromISO } = require('./dates');
 const { isPaused } = require('./plan-parse');
 const {
-  num, exerciseBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, sessionCount, workoutDate,
+  num, exerciseBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, countLabel, sessionCount, workoutDate,
 } = require('./stats');
 
 /* Columns that are clinical rather than physical. */
@@ -169,7 +169,7 @@ function buildSummary(data, options) {
     for (const w of [...workouts].reverse()) {
       L.push(`### ${fmtShort(w.fm.date)} — ${w.fm.day || 'Freestyle'}${w.fm.plan ? ` (${w.fm.plan})` : ''}`);
       const dur = w.fm.duration_min ? `${w.fm.duration_min} min · ` : '';
-      L.push(`${dur}${sessionSets(w.rows)} sets`);
+      L.push(`${dur}${countLabel(sessionSets(w.rows), 'set')}`);
       const byEx = [];
       for (const r of w.rows || []) {
         const last = byEx[byEx.length - 1];

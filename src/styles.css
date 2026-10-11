@@ -3860,12 +3860,14 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
   z-index: 2;
   margin: 16px calc(-1 * var(--gv-page-gutter)) 8px;
   overflow: hidden;
+}
+.gv-app.gv-skin-apex .gv-ticker-band {
   white-space: nowrap;
   background-color: var(--gv-lime);
   color: var(--gv-ink-fixed);
   transform: rotate(-1.5deg);
 }
-.gv-app.gv-skin-apex .gv-ticker > div {
+.gv-app.gv-skin-apex .gv-ticker-band > div {
   display: flex;
   width: max-content;
   min-width: 200%;
@@ -4258,7 +4260,26 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 .gv-app.gv-skin-apex .gv-streak-dup { display: none; }
 
 /* The ticker straddles the head's lower edge. */
-.gv-app.gv-skin-apex .gv-hero-today > .gv-ticker { margin-top: -22px; margin-bottom: 8px; }
+/* THE CLIP. The strip is rotated, and a rotated box swings its corners past its own edges: half a pixel at each end,
+   enough to make Today scroll a pixel sideways. The wrapper (.gv-ticker, not rotated, overflow hidden) is the clip;
+   the band (.gv-ticker-band) is the strip and carries the rotation. The far ends of a rotated strip also swing UP and
+   DOWN by (width / 2) x sin(angle), so the wrapper is padded by a percentage of the width (3% covers a 2 degree strip
+   in a pane of 200px or more: tests/ticker-clip.test.cjs does the sum) and takes the same amount back in margin, so
+   the strip sits exactly where it always did. The bottom margin differs by layout: in the narrow flex column its 8px is
+   its own, in the wide block layout it collapses into the Rx list's 10px. The room is not a touch target (it lies over the
+   head and the list); the strip is. NOT overflow: clip (Safari 16+), and not on the page, the Today column or the hero:
+   a scroll container there takes the sticky Start slab off the page, and the hero must stay overflow-visible. */
+.gv-app.gv-skin-poster .gv-ticker {
+  --gv-ticker-pad: 3%;
+  padding: var(--gv-ticker-pad) 0;
+  pointer-events: none;
+}
+.gv-app.gv-skin-poster .gv-ticker-band { pointer-events: auto; overflow: hidden; }
+.gv-app.gv-skin-poster .gv-hero-today > .gv-ticker {
+  margin-top: calc(-22px - var(--gv-ticker-pad));
+  margin-bottom: calc(-1 * var(--gv-ticker-pad));
+}
+.gv-app.gv-skin-poster.gv-narrow .gv-hero-today > .gv-ticker { margin-bottom: calc(8px - var(--gv-ticker-pad)); }
 .gv-app.gv-skin-poster .gv-hero-today > .gv-rx { margin-top: 10px; }
 /* The sets / minutes live in the chip now; "Last:" stays above Start. */
 .gv-app.gv-skin-poster .gv-shout-est { display: none; }
@@ -5076,7 +5097,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   /* Stopped, the track must START on a whole word: its spans are 200%-wide flex items
      that centre their text, which left the first word cropped ("OCK IN"). Natural width,
      left-aligned, with the gutter the separators already use. */
-  .gv-app.gv-skin-apex .gv-ticker > div { animation: none; min-width: 0; }
+  .gv-app.gv-skin-apex .gv-ticker-band > div { animation: none; min-width: 0; }
   .gv-app.gv-skin-poster .gv-ticker span { flex: 0 0 auto; padding-left: 16px; }
   .gv-app.gv-skin-apex .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
   .theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten::after { animation: none; }
@@ -5188,6 +5209,14 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   --gv-flood-dim: #2b0f03;
   --gv-li-lo: #f23500;
 }
+
+/* Lime and Electric, deepened on Lock In's grey paper. The live PB target is a slab of that paper (#f1f1f1)
+   under a 4% sheen that reaches #e8e8e8 at its foot, and the stock deep tones read 4.2-4.4:1 there (the "N% of PB"
+   caption at the foot, the kicker and "n to go" above it) against the 4.5:1 small text needs. Only the DEEP tone
+   moves: the flood, its highlight and its dim do not, and the stock tones still hold on Apex's lighter paper and on
+   Floor and Editorial, so no other skin changes. The same move Blaze makes above, for the same reason. */
+.gv-app.gv-skin-lockin.gv-accent-lime { --gv-lime-deep: #456f0d; }
+.gv-app.gv-skin-lockin.gv-accent-electric { --gv-lime-deep: #0d6c87; }
 
 /* ---------- slabs: the one place the parallelogram is drawn ---------- */
 
@@ -5330,12 +5359,14 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   z-index: 2;
   margin: 16px calc(-1 * var(--gv-page-gutter)) 12px;
   overflow: hidden;
+}
+.gv-app.gv-skin-lockin .gv-ticker-band {
   white-space: nowrap;
   background-color: var(--gv-li-pop);
   color: var(--gv-li-pop-ink);
   transform: rotate(-2deg);
 }
-.gv-app.gv-skin-lockin .gv-ticker > div {
+.gv-app.gv-skin-lockin .gv-ticker-band > div {
   display: flex;
   width: max-content;
   min-width: 200%;
@@ -5679,13 +5710,15 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  /* The label is the figure's SIBLING, so it does not inherit the figure's ink: it took the hero's, which on a
+     rest day (no flood) is the page's, white in dark: 1.83:1 on the amber starburst. The fixed ink is the
+     starburst's own, in both themes. */
+  color: var(--gv-ink-fixed);
 }
 .gv-app.gv-skin-lockin .gv-streak-dup { display: none; }
 
 /* The ticker straddles the flood's lower edge, ink hairlines above and below. */
-.gv-app.gv-skin-lockin .gv-hero-today > .gv-ticker {
-  margin-top: -22px;
-  margin-bottom: 8px;
+.gv-app.gv-skin-lockin .gv-hero-today .gv-ticker-band {
   border-top: 2px solid var(--gv-ink-fixed);
   border-bottom: 2px solid var(--gv-ink-fixed);
 }
@@ -5978,7 +6011,7 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   /* Stopped, the track must START on a whole word: its spans are 200%-wide flex items
      that centre their text, which left the first word cropped. Natural width,
      left-aligned, with the gutter the separators already use. */
-  .gv-app.gv-skin-lockin .gv-ticker > div { animation: none; min-width: 0; }
+  .gv-app.gv-skin-lockin .gv-ticker-band > div { animation: none; min-width: 0; }
     .gv-app.gv-skin-lockin .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
   }
 

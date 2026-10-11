@@ -1220,7 +1220,10 @@ function durationBody(ctx, draft, sess, entry, set) {
     const paused = hold.running && hold.paused === true;
     zone.classList.toggle('gv-session-zone-live', hold.running && !paused);
     zone.setAttribute('aria-label', paused ? 'Tap to resume the hold' : hold.running ? 'Tap to stop the hold' : 'Tap to start the hold');
-    hintEl.textContent = paused ? 'Paused · tap to resume' : '';
+    /* "tap to resume" is said ONCE: by the chip in the poster skins (it is the control's label, and it reads
+       "Tap to start" / "Tap to stop" the rest of the time), so their hint is just the state. Floor and Editorial
+       draw no chip, so their one hint keeps the instruction. */
+    hintEl.textContent = paused ? (chip ? 'Paused' : 'Paused · tap to resume') : '';
     if (chip) chip.textContent = paused ? 'Tap to resume' : hold.running ? 'Tap to stop' : 'Tap to start';
     syncPlayButton(playBtn, paused);
     /* Nothing to pause before the hold has begun (the count-in has Skip). */
@@ -2110,7 +2113,7 @@ function renderComplete(ctx, root, draft, sess) {
     recordList,
     rewardsSlot || '',
     el('div', { class: 'gv-tiles gv-session-complete-tiles' },
-      statTile(ico('check'), String(doneSets), 'sets done'),
+      statTile(ico('check'), String(doneSets), doneSets === 1 ? 'set done' : 'sets done'),
       statTile(ico('timer'), `${totalMin} min`, 'elapsed')),
     el('div', { class: 'gv-hero-action gv-session-nextwrap' }, primaryBtn),
     el('button', { class: 'gv-btn gv-btn-ghost gv-session-review', type: 'button', onclick: () => ctx.nav('log') },

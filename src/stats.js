@@ -175,6 +175,19 @@ function sessionVolume(rows) {
 
 function sessionSets(rows) { return (rows || []).length; }
 
+/* A count and its noun, said once and said right: "1 set", "0 sets", "13 sets". Exactly one is singular; zero and
+   everything else is plural. `many` is for a noun that does not just take an s. The call sites used to write
+   the count and the plural word by hand, which is how "LAST . 1 SETS" reached the Today tile. Pure: a test pins it. */
+function countLabel(n, one, many) {
+  return `${n} ${countNoun(n, one, many)}`;
+}
+
+/* Just the noun, for a tile that prints its figure separately ("1" over "session this week"). The same
+   rule as countLabel: one is singular, everything else plural. */
+function countNoun(n, one, many) {
+  return Number(n) === 1 ? one : (many || `${one}s`);
+}
+
 /* Total km logged inside the week containing refIso. Sums EVERY distance
    row, whatever the exercise — a week's running volume is a week's running
    volume. */
@@ -288,6 +301,6 @@ function bmi(weightKg, heightCm) {
 
 module.exports = {
   num, workoutDates, workoutDate, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM, best1RM,
-  sessionVolume, sessionSets, setCounts, distanceInWeek, ladderWeek,
+  sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek,
   goalCurrent, goalIssue, goalProgress, weightSeries, bmi,
 };
