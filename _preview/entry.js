@@ -112,3 +112,8 @@ window.__setupPage = require('../src/page-session-setup');
 /* constants.js, for the harnesses that need to render against the app's own
    ranges and rules rather than a copy of them. */
 window.__constants = require('../src/constants');
+
+/* muscle-map.js + motion-library.js, for _preview/musclemap.html — the
+   animated mannequin. The guard suite proves the geometry and the teardown;
+   only a real browser shows that it looks like a person doing a push-up. */
+window.__musclemap = { map: require('../src/muscle-map'), lib: require('../src/motion-library') };

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muscle Map harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif}
+  body.theme-dark{background:#111}
+  .grid{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .frame{border:1px solid #bbb;width:390px}
+  .frame .gv-app{padding:12px}
+  .cap{font:600 12px system-ui;margin:0 0 6px;color:#555}
+  body.theme-dark .cap{color:#aaa}
+  .bar{display:flex;gap:8px;margin-bottom:12px}
+</style></head>
+<body>
+  <div class="bar">
+    <button id="theme">Toggle dark</button>
+    <button id="skin">Skin: apex</button>
+  </div>
+  <div class="grid" id="grid"></div>
+<script src="bundle.js"></script>
+<script>
+  /* Basic + Detailed × male + female, at phone width (390px), in the real
+     built stylesheet. ?only=basic-male etc. renders one for screenshots. */
+  const { map, lib } = window.__musclemap;
+  /* ?still=1 — the reduced-motion still pose (the bottom of the rep; tap to
+     step), for screenshots of a position the loop only passes through. */
+  if (new URLSearchParams(location.search).get('still')) {
+    const real = window.matchMedia.bind(window);
+    window.matchMedia = q => (/reduce/.test(q) ? { matches: true } : real(q));
+  }
+  /* ?motion=squat | pull-up | push-up (default) */
+  const EXS = {
+    'push-up': { name: 'Push-ups', fm: { muscles: ['chest', 'triceps', 'core'] },
+      body: '1. Hands under the shoulders, body one straight line from head to heels.\n2. Lower until the chest nearly touches the floor, elbows ~45° from the body.\n3. Press up to full lockout without the hips sagging or piking.' },
+    squat: { name: 'Bodyweight Squat', fm: { muscles: ['quads', 'glutes'] },
+      body: '1. Feet shoulder-width, toes slightly out.\n2. Sit back and down until the thighs are parallel, knees tracking over the toes.\n3. Drive through the whole foot to stand tall.' },
+    'pull-up': { name: 'Pull-ups', fm: { muscles: ['back', 'biceps', 'forearms'] },
+      body: '1. Hang from the bar, hands a little wider than the shoulders.\n2. Pull the elbows down and out until the chin clears the bar.\n3. Lower all the way to a full hang.' },
+  };
+  const ex = EXS[new URLSearchParams(location.search).get('motion')] || EXS['push-up'];
+  const motion = lib.motionFor(ex);
+  const only = new URLSearchParams(location.search).get('only');
+  let skin = 'apex';
+  function build() {
+    const grid = document.getElementById('grid');
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+    for (const detail of ['basic', 'detailed']) for (const body of ['male', 'female']) {
+      if (only && only !== `${detail}-${body}`) continue;
+      const wrap = document.createElement('div');
+      const cap = document.createElement('p'); cap.className = 'cap'; cap.textContent = `${detail} · ${body}`;
+      const frame = document.createElement('div'); frame.className = 'frame';
+      const app = document.createElement('div'); app.className = `gv-app gv-narrow gv-skin-${skin} gv-accent-lime`;
+      const card = document.createElement('div'); card.className = 'gv-card gv-mm-card';
+      app.appendChild(card); frame.appendChild(app); wrap.append(cap, frame); grid.appendChild(wrap);
+      map.mountMuscleMap(card, { ex, motion, detail, body, steps: lib.noteSteps(ex.body), onDetail: d => console.log('detail ->', d) });
+    }
+    if (!only) thumbs();
+  }
+  /* The live set's two thumbnails, in the frames the app gives them: the poster skins'
+     96x72 slot ('thumb': the front of a long figure) and Floor/Editorial's wide frame
+     ('frame': all of it). ?still=1 freezes both at the bottom of the rep. */
+  function thumbs() {
+    for (const [mini, w, h] of [['thumb', 96, 72], ['frame', 350, 190]]) {
+      const wrap = document.createElement('div');
+      const cap = document.createElement('p'); cap.className = 'cap'; cap.textContent = `mini: '${mini}' in ${w}x${h}`;
+      const frame = document.createElement('div');
+      frame.className = `gv-app gv-narrow gv-skin-${skin} gv-accent-lime gv-media-frame gv-session-frame`;
+      frame.style.cssText = `width:${w}px;height:${h}px;position:relative;overflow:hidden;padding:0`;
+      wrap.append(cap, frame); document.getElementById('grid').appendChild(wrap);
+      map.mountMuscleMap(frame, { ex, motion, mini, body: 'male', autoPlay: !new URLSearchParams(location.search).get('still') });
+    }
+  }
+  document.getElementById('theme').onclick = () => { document.body.classList.toggle('theme-dark'); };
+  document.getElementById('skin').onclick = e => { skin = skin === 'apex' ? 'floor' : 'apex'; e.target.textContent = 'Skin: ' + skin; build(); };
+  if (new URLSearchParams(location.search).get('dark')) document.body.classList.add('theme-dark');
+  build();
+</script>
+</body></html>

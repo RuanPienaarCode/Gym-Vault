@@ -348,6 +348,35 @@ const PROBES = [
   glyph('media viewer: close glyph', ['div.gv-mv-bar', 'button.gv-icon-btn.gv-mv-close', 'span.gv-ico', 'svg'], 'media-viewer', true),
   glyph('media viewer: step glyph', ['div.gv-mv-controls', 'button.gv-icon-btn.gv-mv-step', 'span.gv-ico', 'svg'], 'media-viewer', true),
   text('media viewer: images unavailable', ['div.gv-mv-stage.gv-mv-stage-empty', 'div.gv-mv-missing'], 'media-viewer', null, true),
+
+  /* ---- the MUSCLE MAP (src/muscle-map.js): on the exercise page (a card), and large in the viewer (on the page's
+     own colour, no card). The labels are SVG text, set with `color` + `fill: currentColor` so this gate measures
+     them like any other text; the stage paints --gv-bg behind them. The Detailed labels are the smallest text
+     in the plugin, so they are held to the full 4.5:1 whatever the theme, skin and accent. ---- */
+  ...(() => {
+    const PAGE = ['div.gv-mm-block', 'div.gv-card.gv-mm-card', 'div.gv-mm'];
+    const VIEW = ['div.gv-mv-stage.gv-mv-is-map', 'div.gv-mv-map', 'div.gv-mm'];
+    const SVG = ['div.gv-mm-stage', 'svg.gv-mm-svg', 'g.gv-mm-labels', 'g.gv-mm-label.gv-mm-label-prime'];
+    const out = [];
+    for (const [where, base, modal] of [['page', PAGE, false], ['viewer', VIEW, true]]) {
+      out.push(
+        text(`muscle map (${where}): heading`, [...base, 'div.gv-mm-head', 'div.gv-mm-headl', 'span.gv-mm-title'], 'muscle-map', null, modal),
+        text(`muscle map (${where}): Working / Holding legend`, [...base, 'div.gv-mm-under', 'div.gv-mm-legend', 'span.gv-mm-key-text'], 'muscle-map', null, modal),
+        text(`muscle map (${where}): label name`, [...base, ...SVG, 'text.gv-mm-lbl'], 'muscle-map', null, modal),
+        text(`muscle map (${where}): label load %`, [...base, ...SVG, 'text.gv-mm-lbl', 'tspan.gv-mm-pct'], 'muscle-map', null, modal),
+        text(`muscle map (${where}): label Latin name`, [...base, ...SVG, 'text.gv-mm-latin'], 'muscle-map', null, modal),
+        text(`muscle map (${where}): label name (holding)`, [...base, 'div.gv-mm-stage', 'svg.gv-mm-svg', 'g.gv-mm-labels', 'g.gv-mm-label.gv-mm-label-hold', 'text.gv-mm-lbl'], 'muscle-map', null, modal),
+        text(`muscle map (${where}): Load caption`, [...base, 'div.gv-mm-under', 'div.gv-mm-load', 'span.gv-mm-load-label'], 'muscle-map', null, modal),
+        text(`muscle map (${where}): Load %`, [...base, 'div.gv-mm-under', 'div.gv-mm-load', 'span.gv-mm-load-pct'], 'muscle-map', null, modal),
+        text(`muscle map (${where}): step caption`, [...base, 'div.gv-mm-under', 'div.gv-mm-step'], 'muscle-map', null, modal));
+    }
+    out.push(
+      glyph('muscle map: Show larger button glyph', [...PAGE.slice(0, 2), 'div.gv-mm', 'div.gv-mm-head', 'div.gv-mm-headl', 'button.gv-icon-btn.gv-icon-btn-small.gv-mm-enlarge', 'span.gv-ico', 'svg'], 'muscle-map'),
+      text('muscle map: Photos button label', ['div.gv-mm-block', 'div.gv-card.gv-mm-card', 'button.gv-btn.gv-btn-ghost.gv-btn-small.gv-mm-photos', 'span'], 'muscle-map'),
+      text('muscle map (viewer): Photos / Muscle map switch label', ['div.gv-mv-bar', 'button.gv-btn.gv-btn-ghost.gv-btn-small.gv-mv-mode', 'span'], 'muscle-map', null, true),
+      text('muscle map (viewer): caption tag', ['div.gv-mv-caption', 'span.gv-mv-tag'], 'muscle-map', null, true));
+    return out;
+  })(),
 ];
 
 const need = (probe, size, weight) => (probe.kind === 'glyph' ? 3 : (size >= 24 || (size >= 18.66 && weight >= 700)) ? 3 : 4.5);

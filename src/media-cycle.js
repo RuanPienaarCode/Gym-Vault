@@ -66,7 +66,9 @@ function frameLabel(frames, i) {
 }
 
 /* Do instruction images animate by themselves? The ONE rule, asked by the live
-   set's thumbnail (page-session.js) and the full-screen viewer (media-viewer.js).
+   set's thumbnail (page-session.js), the full-screen viewer (media-viewer.js) and,
+   for an exercise with a motion, the Muscle Map in all three places (it is
+   `autoPlay` there: muscle-map.js).
    Settings -> "Animate exercise images" (`animateMedia`) is ON unless it says
    otherwise (a missing key, or no settings at all, is ON; a hand-edited string
    "false" is OFF, as rewardsEnabled reads `rewards`). Reduced motion forces

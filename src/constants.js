@@ -48,8 +48,15 @@ const DEFAULT_SETTINGS = {
   rewards: true,
   /* Instruction images play their start/finish frames as an animation (the live
      set's thumbnail and the full-screen viewer; media-cycle.js autoPlayMedia
-     is the one rule, and a missing key means ON). */
+     is the one rule, and a missing key means ON). The Muscle Map obeys the same
+     rule on the exercise page, the live set and in the viewer. */
   animateMedia: true,
+  /* The Muscle Map (exercises that have a motion; motion-library.js): how much
+     it explains, and which body it draws. Flat keys for the same shallow-merge
+     reason as the rest; motion-library visualPrefs() normalises anything
+     unexpected (a hand-edited value, a missing key) back to these. */
+  exerciseVisual: 'basic',  // 'basic' | 'detailed'
+  exerciseBody: 'male',     // 'male' | 'female'
 };
 
 /* How a guided session is played — [key, name, description]. Keys are what

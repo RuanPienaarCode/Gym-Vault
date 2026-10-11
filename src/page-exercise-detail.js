@@ -16,8 +16,17 @@ const { exerciseBests, best1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
 const { recordHistory, KINDS } = require('./records');
 const { openMediaViewer } = require('./media-viewer');
-const { frameLabel } = require('./media-cycle');
+const { frameLabel, autoPlayMedia } = require('./media-cycle');
+const { prefersReducedMotion } = require('./confetti');
 const { editExercise } = require('./page-exercises');
+const { mountMuscleMap, canDraw } = require('./muscle-map');
+const { motionFor, noteSteps, visualPrefs, rememberDetail } = require('./motion-library');
+
+/* The live Muscle Map on this page, if any. A re-render of this page (or a
+   move to another exercise, which is the same page) stops it before drawing
+   the next; leaving the page stops it through pageCleanup. */
+let stopDetailMap = null;
+const stopMap = () => { if (stopDetailMap) { const stop = stopDetailMap; stopDetailMap = null; stop(); } };
 
 const isUrl = v => /^https?:\/\//i.test(v || '');
 
@@ -74,9 +83,16 @@ function render(ctx, root) {
     ex.fm.equipment ? el('span', { class: 'gv-tag' }, ex.fm.equipment) : '',
     el('span', { class: 'gv-tag' }, `tracked in ${ex.fm.unit || 'reps'}`)));
 
-  /* Media */
-  const media = mediaBlock(ctx, ex);
-  if (media) root.append(media);
+  /* Media: the Muscle Map for an exercise that has a motion (its photos one
+     tap away), the photos and video for everything else. */
+  stopMap();
+  const motion = canDraw() ? motionFor(ex) : null;
+  const map = motion ? motionBlock(ctx, ex, motion) : null;
+  if (map) root.append(map);
+  else {
+    const media = mediaBlock(ctx, ex);
+    if (media) root.append(media);
+  }
 
   /* Bests */
   const bests = exerciseBests(ctx.data.workouts, ex.name);
@@ -257,6 +273,55 @@ function mediaBlock(ctx, ex) {
   }
   if (video && isUrl(video) && !isDirectVideo(video)) wrap.append(watchBtn(video));
   return wrap.childNodes.length ? wrap : null;
+}
+
+/* THE MUSCLE MAP ON THE EXERCISE PAGE, in place of the photo row. It carries its
+   own Basic/Detailed switch; a tap on it (or the corner badge) opens the viewer
+   on the map, large; "Photos" opens the same viewer on the originals. An
+   exercise whose only media is a video keeps that one reachable inline, since
+   the viewer shows images. A map that cannot build returns null and the page
+   shows its photos exactly as before. */
+function motionBlock(ctx, ex, motion) {
+  const block = el('div', { class: 'gv-mm-block' });
+  const wrap = el('div', { class: 'gv-card gv-mm-card' });
+  const extra = el('div', { class: 'gv-mm-photos-host' });
+  block.append(wrap, extra);
+  const prefs = visualPrefs(ctx.settings), st = ctx.settings || {};
+  const images = resolveExerciseImages(ctx, ex);
+  const video = (ex.fm.video || '').toString().trim();
+  const steps = noteSteps(ex.body);
+  const onDetail = d => rememberDetail(ctx, d);
+  const openViewer = (start, returnFocus) => openMediaViewer(ctx.app, {
+    name: ex.name, frames: images, startIndex: 0, skin: st.skin || 'apex', accent: st.accent || 'lime', settings: st,
+    returnFocus: returnFocus || null, start, muscleMap: { ex, motion, steps, onDetail },
+  });
+  try {
+    stopDetailMap = mountMuscleMap(wrap, {
+      ex, motion, detail: prefs.detail, body: prefs.body, steps, slot: 'detail', onDetail,
+      autoPlay: autoPlayMedia(st, prefersReducedMotion()),
+      onEnlarge: () => openViewer('map', wrap.querySelector('.gv-mm-stage')),
+    });
+  } catch (e) {
+    console.error('gym-vault muscle map', e);
+    stopDetailMap = null;
+    return null;
+  }
+  ctx.state.pageCleanup = stopMap;
+
+  if (images.length || video) {
+    let shown = null;
+    const label = el('span', {}, images.length ? 'Photos' : 'Video');
+    const btn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-mm-photos', type: 'button' }, ico(images.length ? 'image' : 'play'), label);
+    btn.addEventListener('click', () => {
+      if (images.length) { openViewer('photos', btn); return; }
+      /* video only: built when asked for, so a page that never opens it never loads it */
+      if (shown) { shown.remove(); shown = null; } else { shown = mediaBlock(ctx, ex); if (shown) extra.append(shown); }
+      btn.setAttribute('aria-expanded', String(!!shown));
+      label.textContent = shown ? 'Hide video' : 'Video';
+    });
+    wrap.append(btn);
+  }
+  return block;
 }
 
 function watchBtn(url) {

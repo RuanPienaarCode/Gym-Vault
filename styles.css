@@ -125,6 +125,16 @@
   --gv-medal-bronze-ink: #8a4b14;
   --gv-medal-lock: #6d7782;
   --gv-medal-lock-ink: #4f5864;
+  /* The Muscle Map's load ramp (muscle-map.js): a working muscle heats from
+     -lo to -hi as the rep loads it. A PAIR of its own: NOT the accent (a muscle
+     turning magenta under Punch would read as another thing), and NOT
+     --gv-amber, which is the streak's alone (Lock In re-points it to its own
+     sticker tone). The renderer reads both from the computed style, so the figure
+     follows the theme. Both ends hold 3:1 against the page AND the mannequin they
+     are painted on, in every skin (tests/muscle-map-css.test.cjs), which is why the
+     light amber is this deep. Dark twins below. */
+  --gv-load-lo: #b8590a;
+  --gv-load-hi: #b91c1c;
   /* Anton is embedded via src/font.css, so the fallbacks are theoretical;
      they still matter if the face ever fails to parse. */
   --gv-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -171,6 +181,9 @@
   --gv-medal-bronze-ink: #e0a066;
   --gv-medal-lock: #68717b;
   --gv-medal-lock-ink: #9aa3ad;
+  /* The load ramp on a near-black page: the bright amber and a red that holds. */
+  --gv-load-lo: #fbbf24;
+  --gv-load-hi: #ef4444;
 }
 
 /* Host-cascade override — see header comment. */
@@ -1086,6 +1099,23 @@ body.is-phone .gv-app .gv-page {
 .gv-app .gv-mv-play { min-width: 128px; min-height: 44px; }
 .gv-mv-controls .gv-btn[disabled],
 .gv-mv-controls .gv-icon-btn[disabled] { opacity: 0.4; cursor: default; pointer-events: none; }
+/* The viewer showing a Muscle Map (muscle-map.js) instead of photos: the stage
+   swaps the dark picture mat for the skin's own page colour, the map scrolls if a
+   Detailed figure is taller than the dialog, and the photos stay stacked but out
+   of sight. The Photos / Muscle map switch lives in the bar, beside Close. */
+.gv-mv-map { display: none; }
+.gv-mv-stage.gv-mv-is-map { margin: 0; border-width: 1px 0; background-color: var(--gv-bg); overflow-y: auto; }
+.gv-mv-is-map .gv-mv-map { display: flex; flex-direction: column; justify-content: center; min-height: 100%; max-width: 980px; margin: 0 auto; padding: 8px 8px 14px; }
+.gv-mv-is-map .gv-mv-img { display: none; }
+/* as large as the dialog allows without scrolling: the width on a phone, the
+   height on a wide screen (the rest of the dialog is the bar, the map's own
+   heading, its legend or load bar and the controls) */
+.gv-mv-map .gv-mm-svg,
+.gv-mv-map .gv-mm-detailed .gv-mm-svg,
+body.is-phone .gv-app .gv-mv-map .gv-mm-svg,
+body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; }
+.gv-mv-map .gv-card { border: 0; padding: 0; background: transparent; }
+.gv-app .gv-mv-mode { flex: 0 0 auto; min-height: 44px; }
 .gv-howto { line-height: 1.55; font-size: 14px; border: 0; padding: 2px 0 0; background: transparent; }
 .gv-howto p { margin: 0 0 10px; }
 .gv-howto p:last-child { margin-bottom: 0; }
@@ -2976,6 +3006,99 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
   position: absolute; left: 0; right: 0; bottom: 14%;
   margin: 0; padding: 0; pointer-events: none;
 }
+
+/* ============================================================================
+   MUSCLE MAP (muscle-map.js) — the animated mannequin that replaces the photos
+   for an exercise with a motion (motion-library.js): on the exercise page, in
+   the live set's frame, and large in the full-screen viewer (media-viewer.js).
+
+   EVERY colour here is a token, so every skin, accent and theme carries it.
+   Written from JS are only the per-frame geometry and the working muscles' heat
+   (the load ramp, read from --gv-load-lo / --gv-load-hi); SVG ATTRIBUTES, never
+   inline styles. Text in the SVG takes `color` and `fill: currentColor` so the
+   contrast gate (tests/contrast.test.cjs) measures it like any other text.
+   ============================================================================ */
+.gv-mm-block { display: flex; flex-direction: column; gap: 10px; }
+.gv-mm-card { padding: 12px 14px 10px; }
+.gv-mm { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.gv-mm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gv-mm-title { font-family: var(--gv-display); font-size: 17px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink); }
+.gv-mm-switches { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.gv-mm-seg { margin: 0; }
+.gv-app .gv-mm-seg .gv-segmented-btn { min-height: 36px; padding: 4px 12px; font-size: 13px; }
+.gv-mm-stage { position: relative; border-radius: 10px; background: var(--gv-bg); overflow: hidden; }
+.gv-mm-stage-step { cursor: pointer; }
+.gv-mm-stage:focus { outline: 2px solid var(--gv-lime); outline-offset: 2px; }
+.gv-mm-svg { display: block; width: 100%; height: auto; max-height: 300px; }
+.gv-mm-detailed .gv-mm-svg { max-height: 380px; }
+body.is-phone .gv-app .gv-mm-svg { max-height: 220px; }
+body.is-phone .gv-app .gv-mm-detailed .gv-mm-svg { max-height: 300px; }
+.gv-mm-headl { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gv-app .gv-mm-enlarge { flex: 0 0 auto; }
+.gv-mm-photos { align-self: flex-start; margin-top: 2px; }
+
+/* the miniature: the live set's frame is the control, the figure fills it */
+.gv-mm-mini { position: absolute; top: 0; left: 0; right: 0; bottom: 0; gap: 0; }
+.gv-mm-mini .gv-mm-stage { height: 100%; border-radius: 0; background: transparent; }
+.gv-mm-mini .gv-mm-svg,
+body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-height: none; }
+
+/* the mannequin */
+.gv-mm-body { fill: var(--gv-line); stroke: var(--gv-line-2); stroke-width: 1.1; stroke-linejoin: round; }
+.gv-mm-far { fill: var(--gv-line); stroke: var(--gv-line-2); stroke-width: 0.9; opacity: 0.6; }
+.gv-mm-floor { stroke: var(--gv-line-2); stroke-width: 2; }
+
+/* the muscles, in three depths so overlaps read (muscle-map.js draws them back
+   to front): deep = behind another muscle in this view, faint; holding = the
+   accent, a little translucent so a working muscle (solid heat) stands out even
+   when the accent is Blaze, which sits next to the ramp's amber and red; working =
+   heat from JS, solid, with an edge that cuts it out from what
+   is behind. A muscle-coloured edge, not an ink outline: a hard dark rim made
+   every muscle look like a separate shell laid on the body. */
+.gv-mm-muscle { stroke-width: 0.55; stroke-linejoin: round; }
+.gv-mm-prime { stroke-opacity: 0.8; }
+.gv-mm-hold { fill-opacity: 0.7; stroke: var(--gv-lime-deep); stroke-opacity: 0.9; }
+.gv-mm-deep { fill-opacity: 0.52; stroke-opacity: 0.45; }
+.gv-mm-gh-hi { stop-color: var(--gv-lime); }
+.gv-mm-gh-lo { stop-color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-mm-hold { stroke: var(--gv-lime); }
+.theme-dark .gv-app .gv-mm-gh-hi { stop-color: var(--gv-lime-hi); }
+.theme-dark .gv-app .gv-mm-gh-lo { stop-color: var(--gv-lime); }
+/* fibres: fine strands along the muscle, clipped to it; landmarks (the abs'
+   seams) a touch stronger; tendons pale and tapered at the attachment */
+.gv-mm-fibre { fill: none; stroke: var(--gv-ink-fixed); stroke-opacity: 0.11; stroke-width: 0.3; stroke-linecap: round; pointer-events: none; }
+.gv-mm-mark { fill: none; stroke: var(--gv-ink); stroke-opacity: 0.4; stroke-width: 0.75; stroke-linecap: round; pointer-events: none; }
+.gv-mm-tendon { fill-opacity: 0.9; pointer-events: none; }
+/* the muscles not used: a quiet tone a step off the body, so the whole figure
+   reads as muscular and the coloured ones stand out within it */
+.gv-mm-ctx { fill: var(--gv-line-2); fill-opacity: 0.22; stroke: var(--gv-line-2); stroke-opacity: 0.55; stroke-width: 0.45; stroke-linejoin: round; }
+.theme-dark .gv-app .gv-mm-ctx { fill-opacity: 0.45; stroke-opacity: 0.9; }
+/* props: the pull-up bar, in the ink of the floor line */
+.gv-mm-prop { stroke: var(--gv-ink-dim); stroke-linecap: round; }
+
+/* Detailed: labels in rows above and below the figure, never over it */
+.gv-mm-lbl { font-family: var(--gv-display); font-size: 9.2px; font-weight: 700; letter-spacing: 0.05em; color: var(--gv-ink); fill: currentColor; }
+.gv-mm-pct { color: var(--gv-accent-text, var(--gv-lime-deep)); }
+.theme-dark .gv-app .gv-mm-pct { color: var(--gv-accent-text, var(--gv-lime)); }
+.gv-mm-latin { font-size: 7.6px; font-style: italic; color: var(--gv-ink-dim); fill: currentColor; }
+.gv-mm-lead { stroke: var(--gv-ink-dim); stroke-width: 0.7; }
+.gv-mm-dot { fill: var(--gv-ink); stroke: var(--gv-surface); stroke-width: 0.6; }
+.gv-mm-dot-hold { fill: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-mm-dot-hold { fill: var(--gv-lime); }
+
+/* Basic: one quiet line naming the muscles */
+.gv-mm-legend { display: grid; grid-template-columns: 12px 1fr; gap: 4px 8px; align-items: center; font-size: 13px; color: var(--gv-ink-dim); }
+.gv-mm-key { width: 12px; height: 12px; border-radius: 3px; }
+.gv-mm-key-prime { background: linear-gradient(90deg, var(--gv-load-lo), var(--gv-load-hi)); }
+.gv-mm-key-hold { background: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-mm-key-hold { background: var(--gv-lime); }
+
+/* Detailed: the load bar and the note's steps */
+.gv-mm-load { display: grid; grid-template-columns: auto 1fr 3.2em; gap: 10px; align-items: center; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gv-ink-dim); }
+.gv-mm-load-svg { width: 100%; height: 8px; display: block; }
+.gv-mm-load-track { fill: var(--gv-line); }
+.gv-mm-load-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--gv-ink); }
+.gv-mm-step { font-size: 14px; line-height: 1.4; color: var(--gv-ink); min-height: 2.8em; }
 
 /* ============================================================================
    ACCENT PALETTES — settings › Accent color. Each block ONLY re-points the

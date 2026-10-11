@@ -19,6 +19,15 @@
    two of anything. Frame order, skipping and the swipe rule are pure functions in
    media-cycle.js, tested without a browser.
 
+   THE MUSCLE MAP (muscle-map.js) is the other thing this can show. An exercise
+   with a motion opens here on its map, large, with the Basic/Detailed switch the
+   map carries, and a "Photos" button in the bar that switches the same dialog to
+   the original photos (and back). One modal, two pictures of the same exercise;
+   the Play / Pause and previous / next controls act on whichever is showing (for
+   the map, previous / next step its resting poses). The map's own animation loop
+   starts on open and stops on close or on switching away, and while it is open
+   every other map (the live set's thumbnail under this dialog) pauses.
+
    PINCH ZOOM: nothing here implements it. The stage declares
    `touch-action: pan-y pinch-zoom` (styles.css) so the browser's own zoom is not
    blocked while a horizontal swipe still reaches us as pointer events, and a
@@ -28,6 +37,8 @@
 const { Modal } = require('obsidian');
 const { el, ico, clear } = require('./dom');
 const { skinClasses } = require('./constants');
+const { mountMuscleMap } = require('./muscle-map');
+const { visualPrefs, noteSteps } = require('./motion-library');
 const { prefersReducedMotion } = require('./confetti');
 const { nextFrameIndex, prevFrameIndex, firstFrameIndex, framePosition, frameLabel, swipeDirection, autoPlayMedia, MEDIA_CYCLE_MS } = require('./media-cycle');
 
@@ -37,9 +48,13 @@ let active = null;
 
 class MediaViewerModal extends Modal {
   /* opts: { name, frames: [{src, tag}], startIndex, skin, accent, settings,
-     returnFocus, cycleMs }. `settings` is the plugin's, read only for
-     `animateMedia` (autoPlayMedia). returnFocus is the element focus goes back to on close (default:
-     whatever had focus when this was opened). */
+     returnFocus, cycleMs, muscleMap, start }. `settings` is the plugin's, read
+     for `animateMedia` (autoPlayMedia) and the map's body and detail.
+     returnFocus is the element focus goes back to on close (default: whatever
+     had focus when this was opened).
+     muscleMap: { ex, motion, steps, startMs, onDetail } puts the exercise's
+     Muscle Map in the dialog; `start: 'photos'` opens on the photos instead of
+     the map (the exercise page's "Photos" link). */
   constructor(app, opts) {
     super(app);
     opts = opts || {};
@@ -50,6 +65,10 @@ class MediaViewerModal extends Modal {
     this.settings = opts.settings || {};
     this.cycleMs = opts.cycleMs || MEDIA_CYCLE_MS;
     this.startIndex = opts.startIndex;
+    this.map = opts.muscleMap && opts.muscleMap.motion ? opts.muscleMap : null;
+    /* Which picture is showing. No photos at all means the map, and no map the photos. */
+    this.mode = this.map && (opts.start !== 'photos' || !this.frames.length) ? 'map' : 'photos';
+    this.mapStop = null;
     this.failed = new Set();
     this.index = 0;
     this.playing = false;
@@ -72,9 +91,16 @@ class MediaViewerModal extends Modal {
 
     const closeBtn = el('button', { class: 'gv-icon-btn gv-mv-close', type: 'button', 'aria-label': 'Close' }, ico('x'));
     closeBtn.addEventListener('click', () => this.close());
-    const bar = el('div', { class: 'gv-mv-bar' }, el('h2', { class: 'gv-display gv-mv-title' }, this.name), closeBtn);
+    /* "Photos" in the map, "Muscle map" in the photos; only when there is
+       something to switch to. */
+    this.modeBtn = this.map && this.frames.length
+      ? el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-mv-mode', type: 'button' }) : null;
+    if (this.modeBtn) this.modeBtn.addEventListener('click', () => this._setMode(this.mode === 'map' ? 'photos' : 'map'));
+    const bar = el('div', { class: 'gv-mv-bar' }, el('h2', { class: 'gv-display gv-mv-title' }, this.name), this.modeBtn || '', closeBtn);
 
     this.stage = el('div', { class: 'gv-mv-stage' });
+    this.mapHost = this.map ? el('div', { class: 'gv-mv-map' }) : null;
+    if (this.mapHost) this.stage.append(this.mapHost);
     this.imgs = this.frames.map((f, i) => {
       const img = el('img', { class: 'gv-mv-img', src: f.src, alt: `${this.name} — ${frameLabel(this.frames, i)}`, draggable: 'false' });
       img.addEventListener('error', () => this._frameFailed(i));
@@ -92,7 +118,7 @@ class MediaViewerModal extends Modal {
     this.playBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-mv-play', type: 'button' });
     this.prevBtn.addEventListener('click', () => this._step('prev'));
     this.nextBtn.addEventListener('click', () => this._step('next'));
-    this.playBtn.addEventListener('click', () => this._setPlaying(!this.playing));
+    this.playBtn.addEventListener('click', () => this._setPlaying(!this._isPlaying()));
     const controls = el('div', { class: 'gv-mv-controls' }, this.prevBtn, this.playBtn, this.nextBtn);
 
     this.contentEl.append(bar, this.stage, this.captionEl, controls);
@@ -118,7 +144,7 @@ class MediaViewerModal extends Modal {
     /* Opens paused under reduced motion or with Settings -> "Animate exercise
        images" off (autoPlayMedia); the Play button is still the user's to press
        for this viewing, and does not change the setting. */
-    this._setPlaying(autoPlayMedia(this.settings, prefersReducedMotion()));
+    this._enter(this.mode);
     modalEl.focus();
   }
 
@@ -126,6 +152,7 @@ class MediaViewerModal extends Modal {
     if (this.closed) return;
     this.closed = true;
     this._stopTimer();
+    this._stopMap();
     if (active === this) active = null;
     this.contentEl.empty();
     const back = this._returnFocus;
@@ -135,11 +162,67 @@ class MediaViewerModal extends Modal {
 
   _live() { return this.frames.length - this.failed.size; }
 
+  /* ---- the two pictures ---- */
+
+  /* Show `mode`, from scratch: the other one is stopped, the clock the user
+     last chose does not carry over (each opens as the settings say). */
+  _enter(mode) {
+    this.mode = mode;
+    this._stopTimer();
+    this._stopMap();
+    if (this.mapHost) clear(this.mapHost);
+    this.playing = false;
+    this.stage.classList.toggle('gv-mv-is-map', mode === 'map');
+    if (mode === 'map') {
+      if (!this._startMap()) { this.mode = 'photos'; this.stage.classList.remove('gv-mv-is-map'); }
+    }
+    if (this.mode === 'photos') this._setPlaying(autoPlayMedia(this.settings, prefersReducedMotion()));
+    else this._sync();
+  }
+
+  _setMode(mode) {
+    if (this.closed || mode === this.mode) return;
+    this._enter(mode);
+  }
+
+  /* A map that cannot build (any exception) leaves the photos, and the dialog
+     still works: a visual must never cost the user the check they came for. */
+  _startMap() {
+    const m = this.map, prefs = visualPrefs(this.settings);
+    clear(this.mapHost);
+    try {
+      this.mapStop = mountMuscleMap(this.mapHost, {
+        ex: m.ex, motion: m.motion, detail: prefs.detail, body: prefs.body,
+        steps: m.steps || noteSteps(m.ex && m.ex.body), clock: { t: Number.isFinite(m.startMs) ? m.startMs : 0 },
+        autoPlay: autoPlayMedia(this.settings, prefersReducedMotion()), exclusive: true,
+        onDetail: d => { if (typeof m.onDetail === 'function') m.onDetail(d); },
+      });
+      return true;
+    } catch (e) {
+      console.error('gym-vault muscle map', e);
+      this.mapStop = null;
+      clear(this.mapHost);
+      return false;
+    }
+  }
+
+  _stopMap() {
+    if (this.mapStop) { const stop = this.mapStop; this.mapStop = null; stop(); }
+  }
+
   _stopTimer() {
     if (this._timer !== null) { window.clearInterval(this._timer); this._timer = null; }
   }
 
+  /* Is the thing on screen animating? The photos' timer, or the map's loop. */
+  _isPlaying() { return this.mode === 'map' ? !!(this.mapStop && this.mapStop.isPlaying()) : this.playing; }
+
   _setPlaying(on) {
+    if (this.mode === 'map') {
+      if (this.mapStop) this.mapStop.setPlaying(!!on);
+      this._sync();
+      return;
+    }
     this._stopTimer();
     this.playing = !!on && this._live() >= 2;
     if (this.playing) this._timer = window.setInterval(() => this._tick(), this.cycleMs);
@@ -159,7 +242,13 @@ class MediaViewerModal extends Modal {
 
   /* A step the user asked for pauses the animation: they stopped to look. */
   _step(dir) {
-    if (this.closed || this._live() < 2) return;
+    if (this.closed) return;
+    if (this.mode === 'map') {
+      if (this.mapStop) this.mapStop.step(dir === 'prev' ? -1 : 1);
+      this._sync();
+      return;
+    }
+    if (this._live() < 2) return;
     const to = dir === 'prev'
       ? prevFrameIndex(this.frames.length, this.failed, this.index)
       : nextFrameIndex(this.frames.length, this.failed, this.index);
@@ -191,6 +280,27 @@ class MediaViewerModal extends Modal {
   /* Everything that reads the state, in one place. */
   _sync() {
     if (!this.tagEl) return;
+    if (this.modeBtn) {
+      clear(this.modeBtn);
+      const toPhotos = this.mode === 'map';
+      this.modeBtn.append(ico(toPhotos ? 'image' : 'person-standing'), el('span', {}, toPhotos ? 'Photos' : 'Muscle map'));
+      this.modeBtn.setAttribute('aria-label', toPhotos ? 'Show the original photos' : 'Show the muscle map');
+    }
+    if (this.mode === 'map') {
+      const on = !!(this.mapStop && this.mapStop.isPlaying());
+      this.tagEl.textContent = 'Muscle map';
+      this.posEl.textContent = '';
+      this.prevBtn.disabled = this.nextBtn.disabled = this.playBtn.disabled = !this.mapStop;
+      this.prevBtn.setAttribute('aria-label', 'Previous pose');
+      this.nextBtn.setAttribute('aria-label', 'Next pose');
+      clear(this.playBtn);
+      this.playBtn.append(ico(on ? 'pause' : 'play'), el('span', {}, on ? 'Pause' : 'Play'));
+      this.playBtn.setAttribute('aria-label', on ? 'Pause animation' : 'Play animation');
+      this.captionEl.setAttribute('aria-live', on ? 'off' : 'polite');
+      return;
+    }
+    this.prevBtn.setAttribute('aria-label', 'Previous frame');
+    this.nextBtn.setAttribute('aria-label', 'Next frame');
     const live = this._live();
     const pos = framePosition(this.frames.length, this.failed, this.index);
     this.tagEl.textContent = live > 0 ? frameLabel(this.frames, this.index) : '';
@@ -219,7 +329,7 @@ class MediaViewerModal extends Modal {
     stage.addEventListener('pointerup', e => {
       const from = down.get(e.pointerId);
       down.delete(e.pointerId);
-      if (from && !spoiled) {
+      if (from && !spoiled && this.mode === 'photos') {
         const dir = swipeDirection(e.clientX - from.x, e.clientY - from.y);
         if (dir) this._step(dir);
       }
@@ -233,11 +343,12 @@ class MediaViewerModal extends Modal {
   }
 }
 
-/* opts: { name, frames: [{src, tag}], startIndex, skin, accent, returnFocus }.
-   Returns the open viewer, or null when there is nothing to show. */
+/* opts: { name, frames: [{src, tag}], startIndex, skin, accent, returnFocus,
+   muscleMap, start }. Returns the open viewer, or null when there is nothing
+   to show (no photos and no muscle map). */
 function openMediaViewer(app, opts) {
   const frames = ((opts && opts.frames) || []).filter(f => f && f.src);
-  if (!frames.length) return null;
+  if (!frames.length && !(opts && opts.muscleMap && opts.muscleMap.motion)) return null;
   if (active && !active.closed) active.close();
   const viewer = new MediaViewerModal(app, opts);
   active = viewer;

@@ -6,6 +6,10 @@
    72px thumbnail (Apex, Lock In) or a ~190px frame (Floor, Editorial), and on
    the exercise page the frames are small tiles; tapping did nothing.
 
+   THE LIVE-SET AND EXERCISE-PAGE CASES USE "Dips": an exercise with no motion, so its
+   media is its photos. Push-ups has a Muscle Map instead of photos (motion-library.js),
+   and tests/muscle-map-viewer.test.cjs and muscle-map-wiring.test.cjs own that picture.
+
    THE CONTRACT these cases pin, on the REAL modal, the REAL guided session and
    the REAL exercise page (tests/live-session-harness.js, with its fake clock and
    fake DOM):
@@ -348,7 +352,7 @@ const attached = () => { const n = new H.N('div'); H.docRoot().appendChild(n); r
   const withImages = names => names.map(n => H.ex(n, n === 'Plank' ? { unit: 'seconds', image: IMG } : { image: IMG }));
   async function guided(planBody, skin, extraSettings) {
     const b = await H.boot({
-      planBody, exercises: withImages(['Push-ups', 'Plank']),
+      planBody, exercises: withImages(['Dips', 'Plank']),
       settings: Object.assign({ guideRestSeconds: 0, skin, soundMode: 'silent' }, extraSettings || {}),
     });
     const plan = b.ctx.activePlan(); b.ctx.startGuided(plan, plan.model.days[0]);
@@ -356,7 +360,7 @@ const attached = () => { const n = new H.N('div'); H.docRoot().appendChild(n); r
     return b;
   }
   const thumb = b => H.page(b.ctx).querySelector('.gv-session-frame');
-  const PUSH = '## D (any)\n\n- Push-ups | 1 x 10\n';
+  const PUSH = '## D (any)\n\n- Dips | 1 x 10\n';
   const PLANK = '## D (any)\n\n- Plank | 1 x 60s\n';
 
   for (const skin of ['apex', 'lockin', 'floor', 'editorial']) {
@@ -366,7 +370,7 @@ const attached = () => { const n = new H.N('div'); H.docRoot().appendChild(n); r
       assert.ok(t, 'the media block is on the live set');
       assert.strictEqual(t.getAttribute('role'), 'button');
       assert.strictEqual(t.getAttribute('tabindex'), '0');
-      assert.strictEqual(t.getAttribute('aria-label'), 'Show Push-ups larger');
+      assert.strictEqual(t.getAttribute('aria-label'), 'Show Dips larger');
       assert.ok(t.querySelector('.gv-media-expand'), 'an expand corner says it can be enlarged');
       H.advance(MEDIA_CYCLE_MS); // the thumbnail's own cycle is now on frame 2
       H.click(t);
@@ -489,7 +493,7 @@ const attached = () => { const n = new H.N('div'); H.docRoot().appendChild(n); r
   });
 
   await check('T7. a single image still opens the viewer (a bigger look at the one picture)', async () => {
-    const b = await H.boot({ planBody: PUSH, exercises: [H.ex('Push-ups', { image: IMG[0] })], settings: { skin: 'apex', soundMode: 'silent', guideRestSeconds: 0 } });
+    const b = await H.boot({ planBody: PUSH, exercises: [H.ex('Dips', { image: IMG[0] })], settings: { skin: 'apex', soundMode: 'silent', guideRestSeconds: 0 } });
     const plan = b.ctx.activePlan(); b.ctx.startGuided(plan, plan.model.days[0]);
     H.click(H.page(b.ctx).querySelectorAll('button').find(x => /Start/.test(x.textContent)));
     // a lone free-exercise-db style URL would derive a pair; this one is a plain URL, so it stays single
@@ -504,8 +508,8 @@ const attached = () => { const n = new H.N('div'); H.docRoot().appendChild(n); r
   /* ================= THE EXERCISE PAGE ================= */
 
   async function detail(images, skin) {
-    const b = await H.boot({ exercises: [H.ex('Push-ups', { image: images })], settings: { skin: skin || 'apex', soundMode: 'silent' } });
-    b.ctx.nav('exercise', { exercise: 'Push-ups' });
+    const b = await H.boot({ exercises: [H.ex('Dips', { image: images })], settings: { skin: skin || 'apex', soundMode: 'silent' } });
+    b.ctx.nav('exercise', { exercise: 'Dips' });
     return b;
   }
   const tiles = b => H.page(b.ctx).querySelectorAll('.gv-media-frame');
@@ -529,7 +533,7 @@ const attached = () => { const n = new H.N('div'); H.docRoot().appendChild(n); r
     const t = tiles(b)[1];
     assert.strictEqual(t.getAttribute('role'), 'button');
     assert.strictEqual(t.getAttribute('tabindex'), '0');
-    assert.strictEqual(t.getAttribute('aria-label'), 'Show Push-ups — finish larger');
+    assert.strictEqual(t.getAttribute('aria-label'), 'Show Dips — finish larger');
     assert.ok(t.querySelector('.gv-media-expand'));
     H.modals.length = 0;
     H.fire(t, 'keydown', { key: 'Enter' });

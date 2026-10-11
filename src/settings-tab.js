@@ -6,6 +6,7 @@ const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 const sound = require('./sound');
 const { progressOf } = require('./voice-pack');
+const { visualPrefs } = require('./motion-library');
 const { rewardsEnabled } = require('./rewards');
 const { autoPlayMedia } = require('./media-cycle');
 
@@ -112,11 +113,41 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Animate exercise images')
-      .setDesc('Instruction images play their start/finish frames as an animation. Off keeps them still; you can still step through them.')
+      .setDesc('Instruction images play their start/finish frames as an animation. Off keeps them still; you can still step through them. The muscle map follows this too.')
       .addToggle(t => t
         .setValue(autoPlayMedia(this.plugin.settings, false))
         .onChange(async v => {
           this.plugin.settings.animateMedia = v;
+          await this.plugin.saveSettings();
+          this.plugin.refreshViews();
+        }));
+
+    /* The Muscle Map: the animated figure exercises with a motion show instead
+       of their photos. The same Basic/Detailed choice is also a switch on the
+       visual itself; both write this one setting. */
+    const visual = visualPrefs(this.plugin.settings);
+    new Setting(c)
+      .setName('Exercise visual')
+      .setDesc('For exercises with a muscle map (push-ups, squats and pull-ups for now). Basic shows the working muscles; Detailed adds their names, the load and the steps. The switch on the map itself changes this too.')
+      .addDropdown(d => d
+        .addOption('basic', 'Basic')
+        .addOption('detailed', 'Detailed')
+        .setValue(visual.detail)
+        .onChange(async v => {
+          this.plugin.settings.exerciseVisual = v;
+          await this.plugin.saveSettings();
+          this.plugin.refreshViews();
+        }));
+
+    new Setting(c)
+      .setName('Muscle map body')
+      .setDesc('Which body the muscle map draws.')
+      .addDropdown(d => d
+        .addOption('male', 'Male')
+        .addOption('female', 'Female')
+        .setValue(visual.body)
+        .onChange(async v => {
+          this.plugin.settings.exerciseBody = v;
           await this.plugin.saveSettings();
           this.plugin.refreshViews();
         }));

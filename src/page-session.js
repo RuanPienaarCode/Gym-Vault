@@ -35,6 +35,8 @@ const { buildRows, finishSession, keepDraft, saveMotionPref } = require('./page-
 const { EndSessionModal } = require('./modals');
 const { nextFrameIndex, autoPlayMedia, MEDIA_CYCLE_MS } = require('./media-cycle');
 const { openMediaViewer } = require('./media-viewer');
+const { mountMuscleMap, canDraw } = require('./muscle-map');
+const { motionFor, noteSteps, visualPrefs, rememberDetail } = require('./motion-library');
 const { musicButton } = require('./music-picker');
 const timedPlan = require('./timed-plan');
 const timerState = require('./timer-state');
@@ -111,6 +113,7 @@ function render(ctx, root) {
       confettiStop: null,
       completionCelebrated: false,
       mediaCycleTimer: null,
+      stopMuscleMap: null,
       /* Timed mode only (draft.timed holds the schedule). `index` walks the
          interval list; the clock is kept as a start stamp plus the seconds
          banked before the last pause, so a pause is exact rather than
@@ -137,6 +140,12 @@ function render(ctx, root) {
      creates its own (or none) — otherwise it keeps ticking against detached
      nodes and a second one stacks on top of it next render. */
   if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
+  /* The Muscle Map's animation loop, same rule: the thumbnail it draws into is
+     rebuilt by every render, so the previous loop stops here, exactly once,
+     before this render mounts its own (or none). The map also ends itself the
+     first frame after its DOM is detached; this is what makes the teardown
+     certain rather than one frame late. */
+  if (sess.stopMuscleMap) { sess.stopMuscleMap(); sess.stopMuscleMap = null; }
 
   /* The motion subscription is on `window`, not the DOM, so nothing tears
      it down on its own the way a detached tap zone would. Every full render
@@ -154,6 +163,7 @@ function render(ctx, root) {
     if (sess.wakeLock) { sess.wakeLock.release(); sess.wakeLock = null; }
     if (sess.confettiStop) { sess.confettiStop(); sess.confettiStop = null; }
     if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
+    if (sess.stopMuscleMap) { sess.stopMuscleMap(); sess.stopMuscleMap = null; }
     if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
     if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
     sound.cancel();
@@ -454,8 +464,70 @@ function exerciseBlock(ctx, sess, entry) {
      handling wires up, so a dropped frame 1 never promotes a frame 3 that
      was never even resolved for this view (the detail page still shows
      everything; this cap is guided-view only). */
-  const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES), viewerOpts(ctx)) : null;
+  const img = ex ? exerciseMedia(ctx, sess, ex) : null;
   return el('div', { class: 'gv-session-exblock' }, head, img || '');
+}
+
+/* The exercise's picture on the live set: its Muscle Map when it has a motion
+   (motion-library.js), the photo cross-fade for everything else. Both are the
+   same frame (the thumbnail in the poster skins, the larger one in Floor and
+   Editorial) and both open the full-screen viewer on a tap. */
+function exerciseMedia(ctx, sess, ex) {
+  const frames = resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES);
+  const motion = canDraw() ? motionFor(ex) : null;
+  return (motion && sessionMuscleMap(ctx, sess, ex, motion, frames)) || guidedImageBlock(sess, ex, frames, viewerOpts(ctx));
+}
+
+/* THE MUSCLE MAP IN THE FRAME. The bare figure (mini: no switch, no legend, no
+   labels, no fibres), looping at the note's tempo; or one still pose when
+   media-cycle.js autoPlayMedia says so (reduced motion, or Settings ->
+   "Animate exercise images" off), the same single rule the photos obey.
+
+   A tap opens the viewer on the MAP, large, with "Photos" one tap away. It is
+   the frame itself that takes the tap, outside the counter zone, so it counts
+   no rep and touches no clock (see guidedImageBlock's note, which is why the
+   viewer keeps its own loop). Its stop() lives on `sess` beside the photo
+   cycle's timer, for the same reason (see render()); and the clock lives there
+   too, so a logged set (which rebuilds this card) carries the rep on instead of
+   restarting it at the top.
+
+   A map that cannot build never costs a workout: any failure returns null and
+   the caller draws the photos instead. */
+function sessionMuscleMap(ctx, sess, ex, motion, frames) {
+  const wrap = el('div', { class: 'gv-session-media gv-session-mm' });
+  const frame = el('div', { class: 'gv-media-frame gv-session-frame gv-session-frame-open gv-session-mmframe' });
+  wrap.append(frame);
+  const prefs = visualPrefs(ctx.settings);
+  if (!sess.muscleMapClock || sess.muscleMapClock.exercise !== ex.name) sess.muscleMapClock = { exercise: ex.name, t: 0 };
+  try {
+    sess.stopMuscleMap = mountMuscleMap(frame, {
+      /* the poster skins' slot is a 96x72 thumbnail; Floor and Editorial's is a wide frame */
+      ex, motion, mini: posterSkin(ctx) ? 'thumb' : 'frame', body: prefs.body, clock: sess.muscleMapClock,
+      autoPlay: autoPlayMedia(ctx.settings, confetti.prefersReducedMotion()),
+    });
+  } catch (e) {
+    console.error('gym-vault muscle map', e);
+    sess.stopMuscleMap = null;
+    return null;
+  }
+  frame.append(el('span', { class: 'gv-media-expand', 'aria-hidden': 'true' }, ico('maximize-2')));
+  const openViewer = () => {
+    const host = viewerOpts(ctx);
+    openMediaViewer(host.app, {
+      name: ex.name, frames, startIndex: 0, skin: host.skin, accent: host.accent, settings: host.settings, returnFocus: frame,
+      muscleMap: { ex, motion, steps: noteSteps(ex.body), startMs: sess.muscleMapClock.t, onDetail: d => rememberDetail(ctx, d) },
+    });
+  };
+  frame.setAttribute('role', 'button');
+  frame.setAttribute('tabindex', '0');
+  frame.setAttribute('aria-label', `Show ${ex.name} larger`);
+  frame.addEventListener('click', openViewer);
+  frame.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault(); // ' ' must not also scroll the page
+    openViewer();
+  });
+  return wrap;
 }
 
 /* What the full-screen viewer needs from the page: the app (it is a Modal) and
@@ -484,7 +556,7 @@ function posterTop(ctx, draft, entryIndex) {
    same nodes the plain block builds; only their arrangement differs. */
 function posterHead(ctx, sess, entry, entryIndex, setIndex) {
   const ex = findExercise(ctx, entry.exercise);
-  const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES), viewerOpts(ctx)) : null;
+  const img = ex ? exerciseMedia(ctx, sess, ex) : null;
   const sub = chrome.subLine(entry, setIndex, fmtSeconds);
   const label = chrome.railLabel(setIndex, entry.sets.length);
   return el('div', { class: 'gv-session-exblock gv-live-head' + (img ? ' has-media' : '') },
