@@ -48,8 +48,14 @@ const banner = css.indexOf('SKIN: LOCK IN');
 assert.ok(banner > 0, 'SKIN: LOCK IN banner missing');
 assert.ok(banner > css.indexOf('SKIN: APEX'), 'the Lock In section must come after the Apex section (its rules win ties by order)');
 const bannerLine = css.slice(0, banner).split('\n').length;
-const lock = rules.filter(r => r.line >= bannerLine);
-const lockText = bare.slice(banner);
+/* The Lock In section runs to the end of the file, except for the cross-skin REVIEW FIXES block
+   (0.14.0) that follows it: small rules for the keyboard class and the host-tint resets, which
+   name Apex, Lock In and the shared classes by design and are guarded by their own tests. */
+const tailAt = css.indexOf('---------- REVIEW FIXES (0.14.0)');
+const endAt = tailAt > banner ? tailAt : css.length;
+const endLine = css.slice(0, endAt).split('\n').length;
+const lock = rules.filter(r => r.line >= bannerLine && r.line < endLine);
+const lockText = bare.slice(banner, endAt);
 assert.ok(lock.length > 120, `the Lock In section parsed to almost nothing (${lock.length} rules)`);
 const THEMES = ['light', 'dark'];
 const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];

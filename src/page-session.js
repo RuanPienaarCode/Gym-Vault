@@ -1651,7 +1651,10 @@ function renderRest(ctx, root, draft, sess) {
   /* The pause control: the circuit's own button, in the circuit's control
      row, with the same "Paused" line the hold and the circuit show. Updated in
      place so keyboard focus stays on the button. */
-  const hintEl = el('div', { class: 'gv-rc-hint' });
+  /* A polite live region, in the page BEFORE it says anything (one filled on
+     creation is not announced), updated in place: the pause is otherwise a
+     visual-only state, the one the hold and the circuit already speak. */
+  const hintEl = el('div', { class: 'gv-rc-hint', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
   const playBtn = playButton(sess.rest.paused);
   const paintRest = () => {
     const paused = sess.rest.paused;
