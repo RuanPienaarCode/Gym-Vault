@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert');
-const { weekStreak, countInWeek, exerciseBests, goalCurrent, goalIssue, goalProgress, sessionVolume, weightSeries, bmi, setCounts, workoutDates, ladderWeek, workoutDate } = require('../src/stats');
+const { weekStreak, countInWeek, exerciseBests, goalCurrent, goalIssue, goalProgress, sessionVolume, weightSeries, bmi, setCounts, workoutDates, ladderWeek, workoutDate, countLabel } = require('../src/stats');
 
 const w = (date, rows) => ({ fm: { date }, rows });
 const set = (exercise, reps, weight_kg, seconds) => ({ exercise, reps, weight_kg, seconds });
@@ -143,6 +143,20 @@ const set = (exercise, reps, weight_kg, seconds) => ({ exercise, reps, weight_kg
   assert.match(goalIssue(goal({}), {}) || '', /no metric/, 'a goal with no metric must be reported');
   assert.strictEqual(goalIssue(goal({ metric: 'exercise-reps', exercise: 'pull ups' }), {}), null,
     'without an exercise list the check is skipped, not guessed');
+}
+
+/* countLabel(n, one, many): the one place a count meets its noun. "LAST . 1 SETS" came from `${n} sets`
+   written by hand at six call sites; one is singular, everything else (zero included) is plural. */
+{
+  assert.strictEqual(countLabel(1, 'set'), '1 set');
+  assert.strictEqual(countLabel(0, 'set'), '0 sets');
+  assert.strictEqual(countLabel(2, 'set'), '2 sets');
+  assert.strictEqual(countLabel(13, 'set'), '13 sets');
+  assert.strictEqual(countLabel(1, 'planned set'), '1 planned set', 'a two-word noun pluralises its last word');
+  assert.strictEqual(countLabel(3, 'person', 'people'), '3 people', 'an irregular plural is passed, never guessed');
+  assert.strictEqual(countLabel(1, 'person', 'people'), '1 person');
+  assert.strictEqual(countLabel('1', 'set'), '1 set', 'a numeric string (a parsed count) is still one');
+  assert.strictEqual(countLabel(1.5, 'set'), '1.5 sets', 'only exactly one is singular');
 }
 
 console.log('stats OK');

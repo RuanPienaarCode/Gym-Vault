@@ -19,6 +19,9 @@
      weekPlan(daysOn, today, weekStart)      -> [{iso, wk, planDay}] x7
      weekProgress({workouts, goals, daysOn, today, weekStart})
                                   -> null | {done, target, source, pct, toGo, met}
+     weekWords(wp)                -> {head, ratio, togo, aria}: the week's count as words. Over the target
+                                     it says so ("4 of 4 done +1"), never "5 of 4"; the engine's numbers
+                                     (done, pct, toGo, met) are NOT touched
      streakRisk(streak, wp, today, weekStart) -> null | {streak, by}
      records.latestRecord(workouts, exercises) -> null | {exercise, kind, value, prev, date} */
 const assert = require('node:assert');
@@ -379,6 +382,37 @@ check('latestRecord: a tie on the date keeps the first in allRecords order (dete
   ];
   const r = records.latestRecord(hist, [ex('Push-ups', 'reps'), ex('Pull-ups', 'reps')]);
   assert.strictEqual(r.exercise, 'Push-ups');
+});
+
+/* ---------- the week as words: a week that exceeds its target ---------- */
+check('weekWords: under the target reads "n of N done", "n/N", "k to go"', () => {
+  const wp = { done: 2, target: 4, toGo: 2, met: false, pct: 50 };
+  assert.deepStrictEqual(P.weekWords(wp), { head: '2 of 4 done', ratio: '2/4', togo: '2 to go', aria: '2 of 4 sessions this week' });
+});
+check('weekWords: exactly on target is unchanged ("Week done", no +0)', () => {
+  const wp = { done: 4, target: 4, toGo: 0, met: true, pct: 100 };
+  assert.deepStrictEqual(P.weekWords(wp), { head: '4 of 4 done', ratio: '4/4', togo: 'Week done', aria: '4 of 4 sessions this week' });
+});
+check('weekWords: past the target says "+1", caps the ratio, and never prints "5 of 4"', () => {
+  const wp = { done: 5, target: 4, toGo: 0, met: true, pct: 100 };
+  assert.deepStrictEqual(P.weekWords(wp), { head: '4 of 4 done +1', ratio: '4/4', togo: 'Week done +1', aria: '5 sessions this week, 1 over the target of 4' });
+});
+check('weekWords: no phrasing in any combination ever reads more done than the target ("7 of 4", "7/4")', () => {
+  for (let target = 1; target <= 7; target++) for (let done = 0; done <= 14; done++) {
+    const wp = { done, target, toGo: Math.max(0, target - done), met: done >= target, pct: Math.min(100, Math.round(done / target * 100)) };
+    const w = P.weekWords(wp);
+    for (const t of [w.head, w.ratio]) {
+      const m = /(\d+)(?: of |\/)(\d+)/.exec(t);
+      assert.ok(m && Number(m[1]) <= Number(m[2]), `${done} done of ${target}: "${t}" reads more done than the target`);
+    }
+    if (done > target) assert.ok(w.head.endsWith(`+${done - target}`) && w.togo === `Week done +${done - target}`, `${done}/${target}: the surplus is said, once, as +${done - target}`);
+    if (done <= target) assert.ok(!/\+/.test(w.head + w.togo), `${done}/${target}: no surplus to say`);
+  }
+});
+check("weekProgress: the engine's numbers are the same past the target (done is the real count, the ring is capped)", () => {
+  const ws = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09'].map(d => sess(d));
+  const p = P.weekProgress({ workouts: ws, goals: [], daysOn, today: TODAY, weekStart: 'mon' });
+  assert.deepStrictEqual({ done: p.done, target: p.target, pct: p.pct, toGo: p.toGo, met: p.met }, { done: 5, target: 4, pct: 100, toGo: 0, met: true });
 });
 
 if (failures) { console.error(`${failures} progress check(s) failed`); process.exit(1); }

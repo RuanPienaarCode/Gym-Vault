@@ -3,7 +3,7 @@
 
 const { el, ico, fmtSeconds, clickableCard, emptyLine } = require('./dom');
 const { todayISO, addDays, startOfWeek, fmtShort, monthLabel, weekdayKey } = require('./dates');
-const { workoutDates, workoutDate, weekStreak, sessionCount, sessionVolume, sessionSets } = require('./stats');
+const { workoutDates, workoutDate, weekStreak, sessionCount, sessionVolume, sessionSets, countLabel } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { ConfirmModal } = require('./modals');
 
@@ -74,7 +74,7 @@ function render(ctx, root) {
 function sessionCard(ctx, w, open) {
   const vol = sessionVolume(w.rows);
   const meta = [
-    `${sessionSets(w.rows)} sets`,
+    countLabel(sessionSets(w.rows), 'set'),
     vol ? `${vol}kg volume` : null,
     w.fm.duration_min ? `${w.fm.duration_min} min` : null,
   ].filter(Boolean).join(' · ');

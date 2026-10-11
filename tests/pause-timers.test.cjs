@@ -364,6 +364,26 @@ const PLANK2 = '## D (any)\n\n- Plank | 2 x 60s\n';
     assert.strictEqual(q(b, '.gv-rc-hint').textContent.trim(), '', 'and it clears on resume');
   });
 
+  await check('H14b. a paused hold says "tap to resume" ONCE: on the chip in the poster skins, in the hint in the others', async () => {
+    for (const skin of ['apex', 'lockin', 'floor', 'editorial']) {
+      const b = await guided(PLANK, { skin }); startHold(b);
+      H.click(pauseBtn(b));
+      const hint = q(b, '.gv-rc-hint').textContent.trim(), chip = q(b, '.gv-rc-tapchip');
+      const visible = [hint, chip ? chip.textContent.trim() : ''].filter(Boolean);
+      assert.strictEqual(visible.filter(t => /resume/i.test(t)).length, 1, `${skin}: "resume" is on screen once (saw ${JSON.stringify(visible)})`);
+      if (skin === 'apex' || skin === 'lockin') {
+        assert.strictEqual(hint, 'Paused', `${skin}: the hint is just the state`);
+        assert.strictEqual(chip.textContent.trim(), 'Tap to resume', `${skin}: the chip is the control label`);
+      } else {
+        assert.ok(!chip, `${skin}: draws no chip`);
+        assert.strictEqual(hint, 'Paused · tap to resume', `${skin}: keeps its one hint`);
+      }
+      assert.strictEqual(zone(b).getAttribute('aria-label'), 'Tap to resume the hold', `${skin}: the zone's spoken label is unchanged`);
+      H.click(resumeBtn(b));
+      assert.strictEqual(q(b, '.gv-rc-hint').textContent.trim(), '', `${skin}: the hint clears on resume`);
+    }
+  });
+
   await check('H15. Paused / Resumed are announced through the hold\'s existing polite region', async () => {
     const b = await guided(PLANK); startHold(b);
     const live = bodyLive(b);

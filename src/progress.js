@@ -215,6 +215,23 @@ function weekProgress({ workouts, goals, daysOn, today, weekStart }) {
   };
 }
 
+/* The week's count as words, for the header over the week strip, the ring's figure and caption, and the ring's
+   spoken label. A week can exceed its target (a fifth session in a four-session week) and "5 of 4 done" is not a
+   sentence: past the target the count is held at the target and the surplus is said once, "4 of 4 done +1". The
+   engine's numbers are not touched (weekProgress.done is still the real count, the ring is already capped at 100%);
+   this only decides how they are PHRASED, so every place reads the same words. The spoken label keeps the real count. */
+function weekWords(wp) {
+  const over = Math.max(0, wp.done - wp.target);
+  const shown = Math.min(wp.done, wp.target);
+  const plus = over ? ` +${over}` : '';
+  return {
+    head: `${shown} of ${wp.target} done${plus}`,
+    ratio: `${shown}/${wp.target}`,
+    togo: wp.met ? `Week done${plus}` : `${wp.toGo} to go`,
+    aria: over ? `${wp.done} sessions this week, ${over} over the target of ${wp.target}` : `${wp.done} of ${wp.target} sessions this week`,
+  };
+}
+
 /* The streak nag. weekStreak survives on ONE session in a week, so the only
    state in which the streak is genuinely at risk is: it is alive (streak > 0)
    and this week has nothing logged yet - it breaks if that is still true when
@@ -238,5 +255,5 @@ function streakRiskText(r) {
 
 module.exports = {
   classifyKind, entryShape, claimableBest, liveBest, pbTarget, pbDelta, marginText, pctText,
-  pbInReach, reachText, figureText, weekPlan, weekProgress, streakRisk, streakRiskText, REACH_STEP,
+  pbInReach, reachText, figureText, weekPlan, weekProgress, weekWords, streakRisk, streakRiskText, REACH_STEP,
 };

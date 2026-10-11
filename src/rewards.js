@@ -230,7 +230,7 @@ function questFor(o) {
   const key = `quest:${start}`;
   const title = kind === 'reps'
     ? (subject ? `Do ${target} reps of ${subject}` : `Do ${target} reps this week`)
-    : `Do ${target} sets this week`;
+    : `Do ${stats.countLabel(target, 'set')} this week`;
   return {
     key, kind, target, done,
     toGo: Math.max(0, target - done),

@@ -6,12 +6,12 @@
 const { el, ico, fmt, fmtSeconds, clickableCard, statTile, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort } = require('./dates');
-const { workoutDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
+const { workoutDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets, countLabel, countNoun } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { itemSets, isRestDay } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
 const { PlanPickerModal } = require('./modals');
-const { pbInReach, reachText, weekPlan, weekProgress, streakRisk, streakRiskText } = require('./progress');
+const { pbInReach, reachText, weekPlan, weekProgress, weekWords, streakRisk, streakRiskText } = require('./progress');
 const rewardsUi = require('./rewards-ui');
 
 /* The kit today's session needs, as chips under the prescription. Nothing
@@ -95,7 +95,7 @@ function titleNode(name) {
 function heroChips(setsTotal, xpSlot) {
   return el('div', { class: 'gv-hero-chips' },
     el('div', { class: 'gv-hero-chip-row' },
-      el('span', { class: 'gv-hero-chip' }, `${setsTotal} sets`),
+      el('span', { class: 'gv-hero-chip' }, countLabel(setsTotal, 'set')),
       el('span', { class: 'gv-hero-chip gv-hero-chip-min' }, `~${estMinutes(setsTotal)} min`)),
     xpSlot);
 }
@@ -275,9 +275,9 @@ function render(ctx, root) {
       el('span', { style: 'top:74%;left:-8%;width:50%' }));
     slab.append(speed);
     slab.append(el('div', { class: 'gv-hero-action-line' },
-      el('span', { class: 'gv-shout gv-shout-est' }, `${setsTotal} sets · est. ${estMinutes(setsTotal)} min`),
+      el('span', { class: 'gv-shout gv-shout-est' }, `${countLabel(setsTotal, 'set')} · est. ${estMinutes(setsTotal)} min`),
       el('span', { class: 'gv-shout' },
-        lastDate ? `Last: ${fmtShort(lastDate)} · ${sessionSets(last.rows)} sets` : 'First session — make it count')));
+        lastDate ? `Last: ${fmtShort(lastDate)} · ${countLabel(sessionSets(last.rows), 'set')}` : 'First session — make it count')));
     const copy = startCopy(settings.skin, doneToday);
     slab.append(el('button', {
       class: 'gv-btn-go', type: 'button',
@@ -337,7 +337,7 @@ function render(ctx, root) {
      `wp` is the same weekProgress the ring reads. */
   page.append(el('div', { class: 'gv-week-head' },
     el('span', { class: 'gv-week-head-title' }, 'This week'),
-    el('span', { class: 'gv-week-head-note' }, wp ? `${wp.done} of ${wp.target} done` : '')));
+    el('span', { class: 'gv-week-head-note' }, wp ? weekWords(wp).head : '')));
   page.append(strip);
   page.append(questSlot);
 
@@ -373,9 +373,9 @@ function render(ctx, root) {
   /* Three tiles in a two-column grid leaves a hole, and an empty cell reads
      as a figure that failed to load. The last-session tile spans instead. */
   const tiles = el('div', { class: 'gv-tiles' },
-    statTile(ico('calendar-days'), fmt(thisWeek), 'sessions this week'),
-    statTile(ico('dumbbell'), fmt(sessionCount(data.workouts)), 'sessions all time'),
-    statTile(ico('history'), lastDate ? fmtShort(lastDate) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session', 'gv-tile-wide'),
+    statTile(ico('calendar-days'), fmt(thisWeek), `${countNoun(thisWeek, 'session')} this week`),
+    statTile(ico('dumbbell'), fmt(sessionCount(data.workouts)), `${countNoun(sessionCount(data.workouts), 'session')} all time`),
+    statTile(ico('history'), lastDate ? fmtShort(lastDate) : '—', last ? `last · ${countLabel(sessionSets(last.rows), 'set')}` : 'last session', 'gv-tile-wide'),
   );
   page.append(tiles);
 
@@ -413,11 +413,14 @@ function render(ctx, root) {
 
 /* The ticker strip over the Rx list: short static words, decoration only (so
    hidden from assistive tech). Two passes of the same three words so a skin
-   that scrolls it has a seamless loop; one that does not simply clips it. */
+   that scrolls it has a seamless loop; one that does not simply clips it.
+   Wrapper > band > track: the wrapper is the clip around the band's rotation
+   (see "THE CLIP" in styles.css), the band is the strip. */
 function ticker() {
   const words = ['Lock in', 'No days off', 'Earn it'];
   return el('div', { class: 'gv-ticker', 'aria-hidden': 'true' },
-    el('div', {}, ...words.concat(words).map(w => el('span', {}, w))));
+    el('div', { class: 'gv-ticker-band' },
+      el('div', {}, ...words.concat(words).map(w => el('span', {}, w)))));
 }
 
 /* A day name is the USER'S text ("A · Pull Priority" ... or a whole sentence),
@@ -467,12 +470,13 @@ function weekRing(pct, label) {
 }
 
 function weekProgressBlock(wp) {
+  const words = weekWords(wp);
   return el('div', { class: 'gv-week-progress' },
-    weekRing(wp.pct, `${wp.done} of ${wp.target} sessions this week`),
+    weekRing(wp.pct, words.aria),
     el('div', { class: 'gv-week-progress-text' },
       el('span', { class: 'gv-week-progress-label' }, 'This week'),
-      el('b', { class: 'gv-week-progress-num' }, `${wp.done}/${wp.target}`),
-      el('span', { class: 'gv-week-progress-togo' }, wp.met ? 'Week done' : `${wp.toGo} to go`)));
+      el('b', { class: 'gv-week-progress-num' }, words.ratio),
+      el('span', { class: 'gv-week-progress-togo' }, words.togo)));
 }
 
 /* "A · Pull Priority" → "A"; "Push + Volume" → "PUS". Short enough for a

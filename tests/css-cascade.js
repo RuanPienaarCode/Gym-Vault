@@ -336,7 +336,7 @@ function ratio(a, b) { const [h, l] = [lum(a), lum(b)].sort((x, y) => y - x); re
 /* The colour `background` / `background-color` paints on one element, or null
    when it paints none. A gradient is refused: nothing probed uses one, and
    guessing a flat colour for it would be a made-up number. */
-function ownBackground(chain, rules, extra) {
+function ownBackground(chain, rules, extra, withSheen) {
   const hit = declarationsFor(chain, ['background', 'background-color'], rules, extra)[0];
   let own = null;
   if (hit) {
@@ -356,7 +356,17 @@ function ownBackground(chain, rules, extra) {
       const value = resolveVars(chain, slab.decl.value, rules, extra);
       const colour = parseColor(value);
       if (!colour) throw new Error('css-cascade: cannot read --gv-slab "' + value + '" (' + slab.rule.selector + ')');
-      if (colour.a !== 0) return { colour, rule: slab.rule };
+      if (colour.a !== 0) {
+        /* The slab's ::before also lays a gradient from clear (top) to --gv-slab-sheen (bottom) over its fill
+           (the `background-image` on the shared ::before rule). The sheen is read the same way as the slab
+           itself: only what a rule declares on this very element. `withSheen` is the BOTTOM end, fully applied. */
+        if (withSheen) {
+          const sh = declarationsFor(chain, ['--gv-slab-sheen'], rules, extra)[0];
+          const sc = sh && parseColor(resolveVars(chain, sh.decl.value, rules, extra));
+          if (sc && sc.a !== 0) return { colour: over(sc, colour), rule: slab.rule };
+        }
+        return { colour, rule: slab.rule };
+      }
     }
   }
   return own;
@@ -364,10 +374,10 @@ function ownBackground(chain, rules, extra) {
 
 /* What is actually painted behind the last element: its own background over
    its ancestors', outermost first. */
-function paintedBackground(chain, rules, extra) {
+function paintedBackground(chain, rules, extra, withSheen) {
   let under = null, by = null;
   for (let end = 1; end <= chain.length; end++) {
-    const own = ownBackground(chain.slice(0, end), rules, extra);
+    const own = ownBackground(chain.slice(0, end), rules, extra, withSheen);
     if (!own || own.colour.a === 0) continue;
     under = under ? over(own.colour, under) : own.colour;
     by = own.rule;
@@ -376,14 +386,33 @@ function paintedBackground(chain, rules, extra) {
   return { colour: under, rule: by };
 }
 
-function textColor(chain, rules, extra) {
-  const bg = paintedBackground(chain, rules, extra);
+/* The text on the surface, measured at the WORSE end of the slab's sheen: a gradient has no single colour, and
+   text can sit at either end of it (a dark-theme sheen darkens, a light-theme one darkens paper by up to 4%: enough
+   to take an accent's deep tone from 4.74 to 4.42:1, which a gate that read the bare fill passed). */
+function textOn(chain, bgOf, rules, extra) {
   const found = computed(chain, 'color', rules, extra);
   if (!found) throw new Error('css-cascade: no text colour reaches the element');
   const value = resolveVars(found.chain, found.value, rules, extra);
   const fg = parseColor(value);
   if (!fg) throw new Error('css-cascade: cannot read colour "' + value + '" (' + found.rule.selector + ')');
-  return { fg: over(fg, bg.colour), bg: bg.colour, fgRule: found.rule, bgRule: bg.rule };
+  let worst = null;
+  for (const withSheen of [false, true]) {
+    const bg = bgOf(withSheen);
+    const out = { fg: over(fg, bg.colour), bg: bg.colour, fgRule: found.rule, bgRule: bg.rule };
+    if (!worst || ratio(out.fg, out.bg) < ratio(worst.fg, worst.bg)) worst = out;
+  }
+  return worst;
+}
+function textColor(chain, rules, extra) {
+  return textOn(chain, withSheen => paintedBackground(chain, rules, extra, withSheen), rules, extra);
+}
+
+/* Text whose box is NOT inside the element that paints behind it: a label laid over a sticker it
+   is a SIBLING of (the streak badge's "wk streak" sits on the starburst .gv-badge-fig, but is not
+   inside it). The colour comes from the text's own cascade, the surface from `surfaceChain`'s
+   painted background. Nothing is guessed: the caller names the element whose fill is behind the text. */
+function textColorOn(chain, surfaceChain, rules, extra) {
+  return textOn(chain, withSheen => paintedBackground(surfaceChain, rules, extra, withSheen), rules, extra);
 }
 
 /* px from a font-size declaration, as a 390px-wide phone would lay it out.
@@ -427,5 +456,5 @@ function appChain(o, ...inner) {
 module.exports = {
   SRC_CSS, load, parseStylesheet, parseSelector, specificity, compareSpec, fmtSpec,
   el, chainOf, appChain, declarationsFor, computed, resolveVars,
-  parseColor, ratio, hex, textColor, paintedBackground, pxOf,
+  parseColor, ratio, hex, textColor, textColorOn, paintedBackground, pxOf,
 };

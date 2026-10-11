@@ -23,6 +23,13 @@ const data = {
 };
 const today = '2026-08-28';
 
+/* A one-set session says "1 set". (The session lines print "N sets" under each heading.) */
+{
+  const out = buildSummary(data, { today, days: 0 });
+  assert.ok(/^1 set$/m.test(out), 'a one-row session prints "1 set"');
+  assert.ok(!/\b1 sets\b/.test(out), 'and never "1 sets"');
+}
+
 /* PRIVACY: the clinical VALUES must not appear in any format unless asked
    for. (The summary may still NAME the markers — it prints a line saying
    they were withheld, which is the opposite of a leak.) */

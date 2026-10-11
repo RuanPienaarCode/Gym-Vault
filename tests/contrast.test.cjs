@@ -73,7 +73,7 @@ const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
 /* kind 'glyph' = an icon (3:1). Everything else is text, classed by the size
    and weight the cascade gives it. `chain` is the element path under
    <main class="gv-page">, written as the JS builds it. */
-const text = (id, chain, finding) => ({ id, chain, finding, kind: 'text' });
+const text = (id, chain, finding, surface) => ({ id, chain, finding, kind: 'text', surface });
 const glyph = (id, chain, finding) => ({ id, chain, finding, kind: 'glyph' });
 const LOGSET = ['div.gv-card.gv-log-card', 'div.gv-log-sets'];
 const LOGTOP = 'div.gv-logtop';
@@ -146,7 +146,7 @@ const PROBES = [
      --gv-slab as the fill the leaning ::before paints. ---- */
   text('PB in reach line', ['div.gv-hero.gv-hero-today', 'ul.gv-rx', 'li.gv-rx-reach', 'span', 'span.gv-pb-reach'], 'progress'),
   text('PB in reach row value', ['div.gv-hero.gv-hero-today', 'ul.gv-rx', 'li.gv-rx-reach', 'b'], 'progress'),
-  text('ticker word', ['div.gv-hero.gv-hero-today', 'div.gv-ticker', 'div', 'span'], 'apex'),
+  text('ticker word', ['div.gv-hero.gv-hero-today', 'div.gv-ticker', 'div.gv-ticker-band', 'div', 'span'], 'apex'),
   text('week progress label', ['div.gv-week-progress', 'div.gv-week-progress-text', 'span.gv-week-progress-label'], 'progress'),
   text('week progress number', ['div.gv-week-progress', 'div.gv-week-progress-text', 'b.gv-week-progress-num'], 'progress'),
   text('week progress to-go', ['div.gv-week-progress', 'div.gv-week-progress-text', 'span.gv-week-progress-togo'], 'progress'),
@@ -176,7 +176,19 @@ const PROBES = [
   text('Today title: outlined rest', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'div.gv-hero-stage', 'h2.gv-display.gv-hero-title.is-split', 'span.gv-title-rest'], 'fidelity'),
   text('hero chip (sets / minutes)', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'div.gv-hero-stage', 'div.gv-hero-chips', 'div.gv-hero-chip-row', 'span.gv-hero-chip'], 'fidelity'),
   text('streak badge number', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'div.gv-hero-stage', 'div.gv-hero-badge', 'div.gv-badge-fig', 'div.gv-badge-in', 'b.gv-badge-num'], 'fidelity'),
-  text('streak badge label', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'div.gv-hero-stage', 'div.gv-hero-badge', 'span.gv-badge-label'], 'fidelity'),
+  /* The label is a SIBLING of the badge figure, not inside it, so what it inherits and what is painted behind it
+     are two different elements. Lock In lays it on the amber starburst (.gv-badge-fig), so the surface is the
+     figure's own fill (a `surface` probe reads that), not the hero's: measured against the hero, a label that
+     inherited the page's white on a rest day printed fine and was 1.83:1 on the real surface. Apex draws it
+     BELOW its hexagon, on the hero, so it keeps the default. */
+  ...[['', 'div.gv-hero.gv-hero-today'], [' (rest / no plan)', 'div.gv-hero.gv-hero-today.gv-hero-rest']].flatMap(([when, hero]) => {
+    const badge = [hero, 'div.gv-hero-head', 'div.gv-hero-stage', 'div.gv-hero-badge'];
+    const onStar = skin => (skin === 'lockin' ? [...badge, 'div.gv-badge-fig'] : null);
+    return [
+      text(`streak badge label${when}`, [...badge, 'span.gv-badge-label'], 'fidelity', onStar),
+      ...(when ? [text(`streak badge number${when}`, [...badge, 'div.gv-badge-fig', 'div.gv-badge-in', 'b.gv-badge-num'], 'fidelity')] : []),
+    ];
+  }),
   text('week header title', ['div.gv-week-head', 'span.gv-week-head-title'], 'fidelity'),
   text('week header note', ['div.gv-week-head', 'span.gv-week-head-note'], 'fidelity'),
   /* The REST hero (0.13.1): Lock In keeps it off the accent flood. */
@@ -308,6 +320,11 @@ const PROBES = [
   text('live: PB target kicker (beaten)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target.is-beaten', 'span.gv-pb-target-kicker'], 'poster'),
   text('live: PB target scale', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target', 'div.gv-pb-target-marks', 'span'], 'poster'),
   text('live: PB target scale (beaten)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target.is-beaten', 'div.gv-pb-target-marks', 'span'], 'poster'),
+  /* The scale's MIDDLE figure ("62% of PB") is the one span the poster skins colour differently (the accent's text tone),
+     through a `:nth-child(2)` rule. A probe whose last link is a bare `span` never matches that rule, so the gate measured the
+     two outer figures and passed while the middle one printed 4.42:1 (Electric, Lock In light). Probe it by position. */
+  text('live: PB target scale, middle figure', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target', 'div.gv-pb-target-marks', 'span:nth-child(2)'], 'poster'),
+  text('live: PB target scale, middle figure (beaten)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target.is-beaten', 'div.gv-pb-target-marks', 'span:nth-child(2)'], 'poster'),
   text('live: tap chip (idle zone)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-rc-zone.gv-session-zone.gv-live-zone', 'div.gv-rc-tapchip'], 'poster'),
   text('live: count caption (idle zone)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-rc-zone.gv-session-zone.gv-live-zone', 'div.gv-rc-target'], 'poster'),
   text('live: Tick set label', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-tickwrap', 'button.gv-btn-go.gv-live-tick', 'span'], 'poster'),
@@ -328,7 +345,8 @@ const problems = [];
 for (const theme of THEMES) for (const skin of SKINS) for (const accent of ACCENTS) {
   for (const probe of PROBES) {
     const chain = cx.appChain({ theme, skin, accent }, ...probe.chain);
-    const t = cx.textColor(chain, rules);
+    const surface = probe.surface && probe.surface(skin);
+    const t = surface ? cx.textColorOn(chain, cx.appChain({ theme, skin, accent }, ...surface), rules) : cx.textColor(chain, rules);
     const size = probe.kind === 'glyph' ? 0 : (() => { const f = cx.computed(chain, 'font-size', rules); return f ? cx.pxOf(f.value) : 16; })();
     const weight = probe.kind === 'glyph' ? 0 : (() => { const f = cx.computed(chain, 'font-weight', rules); return f ? weightOf(f.value) : 400; })();
     const min = need(probe, size, weight);
