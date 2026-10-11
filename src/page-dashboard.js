@@ -3,7 +3,7 @@
    lime flood on this screen is the action slab, and it holds nothing but
    the session stats and the start button (design/06-editorial-floor.html). */
 
-const { el, ico, fmt, fmtSeconds, clickableCard } = require('./dom');
+const { el, ico, fmt, fmtSeconds, clickableCard, statTile, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort } = require('./dates');
 const { workoutDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets } = require('./stats');
@@ -373,9 +373,9 @@ function render(ctx, root) {
   /* Three tiles in a two-column grid leaves a hole, and an empty cell reads
      as a figure that failed to load. The last-session tile spans instead. */
   const tiles = el('div', { class: 'gv-tiles' },
-    tile(ico('calendar-days'), fmt(thisWeek), 'sessions this week'),
-    tile(ico('dumbbell'), fmt(sessionCount(data.workouts)), 'sessions all time'),
-    tile(ico('history'), lastDate ? fmtShort(lastDate) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session', 'gv-tile-wide'),
+    statTile(ico('calendar-days'), fmt(thisWeek), 'sessions this week'),
+    statTile(ico('dumbbell'), fmt(sessionCount(data.workouts)), 'sessions all time'),
+    statTile(ico('history'), lastDate ? fmtShort(lastDate) : '—', last ? `last · ${sessionSets(last.rows)} sets` : 'last session', 'gv-tile-wide'),
   );
   page.append(tiles);
 
@@ -403,7 +403,7 @@ function render(ctx, root) {
           el('span', { class: 'gv-goal-mini-nums' }, `${cur} / ${tgt}`)),
         el('div', { class: 'gv-bar' }, el('div', { class: 'gv-bar-fill', style: `width:${Math.round((p || 0) * 100)}%` }))));
     }
-    if (!ranked.length) wrap.append(el('div', { class: 'gv-empty-line' }, 'All goals hit — set a new one!'));
+    if (!ranked.length) wrap.append(emptyLine('All goals hit — set a new one!'));
     page.append(wrap);
     page.append(el('p', { class: 'gv-microcopy' }, 'No zero days.'));
   }
@@ -480,13 +480,6 @@ function weekProgressBlock(wp) {
 function dayShort(day) {
   const first = (day.name || '').trim().split(/[\s·|]+/)[0] || '';
   return first.slice(0, 3).toUpperCase();
-}
-
-function tile(icon, big, label, extraClass) {
-  return el('div', { class: `gv-tile${extraClass ? ` ${extraClass}` : ''}` },
-    el('div', { class: 'gv-tile-ico' }, icon),
-    el('div', { class: 'gv-tile-big' }, big),
-    el('div', { class: 'gv-tile-label' }, label));
 }
 
 /* Searches every plan (active + parallel), not just the strength one. */

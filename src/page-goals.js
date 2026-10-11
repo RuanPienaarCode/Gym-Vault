@@ -1,7 +1,7 @@
 'use strict';
 /* Goals — progress toward each target, derived from real logged data. */
 
-const { el, ico, fmt, fmtSeconds, ring } = require('./dom');
+const { el, ico, fmt, fmtSeconds, ring, emptyLine } = require('./dom');
 const { GOAL_METRICS } = require('./constants');
 const { goalCurrent, goalIssue, goalProgress, sameName } = require('./stats');
 const { claimableKinds } = require('./records');
@@ -27,7 +27,7 @@ function render(ctx, root) {
   root.append(bar);
 
   if (!data.goals.length) {
-    root.append(el('div', { class: 'gv-empty-line' }, 'No goals yet — name the thing you\'re training for.'));
+    root.append(emptyLine('No goals yet — name the thing you\'re training for.'));
     return;
   }
 

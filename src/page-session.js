@@ -14,7 +14,7 @@
    time guided mode is (re-)entered via ctx.enterGuided(). */
 
 const { Notice } = require('obsidian');
-const { el, ico, clear, fmtSeconds, segmented, numericInput } = require('./dom');
+const { el, ico, clear, fmtSeconds, segmented, numericInput, statTile } = require('./dom');
 const { todayISO } = require('./dates');
 const { DEFAULT_SETTINGS, GUIDE_REST } = require('./constants');
 const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
@@ -2008,13 +2008,6 @@ function timedFigures(ctx, entry, set, iv) {
 
 /* ---------- completion state ---------- */
 
-function tile(icon, big, label) {
-  return el('div', { class: 'gv-tile' },
-    el('div', { class: 'gv-tile-ico' }, icon),
-    el('div', { class: 'gv-tile-big' }, big),
-    el('div', { class: 'gv-tile-label' }, label));
-}
-
 /* The XP card and the medal-unlocked card on the completion screen (rewards). */
 const rewardsUi = require('./rewards-ui');
 
@@ -2114,8 +2107,8 @@ function renderComplete(ctx, root, draft, sess) {
     recordList,
     rewardsSlot || '',
     el('div', { class: 'gv-tiles gv-session-complete-tiles' },
-      tile(ico('check'), String(doneSets), 'sets done'),
-      tile(ico('timer'), `${totalMin} min`, 'elapsed')),
+      statTile(ico('check'), String(doneSets), 'sets done'),
+      statTile(ico('timer'), `${totalMin} min`, 'elapsed')),
     el('div', { class: 'gv-hero-action gv-session-nextwrap' }, primaryBtn),
     el('button', { class: 'gv-btn gv-btn-ghost gv-session-review', type: 'button', onclick: () => ctx.nav('log') },
       ico('list'), el('span', {}, 'Review in log')),

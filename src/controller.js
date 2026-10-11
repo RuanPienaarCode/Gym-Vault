@@ -3,13 +3,14 @@
    the vault watcher. One controller per open view. */
 
 const { Notice, normalizePath } = require('obsidian');
-const { el, ico, clear } = require('./dom');
+const { el, ico, clear, emptyLine } = require('./dom');
 const { makeIo } = require('./data');
 const { ConfirmModal } = require('./modals');
 const { isPaused } = require('./plan-parse');
 const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
+const { skinClasses } = require('./constants');
 const pages = {
   dashboard: require('./page-dashboard'),
   exercises: require('./page-exercises'),
@@ -222,7 +223,7 @@ function mountApp(view) {
     for (const cls of [...rootEl.classList]) {
       if (cls.indexOf('gv-skin-') === 0 || cls.indexOf('gv-accent-') === 0) rootEl.classList.remove(cls);
     }
-    rootEl.classList.add(`gv-skin-${plugin.settings.skin || 'apex'}`, `gv-accent-${plugin.settings.accent || 'lime'}`);
+    rootEl.classList.add(...skinClasses(plugin.settings.skin || 'apex'), `gv-accent-${plugin.settings.accent || 'lime'}`);
   };
   syncChrome();
 
@@ -480,7 +481,7 @@ function mountApp(view) {
       try { page.render(ctx, pageEl); }
       catch (e) {
         console.error('gym-vault render', e);
-        pageEl.append(el('div', { class: 'gv-empty-line' }, `Something went wrong rendering this page (${e.message}).`));
+        pageEl.append(emptyLine(`Something went wrong rendering this page (${e.message}).`));
       }
     }
     pageEl.scrollTop = 0;

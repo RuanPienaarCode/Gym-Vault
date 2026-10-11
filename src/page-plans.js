@@ -4,7 +4,7 @@
    via "Open note", and everything written here round-trips through
    plan-parse so hand-written coaching cues survive. */
 
-const { el, ico, prose, clickableCard, backButton, toggleRow } = require('./dom');
+const { el, ico, prose, clickableCard, backButton, toggleRow, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
@@ -117,7 +117,7 @@ function render(ctx, root) {
   root.append(bar);
 
   if (!data.plans.length) {
-    root.append(el('div', { class: 'gv-empty-line' }, 'No plans yet — create one, or run setup from Settings.'));
+    root.append(emptyLine('No plans yet — create one, or run setup from Settings.'));
     return;
   }
 
@@ -162,7 +162,7 @@ function render(ctx, root) {
     const shown = ordered.filter(p => matches(p) && planMatches(p, ui.q));
     if (!shown.length) {
       const q = String(ui.q || '').trim();
-      listWrap.append(el('div', { class: 'gv-empty-line' }, q
+      listWrap.append(emptyLine(q
         ? `No plan matches “${q}”${ui.kit || ui.focus ? ' with these filters' : ''}.`
         : 'No plan matches both filters — clear one to widen the search.'));
       return;

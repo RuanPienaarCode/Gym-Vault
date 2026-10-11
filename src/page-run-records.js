@@ -12,7 +12,7 @@
    Reached from the Running page's toolbar, the way Records is reached from
    History. Not a nav tab: the bar stays at six (see page-records.js). */
 
-const { el, ico, fmt, fmtSeconds, clickableCard, backButton } = require('./dom');
+const { el, ico, fmt, fmtSeconds, clickableCard, backButton, statTile, emptyLine } = require('./dom');
 const { fmtShort } = require('./dates');
 const { runRecords, paceOf, fmtPace, MIN_PACE_KM } = require('./run-records');
 const { sameName } = require('./stats');
@@ -41,7 +41,7 @@ function render(ctx, root) {
     el('div', { class: 'gv-dim' }, R.runs ? `${R.runs} run${R.runs === 1 ? '' : 's'}` : '')));
 
   if (!R.runs) {
-    root.append(el('div', { class: 'gv-empty-line' },
+    root.append(emptyLine(
       'No runs logged yet — the first one sets every record here at once.'));
     return;
   }
@@ -60,10 +60,10 @@ function render(ctx, root) {
      a second figure. Everywhere else on the page the pace keeps its unit. */
   const paceDigits = run => fmtPace(paceOf(run)).replace(/ \/km$/, '');
   root.append(el('div', { class: 'gv-tiles' },
-    tile(ico('gauge'), R.fastest ? paceDigits(R.fastest) : '—', `best min/km, ${MIN_PACE_KM} km+`),
-    tile(ico('timer'), R.longestTime ? fmtSeconds(R.longestTime.seconds) : '—', 'longest on feet'),
-    tile(ico('calendar-days'), R.biggestWeek ? fmt(R.biggestWeek.km, ' km') : '—', 'biggest week'),
-    tile(ico('footprints'), fmt(R.totalKm, ' km'), R.firstDate ? `total since ${fmtShort(R.firstDate)}` : 'total')));
+    statTile(ico('gauge'), R.fastest ? paceDigits(R.fastest) : '—', `best min/km, ${MIN_PACE_KM} km+`),
+    statTile(ico('timer'), R.longestTime ? fmtSeconds(R.longestTime.seconds) : '—', 'longest on feet'),
+    statTile(ico('calendar-days'), R.biggestWeek ? fmt(R.biggestWeek.km, ' km') : '—', 'biggest week'),
+    statTile(ico('footprints'), fmt(R.totalKm, ' km'), R.firstDate ? `total since ${fmtShort(R.firstDate)}` : 'total')));
 
   /* ---- best pace by distance ---- */
   root.append(el('div', { class: 'gv-section-title' }, ico('gauge'), el('span', {}, 'Best pace by distance')));
@@ -123,13 +123,6 @@ function render(ctx, root) {
   }
 
   root.append(el('p', { class: 'gv-microcopy' }, 'A pace here is always one run\'s own time over its own distance.'));
-}
-
-function tile(icon, big, label) {
-  return el('div', { class: 'gv-tile' },
-    el('div', { class: 'gv-tile-ico' }, icon),
-    el('div', { class: 'gv-tile-big' }, big),
-    el('div', { class: 'gv-tile-label' }, label));
 }
 
 module.exports = { render, runLine };

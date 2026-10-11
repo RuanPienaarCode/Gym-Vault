@@ -1,7 +1,7 @@
 'use strict';
 /* Exercise library — searchable, filterable, with per-exercise bests. */
 
-const { el, ico, fmtSeconds, clickableCard } = require('./dom');
+const { el, ico, fmtSeconds, clickableCard, emptyLine } = require('./dom');
 const { EXERCISE_TYPES, MUSCLE_GROUPS } = require('./constants');
 const { exerciseBests } = require('./stats');
 const { equipmentTokens, labelFor } = require('./equipment');
@@ -80,7 +80,7 @@ function render(ctx, root) {
       (!q || ex.name.toLowerCase().includes(q)) &&
       (!ui.muscle || listOf(ex.fm.muscles).includes(ui.muscle)));
     if (!items.length) {
-      listWrap.append(el('div', { class: 'gv-empty-line' }, data.exercises.length ? 'No matches.' : 'No exercises yet — add one.'));
+      listWrap.append(emptyLine(data.exercises.length ? 'No matches.' : 'No exercises yet — add one.'));
       return;
     }
     items.forEach((ex, i) => listWrap.append(card(ctx, ex, i)));

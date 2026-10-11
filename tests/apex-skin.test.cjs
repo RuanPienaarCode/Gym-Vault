@@ -68,7 +68,9 @@ const bannerLine = css.slice(0, banner).split('\n').length;
 const lockBanner = css.indexOf('SKIN: LOCK IN');
 const lockLine = lockBanner > 0 ? css.slice(0, lockBanner).split('\n').length : Infinity;
 assert.ok(lockLine > bannerLine, 'the Lock In section must come after the Apex section');
-const apex = rules.filter(r => r.line >= bannerLine && r.line < lockLine);
+/* Rules written against `.gv-skin-poster` (the hook Apex and Lock In share) are read by the cascade engine as one rule
+   per skin, so the Apex rules are everything in the section that does not name Lock In: the shared ones count as Apex's. */
+const apex = rules.filter(r => r.line >= bannerLine && r.line < lockLine && !/gv-skin-lockin/.test(r.selector));
 assert.ok(apex.length > 80, 'the Apex section parsed to almost nothing');
 const TOKEN_SEL = new Set(['.gv-app.gv-skin-apex', '.theme-dark .gv-app.gv-skin-apex', '.gv-app.gv-skin-apex.gv-accent-lime']);
 
@@ -120,15 +122,16 @@ const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
 
 /* ---------- 5 ---------- */
 {
-  const decl = sel => Object.fromEntries((apex.find(r => r.selector === sel) || { decls: [] }).decls.map(d => [d.prop, d.value]));
+  /* the shared poster block and Apex's own block both declare tokens under this selector: read them as one, later wins */
+  const decl = sel => Object.fromEntries(apex.filter(r => r.selector === sel).flatMap(r => r.decls).map(d => [d.prop, d.value]));
   const light = decl('.gv-app.gv-skin-apex'), dark = decl('.theme-dark .gv-app.gv-skin-apex');
   const need = ['--gv-bg', '--gv-surface', '--gv-line', '--gv-line-2', '--gv-ink', '--gv-ink-dim', '--gv-amber',
-    '--gv-accent-text', '--gv-apex-chip', '--gv-apex-cell', '--gv-apex-track', '--gv-apex-hero-hi', '--gv-apex-hero-lo', '--gv-apex-sheen'];
+    '--gv-accent-text', '--gv-poster-chip', '--gv-poster-cell', '--gv-poster-track', '--gv-apex-hero-hi', '--gv-apex-hero-lo', '--gv-poster-sheen'];
   for (const k of need) {
     assert.ok(light[k], `Apex light is missing ${k}`);
     assert.ok(dark[k], `Apex dark is missing ${k}`);
   }
-  for (const k of ['--gv-bg', '--gv-surface', '--gv-ink', '--gv-apex-sheen']) assert.notStrictEqual(light[k], dark[k], `${k} is identical in both themes — one value cannot serve both`);
+  for (const k of ['--gv-bg', '--gv-surface', '--gv-ink', '--gv-poster-sheen']) assert.notStrictEqual(light[k], dark[k], `${k} is identical in both themes — one value cannot serve both`);
   assert.strictEqual(dark['--gv-bg'].toLowerCase(), '#0a0b0d', 'dark is the mockup: graphite #0A0B0D');
 }
 
@@ -196,7 +199,7 @@ const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
   }
   assert.ok(loops.length >= 4, `expected the ticker, CTA pulse and both glow loops, found ${loops.length}`);
   const names = new Set(loops.map(l => l.name));
-  for (const n of ['gv-apex-marquee', 'gv-apex-pulse', 'gv-apex-halo', 'gv-apex-glow', 'gv-live-blink']) assert.ok(names.has(n), `the ${n} loop is no longer found by this guard`);
+  for (const n of ['gv-poster-marquee', 'gv-apex-pulse', 'gv-apex-halo', 'gv-apex-glow', 'gv-live-blink']) assert.ok(names.has(n), `the ${n} loop is no longer found by this guard`);
   /* the shadow itself is static: the loop rules that carry a glow declare no animated-property keyframes of their own */
   for (const sel of ['.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten::after', '.theme-dark .gv-app.gv-skin-apex .gv-pb-new::after']) {
     const rule = apex.find(r => r.selector === sel && r.decls.some(d => d.prop === 'animation'));

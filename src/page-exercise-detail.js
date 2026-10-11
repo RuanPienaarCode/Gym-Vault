@@ -11,7 +11,7 @@
    pass. */
 
 const { MarkdownRenderer } = require('obsidian');
-const { el, ico, fmt, fmtSeconds, backButton } = require('./dom');
+const { el, ico, fmt, fmtSeconds, backButton, statTile } = require('./dom');
 const { exerciseBests, best1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
 const { recordHistory, KINDS } = require('./records');
@@ -88,17 +88,17 @@ function render(ctx, root) {
      different rules is exactly how this codebase grows wrong numbers. */
   root.append(isRun
     ? el('div', { class: 'gv-tiles' },
-        tile(ico('trophy'), fmt(bests.distance, ' km'), 'longest run'),
-        tile(ico('timer'), bests.seconds !== null ? fmtSeconds(bests.seconds) : '—', 'longest time'),
-        tile(ico('chart-line'), bests.totalDistance ? `${bests.totalDistance} km` : '—', 'total logged'),
-        tile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last run'))
+        statTile(ico('trophy'), fmt(bests.distance, ' km'), 'longest run'),
+        statTile(ico('timer'), bests.seconds !== null ? fmtSeconds(bests.seconds) : '—', 'longest time'),
+        statTile(ico('chart-line'), bests.totalDistance ? `${bests.totalDistance} km` : '—', 'total logged'),
+        statTile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last run'))
     : el('div', { class: 'gv-tiles' },
-        tile(ico('trophy'), fmt(bests.reps), 'best reps'),
-        tile(ico('dumbbell'), fmt(bests.weight, ' kg'), 'best weight'),
-        tile(ico('timer'), bests.seconds !== null ? fmtSeconds(bests.seconds) : '—', 'best hold'),
+        statTile(ico('trophy'), fmt(bests.reps), 'best reps'),
+        statTile(ico('dumbbell'), fmt(bests.weight, ' kg'), 'best weight'),
+        statTile(ico('timer'), bests.seconds !== null ? fmtSeconds(bests.seconds) : '—', 'best hold'),
         orm !== null
-          ? tile(ico('chart-line'), `${orm} kg`, 'est. 1RM')
-          : tile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last done')));
+          ? statTile(ico('chart-line'), `${orm} kg`, 'est. 1RM')
+          : statTile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last done')));
 
   /* THE PROGRESSION — every time a best moved, oldest first.
 
@@ -258,13 +258,6 @@ function recentSessions(workouts, exercise, n) {
     out.push({ date: w.fm.date || '', day: w.fm.day || '', summary });
   }
   return out;
-}
-
-function tile(icon, big, label) {
-  return el('div', { class: 'gv-tile' },
-    el('div', { class: 'gv-tile-ico' }, icon),
-    el('div', { class: 'gv-tile-big' }, big),
-    el('div', { class: 'gv-tile-label' }, label));
 }
 
 module.exports = { render, resolveExerciseImages };

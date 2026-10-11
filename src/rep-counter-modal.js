@@ -19,6 +19,7 @@ const sound = require('./sound');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey, motionFailureCopy } = require('./motion-count');
 const { Notice } = require('obsidian');
+const { skinClasses } = require('./constants');
 
 const FLASH_MS = 180;
 
@@ -80,7 +81,7 @@ class RepCounterModal extends Modal {
     this.modalEl.addClass('gv-app');
     this.contentEl.addClass('gv-xp-host');
     this.modalEl.addClass('gv-repcounter-modal');
-    this.modalEl.addClass(`gv-skin-${this.skin}`);
+    for (const cls of skinClasses(this.skin)) this.modalEl.addClass(cls);
     this.modalEl.addClass(`gv-accent-${this.accent}`);
 
     const c = this.contentEl;

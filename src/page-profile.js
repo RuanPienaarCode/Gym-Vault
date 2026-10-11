@@ -3,7 +3,7 @@
    the measurement log. Static facts live in Profile.md frontmatter; every
    measurement is a dated row in Body Log.md. */
 
-const { el, ico, clear, fmt, fmtSeconds, sparkline, clickableCard } = require('./dom');
+const { el, ico, clear, fmt, fmtSeconds, sparkline, clickableCard, statTile, emptyLine } = require('./dom');
 const { progressOf } = require('./voice-pack');
 const sound = require('./sound');
 const { BODY_COLUMNS } = require('./constants');
@@ -49,17 +49,17 @@ function render(ctx, root) {
   /* Health tiles. */
   const bmiVal = bmi(latest.weight_kg, fm.height_cm);
   const tiles = el('div', { class: 'gv-tiles' },
-    tile(ico('scale'), fmt(latest.weight_kg, ' kg'), 'weight'),
-    tile(ico('activity'), fmt(bmiVal), 'BMI'),
-    tile(ico('heart-pulse'), fmt(latest.resting_hr), 'resting HR'),
-    tile(ico('ruler'), fmt(latest.waist_cm, ' cm'), 'waist'));
+    statTile(ico('scale'), fmt(latest.weight_kg, ' kg'), 'weight'),
+    statTile(ico('activity'), fmt(bmiVal), 'BMI'),
+    statTile(ico('heart-pulse'), fmt(latest.resting_hr), 'resting HR'),
+    statTile(ico('ruler'), fmt(latest.waist_cm, ' cm'), 'waist'));
   /* Clinical tiles appear only once there's a reading — four permanent
      dashes would be noise for anyone who never logs bloods. */
   if (latest.bp_systolic && latest.bp_diastolic) {
-    tiles.append(tile(ico('gauge'), `${latest.bp_systolic}/${latest.bp_diastolic}`, 'blood pressure'));
+    tiles.append(statTile(ico('gauge'), `${latest.bp_systolic}/${latest.bp_diastolic}`, 'blood pressure'));
   }
-  if (latest.cholesterol) tiles.append(tile(ico('test-tube'), fmt(latest.cholesterol), 'cholesterol'));
-  if (latest.glucose) tiles.append(tile(ico('droplet'), fmt(latest.glucose), 'glucose'));
+  if (latest.cholesterol) tiles.append(statTile(ico('test-tube'), fmt(latest.cholesterol), 'cholesterol'));
+  if (latest.glucose) tiles.append(statTile(ico('droplet'), fmt(latest.glucose), 'glucose'));
   root.append(tiles);
 
   /* Weight trend. */
@@ -85,7 +85,7 @@ function render(ctx, root) {
       ico('plus'), el('span', {}, 'Measurement'))));
 
   if (!data.body.length) {
-    root.append(el('div', { class: 'gv-empty-line' }, 'No measurements yet — log the first one to start the trend.'));
+    root.append(emptyLine('No measurements yet — log the first one to start the trend.'));
   } else {
     const list = el('div', { class: 'gv-card-list' });
     for (const r of [...data.body].reverse().slice(0, 12)) {
@@ -128,13 +128,6 @@ function latestStats(rows) {
   const out = {};
   for (const r of rows) for (const c of BODY_COLUMNS) if (r[c.key]) out[c.key] = r[c.key];
   return out;
-}
-
-function tile(icon, big, label) {
-  return el('div', { class: 'gv-tile' },
-    el('div', { class: 'gv-tile-ico' }, icon),
-    el('div', { class: 'gv-tile-big' }, big),
-    el('div', { class: 'gv-tile-label' }, label));
 }
 
 function iconBtn(name, label, onClick) {
@@ -186,7 +179,6 @@ function openAddMeasurement(ctx) {
   }).open();
 }
 
-
 /* ---- progress photos ------------------------------------------------- */
 
 /* Photos are BINARY and are fetched separately from loadAll(), so this
@@ -229,7 +221,7 @@ function renderPhotos(ctx, root) {
   }).catch(e => {
     if (!body.isConnected) return;
     clear(body);
-    body.append(el('div', { class: 'gv-empty-line' }, `Could not read your photos — ${(e && e.message) || e}`));
+    body.append(emptyLine(`Could not read your photos — ${(e && e.message) || e}`));
   });
 }
 
@@ -262,7 +254,7 @@ function paint(ctx, body, entries, ui) {
   body.append(el('div', { class: 'gv-photo-viewer-actions' }, shoot));
 
   if (!list.length) {
-    body.append(el('div', { class: 'gv-empty-line' },
+    body.append(emptyLine(
       'No photos in this pose yet — the first one becomes the "before".'));
     return;
   }

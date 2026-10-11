@@ -48,13 +48,29 @@ const banner = css.indexOf('SKIN: LOCK IN');
 assert.ok(banner > 0, 'SKIN: LOCK IN banner missing');
 assert.ok(banner > css.indexOf('SKIN: APEX'), 'the Lock In section must come after the Apex section (its rules win ties by order)');
 const bannerLine = css.slice(0, banner).split('\n').length;
-const lock = rules.filter(r => r.line >= bannerLine);
+/* Apex and Lock In share one set of rules, written once against `.gv-skin-poster` inside the Apex section (before the
+   Lock In banner). The cascade engine reads each as one rule per skin, so every guard below sees the rules Lock In
+   wears - its own AND the shared ones - as `.gv-app.gv-skin-lockin ...`: that is `lock`. `region` is only what sits
+   under the Lock In banner. */
+const apexBanner = css.indexOf('SKIN: APEX');
+const apexBannerLine = css.slice(0, apexBanner).split('\n').length;
+const lock = rules.filter(r => r.line >= apexBannerLine && /gv-skin-lockin/.test(r.selector));
+const region = rules.filter(r => r.line >= bannerLine);
 const lockText = bare.slice(banner);
+/* the text any Lock In rule can live in: the Apex section (shared rules) and the Lock In section */
+const skinText = bare.slice(apexBanner);
 assert.ok(lock.length > 120, `the Lock In section parsed to almost nothing (${lock.length} rules)`);
 const THEMES = ['light', 'dark'];
 const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
 const decl = (r, p) => (r.decls.find(d => d.prop === p) || {}).value;
-const ruleOf = sel => lock.find(r => r.selector === sel);
+/* A selector can be declared by two rules now (the shared poster rule and the skin's own block): read them as one, later wins. */
+const ruleOf = sel => {
+  const hits = lock.filter(r => r.selector === sel);
+  if (!hits.length) return undefined;
+  const merged = new Map();
+  for (const h of hits) for (const d of h.decls) merged.set(d.prop, d.value);
+  return { selector: sel, line: hits[0].line, decls: [...merged].map(([prop, value]) => ({ prop, value })) };
+};
 
 /* ---------- 1 ---------- */
 {
@@ -64,9 +80,10 @@ const ruleOf = sel => lock.find(r => r.selector === sel);
   assert.strictEqual(SKINS[1][1], 'Lock In — black + one hot accent, slanted slabs, giant italic type');
   /* the skin is a class the shell applies generically: no per-skin branch in the JS */
   const controller = read('src/controller.js');
-  assert.ok(/classList\.add\(`gv-skin-\$\{plugin\.settings\.skin \|\| 'apex'\}`/.test(controller), 'the controller must apply gv-skin-<key> from the setting, whatever the key');
+  assert.ok(/classList\.add\(\.\.\.skinClasses\(plugin\.settings\.skin \|\| 'apex'\)/.test(controller), 'the controller must apply gv-skin-<key> (via skinClasses) from the setting, whatever the key');
+  assert.deepStrictEqual(require('../src/constants').skinClasses('lockin'), ['gv-skin-lockin', 'gv-skin-poster'], 'Lock In wears its own class and the poster hook it shares with Apex');
   assert.ok(!/lockin/.test(controller), 'the controller must not special-case lockin');
-  assert.ok(/addClass\(`gv-skin-\$\{this\.skin\}`\)/.test(read('src/rep-counter-modal.js')), 'the rep-counter modal must apply gv-skin-<key> too');
+  assert.ok(/for \(const cls of skinClasses\(this\.skin\)\) this\.modalEl\.addClass\(cls\)/.test(read('src/rep-counter-modal.js')), 'the rep-counter modal must apply gv-skin-<key> (via skinClasses) too');
   const tab = read('src/settings-tab.js');
   const at = tab.indexOf(".setName('Style')"), to = tab.indexOf(".setName('Accent color')");
   const style = at > 0 && to > at ? [tab.slice(at, to)] : null;
@@ -101,7 +118,7 @@ const TOKEN_SEL = new Set(['.gv-app.gv-skin-lockin', '.theme-dark .gv-app.gv-ski
   assert.strictEqual(blaze['--gv-li-lo'], '#f23500', 'the flood runs to the mockup #F23500');
   assert.ok(blaze['--gv-lime-deep'] && blaze['--gv-flood-dim'], 'Blaze must also name its deep tone (small text on paper) and flood dim');
   assert.deepStrictEqual(lock.filter(r => /gv-accent-/.test(r.selector) && !/gv-accent-blaze$/.test(r.selector)).map(r => r.selector), [], 'only Blaze is tuned: the other four accents work as picked');
-  assert.ok(!/gv-skin-lockin[^{]*\{[^}]*--gv-lime:/.test(lockText.replace(/\.gv-app\.gv-skin-lockin\.gv-accent-blaze\s*\{[^}]*\}/, '')), 'no other Lock In rule may re-point --gv-lime');
+  assert.deepStrictEqual(lock.filter(r => r.selector !== '.gv-app.gv-skin-lockin.gv-accent-blaze' && r.decls.some(d => d.prop === '--gv-lime')).map(r => `:${r.line} ${r.selector}`), [], 'no other Lock In rule may re-point --gv-lime');
 
   /* through the real cascade: each accent's own lime is what a primary slab paints, and BLACK ink is read on it */
   const limeOf = (theme, accent) => {
@@ -175,12 +192,12 @@ const TOKEN_SEL = new Set(['.gv-app.gv-skin-lockin', '.theme-dark .gv-app.gv-ski
   const tok = sel => Object.fromEntries(ruleOf(sel).decls.map(d => [d.prop, d.value.toLowerCase()]));
   const light = tok('.gv-app.gv-skin-lockin'), dark = tok('.theme-dark .gv-app.gv-skin-lockin');
   const need = ['--gv-bg', '--gv-surface', '--gv-line', '--gv-line-2', '--gv-ink', '--gv-ink-dim', '--gv-amber', '--gv-ember', '--gv-accent-text',
-    '--gv-li-chip', '--gv-li-cell', '--gv-li-track', '--gv-li-sheen', '--gv-li-pop', '--gv-li-pop-ink', '--gv-li-pop-hover'];
+    '--gv-poster-chip', '--gv-poster-cell', '--gv-poster-track', '--gv-poster-sheen', '--gv-li-pop', '--gv-li-pop-ink', '--gv-li-pop-hover'];
   for (const k of need) {
     assert.ok(light[k], `Lock In light is missing ${k}`);
     assert.ok(dark[k], `Lock In dark is missing ${k}`);
   }
-  for (const k of ['--gv-bg', '--gv-surface', '--gv-ink', '--gv-ink-dim', '--gv-li-sheen', '--gv-li-pop', '--gv-li-pop-ink', '--gv-li-chip']) assert.notStrictEqual(light[k], dark[k], `${k} is identical in both themes — one value cannot serve both`);
+  for (const k of ['--gv-bg', '--gv-surface', '--gv-ink', '--gv-ink-dim', '--gv-poster-sheen', '--gv-li-pop', '--gv-li-pop-ink', '--gv-poster-chip']) assert.notStrictEqual(light[k], dark[k], `${k} is identical in both themes — one value cannot serve both`);
   const mockup = { '--gv-bg': '#0a0a0a', '--gv-surface': '#171717', '--gv-line': '#2b2b2b', '--gv-ink': '#ffffff', '--gv-ink-dim': '#a6a6a6' };
   for (const [k, v] of Object.entries(mockup)) assert.strictEqual(dark[k], v, `dark is the mockup: ${k} ${v}`);
   assert.strictEqual(light['--gv-ink-fixed'], '#0a0a0a', 'the fixed ink on every flood is the mockup black');
@@ -207,7 +224,7 @@ let slabs = [];
     const base = r.selector.replace(/:(hover|focus|active)$/, '');
     if (slabs.includes(base) && r.decls.some(d => d.prop === 'overflow' && d.value !== 'visible')) assert.fail(`${r.selector} (a slab) sets overflow:${decl(r, 'overflow')} and would clip its own ::before`);
   }
-  assert.ok(!/\bclip-path\s*:/.test(lockText), 'clip-path is banned (review linter, and it clips focus rings)');
+  assert.ok(!/\bclip-path\s*:/.test(skinText), 'clip-path is banned (review linter, and it clips focus rings)');
   /* a slab element may not carry a ::before of its own for anything else */
   const starred = lock.filter(r => /^\.gv-app\.gv-skin-lockin \.gv-streak-num::/.test(r.selector));
   const pseudos = new Set(starred.map(r => r.selector.replace(/^.*(::\w+)$/, '$1')));
@@ -316,18 +333,28 @@ let slabs = [];
 
 /* ---------- 8 ---------- */
 {
-  const kfs = {};
-  const kfRe = /@keyframes\s+([\w-]+)\s*\{/g;
-  let m;
-  while ((m = kfRe.exec(lockText))) {
-    let depth = 0, i = m.index + m[0].length - 1;
-    const open = i;
-    for (; i < lockText.length; i++) { if (lockText[i] === '{') depth++; else if (lockText[i] === '}' && --depth === 0) break; }
-    const props = new Set();
-    for (const frame of lockText.slice(open + 1, i).matchAll(/\{([^{}]*)\}/g)) for (const d of frame[1].split(';')) { const k = d.split(':')[0].trim(); if (k) props.add(k.toLowerCase()); }
-    kfs[m[1]] = props;
-  }
-  assert.deepStrictEqual(Object.keys(kfs).sort(), ['gv-li-marquee', 'gv-li-pulse', 'gv-live-blink'], 'Lock In declares the ticker, the CTA pulse and the live set\'s pip blink, and nothing else moves on its own');
+  /* Keyframes live in either section now: the marquee is shared with Apex (gv-poster-marquee) and the pip blink is
+     declared once, so Lock In's loops are read from the Apex + Lock In text, and what Lock In itself declares is
+     checked separately (nothing moves on its own beyond the ticker, the CTA pulse and the pip blink). */
+  const readKeyframes = text => {
+    const out = {};
+    const kfRe = /@keyframes\s+([\w-]+)\s*\{/g;
+    let m;
+    while ((m = kfRe.exec(text))) {
+      let depth = 0, i = m.index + m[0].length - 1;
+      const open = i;
+      for (; i < text.length; i++) { if (text[i] === '{') depth++; else if (text[i] === '}' && --depth === 0) break; }
+      const props = new Set();
+      for (const frame of text.slice(open + 1, i).matchAll(/\{([^{}]*)\}/g)) for (const d of frame[1].split(';')) { const k = d.split(':')[0].trim(); if (k) props.add(k.toLowerCase()); }
+      out[m[1]] = props;
+    }
+    return out;
+  };
+  const kfs = readKeyframes(skinText);
+  assert.deepStrictEqual(Object.keys(readKeyframes(lockText)), ['gv-li-pulse'], 'the Lock In section declares only its own CTA pulse; the marquee and the pip blink are shared and declared once, above');
+  const usedByLockIn = new Set();
+  for (const r of lock) for (const d of r.decls) if (d.prop === 'animation') for (const k of Object.keys(kfs)) if (new RegExp('(^|\\s)' + k + '(\\s|$)').test(d.value)) usedByLockIn.add(k);
+  assert.deepStrictEqual([...usedByLockIn].sort(), ['gv-li-pulse', 'gv-live-blink', 'gv-poster-marquee'], 'Lock In loops the ticker, the CTA pulse and the live set\'s pip blink, and nothing else moves on its own');
   const looping = lock.filter(r => !r.media && r.decls.some(d => d.prop === 'animation' && !/^none\b/.test(d.value)));
   assert.ok(looping.length >= 3, `expected the ticker, the CTA pulse and the pip blink, found ${looping.length}`);
   const calm = new Set(lock.filter(r => r.media && /prefers-reduced-motion:\s*reduce/.test(r.media) && r.decls.some(d => d.prop === 'animation' && /^none\b/.test(d.value))).map(r => r.selector));
@@ -354,9 +381,9 @@ let slabs = [];
   for (const [re, what] of [[/:has\(/, ':has()'], [/color-mix\(/, 'color-mix()'], [/\b\d+dvh\b/, 'dvh'], [/@property/, '@property'],
     [/backdrop-filter/, 'backdrop-filter'], [/\(\?<[=!]/, 'lookbehind'], [/\bcqw\b|\bcontainer-type\b|:where\(/, 'container queries / :where()'], [/(^|[;{\s])inset\s*:/, 'the inset shorthand'],
     [/:focus-visible/, 'a bare :focus-visible (invalid before iOS 15.4: it drops the whole rule)'], [/\baspect-ratio\b/, 'aspect-ratio']]) {
-    assert.ok(!re.test(lockText), `${what} is not safe on the iOS 15 floor (found in the Lock In section)`);
+    assert.ok(!re.test(skinText), `${what} is not safe on the iOS 15 floor (found in the Apex/Lock In sections)`);
   }
-  assert.ok(!/!important/.test(lockText), '!important is flagged by the review linter');
+  assert.ok(!/!important/.test(skinText), '!important is flagged by the review linter');
 }
 
 /* ---------- 10 ---------- */
@@ -374,12 +401,15 @@ let slabs = [];
 
 /* ---------- 11 ---------- */
 {
-  const stray = lock.filter(r => !/gv-skin-lockin/.test(r.selector)).map(r => `:${r.line} ${r.selector}`);
+  const stray = region.filter(r => !/gv-skin-lockin/.test(r.selector)).map(r => `:${r.line} ${r.selector}`);
   assert.deepStrictEqual(stray, [], 'every Lock In rule must be scoped to .gv-skin-lockin, or it would leak into the other skins:\n' + stray.join('\n'));
+  /* ...and in the Apex section every rule is scoped to Apex or to the poster hook (which is Apex + Lock In and nothing else) */
+  const strayApex = rules.filter(r => r.line >= apexBannerLine && r.line < bannerLine && !/gv-skin-(apex|lockin)/.test(r.selector)).map(r => `:${r.line} ${r.selector}`);
+  assert.deepStrictEqual(strayApex, [], 'every rule in the Apex section is scoped to a poster skin, or it would leak into Floor and Editorial:\n' + strayApex.join('\n'));
   const unanchored = lock.filter(r => !/^(\.theme-dark |body\.is-phone )?\.gv-app\.gv-skin-lockin(\.gv-narrow|\.gv-accent-blaze)?($|[\s.:>])/.test(r.selector)).map(r => `:${r.line} ${r.selector}`);
   assert.deepStrictEqual(unanchored, [], 'a rule that colours a button needs the .gv-app ancestor (app.css out-ranks a bare class):\n' + unanchored.join('\n'));
-  /* nothing before the banner mentions it: Apex, Floor and Editorial are byte-for-byte untouched by this skin */
-  assert.ok(!/gv-skin-lockin/.test(bare.slice(0, banner)), 'no rule above the Lock In section may mention the skin');
+  /* nothing before the Apex banner mentions Lock In or the poster hook: Floor and Editorial are byte-for-byte untouched by this skin */
+  assert.ok(!/gv-skin-(lockin|poster)/.test(bare.slice(0, apexBanner)), 'no rule above the Apex section may mention Lock In or the poster hook');
   /* the section runs to the end of the file */
   assert.ok(!/SKIN: (APEX|EDITORIAL)/.test(css.slice(banner)), 'the Lock In section must be last');
 }
