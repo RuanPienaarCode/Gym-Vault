@@ -7,6 +7,7 @@ const { makeIo } = require('./data');
 const sound = require('./sound');
 const { progressOf } = require('./voice-pack');
 const { rewardsEnabled } = require('./rewards');
+const { autoPlayMedia } = require('./media-cycle');
 
 /* A TEXT BOX IS NOT COMMITTED UNTIL YOU STOP TYPING.
 
@@ -105,6 +106,17 @@ class GymSettingTab extends PluginSettingTab {
         .setValue(rewardsEnabled(this.plugin.settings))
         .onChange(async v => {
           this.plugin.settings.rewards = v;
+          await this.plugin.saveSettings();
+          this.plugin.refreshViews();
+        }));
+
+    new Setting(c)
+      .setName('Animate exercise images')
+      .setDesc('Instruction images play their start/finish frames as an animation. Off keeps them still; you can still step through them.')
+      .addToggle(t => t
+        .setValue(autoPlayMedia(this.plugin.settings, false))
+        .onChange(async v => {
+          this.plugin.settings.animateMedia = v;
           await this.plugin.saveSettings();
           this.plugin.refreshViews();
         }));

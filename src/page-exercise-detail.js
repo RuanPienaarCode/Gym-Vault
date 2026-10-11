@@ -15,6 +15,8 @@ const { el, ico, fmt, fmtSeconds, backButton, statTile } = require('./dom');
 const { exerciseBests, best1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
 const { recordHistory, KINDS } = require('./records');
+const { openMediaViewer } = require('./media-viewer');
+const { frameLabel } = require('./media-cycle');
 const { editExercise } = require('./page-exercises');
 
 const isUrl = v => /^https?:\/\//i.test(v || '');
@@ -217,14 +219,34 @@ function mediaBlock(ctx, ex) {
     const frames = el('div', { class: 'gv-media-frames' });
     const pair = images.length === 2 && images[0].tag === 'start'; // the classic start/finish pair
     let alive = images.length; // resolveExerciseImages already dropped anything unresolvable
-    images.forEach(({ src, tag }) => {
-      const frame = el('div', { class: 'gv-media-frame' },
+    /* The frames still on the page, in order: what the viewer is given, so a
+       tile that already failed is not offered and the tapped one is re-found. */
+    const liveFrames = images.slice();
+    const st = ctx.settings || {};
+    images.forEach(entry => {
+      const { src, tag } = entry;
+      const label = frameLabel(images, images.indexOf(entry));
+      const frame = el('div', { class: 'gv-media-frame', role: 'button', tabindex: '0', 'aria-label': `Show ${ex.name} — ${label} larger` },
         el('img', { class: 'gv-media-img', src, alt: `${ex.name} — ${pair ? tag + ' position' : `view ${tag}`}`, loading: 'lazy' }),
-        el('span', { class: 'gv-media-frame-tag' }, tag));
+        el('span', { class: 'gv-media-frame-tag' }, tag),
+        el('span', { class: 'gv-media-expand', 'aria-hidden': 'true' }, ico('maximize-2')));
+      /* Tap a frame to look at it full screen (media-viewer.js), opening on
+         that frame. */
+      const openViewer = () => openMediaViewer(ctx.app, {
+        name: ex.name, frames: liveFrames, startIndex: liveFrames.indexOf(entry),
+        skin: st.skin || 'apex', accent: st.accent || 'lime', settings: st, returnFocus: frame,
+      });
+      frame.addEventListener('click', openViewer);
+      frame.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault(); // ' ' must not also scroll the page
+        openViewer();
+      });
       /* Offline / dead link: drop the frame quietly; one placeholder for the
          whole row once every frame has failed — never a broken-image glyph. */
       frame.querySelector('img').addEventListener('error', () => {
         frame.remove();
+        liveFrames.splice(liveFrames.indexOf(entry), 1);
         if (--alive <= 0 && frames.isConnected) {
           frames.replaceWith(el('div', { class: 'gv-media-missing' }, ico('dumbbell'), el('span', {}, 'Images unavailable offline')));
         }

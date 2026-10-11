@@ -73,8 +73,10 @@ const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
 /* kind 'glyph' = an icon (3:1). Everything else is text, classed by the size
    and weight the cascade gives it. `chain` is the element path under
    <main class="gv-page">, written as the JS builds it. */
-const text = (id, chain, finding, surface) => ({ id, chain, finding, kind: 'text', surface });
-const glyph = (id, chain, finding) => ({ id, chain, finding, kind: 'glyph' });
+/* `modal` = the probe lives in an Obsidian Modal (appended to <body>, outside the
+   workspace leaf and the page), not under <main class="gv-page">. */
+const text = (id, chain, finding, surface, modal) => ({ id, chain, finding, kind: 'text', surface, modal: !!modal });
+const glyph = (id, chain, finding, modal) => ({ id, chain, finding, kind: 'glyph', modal: !!modal });
 const LOGSET = ['div.gv-card.gv-log-card', 'div.gv-log-sets'];
 const LOGTOP = 'div.gv-logtop';
 
@@ -335,16 +337,38 @@ const PROBES = [
   glyph('live: utility icon glyph (sheet)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-utility', 'button.gv-icon-btn', 'span.gv-ico', 'svg'], 'poster'),
   text('live: skip button label (sheet)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-utility', 'div.gv-live-skips', 'button.gv-btn.gv-btn-ghost.gv-btn-small.gv-session-skip', 'span'], 'poster'),
   text('live: skip kicker (sheet)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-utility', 'div.gv-live-skips', 'span.gv-session-skip-kicker'], 'poster'),
+
+  /* ---- the full-screen media viewer (src/media-viewer.js) + the expand corner that opens it ---- */
+  glyph('media viewer: expand corner (exercise page tile)', ['div.gv-card.gv-media', 'div.gv-media-frames', 'div.gv-media-frame', 'span.gv-media-expand', 'span.gv-ico', 'svg'], 'media-viewer'),
+  glyph('media viewer: expand corner (live thumbnail)', ['div.gv-session-page', 'div.gv-session-exblock.gv-live-head', 'div.gv-session-media', 'div.gv-media-frame.gv-session-frame', 'span.gv-media-expand', 'span.gv-ico', 'svg'], 'media-viewer'),
+  text('media viewer: title', ['div.gv-mv-bar', 'h2.gv-display.gv-mv-title'], 'media-viewer', null, true),
+  text('media viewer: frame tag', ['div.gv-mv-caption', 'span.gv-mv-tag'], 'media-viewer', null, true),
+  text('media viewer: position figure', ['div.gv-mv-caption', 'span.gv-mv-pos'], 'media-viewer', null, true),
+  text('media viewer: Play / Pause label', ['div.gv-mv-controls', 'button.gv-btn.gv-btn-ghost.gv-mv-play', 'span'], 'media-viewer', null, true),
+  glyph('media viewer: close glyph', ['div.gv-mv-bar', 'button.gv-icon-btn.gv-mv-close', 'span.gv-ico', 'svg'], 'media-viewer', true),
+  glyph('media viewer: step glyph', ['div.gv-mv-controls', 'button.gv-icon-btn.gv-mv-step', 'span.gv-ico', 'svg'], 'media-viewer', true),
+  text('media viewer: images unavailable', ['div.gv-mv-stage.gv-mv-stage-empty', 'div.gv-mv-missing'], 'media-viewer', null, true),
 ];
 
 const need = (probe, size, weight) => (probe.kind === 'glyph' ? 3 : (size >= 24 || (size >= 18.66 && weight >= 700)) ? 3 : 4.5);
 const weightOf = v => (v === 'bold' ? 700 : v === 'normal' ? 400 : Number(v) || 400);
 
+/* The media viewer's chain: body > modal-container > the modalEl (which wears .gv-app
+   and the skin classes itself, src/media-viewer.js) > the content. The poster class
+   goes with the poster skins, as constants.skinClasses() adds it. */
+const modalChain = (o, ...inner) => cx.chainOf([
+  'body.theme-' + o.theme,
+  'div.modal-container.mod-dim',
+  'div.modal.gv-app.gv-skin-' + o.skin + (o.skin === 'apex' || o.skin === 'lockin' ? '.gv-skin-poster' : '') + '.gv-accent-' + o.accent + '.gv-mv-modal',
+  'div.modal-content.gv-mv',
+  ...inner,
+]);
+
 const measured = [];
 const problems = [];
 for (const theme of THEMES) for (const skin of SKINS) for (const accent of ACCENTS) {
   for (const probe of PROBES) {
-    const chain = cx.appChain({ theme, skin, accent }, ...probe.chain);
+    const chain = probe.modal ? modalChain({ theme, skin, accent }, ...probe.chain) : cx.appChain({ theme, skin, accent }, ...probe.chain);
     const surface = probe.surface && probe.surface(skin);
     const t = surface ? cx.textColorOn(chain, cx.appChain({ theme, skin, accent }, ...surface), rules) : cx.textColor(chain, rules);
     const size = probe.kind === 'glyph' ? 0 : (() => { const f = cx.computed(chain, 'font-size', rules); return f ? cx.pxOf(f.value) : 16; })();

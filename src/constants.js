@@ -46,6 +46,10 @@ const DEFAULT_SETTINGS = {
   planRepo: 'https://raw.githubusercontent.com/RuanPienaarCode/gym_plans/main',
   /* XP, levels, the weekly quest and medals (rewards.js). Off means nothing is awarded and the ledger is never read. */
   rewards: true,
+  /* Instruction images play their start/finish frames as an animation (the live
+     set's thumbnail and the full-screen viewer; media-cycle.js autoPlayMedia
+     is the one rule, and a missing key means ON). */
+  animateMedia: true,
 };
 
 /* How a guided session is played — [key, name, description]. Keys are what

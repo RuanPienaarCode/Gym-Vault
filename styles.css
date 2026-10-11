@@ -926,6 +926,166 @@ body.is-phone .gv-app .gv-page {
   border: 1px dashed var(--gv-line-2);
 }
 .gv-media-watch { margin-top: 10px; }
+
+/* The corner that says a frame can be enlarged (the live set's thumbnail and the
+   exercise page's tiles; media-viewer.js is what opens). The same ink-and-accent
+   pair as .gv-media-frame-tag above, so it is as legible as the tag is. It does
+   not take the tap itself: the whole frame does. */
+.gv-media-frame[role="button"] { cursor: pointer; }
+.gv-media-expand {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--gv-ink);
+  color: var(--gv-lime-hi);
+  pointer-events: none;
+}
+.theme-dark .gv-app .gv-media-expand { color: var(--gv-lime-deep); }
+.gv-media-expand .gv-ico svg { width: 14px; height: 14px; }
+
+/* ---------- the full-screen media viewer (src/media-viewer.js) ----------
+   A Modal, so Obsidian appends it to <body> OUTSIDE .gv-app; the modalEl is given
+   .gv-app and the skin/accent classes, exactly as the rep counter's is, which is
+   what brings the --gv-* tokens and the shared button styling in. On a desktop it
+   is a large dialog over Obsidian's own dimmed backdrop (a press on the backdrop
+   closes it); on a phone it is the whole screen. Every painted property app.css
+   sets on .modal is restated here, for the reason the rep counter's block gives. */
+.modal.gv-mv-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 1100px);
+  height: min(90vh, 880px);
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--gv-ink);
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  background-color: var(--gv-bg);
+  color: var(--gv-ink);
+}
+.theme-dark .modal.gv-mv-modal { border-color: var(--gv-line-2); }
+.modal-container.mod-dim .modal.gv-mv-modal { box-shadow: none; }
+.modal.gv-mv-modal:focus { outline: none; }
+.modal.gv-mv-modal .modal-close-button,
+.modal.gv-mv-modal .modal-title { display: none; }
+.modal.gv-mv-modal .modal-content.gv-mv {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+@media (max-width: 600px) {
+  .modal.gv-mv-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+}
+.gv-mv-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: max(env(safe-area-inset-top, 0px), 10px) 12px 10px 16px;
+}
+.gv-mv-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 30px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gv-app .gv-mv-close,
+.gv-app .gv-mv-step { flex: 0 0 auto; width: 44px; height: 44px; }
+/* The picture sits on a dark mat (the fixed ink, dark in both themes: the
+   exercise photos are light-backed and read best against it) and takes everything
+   the bar, caption and controls leave, never cropped. touch-action leaves the browser's own pinch-zoom alone and
+   vertical pan alone while a sideways swipe still reaches the pointer events;
+   it must never be none on this stage or on an image in it. */
+.gv-mv-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 12px;
+  border: 1px solid var(--gv-line-2);
+  background-color: var(--gv-ink-fixed);
+  touch-action: pan-y pinch-zoom;
+}
+/* Nothing to show (every frame failed): the message is read on the page's own
+   surface, not on the picture mat. */
+.gv-mv-stage.gv-mv-stage-empty { background-color: var(--gv-surface); }
+.gv-mv-img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.gv-mv-img.gv-mv-on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .gv-mv-img { transition: none; }
+}
+.gv-mv-missing {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--gv-ink-dim);
+  font-size: 14px;
+}
+.gv-mv-caption {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 14px;
+  min-height: 28px;
+  padding: 12px 12px 0;
+}
+.gv-mv-tag {
+  color: var(--gv-ink);
+  font-family: var(--gv-display);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.gv-mv-pos { color: var(--gv-ink-dim); font-size: 14px; font-variant-numeric: tabular-nums; }
+.gv-mv-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px 12px max(env(safe-area-inset-bottom, 0px), 16px);
+}
+.gv-app .gv-mv-play { min-width: 128px; min-height: 44px; }
+.gv-mv-controls .gv-btn[disabled],
+.gv-mv-controls .gv-icon-btn[disabled] { opacity: 0.4; cursor: default; pointer-events: none; }
 .gv-howto { line-height: 1.55; font-size: 14px; border: 0; padding: 2px 0 0; background: transparent; }
 .gv-howto p { margin: 0 0 10px; }
 .gv-howto p:last-child { margin-bottom: 0; }
@@ -2358,7 +2518,7 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
   overflow: hidden;
   flex: 0 0 auto;
 }
-.gv-session-frame-tap { cursor: pointer; }
+.gv-session-frame-open { cursor: pointer; }
 .gv-session-cycle-img {
   position: absolute;
   inset: 0;
@@ -2367,13 +2527,13 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
   object-fit: contain;
   opacity: 0;
   transition: opacity 300ms ease;
-  pointer-events: none; /* the frame itself is the tap target (reduced-motion fallback) */
+  pointer-events: none; /* the frame itself is the tap target: it opens the full-screen viewer */
 }
 .gv-session-cycle-img.gv-session-cycle-on { opacity: 1; }
 /* Auto-cycle is JS-gated (confetti.prefersReducedMotion() in
    page-session.js skips the setInterval entirely), but the crossfade itself
-   must also die here — a tap-triggered frame swap in reduced-motion mode
-   must snap instead of animating. */
+   must also die here — a frame swap under reduced motion must snap instead
+   of animating. */
 @media (prefers-reduced-motion: reduce) {
   .gv-session-cycle-img { transition: none; }
 }

@@ -189,7 +189,7 @@ const modals = [];
 const obsidian = {
   setIcon: (elx) => { elx.appendChild(new N('svg')); },
   Notice: class { constructor(m) { notices.push(String(m)); } },
-  Modal: class { constructor(app) { this.app = app; this.contentEl = new N('div'); this.modalEl = new N('div'); this.titleEl = new N('div'); } open() { modals.push(this); if (this.onOpen) this.onOpen(); } close() { if (this.onClose) this.onClose(); } },
+  Modal: class { constructor(app) { this.app = app; this.contentEl = new N('div'); this.modalEl = new N('div'); this.titleEl = new N('div'); this.containerEl = new N('div'); } open() { modals.push(this); if (this.onOpen) this.onOpen(); } close() { if (this.onClose) this.onClose(); } },
   Setting: class { constructor() {} addButton() { return this; } },
   Menu: class { addItem() { return this; } showAtMouseEvent() {} showAtPosition() {} },
   ItemView: class {}, Plugin: class {}, PluginSettingTab: class {}, TFile: class {},
@@ -319,5 +319,5 @@ function heard(minMs) {
 module.exports = {
   SRC, clock, timers, advance, suspend, liveIntervals, N, T, fire, click, tapZone, document, win, speech, spoken, heard,
   audioLog, wakeLog, notices, modals, emitMotion, motionListeners, setMotionPermission: f => { motionPermission = f; },
-  boot, makeStorage, killProcess, windowListeners, flush, page, byLabel, byText, countText, makeData, ex, workout, docListeners,
+  boot, makeStorage, killProcess, docRoot: () => DOC_ROOT, windowListeners, flush, page, byLabel, byText, countText, makeData, ex, workout, docListeners,
 };

@@ -18,7 +18,12 @@ desktop and mobile.
   Media comes from `image:` / `video:` frontmatter — a vault path (offline,
   synced) or an https URL. Seed images are from
   [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
-  (public domain / Unlicense).
+  (public domain / Unlicense). Tap any image — on the exercise page or the
+  thumbnail on the live set — to open it full screen: the frames large, an
+  animation you can pause, and previous/next (or swipe). Settings →
+  *Animate exercise images* (on by default) controls whether the start/finish
+  frames play by themselves; off keeps them still and you can still step
+  through them. Reduced motion always starts paused.
 - **Plans** — weekly training plans as readable notes (`## Day (mon)` +
   `- Exercise | 4 x 8-12 @ 20kg`); one plan is *active* and drives the
   dashboard.

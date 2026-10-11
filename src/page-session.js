@@ -33,7 +33,8 @@ const { sensitivityKey, motionKey, motionPref, initialMotion, chooseMotion, moti
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const { buildRows, finishSession, keepDraft, saveMotionPref } = require('./page-log');
 const { EndSessionModal } = require('./modals');
-const { nextFrameIndex } = require('./media-cycle');
+const { nextFrameIndex, autoPlayMedia, MEDIA_CYCLE_MS } = require('./media-cycle');
+const { openMediaViewer } = require('./media-viewer');
 const { musicButton } = require('./music-picker');
 const timedPlan = require('./timed-plan');
 const timerState = require('./timer-state');
@@ -42,7 +43,6 @@ const chrome = require('./live-chrome');
 
 const FLASH_MS = 180;
 const HOLD_CHECKPOINT_S = 15;
-const MEDIA_CYCLE_MS = 1100; // time each frame holds before crossfading to the next
 /* Most notes hold a start/finish pair, so 2 was the whole animation. Notes
    sourced from a real photo SEQUENCE (the burpee and the kettlebell front
    squat carry four frames each) animate properly at 4 — and a note with two
@@ -454,8 +454,15 @@ function exerciseBlock(ctx, sess, entry) {
      handling wires up, so a dropped frame 1 never promotes a frame 3 that
      was never even resolved for this view (the detail page still shows
      everything; this cap is guided-view only). */
-  const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES)) : null;
+  const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES), viewerOpts(ctx)) : null;
   return el('div', { class: 'gv-session-exblock' }, head, img || '');
+}
+
+/* What the full-screen viewer needs from the page: the app (it is a Modal) and
+   the user's skin and accent, so it wears them like the rep counter does. */
+function viewerOpts(ctx) {
+  const st = ctx.settings || {};
+  return { app: ctx.app, skin: st.skin || 'apex', accent: st.accent || 'lime', settings: st };
 }
 
 /* ---------- the poster chrome (live-chrome.js) ---------- */
@@ -477,7 +484,7 @@ function posterTop(ctx, draft, entryIndex) {
    same nodes the plain block builds; only their arrangement differs. */
 function posterHead(ctx, sess, entry, entryIndex, setIndex) {
   const ex = findExercise(ctx, entry.exercise);
-  const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES)) : null;
+  const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES), viewerOpts(ctx)) : null;
   const sub = chrome.subLine(entry, setIndex, fmtSeconds);
   const label = chrome.railLabel(setIndex, entry.sets.length);
   return el('div', { class: 'gv-session-exblock gv-live-head' + (img ? ' has-media' : '') },
@@ -526,13 +533,14 @@ function posterSheet(ctx, draft, sess, utilityKids, tickBtn) {
    detail.js's mediaBlock. The interval this starts is registered on `sess`
    (not ctx.setPageInterval — see render()'s comment) and is always cleared
    before a new one is created. */
-function guidedImageBlock(sess, ex, frames) {
+function guidedImageBlock(sess, ex, frames, host) {
   if (!frames.length) return null;
   const wrap = el('div', { class: 'gv-session-media' });
-  const frame = el('div', { class: 'gv-media-frame gv-session-frame' });
+  const frame = el('div', { class: 'gv-media-frame gv-session-frame gv-session-frame-open' });
   const imgs = frames.map(({ src, tag }) =>
     el('img', { class: 'gv-session-cycle-img', src, alt: `${ex.name} — ${tag}`, loading: 'lazy' }));
   imgs.forEach(img => frame.append(img));
+  frame.append(el('span', { class: 'gv-media-expand', 'aria-hidden': 'true' }, ico('maximize-2')));
   wrap.append(frame);
 
   const failed = new Set();
@@ -564,21 +572,38 @@ function guidedImageBlock(sess, ex, frames) {
     });
   });
 
+  /* TAP TO ENLARGE (media-viewer.js). The thumbnail is far too small to read
+     the form from, so it opens the full-screen viewer on the frame showing now.
+     It is its own element, outside the counter zone, so it never reaches the
+     tap zone's listeners: opening it counts no rep. It touches no clock either
+     (the viewer keeps its own timer; see media-viewer.js), so a hold, a rest
+     or a circuit keeps running while the user checks their form. Only frames
+     that have not failed go in, and the start index is re-found among them. */
+  const openViewer = () => {
+    const live = frames.filter((_, i) => !failed.has(i));
+    if (!live.length) return;
+    openMediaViewer(host.app, {
+      name: ex.name, frames: live, startIndex: Math.max(0, live.indexOf(frames[current])),
+      skin: host.skin, accent: host.accent, settings: host.settings, returnFocus: frame,
+    });
+  };
+  frame.setAttribute('role', 'button');
+  frame.setAttribute('tabindex', '0');
+  frame.setAttribute('aria-label', `Show ${ex.name} larger`);
+  frame.addEventListener('click', openViewer);
+  frame.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault(); // ' ' must not also scroll the page
+    openViewer();
+  });
+
   if (imgs.length <= 1) return wrap; // static — no timer, nothing to cycle
 
-  if (confetti.prefersReducedMotion()) {
-    /* No auto-cycle, no transition (the CSS drops the opacity transition
-       under the same media query) — frame 1 holds until tapped. */
-    frame.classList.add('gv-session-frame-tap');
-    frame.setAttribute('role', 'button');
-    frame.setAttribute('tabindex', '0');
-    frame.setAttribute('aria-label', `${ex.name} — tap to see the next position`);
-    attachTapZone(frame, () => {
-      const next = nextFrameIndex(imgs.length, failed, current);
-      if (next !== null) showFrame(next);
-    });
-    return wrap;
-  }
+  /* No auto-cycle when autoPlayMedia says so: reduced motion (which also drops
+     the opacity transition in the CSS) or Settings -> "Animate exercise images"
+     off. Frame 1 holds; the other positions are the viewer's job (it opens
+     paused, with next/previous, and Play for that viewing). */
+  if (!autoPlayMedia(host.settings, confetti.prefersReducedMotion())) return wrap;
 
   sess.mediaCycleTimer = window.setInterval(() => {
     const next = nextFrameIndex(imgs.length, failed, current);
