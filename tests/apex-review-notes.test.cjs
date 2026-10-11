@@ -202,7 +202,9 @@ const HOST_H3 = {
   ];
   /* Slabs that are not controls. */
   const PASSIVE = ['.gv-tag', '.gv-badge', '.gv-ex-best', '.gv-day', '.gv-tile', '.gv-logo .gv-ico', '.gv-setup-logo', '.gv-session-complete-ico', '.gv-hero-chip-row',
-    '.gv-week-progress', '.gv-pb-target', '.gv-pb-moment', '.gv-pb-delta', '.gv-rec-delta', '.gv-recrow.gv-rec-new'];
+    '.gv-week-progress', '.gv-pb-target', '.gv-pb-moment', '.gv-pb-delta', '.gv-rec-delta', '.gv-recrow.gv-rec-new',
+    /* rewards: drawn, never tappable (tests/rewards-css.test.cjs C6 pins that rewards-ui.js builds no control) */
+    '.gv-rw-xpchip', '.gv-rw-quest', '.gv-rw-unlock'];
   /* Deliberately under 44, with the reason the stylesheet gives: row-level
      remove buttons are destructive and sit beside content you scroll past. */
   const DELIBERATE = [['.gv-icon-btn-small', ['div.gv-card', 'button.gv-icon-btn.gv-icon-btn-small'], 40]];

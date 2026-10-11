@@ -68,6 +68,18 @@
      is a value that stays legible no matter which theme resolved the
      surface underneath it. */
   --gv-ink-fixed: #141a0e;
+  /* Medal tiers (rewards). NOT accent-tied and NOT amber: --gv-amber is the streak's alone, and gold is its own
+     token. -ring is the hexagon / starburst fill (3:1 against the paper), -ink is the glyph and the tier word on
+     the page (4.5:1 against every surface the skins paint). Locked is the same pair in grey. Dark twins below.
+     tests/contrast.test.cjs probes every use. */
+  --gv-medal-gold: #9a6a12;
+  --gv-medal-gold-ink: #7a4a00;
+  --gv-medal-silver: #6f7a8c;
+  --gv-medal-silver-ink: #4a5565;
+  --gv-medal-bronze: #a0602a;
+  --gv-medal-bronze-ink: #8a4b14;
+  --gv-medal-lock: #6d7782;
+  --gv-medal-lock-ink: #4f5864;
   /* Anton is embedded via src/font.css, so the fallbacks are theoretical;
      they still matter if the face ever fails to parse. */
   --gv-display: 'Anton', 'Avenir Next Condensed', Impact, 'Arial Narrow', sans-serif;
@@ -104,6 +116,15 @@
   --gv-stage-hot-a: 0.4;
   --gv-stage-peak-a: 0.75;
   --gv-stage-done-a: 0.95;
+  /* Medal tiers on near-black: the mockup's gold, silver and bronze. */
+  --gv-medal-gold: #f2b53c;
+  --gv-medal-gold-ink: #f2b53c;
+  --gv-medal-silver: #aab3c2;
+  --gv-medal-silver-ink: #cfd6e0;
+  --gv-medal-bronze: #c28650;
+  --gv-medal-bronze-ink: #e0a066;
+  --gv-medal-lock: #68717b;
+  --gv-medal-lock-ink: #9aa3ad;
 }
 
 /* Host-cascade override — see header comment. */
@@ -3266,6 +3287,146 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 .theme-dark .gv-app.gv-skin-editorial .gv-pb-delta,
 .theme-dark .gv-app.gv-skin-editorial .gv-rec-delta { color: var(--gv-lime); }
 
+/* ---------- REWARDS UI (base register: Floor and Editorial; Apex and Lock In restyle it below) ----------
+   src/rewards-ui.js draws one markup for every skin. Here it is the calm one: hairlines, a ring for the
+   level and the medals, a plain card for the quest, the XP card and the unlock. No flood, no slab, and
+   nothing moves except the one-shot fill of the XP bar, which stops under reduced motion.
+   Tier colours are the --gv-medal-* tokens (.gv-app and its dark twin at the top of this file): they are
+   NOT accent-tied and NOT amber, which stays the streak's. */
+@keyframes gv-rw-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.gv-rw-bar { position: relative; height: 6px; overflow: hidden; background: var(--gv-line); border: 1px solid var(--gv-line-2); }
+.gv-rw-bar.is-thin { height: 6px; }
+.gv-rw-bar.is-big { height: 10px; }
+.gv-rw-bar-fill,
+.gv-rw-bar-gain { position: absolute; top: 0; bottom: 0; left: 0; background-color: var(--gv-lime); }
+.gv-rw-bar-gain { background-color: var(--gv-lime-hi); transform-origin: left center; animation: gv-rw-fill 0.7s ease-out 1 both; }
+@media (prefers-reduced-motion: reduce) {
+  .gv-rw-bar-gain { animation: none; }
+}
+
+/* The level hex. Here a ring; Apex draws a hexagon and Lock In a starburst from the same two elements. */
+.gv-rw-hex {
+  --gv-rw-ring: var(--gv-lime-deep);
+  --gv-rw-ink: var(--gv-ink);
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 2px solid var(--gv-rw-ring);
+  border-radius: 50%;
+  color: var(--gv-rw-ink);
+}
+.theme-dark .gv-app .gv-rw-hex.is-lime { --gv-rw-ring: var(--gv-lime); }
+.gv-rw-hex.is-gold { --gv-rw-ring: var(--gv-medal-gold); --gv-rw-ink: var(--gv-medal-gold-ink); }
+.gv-rw-hex.is-silver { --gv-rw-ring: var(--gv-medal-silver); --gv-rw-ink: var(--gv-medal-silver-ink); }
+.gv-rw-hex.is-bronze { --gv-rw-ring: var(--gv-medal-bronze); --gv-rw-ink: var(--gv-medal-bronze-ink); }
+.gv-rw-hex.is-lock { --gv-rw-ring: var(--gv-medal-lock); --gv-rw-ink: var(--gv-medal-lock-ink); }
+.gv-rw-hex.is-md { width: 48px; height: 48px; }
+.gv-rw-hex.is-lg { width: 60px; height: 60px; }
+.gv-rw-hex-in { display: grid; place-items: center; }
+.gv-rw-hex-num { font-family: var(--gv-display); font-size: 17px; font-weight: 400; line-height: 1; color: var(--gv-rw-ink); }
+.gv-rw-hex.is-lg .gv-rw-hex-num { font-size: 28px; }
+.gv-rw-hex .gv-ico svg { width: 18px; height: 18px; }
+
+/* Today: the level row and the weekly quest. */
+.gv-rw-level { display: flex; align-items: center; gap: 12px; margin: 10px 0 0; padding: 8px 0 10px; border-bottom: 1px solid var(--gv-line); }
+.gv-rw-level-mid { flex: 1 1 auto; min-width: 0; }
+.gv-rw-level-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.gv-rw-level-title { font-family: var(--gv-display); font-size: 18px; font-weight: 400; letter-spacing: 0.02em; text-transform: uppercase; }
+.gv-rw-level-to { font-size: 12px; font-weight: 700; color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-rw-level-to { color: var(--gv-lime); }
+.gv-rw-level-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 11.5px; color: var(--gv-ink-dim); }
+.gv-rw-level-rank { font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.gv-rw-quest { margin: 12px 0 0; padding: 12px 0 14px; border-top: 1px solid var(--gv-line); border-bottom: 1px solid var(--gv-line); }
+.gv-rw-quest-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.gv-rw-quest-head { min-width: 0; }
+.gv-rw-quest-title { display: block; margin-top: 3px; font-family: var(--gv-display); font-size: 18px; font-weight: 400; line-height: 1.1; text-transform: uppercase; }
+.gv-rw-quest-xp { flex: 0 0 auto; font-family: var(--gv-display); font-size: 18px; font-weight: 400; white-space: nowrap; color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-rw-quest-xp { color: var(--gv-lime); }
+.gv-rw-quest-nums { display: flex; justify-content: space-between; gap: 10px; margin-top: 7px; font-size: 12.5px; color: var(--gv-ink-dim); }
+.gv-rw-quest-nums b { font-weight: 700; color: var(--gv-ink); }
+.gv-rw-quest-togo { font-weight: 700; color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-rw-quest-togo { color: var(--gv-lime); }
+
+/* Session complete: the XP card and the medal unlocked. */
+.gv-rw-xp { margin: 12px 0 0; padding: 14px 16px; background: var(--gv-surface); border: 1px solid var(--gv-line); text-align: left; }
+.gv-rw-xp-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+.gv-rw-xp-big { font-family: var(--gv-display); font-size: 44px; font-weight: 400; line-height: 0.9; color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-rw-xp-big { color: var(--gv-lime); }
+.gv-rw-xp-big small { margin-left: 5px; font-size: 0.42em; letter-spacing: 0.04em; }
+.gv-rw-xp-lv { text-align: right; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); }
+.gv-rw-xp-lv b { display: block; margin-top: 3px; font-family: var(--gv-display); font-size: 20px; font-weight: 400; letter-spacing: 0.01em; color: var(--gv-ink); }
+.gv-rw-xp .gv-rw-bar { margin: 12px 0 7px; }
+.gv-rw-xp-nums { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--gv-ink-dim); }
+.gv-rw-xp-nums b { font-weight: 700; color: var(--gv-ink); }
+.gv-rw-xp-togo { font-weight: 700; color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-rw-xp-togo { color: var(--gv-lime); }
+.gv-rw-levelup { margin: 10px 0 0; font-family: var(--gv-display); font-size: 20px; font-weight: 400; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gv-ink); }
+.gv-rw-levelup small { font-family: inherit; font-size: 0.7em; letter-spacing: 0.08em; color: var(--gv-ink-dim); }
+.gv-rw-xp-lines { list-style: none; margin: 10px 0 0; padding: 8px 0 0; border-top: 1px solid var(--gv-line); }
+.gv-rw-xp-line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 4px 0; font-size: 13px; }
+.gv-rw-xp-label small { font-size: 12px; font-weight: 500; color: var(--gv-ink-dim); }
+.gv-rw-xp-amount { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--gv-ink); }
+
+.gv-rw-unlock { --gv-rw-tier-ink: var(--gv-ink); display: flex; align-items: center; gap: 12px; margin: 8px 0 0; padding: 10px 14px; background: var(--gv-surface); border: 1px solid var(--gv-line); text-align: left; }
+.gv-rw-unlock.is-gold { --gv-rw-tier-ink: var(--gv-medal-gold-ink); }
+.gv-rw-unlock.is-silver { --gv-rw-tier-ink: var(--gv-medal-silver-ink); }
+.gv-rw-unlock.is-bronze { --gv-rw-tier-ink: var(--gv-medal-bronze-ink); }
+.gv-rw-unlock-text { flex: 1 1 auto; min-width: 0; }
+.gv-rw-unlock-kicker { font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gv-rw-tier-ink); }
+.gv-rw-unlock-name { display: block; margin: 4px 0 4px; font-family: var(--gv-display); font-size: 22px; font-weight: 400; line-height: 1; text-transform: uppercase; }
+.gv-rw-unlock-next { margin: 0; font-size: 12px; color: var(--gv-ink-dim); }
+
+/* Records: the medals. */
+.gv-rw-medals { margin-top: 26px; }
+.gv-rw-sec { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.gv-rw-sec .gv-rw-sec-title { margin: 0 0 12px; }
+.gv-rw-sec-count { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); }
+.gv-rw-next { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--gv-line); border-bottom: 1px solid var(--gv-line); }
+.gv-rw-next-text { flex: 1 1 auto; min-width: 0; }
+.gv-rw-next-text b { display: block; font-family: var(--gv-display); font-size: 17px; font-weight: 400; line-height: 1.1; text-transform: uppercase; }
+.gv-rw-next-text span { font-size: 12px; color: var(--gv-ink-dim); }
+.gv-rw-pc { font-size: 12px; font-weight: 700; color: var(--gv-ink); }
+.gv-rw-medal-grid { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 8px; }
+.gv-rw-medal { --gv-rw-tier-ink: var(--gv-medal-lock-ink); display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; text-align: center; }
+.gv-rw-medal.is-gold { --gv-rw-tier-ink: var(--gv-medal-gold-ink); }
+.gv-rw-medal.is-silver { --gv-rw-tier-ink: var(--gv-medal-silver-ink); }
+.gv-rw-medal.is-bronze { --gv-rw-tier-ink: var(--gv-medal-bronze-ink); }
+.gv-rw-medal-name { font-family: var(--gv-display); font-size: 15px; font-weight: 400; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+.gv-rw-tier { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gv-rw-tier-ink); }
+.gv-rw-earned { font-size: 11px; color: var(--gv-ink-dim); }
+.gv-rw-medal .gv-rw-bar { width: 100%; }
+
+/* Profile: the level, the rank ladder and the counts. */
+.gv-rw-profile { margin-top: 12px; }
+.gv-rw-profile-top { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.gv-rw-profile-level { margin: 0; font-family: var(--gv-display); font-size: 30px; font-weight: 400; line-height: 1; text-transform: uppercase; }
+.gv-rw-profile-rank { margin: 3px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); }
+.gv-rw-profile-nums { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 12.5px; color: var(--gv-ink-dim); }
+.gv-rw-profile-nums b { font-weight: 700; color: var(--gv-ink); }
+.gv-rw-profile-togo { font-weight: 700; color: var(--gv-lime-deep); }
+.theme-dark .gv-app .gv-rw-profile-togo { color: var(--gv-lime); }
+.gv-rw-ladder { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 16px 0 0; padding: 0; }
+.gv-rw-rung { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.gv-rw-rung i { display: block; height: 8px; background-color: var(--gv-line-2); }
+.gv-rw-rung.is-done i { background-color: var(--gv-lime-hi); }
+.gv-rw-rung.is-current i { background-color: var(--gv-lime); box-shadow: 0 3px 0 var(--gv-ink); }
+.gv-rw-rung span { font-size: 10.5px; font-weight: 700; color: var(--gv-ink-dim); }
+.gv-rw-rung.is-current span { font-weight: 800; color: var(--gv-ink); }
+.gv-rw-profile-total { margin: 12px 0 0; font-size: 12px; color: var(--gv-ink-dim); }
+.gv-rw-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--gv-line); }
+.gv-rw-stats b { display: block; font-family: var(--gv-display); font-size: 28px; font-weight: 400; line-height: 1; color: var(--gv-ink); }
+.gv-rw-stats b small { font-size: 0.5em; letter-spacing: 0.04em; }
+.gv-rw-stats span { font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gv-ink-dim); }
+
 /* ============================================================================
    SKIN: APEX — settings › Style, and the DEFAULT. Design 10 "Lock-In Apex"
    (design/10-lock-in-apex.html): 07's layout (one giant condensed-italic word
@@ -4187,6 +4348,235 @@ body.is-phone .gv-app.gv-skin-apex.gv-narrow:not(.gv-focus) .gv-page { padding-b
 }
 /* In the sticky layout "Last:" goes: the Last-session tile below says it. */
 .gv-app.gv-skin-apex.gv-narrow .gv-hero-today .gv-hero-action-line { display: none; }
+
+/* ---------- REWARDS UI (design 10: level strip, XP chip, quest, XP card, medals, profile) ----------
+   One markup (src/rewards-ui.js), drawn here with Apex's own devices: hexagons from a rectangle and two
+   border triangles (the streak badge's technique, twice: the tier ring, then the page colour inside),
+   leaning bars, leaning slabs. Every colour is a token; the tier colours are the --gv-medal-* tokens. */
+.gv-app.gv-skin-apex .gv-rw-bar {
+  height: 14px;
+  border: 0;
+  background-color: var(--gv-apex-track);
+  transform: skewX(-14deg);
+}
+.gv-app.gv-skin-apex .gv-rw-bar.is-thin { height: 8px; }
+.gv-app.gv-skin-apex .gv-rw-bar.is-big { height: 18px; }
+.gv-app.gv-skin-apex .gv-rw-bar-fill { background-color: var(--gv-lime); }
+.gv-app.gv-skin-apex .gv-rw-bar-gain {
+  background-color: var(--gv-lime);
+  background-image: repeating-linear-gradient(115deg, var(--gv-lime-hi) 0, var(--gv-lime-hi) 6px, var(--gv-lime) 6px, var(--gv-lime) 12px);
+}
+
+/* The hexagon. .gv-rw-hex is the tier ring (a rectangle; ::before and ::after are its two triangles, drawn
+   outside it, so it carries a margin the height of one triangle). .gv-rw-hex-in is the page-coloured hexagon
+   inset 4px, built the same way. The glyph sits above both (z-index on the inner). Three sizes. */
+.gv-app.gv-skin-apex .gv-rw-hex {
+  --gv-hx-w: 56px;
+  --gv-hx-t: 16px;
+  --gv-hx-r: 32px;
+  --gv-hx-iw: 48px;
+  --gv-hx-it: 14px;
+  --gv-hx-ir: 28px;
+  --gv-hx-ix: 4px;
+  --gv-hx-iy: 2px;
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: var(--gv-hx-w);
+  height: var(--gv-hx-r);
+  margin: var(--gv-hx-t) 0;
+  border: 0;
+  border-radius: 0;
+  background-color: var(--gv-rw-ring);
+  color: var(--gv-rw-ink);
+}
+.gv-app.gv-skin-apex .gv-rw-hex.is-sm {
+  --gv-hx-w: 44px;
+  --gv-hx-t: 13px;
+  --gv-hx-r: 25px;
+  --gv-hx-iw: 36px;
+  --gv-hx-it: 10px;
+  --gv-hx-ir: 23px;
+  --gv-hx-iy: 1px;
+}
+.gv-app.gv-skin-apex .gv-rw-hex.is-lg {
+  --gv-hx-w: 76px;
+  --gv-hx-t: 22px;
+  --gv-hx-r: 44px;
+  --gv-hx-iw: 68px;
+  --gv-hx-it: 20px;
+  --gv-hx-ir: 38px;
+  --gv-hx-iy: 3px;
+}
+.gv-app.gv-skin-apex .gv-rw-hex.is-lime { --gv-rw-ring: var(--gv-lime); --gv-rw-ink: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-hex::before,
+.gv-app.gv-skin-apex .gv-rw-hex::after,
+.gv-app.gv-skin-apex .gv-rw-hex-in::before,
+.gv-app.gv-skin-apex .gv-rw-hex-in::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-left: calc(var(--gv-hx-w) / 2) solid transparent;
+  border-right: calc(var(--gv-hx-w) / 2) solid transparent;
+}
+.gv-app.gv-skin-apex .gv-rw-hex::before { top: calc(-1 * var(--gv-hx-t)); border-bottom: var(--gv-hx-t) solid var(--gv-rw-ring); }
+.gv-app.gv-skin-apex .gv-rw-hex::after { bottom: calc(-1 * var(--gv-hx-t)); border-top: var(--gv-hx-t) solid var(--gv-rw-ring); }
+.gv-app.gv-skin-apex .gv-rw-hex-in {
+  position: absolute;
+  z-index: 1;
+  top: var(--gv-hx-iy);
+  left: var(--gv-hx-ix);
+  display: grid;
+  place-items: center;
+  width: var(--gv-hx-iw);
+  height: var(--gv-hx-ir);
+  background-color: var(--gv-bg);
+}
+.gv-app.gv-skin-apex .gv-rw-hex-in::before,
+.gv-app.gv-skin-apex .gv-rw-hex-in::after {
+  border-left-width: calc(var(--gv-hx-iw) / 2);
+  border-right-width: calc(var(--gv-hx-iw) / 2);
+}
+.gv-app.gv-skin-apex .gv-rw-hex-in::before { top: calc(-1 * var(--gv-hx-it)); border-bottom: var(--gv-hx-it) solid var(--gv-bg); }
+.gv-app.gv-skin-apex .gv-rw-hex-in::after { bottom: calc(-1 * var(--gv-hx-it)); border-top: var(--gv-hx-it) solid var(--gv-bg); }
+.gv-app.gv-skin-apex .gv-rw-hex-num {
+  position: relative;
+  z-index: 1;
+  padding-right: 3px;
+  font-size: 26px;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 0.85;
+}
+.gv-app.gv-skin-apex .gv-rw-hex.is-sm .gv-rw-hex-num { font-size: 21px; }
+.gv-app.gv-skin-apex .gv-rw-hex.is-lg .gv-rw-hex-num { font-size: 46px; }
+.gv-app.gv-skin-apex .gv-rw-hex .gv-ico { position: relative; z-index: 1; }
+.gv-app.gv-skin-apex .gv-rw-hex .gv-ico svg { width: 19px; height: 19px; }
+
+/* Today: the level strip above the poster. */
+.gv-app.gv-skin-apex .gv-rw-level { margin: 0; padding: 0 0 8px; gap: 12px; border: 0; }
+.gv-app.gv-skin-apex .gv-rw-level-top { margin-bottom: 7px; }
+.gv-app.gv-skin-apex .gv-rw-level-title { font-size: 20px; font-weight: 900; font-style: italic; }
+.gv-app.gv-skin-apex .gv-rw-level-to { font-size: 12.5px; color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-level-foot { margin-top: 6px; font-size: 12px; }
+.gv-app.gv-skin-apex .gv-rw-level .gv-rw-bar { height: 12px; }
+
+/* "Up to +240 XP": the accent slab under "13 sets · ~48 min". */
+.gv-app.gv-skin-apex .gv-rw-xpchip {
+  --gv-slab: var(--gv-lime);
+  position: relative;
+  isolation: isolate;
+  display: block;
+  padding: 7px 14px;
+  font-family: var(--gv-display);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--gv-ink-fixed);
+}
+.gv-app.gv-skin-apex .gv-rw-xpchip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+  transform: skewX(-12deg);
+}
+
+/* The weekly quest: a leaning slab like the week's progress card. */
+.gv-app.gv-skin-apex .gv-rw-quest {
+  --gv-slab: var(--gv-surface);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  position: relative;
+  isolation: isolate;
+  margin: 8px 0 0;
+  padding: 10px 18px 12px;
+  border: 0;
+}
+.gv-app.gv-skin-apex .gv-rw-quest::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+  box-shadow: var(--gv-slab-edge);
+  transform: skewX(-4deg);
+}
+.gv-app.gv-skin-apex .gv-rw-quest-title { font-size: 19px; font-weight: 800; letter-spacing: 0.02em; }
+.gv-app.gv-skin-apex .gv-rw-quest-xp { font-size: 20px; font-weight: 900; font-style: italic; color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-quest-nums { margin-top: 8px; }
+.gv-app.gv-skin-apex .gv-rw-quest-togo { color: var(--gv-accent-text); }
+
+/* Session complete: the XP card sits on the page, no box. */
+.gv-app.gv-skin-apex .gv-rw-xp { margin: 12px 0 0; padding: 0; background-color: transparent; border: 0; }
+.gv-app.gv-skin-apex .gv-rw-xp-big { font-size: 58px; font-weight: 900; font-style: italic; line-height: 0.8; text-transform: uppercase; color: var(--gv-accent-text); }
+.theme-dark .gv-app.gv-skin-apex .gv-rw-xp-big { text-shadow: 0 0 30px var(--gv-lime); }
+.gv-app.gv-skin-apex .gv-rw-xp-lv b { font-size: 24px; font-weight: 900; font-style: italic; }
+.gv-app.gv-skin-apex .gv-rw-xp .gv-rw-bar { margin: 12px 0 7px; }
+.gv-app.gv-skin-apex .gv-rw-xp-togo { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-levelup { font-size: 22px; font-weight: 900; font-style: italic; color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-xp-lines { margin-top: 8px; padding-top: 6px; }
+.gv-app.gv-skin-apex .gv-rw-xp-line { padding: 3px 0; }
+.gv-app.gv-skin-apex .gv-rw-xp-amount { font-family: var(--gv-display); font-size: 17px; font-weight: 900; font-style: italic; color: var(--gv-accent-text); }
+
+.gv-app.gv-skin-apex .gv-rw-unlock {
+  --gv-slab: var(--gv-surface);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  position: relative;
+  isolation: isolate;
+  margin: 8px 0 0;
+  padding: 8px 14px 8px 12px;
+  border: 0;
+  background-color: transparent;
+}
+.gv-app.gv-skin-apex .gv-rw-unlock::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+  box-shadow: var(--gv-slab-edge);
+  transform: skewX(-4deg);
+}
+.gv-app.gv-skin-apex .gv-rw-unlock-kicker { font-size: 11px; letter-spacing: 0.14em; }
+.gv-app.gv-skin-apex .gv-rw-unlock-name { font-size: 22px; font-weight: 900; font-style: italic; }
+
+/* Records: the medals. */
+.gv-app.gv-skin-apex .gv-rw-medals { margin-top: 18px; }
+.gv-app.gv-skin-apex .gv-rw-sec .gv-rw-sec-title { margin-bottom: 8px; }
+.gv-app.gv-skin-apex .gv-rw-next-text b { font-size: 19px; font-weight: 900; font-style: italic; }
+.gv-app.gv-skin-apex .gv-rw-next-pc { font-size: 15px; font-weight: 800; color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-medal-name { font-size: 15px; font-weight: 800; letter-spacing: 0.02em; }
+.gv-app.gv-skin-apex .gv-rw-tier { font-family: var(--gv-display); font-size: 12px; letter-spacing: 0.12em; }
+
+/* Profile: the level card and the rank ladder. */
+.gv-app.gv-skin-apex .gv-rw-profile { border-top: 3px solid var(--gv-lime); padding: 16px 18px 14px; }
+.gv-app.gv-skin-apex .gv-rw-profile-level { font-size: 38px; font-weight: 900; font-style: italic; line-height: 0.86; }
+.gv-app.gv-skin-apex .gv-rw-profile-togo { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-rung i { height: 8px; background-color: var(--gv-apex-track); transform: skewX(-14deg); }
+.gv-app.gv-skin-apex .gv-rw-rung.is-done i { background-color: var(--gv-lime); opacity: 0.45; }
+.gv-app.gv-skin-apex .gv-rw-rung.is-current i { background-color: var(--gv-lime); box-shadow: none; }
+.gv-app.gv-skin-apex .gv-rw-rung.is-current span { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-stats b { font-size: 36px; font-weight: 900; font-style: italic; line-height: 0.86; }
+.gv-app.gv-skin-apex .gv-rw-stats > div:nth-child(2) b { color: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-stats > div:nth-child(3) b { color: var(--gv-medal-gold-ink); }
 
 /* ---------- lists ---------- */
 
@@ -5299,6 +5689,12 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 /* A name that cannot split keeps one title; the chips and badge then get their own row under it. */
 .gv-app.gv-skin-lockin .gv-hero-stage.has-chips:not(.is-split) { padding-bottom: 76px; }
 .gv-app.gv-skin-lockin .gv-hero-stage.has-badge:not(.is-split) { padding-bottom: 106px; }
+/* The XP chip adds a third stacked chip: the stage grows by one row so the column clears the title (rewards). */
+.gv-app.gv-skin-lockin .gv-hero-stage.has-xp.is-split { min-height: 192px; }
+.gv-app.gv-skin-lockin .gv-hero-stage.has-xp:not(.is-split) { padding-bottom: 100px; }
+.gv-app.gv-skin-lockin .gv-hero-stage.has-xp .gv-hero-chips { gap: 4px; }
+.gv-app.gv-skin-lockin .gv-hero-stage.has-xp .gv-hero-chip,
+.gv-app.gv-skin-lockin .gv-hero-stage.has-xp .gv-rw-xpchip { padding-top: 5px; padding-bottom: 5px; }
 
 /* "13 sets" / "~48 min": two black slab chips beside the title's second line
    (they replace the text line under the list). The XP slot is empty until the
@@ -5523,6 +5919,195 @@ body.is-phone .gv-app.gv-skin-lockin.gv-narrow:not(.gv-focus) .gv-page { padding
   background-image: linear-gradient(180deg, transparent 0, var(--gv-bg) 14px);
 }
 .gv-app.gv-skin-lockin.gv-narrow .gv-hero-today .gv-hero-action-line { display: none; }
+
+/* ---------- REWARDS UI (level strip, XP chip, quest, XP card, medals, profile) ----------
+   One markup (src/rewards-ui.js), drawn here with Lock In's own devices: starbursts (two squares turned 45
+   degrees apart, as the streak sticker is) with the fixed black ink on the tier or accent fill, leaning bars,
+   leaning slabs. Every colour is a token; the tier colours are the --gv-medal-* tokens. */
+.gv-app.gv-skin-lockin .gv-rw-bar {
+  height: 14px;
+  border: 0;
+  background-color: var(--gv-li-track);
+  transform: skewX(-14deg);
+}
+.gv-app.gv-skin-lockin .gv-rw-bar.is-thin { height: 8px; }
+.gv-app.gv-skin-lockin .gv-rw-bar.is-big { height: 18px; }
+.gv-app.gv-skin-lockin .gv-rw-bar-fill { background-color: var(--gv-lime); }
+.gv-app.gv-skin-lockin .gv-rw-bar-gain {
+  background-color: var(--gv-lime);
+  background-image: repeating-linear-gradient(115deg, var(--gv-lime-hi) 0, var(--gv-lime-hi) 6px, var(--gv-lime) 6px, var(--gv-lime) 12px);
+}
+
+/* The starburst. .gv-rw-hex is the box; its ::before and ::after are the two squares, one turned 45 degrees from
+   the other, filled with the tier (or accent) colour; the glyph stays upright inside on the fixed ink. */
+.gv-app.gv-skin-lockin .gv-rw-hex {
+  --gv-hx-box: 52px;
+  --gv-hx-s: 34px;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: var(--gv-hx-box);
+  height: var(--gv-hx-box);
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--gv-ink-fixed);
+  transform: rotate(12deg);
+  --gv-slab: var(--gv-rw-ring);
+}
+.gv-app.gv-skin-lockin .gv-rw-hex.is-sm { --gv-hx-box: 48px; --gv-hx-s: 31px; }
+.gv-app.gv-skin-lockin .gv-rw-hex.is-lg { --gv-hx-box: 84px; --gv-hx-s: 56px; }
+.gv-app.gv-skin-lockin .gv-rw-hex.is-lime,
+.gv-app.gv-skin-lockin .gv-rw-hex.is-gold,
+.gv-app.gv-skin-lockin .gv-rw-hex.is-silver,
+.gv-app.gv-skin-lockin .gv-rw-hex.is-bronze,
+.gv-app.gv-skin-lockin .gv-rw-hex.is-lock { --gv-rw-ink: var(--gv-ink-fixed); }
+.gv-app.gv-skin-lockin .gv-rw-hex.is-lime { --gv-rw-ring: var(--gv-lime); }
+.gv-app.gv-skin-lockin .gv-rw-hex::before,
+.gv-app.gv-skin-lockin .gv-rw-hex::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: -1;
+  width: var(--gv-hx-s);
+  height: var(--gv-hx-s);
+  margin: calc(var(--gv-hx-s) / -2) 0 0 calc(var(--gv-hx-s) / -2);
+  pointer-events: none;
+  background-color: var(--gv-slab);
+}
+.gv-app.gv-skin-lockin .gv-rw-hex::before { transform: rotate(0deg); }
+.gv-app.gv-skin-lockin .gv-rw-hex::after { transform: rotate(45deg); }
+.gv-app.gv-skin-lockin .gv-rw-hex-in { display: grid; place-items: center; transform: rotate(-12deg); }
+.gv-app.gv-skin-lockin .gv-rw-hex-num { font-size: 24px; font-weight: 900; font-style: italic; line-height: 0.85; }
+.gv-app.gv-skin-lockin .gv-rw-hex.is-sm .gv-rw-hex-num { font-size: 22px; }
+.gv-app.gv-skin-lockin .gv-rw-hex.is-lg .gv-rw-hex-num { font-size: 44px; }
+.gv-app.gv-skin-lockin .gv-rw-hex .gv-ico svg { width: 19px; height: 19px; }
+
+/* Today: the level strip above the poster. */
+.gv-app.gv-skin-lockin .gv-rw-level { margin: 0; padding: 0 0 8px; gap: 12px; border: 0; }
+.gv-app.gv-skin-lockin .gv-rw-level-top { margin-bottom: 7px; }
+.gv-app.gv-skin-lockin .gv-rw-level-title { font-size: 20px; font-weight: 900; font-style: italic; }
+.gv-app.gv-skin-lockin .gv-rw-level-to { font-size: 12.5px; color: var(--gv-accent-text); }
+.gv-app.gv-skin-lockin .gv-rw-level-foot { margin-top: 6px; font-size: 12px; }
+.gv-app.gv-skin-lockin .gv-rw-level .gv-rw-bar { height: 12px; }
+
+/* "Up to +240 XP": a paper slab under the black "13 sets" / "~48 min" chips, on the accent flood. */
+.gv-app.gv-skin-lockin .gv-rw-xpchip {
+  --gv-slab: var(--gv-li-paper);
+  position: relative;
+  isolation: isolate;
+  display: block;
+  padding: 7px 14px;
+  font-family: var(--gv-display);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--gv-ink-fixed);
+}
+.gv-app.gv-skin-lockin .gv-rw-xpchip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+  transform: skewX(-12deg);
+}
+
+/* The weekly quest: a leaning slab like the week's progress card. */
+.gv-app.gv-skin-lockin .gv-rw-quest {
+  --gv-slab: var(--gv-surface);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  position: relative;
+  isolation: isolate;
+  margin: 8px 0 0;
+  padding: 10px 18px 12px;
+  border: 0;
+}
+.gv-app.gv-skin-lockin .gv-rw-quest::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+  box-shadow: var(--gv-slab-edge);
+  transform: skewX(-4deg);
+}
+.gv-app.gv-skin-lockin .gv-rw-quest-title { font-size: 19px; font-weight: 800; letter-spacing: 0.02em; }
+.gv-app.gv-skin-lockin .gv-rw-quest-xp { font-size: 20px; font-weight: 900; font-style: italic; color: var(--gv-accent-text); }
+.gv-app.gv-skin-lockin .gv-rw-quest-nums { margin-top: 8px; }
+.gv-app.gv-skin-lockin .gv-rw-quest-togo { color: var(--gv-accent-text); }
+
+/* Session complete: the XP card sits on the page, no box. */
+.gv-app.gv-skin-lockin .gv-rw-xp { margin: 12px 0 0; padding: 0; background-color: transparent; border: 0; }
+.gv-app.gv-skin-lockin .gv-rw-xp-big { font-size: 58px; font-weight: 900; font-style: italic; line-height: 0.8; text-transform: uppercase; color: var(--gv-accent-text); }
+.theme-dark .gv-app.gv-skin-lockin .gv-rw-xp-big { text-shadow: 0 0 30px var(--gv-lime); }
+.gv-app.gv-skin-lockin .gv-rw-xp-lv b { font-size: 24px; font-weight: 900; font-style: italic; }
+.gv-app.gv-skin-lockin .gv-rw-xp .gv-rw-bar { margin: 12px 0 7px; }
+.gv-app.gv-skin-lockin .gv-rw-xp-togo { color: var(--gv-accent-text); }
+.gv-app.gv-skin-lockin .gv-rw-levelup { font-size: 22px; font-weight: 900; font-style: italic; color: var(--gv-accent-text); }
+.gv-app.gv-skin-lockin .gv-rw-xp-lines { margin-top: 8px; padding-top: 6px; }
+.gv-app.gv-skin-lockin .gv-rw-xp-line { padding: 3px 0; }
+.gv-app.gv-skin-lockin .gv-rw-xp-amount { font-family: var(--gv-display); font-size: 17px; font-weight: 900; font-style: italic; color: var(--gv-accent-text); }
+
+.gv-app.gv-skin-lockin .gv-rw-unlock {
+  --gv-slab: var(--gv-surface);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  position: relative;
+  isolation: isolate;
+  margin: 8px 0 0;
+  padding: 8px 14px 8px 12px;
+  border: 0;
+  background-color: transparent;
+}
+.gv-app.gv-skin-lockin .gv-rw-unlock::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--gv-slab);
+  box-shadow: var(--gv-slab-edge);
+  transform: skewX(-4deg);
+}
+.gv-app.gv-skin-lockin .gv-rw-unlock-kicker { font-size: 11px; letter-spacing: 0.14em; }
+.gv-app.gv-skin-lockin .gv-rw-unlock-name { font-size: 22px; font-weight: 900; font-style: italic; }
+
+/* Records: the medals. */
+.gv-app.gv-skin-lockin .gv-rw-medals { margin-top: 18px; }
+.gv-app.gv-skin-lockin .gv-rw-sec .gv-rw-sec-title { margin-bottom: 8px; }
+.gv-app.gv-skin-lockin .gv-rw-next-text b { font-size: 19px; font-weight: 900; font-style: italic; }
+.gv-app.gv-skin-lockin .gv-rw-next-pc { font-size: 15px; font-weight: 800; color: var(--gv-accent-text); }
+.gv-app.gv-skin-lockin .gv-rw-medal-name { font-size: 15px; font-weight: 800; letter-spacing: 0.02em; }
+.gv-app.gv-skin-lockin .gv-rw-tier { font-family: var(--gv-display); font-size: 12px; letter-spacing: 0.12em; }
+
+/* Profile: the level card and the rank ladder. */
+.gv-app.gv-skin-lockin .gv-rw-profile { border-top: 3px solid var(--gv-lime); padding: 16px 18px 14px; }
+.gv-app.gv-skin-lockin .gv-rw-profile-level { font-size: 38px; font-weight: 900; font-style: italic; line-height: 0.86; }
+.gv-app.gv-skin-lockin .gv-rw-profile-togo { color: var(--gv-accent-text); }
+.gv-app.gv-skin-lockin .gv-rw-rung i { height: 8px; background-color: var(--gv-li-track); transform: skewX(-14deg); }
+.gv-app.gv-skin-lockin .gv-rw-rung.is-done i { background-color: var(--gv-lime); opacity: 0.45; }
+.gv-app.gv-skin-lockin .gv-rw-rung.is-current i { background-color: var(--gv-lime); box-shadow: none; }
+.gv-app.gv-skin-lockin .gv-rw-rung.is-current span { color: var(--gv-accent-text); }
+.gv-app.gv-skin-lockin .gv-rw-stats b { font-size: 36px; font-weight: 900; font-style: italic; line-height: 0.86; }
+.gv-app.gv-skin-lockin .gv-rw-stats > div:nth-child(2) b { color: var(--gv-accent-text); }
+.gv-app.gv-skin-lockin .gv-rw-stats > div:nth-child(3) b { color: var(--gv-medal-gold-ink); }
 
 /* ---------- lists ---------- */
 

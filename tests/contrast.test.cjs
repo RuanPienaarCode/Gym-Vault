@@ -228,6 +228,76 @@ const PROBES = [
   text('.gv-session-complete title', ['div.gv-session-complete', 'h2.gv-display.gv-session-complete-title']),
   text('.gv-btn-go hover', ['div.gv-hero-action', 'button.gv-btn-go:hover', 'span']),
   text('.gv-btn hover', ['button.gv-btn:hover', 'span']),
+
+  /* ---- REWARDS (XP, levels, quest, medals), every skin: Today's level row and quest, the XP chip, the XP card and
+     medal unlock on Session complete, the Medals section on Records, the Profile hero. Chains follow the markup
+     src/rewards-ui.js builds. The hex / starburst glyphs are the tier colours' own ink against the ring or fill. ---- */
+  ...(() => {
+    const LV = ['div.gv-today', 'div.gv-slot-level', 'div.gv-rw-level'];
+    const QU = ['div.gv-today', 'div.gv-slot-quest', 'section.gv-rw-quest.is-open', 'div.gv-rw-quest-top'];
+    const XP = ['div.gv-session-complete', 'div.gv-rw-complete', 'section.gv-rw-xp'];
+    const UN = tier => ['div.gv-session-complete', 'div.gv-rw-complete', `section.gv-rw-unlock.is-${tier}`];
+    const MD = tier => ['section.gv-rw-medals', 'ul.gv-rw-medal-grid', `li.gv-rw-medal.is-${tier}`];
+    const PR = ['article.gv-card.gv-rw-profile'];
+    const HEX = tier => `div.gv-rw-hex.is-${tier}.is-sm`;
+    const out = [
+      text('level row: title', [...LV, 'div.gv-rw-level-mid', 'div.gv-rw-level-top', 'b.gv-rw-level-title'], 'rewards'),
+      text('level row: XP to next', [...LV, 'div.gv-rw-level-mid', 'div.gv-rw-level-top', 'span.gv-rw-level-to'], 'rewards'),
+      text('level row: rank', [...LV, 'div.gv-rw-level-mid', 'div.gv-rw-level-foot', 'span.gv-rw-level-rank'], 'rewards'),
+      text('level row: XP into the level', [...LV, 'div.gv-rw-level-mid', 'div.gv-rw-level-foot', 'span.gv-rw-level-into'], 'rewards'),
+      text('level hex number', [...LV, 'div.gv-rw-hex.is-lime.is-sm', 'div.gv-rw-hex-in', 'b.gv-rw-hex-num'], 'rewards'),
+      text('XP chip', ['div.gv-hero.gv-hero-today', 'div.gv-hero-head', 'div.gv-hero-stage', 'div.gv-hero-chips', 'span.gv-slot-xp-chip', 'span.gv-rw-xpchip'], 'rewards'),
+      text('quest: kicker', [...QU, 'div.gv-rw-quest-head', 'span.gv-kicker.gv-rw-quest-kicker'], 'rewards'),
+      text('quest: title', [...QU, 'div.gv-rw-quest-head', 'b.gv-rw-quest-title'], 'rewards'),
+      text('quest: +XP', [...QU, 'span.gv-rw-quest-xp'], 'rewards'),
+      text('quest: figures', ['div.gv-today', 'div.gv-slot-quest', 'section.gv-rw-quest.is-open', 'div.gv-rw-quest-nums', 'span.gv-rw-quest-done'], 'rewards'),
+      text('quest: to go', ['div.gv-today', 'div.gv-slot-quest', 'section.gv-rw-quest.is-open', 'div.gv-rw-quest-nums', 'span.gv-rw-quest-togo'], 'rewards'),
+      text('XP card: +N XP', [...XP, 'div.gv-rw-xp-head', 'b.gv-rw-xp-big'], 'rewards'),
+      text('XP card: level label', [...XP, 'div.gv-rw-xp-head', 'div.gv-rw-xp-lv', 'span'], 'rewards'),
+      text('XP card: level percent', [...XP, 'div.gv-rw-xp-head', 'div.gv-rw-xp-lv', 'b'], 'rewards'),
+      text('XP card: into the level', [...XP, 'div.gv-rw-xp-nums', 'span.gv-rw-xp-into'], 'rewards'),
+      text('XP card: to next', [...XP, 'div.gv-rw-xp-nums', 'span.gv-rw-xp-togo'], 'rewards'),
+      text('XP card: Level n!', [...XP, 'p.gv-rw-levelup'], 'rewards'),
+      text('XP card: line label', [...XP, 'ul.gv-rw-xp-lines', 'li.gv-rw-xp-line', 'span.gv-rw-xp-label'], 'rewards'),
+      text('XP card: line detail', [...XP, 'ul.gv-rw-xp-lines', 'li.gv-rw-xp-line', 'span.gv-rw-xp-label', 'small'], 'rewards'),
+      text('XP card: line amount', [...XP, 'ul.gv-rw-xp-lines', 'li.gv-rw-xp-line', 'b.gv-rw-xp-amount'], 'rewards'),
+      text('records: medals heading', ['section.gv-rw-medals', 'div.gv-rw-sec', 'h3.gv-section-title.gv-rw-sec-title', 'span'], 'rewards'),
+      text('records: medals count', ['section.gv-rw-medals', 'div.gv-rw-sec', 'span.gv-rw-sec-count'], 'rewards'),
+      text('records: Next call-out title', ['section.gv-rw-medals', 'div.gv-rw-next', 'div.gv-rw-next-text', 'b'], 'rewards'),
+      text('records: Next call-out detail', ['section.gv-rw-medals', 'div.gv-rw-next', 'div.gv-rw-next-text', 'span'], 'rewards'),
+      text('records: Next call-out percent', ['section.gv-rw-medals', 'div.gv-rw-next', 'span.gv-rw-pc.gv-rw-next-pc'], 'rewards'),
+      text('profile: level', [...PR, 'div.gv-rw-profile-top', 'div.gv-rw-profile-id', 'h3.gv-rw-profile-level'], 'rewards'),
+      text('profile: rank', [...PR, 'div.gv-rw-profile-top', 'div.gv-rw-profile-id', 'p.gv-rw-profile-rank'], 'rewards'),
+      text('profile: hex number', [...PR, 'div.gv-rw-profile-top', 'div.gv-rw-hex.is-lime.is-lg', 'div.gv-rw-hex-in', 'b.gv-rw-hex-num'], 'rewards'),
+      text('profile: XP figures', [...PR, 'div.gv-rw-profile-nums', 'span'], 'rewards'),
+      text('profile: to go', [...PR, 'div.gv-rw-profile-nums', 'span.gv-rw-profile-togo'], 'rewards'),
+      text('profile: rung (done)', [...PR, 'ol.gv-rw-ladder', 'li.gv-rw-rung.is-done', 'span'], 'rewards'),
+      text('profile: rung (current)', [...PR, 'ol.gv-rw-ladder', 'li.gv-rw-rung.is-current', 'span'], 'rewards'),
+      text('profile: rung (ahead)', [...PR, 'ol.gv-rw-ladder', 'li.gv-rw-rung.is-ahead', 'span'], 'rewards'),
+      text('profile: total', [...PR, 'p.gv-rw-profile-total'], 'rewards'),
+      text('profile: count number', [...PR, 'div.gv-rw-stats', 'div', 'b'], 'rewards'),
+      text('profile: count label', [...PR, 'div.gv-rw-stats', 'div', 'span'], 'rewards'),
+      text('profile: medals count (gold)', [...PR, 'div.gv-rw-stats', 'div:nth-child(3)', 'b'], 'rewards'),
+    ];
+    for (const tier of ['gold', 'silver', 'bronze']) {
+      out.push(
+        text(`medal unlocked: kicker (${tier})`, [...UN(tier), 'div.gv-rw-unlock-text', 'span.gv-rw-unlock-kicker'], 'rewards'),
+        text(`medal unlocked: name (${tier})`, [...UN(tier), 'div.gv-rw-unlock-text', 'strong.gv-rw-unlock-name'], 'rewards'),
+        text(`medal unlocked: next (${tier})`, [...UN(tier), 'div.gv-rw-unlock-text', 'p.gv-rw-unlock-next'], 'rewards'),
+        glyph(`medal unlocked: glyph (${tier})`, [...UN(tier), HEX(tier), 'div.gv-rw-hex-in', 'span.gv-ico', 'svg'], 'rewards'),
+        text(`medal tile: name (${tier})`, [...MD(tier), 'strong.gv-rw-medal-name'], 'rewards'),
+        text(`medal tile: tier word (${tier})`, [...MD(tier), 'span.gv-rw-tier'], 'rewards'),
+        text(`medal tile: earned on (${tier})`, [...MD(tier), 'span.gv-rw-earned'], 'rewards'),
+        text(`medal tile: percent (${tier})`, [...MD(tier), 'span.gv-rw-pc'], 'rewards'),
+        glyph(`medal tile: glyph (${tier})`, [...MD(tier), HEX(tier), 'div.gv-rw-hex-in', 'span.gv-ico', 'svg'], 'rewards'));
+    }
+    out.push(
+      text('medal tile: name (locked)', [...MD('lock'), 'strong.gv-rw-medal-name'], 'rewards'),
+      text('medal tile: percent (locked)', [...MD('lock'), 'span.gv-rw-pc'], 'rewards'),
+      glyph('medal tile: lock glyph', [...MD('lock'), HEX('lock'), 'div.gv-rw-hex-in', 'span.gv-ico', 'svg'], 'rewards'),
+      glyph('Next call-out: glyph', ['section.gv-rw-medals', 'div.gv-rw-next', HEX('lock'), 'div.gv-rw-hex-in', 'span.gv-ico', 'svg'], 'rewards'));
+    return out;
+  })(),
 ];
 
 const need = (probe, size, weight) => (probe.kind === 'glyph' ? 3 : (size >= 24 || (size >= 18.66 && weight >= 700)) ? 3 : 4.5);

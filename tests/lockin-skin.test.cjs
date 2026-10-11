@@ -256,7 +256,9 @@ let slabs = [];
   ];
   const DELIBERATE = [['.gv-icon-btn-small', ['div.gv-card', 'button.gv-icon-btn.gv-icon-btn-small'], 40]];
   const PASSIVE = ['.gv-tag', '.gv-badge', '.gv-ex-best', '.gv-day', '.gv-tile', '.gv-logo .gv-ico', '.gv-setup-logo', '.gv-session-complete-ico', '.gv-hero-chip',
-    '.gv-week-progress', '.gv-pb-target', '.gv-pb-moment', '.gv-pb-delta', '.gv-rec-delta', '.gv-recrow.gv-rec-new'];
+    '.gv-week-progress', '.gv-pb-target', '.gv-pb-moment', '.gv-pb-delta', '.gv-rec-delta', '.gv-recrow.gv-rec-new',
+    /* rewards: drawn, never tappable (tests/rewards-css.test.cjs C6 pins that rewards-ui.js builds no control) */
+    '.gv-rw-xpchip', '.gv-rw-quest', '.gv-rw-unlock'];
   const CONTROLS = ['.gv-btn', '.gv-btn-go', '.gv-btn-finish', '.gv-btn-hero-ghost', '.gv-icon-btn', '.gv-head-btn', '.gv-set-done', '.gv-dial-step', '.gv-timed-play', '.gv-chip', '.gv-segmented-btn'];
   /* TRIPWIRE: a new slab must be measured as a control or listed as passive */
   const keys = slabs.map(s => s.replace(/^\.gv-app\.gv-skin-lockin /, ''));

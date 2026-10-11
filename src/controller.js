@@ -164,8 +164,10 @@ function mountApp(view) {
        written by page-session.js's own pageCleanup, tied to the draft it
        belongs to, and consumed exactly once by the next fresh session built
        for that SAME draft (see page-session.js's render() and its own
-       comment, 0.11.2 journey audit finding L9). */
-    state: { page: 'dashboard', params: {}, session: null, setup: null, setupUi: null, pageCleanup: null, sessionCarry: null },
+       comment, 0.11.2 journey audit finding L9).
+       rewardsCache: the parsed rewards ledger for the data currently loaded,
+       read once per render cycle (rewards-flow.js readLedger). */
+    state: { page: 'dashboard', params: {}, session: null, setup: null, setupUi: null, pageCleanup: null, sessionCarry: null, rewardsCache: null },
     _interval: null,
     /* Set by ctx.nav() only (never by a plain ctx.rerender() from local UI
        state — ticking a set, toggling a switch — which must NOT steal focus

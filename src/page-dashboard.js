@@ -12,6 +12,7 @@ const { itemSets, isRestDay } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
 const { PlanPickerModal } = require('./modals');
 const { pbInReach, reachText, weekPlan, weekProgress, streakRisk, streakRiskText } = require('./progress');
+const rewardsUi = require('./rewards-ui');
 
 /* The kit today's session needs, as chips under the prescription. Nothing
    when it's all bodyweight — "No equipment" is worth saying on the setup
@@ -89,14 +90,14 @@ function titleNode(name) {
 
 /* "13 sets" / "~48 min" beside the title. Apex and Lock In show them as slab
    chips and hide the text line they replace; the other skins hide the chips.
-   The empty span is the slot for "up to +N XP" (rewards): nothing draws until
-   the rewards work gives it content. */
-function heroChips(setsTotal) {
+   `xpSlot` is the empty span for "up to +N XP": rewards-ui fills it (rewards on,
+   ledger read), and it draws nothing while it is empty. */
+function heroChips(setsTotal, xpSlot) {
   return el('div', { class: 'gv-hero-chips' },
     el('div', { class: 'gv-hero-chip-row' },
       el('span', { class: 'gv-hero-chip' }, `${setsTotal} sets`),
       el('span', { class: 'gv-hero-chip gv-hero-chip-min' }, `~${estMinutes(setsTotal)} min`)),
-    el('span', { class: 'gv-slot-xp-chip', 'data-gv-slot': 'xp-chip' }));
+    xpSlot);
 }
 
 /* The streak as the hero's badge (a hexagon in Apex, a starburst in Lock In).
@@ -120,8 +121,13 @@ function render(ctx, root) {
   const page = el('div', { class: 'gv-today' });
   const streak = weekStreak(dates, settings.weekStart, today);
   const wp = weekProgress({ workouts: data.workouts, goals: data.goals, daysOn: ctx.daysOn, today, weekStart: settings.weekStart });
-  /* Empty, on purpose: slots the rewards work fills (level + XP bar row). */
-  page.append(el('div', { class: 'gv-slot-level', 'data-gv-slot': 'level' }));
+  /* Empty until rewards-ui fills them (rewards on, ledger read): the level row, the XP chip and the weekly quest.
+     Held here so the fill goes to THESE nodes whenever the ledger lands. */
+  const levelSlot = el('div', { class: 'gv-slot-level', 'data-gv-slot': 'level' });
+  const questSlot = el('div', { class: 'gv-slot-quest', 'data-gv-slot': 'quest' });
+  const xpSlot = el('span', { class: 'gv-slot-xp-chip', 'data-gv-slot': 'xp-chip' });
+  let trainingDay = null;
+  page.append(levelSlot);
   const plan = ctx.activePlan();
   const todayKeyName = weekdayKey(today);
   /* Strength AND running: daysOn merges the active plan with every
@@ -238,7 +244,8 @@ function render(ctx, root) {
     const { plan: dayPlan, day } = todays[0];
     const setsTotal = day.items.reduce((n, it) => n + itemSets(it), 0);
     addTitle(day.name);
-    stage.append(heroChips(setsTotal));
+    stage.append(heroChips(setsTotal, xpSlot));
+    trainingDay = day;
     stage.classList.add('has-chips');
     const prose = (day.notes || []).join(' ').trim();
     sub.append(doneToday ? 'Logged for today — nice work.' : prose || `${day.items.length} exercises on the plan.`);
@@ -332,8 +339,7 @@ function render(ctx, root) {
     el('span', { class: 'gv-week-head-title' }, 'This week'),
     el('span', { class: 'gv-week-head-note' }, wp ? `${wp.done} of ${wp.target} done` : '')));
   page.append(strip);
-  /* Empty, on purpose: the slot for the weekly quest card (rewards). */
-  page.append(el('div', { class: 'gv-slot-quest', 'data-gv-slot': 'quest' }));
+  page.append(questSlot);
 
   /* Stats — oversized numerals on the hairline grid. */
   /* SESSIONS, not training days. These tiles counted unique DATES while
@@ -402,6 +408,7 @@ function render(ctx, root) {
     page.append(el('p', { class: 'gv-microcopy' }, 'No zero days.'));
   }
   root.append(page);
+  rewardsUi.mountToday(ctx, { level: levelSlot, quest: questSlot, chip: trainingDay ? xpSlot : null, day: trainingDay, stage: trainingDay ? stage : null });
 }
 
 /* The ticker strip over the Rx list: short static words, decoration only (so
