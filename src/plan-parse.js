@@ -267,7 +267,28 @@ function serializePlanBody(model) {
   return out.join('\n') + '\n';
 }
 
+/* PAUSED (0.13.1). A plan that runs ALONGSIDE the active one (`parallel`) or
+   fills the empty days (`fallback`) used to be always on, with no switch.
+   `paused: true` in its frontmatter takes it out of Today: ctx.parallelPlans /
+   ctx.fallbackPlans (controller.js) skip it, so Today, the week strip and
+   "Also today" all drop its days.
+
+   The rule lives HERE, once, and everything that asks "is this plan paused?"
+   (controller, the Plans list and detail, the export) calls it.
+
+   Only an alongside plan can be paused. A stray `paused: true` on an ordinary
+   plan means nothing — an ordinary plan is switched with "Make active", and
+   honouring the key there would let a leftover line quietly un-badge the plan
+   Today runs. A note without the key is NOT paused: every existing note
+   behaves exactly as before. `active` is deliberately not involved; every
+   existing parallel plan has `active: false` or none. */
+function isPaused(plan) {
+  const fm = (plan && plan.fm) || {};
+  return String(fm.paused) === 'true' && (String(fm.parallel) === 'true' || String(fm.fallback) === 'true');
+}
+
 module.exports = {
+  isPaused,
   parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, moveItem, updateItem, itemSets, isRestDay,
   targetWeight, targetFirstNumber, targetIsDuration, targetDurationSeconds,
 };

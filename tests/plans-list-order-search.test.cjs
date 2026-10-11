@@ -158,4 +158,32 @@ const badgeOf = (root, name) => {
   eq(byTag(root, 'input').find(i => hasClass(i, 'gv-search')).value, 'grease', 'render: the box shows the saved query');
 }
 
+/* ---- paused plans (0.13.1; tests/plan-paused.test.cjs has the full set) ---
+   A plan with `paused: true` is in use by nothing: role '' (so it sorts with the
+   ordinary plans), but the card still says "paused". */
+{
+  const pg = makePlan('Pull-up · Grease the Groove', { parallel: true, paused: true }, [makeDay('Grease the Groove', 'tue')]);
+  const pr = makePlan('Rest & Recovery', { parallel: true, fallback: true, paused: true }, [makeDay('Rest & Recovery', 'any')]);
+  const list = [A, B, LUNCH, pg, pr, C, TRAIL];
+  eq(planRole(pg, LUNCH), '', 'planRole: a paused parallel plan has no role (it is not merged into Today)');
+  eq(planRole(pr, LUNCH), '', 'planRole: a paused fallback plan has no role');
+  eq(orderPlans(list, LUNCH).map(p => p.name), [
+    'Midday Circuit', 'Run Base · 10km',
+    '9 Foundations', 'Get Over The Bar', 'Pull-up · Grease the Groove', 'Rest & Recovery', 'Run · 5km',
+  ], 'orderPlans: paused plans sort with the ordinary plans, not in the in-use group');
+  /* Parity with Today's rule: nothing badged "alongside" / "fills gaps" is paused. */
+  const live = list.filter(p => String(p.fm.parallel) === 'true' && String(p.fm.fallback) !== 'true' && String(p.fm.paused) !== 'true');
+  eq(live.map(p => p.name), ['Run Base · 10km'], 'the live alongside plans');
+
+  const ctx = makeCtx(list, LUNCH);
+  const root = global.document.createElement('div');
+  render(ctx, root);
+  eq(badgeOf(root, 'Pull-up · Grease the Groove'), ['paused'], 'render: a paused parallel plan carries a "paused" badge');
+  eq(badgeOf(root, 'Rest & Recovery'), ['paused'], 'render: a paused fallback plan carries a "paused" badge');
+  eq(badgeOf(root, 'Run Base · 10km'), ['alongside'], 'render: a live parallel plan still says alongside');
+  eq(cardNames(root).slice(0, 2), ['Midday Circuit', 'Run Base · 10km'], 'render: only the live plans lead the list');
+  const card = flat(root).filter(nd => hasClass(nd, 'gv-plan-card')).find(c => nameOf(c) === 'Rest & Recovery');
+  eq(card.attrs['aria-label'], 'Open Rest & Recovery, paused', 'render: the aria-label says paused');
+}
+
 console.log(`plans list order + search OK (${n} checks)`);

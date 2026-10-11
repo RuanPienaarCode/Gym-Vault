@@ -44,6 +44,21 @@
      good for 12px type); a streak warning is small text, so it gets its own
      darker light-theme value. Still not accent-tied. */
   --gv-amber-text: #92400e;
+  /* The counter zone's colour ramp (rep counter / hold, 0.13.1). The zone
+     climbs through four stages and only the last is the user's accent, so
+     "target reached" is the one moment it turns their colour. NOT accent-tied,
+     for the reason --gv-amber is not. warm = a cool tint, hot = amber, peak
+     = a true red (--gv-ember is orange: it sat on top of Blaze's accent, the
+     dark ember IS Blaze's hex), done = the accent. The -a tokens are the
+     flood's opacity per stage; dark twins below. tests/rc-zone-stages.test.cjs
+     measures every stage x theme x accent from these. */
+  --gv-stage-warm: #93b4d8;
+  --gv-stage-hot: var(--gv-amber);
+  --gv-stage-peak: #ef4444;
+  --gv-stage-warm-a: 0.55;
+  --gv-stage-hot-a: 0.6;
+  --gv-stage-peak-a: 0.92;
+  --gv-stage-done-a: 0.75;
   /* Dim text sitting ON an accent flood (stats line in the action slab,
      target text in a log exercise bar). Re-pointed per accent below. */
   --gv-flood-dim: #2b3a12;
@@ -81,6 +96,14 @@
   --gv-amber: #fbbf24;
   --gv-ember: #f97316;
   --gv-amber-text: #fbbf24;
+  /* The ramp on a near-black page: the tints are deeper and the floods
+     denser, so light ink reads on warm / hot / peak and the dark fixed ink
+     reads on the accent flood. */
+  --gv-stage-warm: #4a6a8f;
+  --gv-stage-peak: #dc2626;
+  --gv-stage-hot-a: 0.4;
+  --gv-stage-peak-a: 0.75;
+  --gv-stage-done-a: 0.95;
 }
 
 /* Host-cascade override — see header comment. */
@@ -1777,34 +1800,38 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   height: 100%;
   transform-origin: bottom center;
   transform: scaleY(var(--gv-fill, 0));
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background-color 320ms ease;
-  background: var(--gv-lime-ghost);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background-color 320ms ease, opacity 320ms ease;
+  background: var(--gv-stage-warm);
+  opacity: var(--gv-stage-warm-a);
   pointer-events: none;
   z-index: -1;
 }
 
 /* THE ESCALATION. Four stages, each doing visibly more than the last,
    because the whole point is that you can feel the target coming without
-   reading the number:
+   reading the number — and each its OWN colour, so a hold at 37s of a 30s
+   target is not one green all the way (0.13.1). The accent is spent once,
+   when the target is met:
 
-     warm  a ghost tint. Under way, nothing more.
-     hot   the tint holds, and the flood starts breathing — a slow pulse.
-     peak  the accent proper, faster breathing, and the FIRST FLAMES appear
-           on the leading edge. This is the stretch that should feel urgent.
-     done  full flood, flames at full height, embers, and one hit pulse.
+     warm  a cool tint. Under way, nothing more.
+     hot   amber, and the flood starts breathing — a slow pulse.
+     peak  red, faster breathing. This is the stretch that should feel urgent.
+     done  the accent, full flood, and one hit pulse.
 
-   One lime flood per screen is the house rule, and this screen spends it
+   The colours and opacities are the --gv-stage-* tokens (both themes). Text
+   colour per stage is below; tests/rc-zone-stages.test.cjs measures it all.
+   One accent flood per screen is the house rule, and this screen spends it
    here. */
 .gv-rc-zone[data-fill="hot"]::before {
-  background: var(--gv-lime-ghost);
+  background: var(--gv-stage-hot); opacity: var(--gv-stage-hot-a);
   animation: gv-fill-breathe 1500ms ease-in-out infinite;
 }
 .gv-rc-zone[data-fill="peak"]::before {
-  background: var(--gv-lime-hi); opacity: 0.55;
+  background: var(--gv-stage-peak); opacity: var(--gv-stage-peak-a);
   animation: gv-fill-breathe 820ms ease-in-out infinite;
 }
 .gv-rc-zone[data-fill="done"]::before {
-  background: var(--gv-lime); opacity: 0.75;
+  background: var(--gv-lime); opacity: var(--gv-stage-done-a);
   animation: gv-fill-hit 620ms ease-out 1;
 }
 @keyframes gv-fill-breathe {
@@ -1812,9 +1839,9 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   50%      { filter: brightness(1.13); }
 }
 @keyframes gv-fill-hit {
-  0%   { opacity: 0.75; }
+  0%   { opacity: var(--gv-stage-done-a); }
   40%  { opacity: 1; }
-  100% { opacity: 0.75; }
+  100% { opacity: var(--gv-stage-done-a); }
 }
 
 /* ---------- 06 POWER-UP — the target detonation ----------
@@ -1883,8 +1910,41 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   100% { opacity: 0; transform: scale(1); }
 }
 
-/* The count reads against the flood once it is dark enough to need it. */
-.gv-rc-zone[data-fill="done"] .gv-rc-count { color: var(--gv-ink-fixed); }
+/* A TAP MUST NOT RECOLOUR THE COUNT ON A STAGE (0.13.1). The punch keyframes
+   flick the count to the accent (--gv-lime-deep / -hi) and the zone's flash
+   rule does the same, on every tap. On a staged flood that spends the accent
+   before "done" — the one moment it is meant to appear — and on "done" it is
+   accent-on-accent, ~1.2:1 for the length of the flick. So from "warm" on the
+   punch is its overshoot alone (transform only), and the flash recolours
+   nothing (the flash rule above is for the bare zone). */
+.gv-rc-zone[data-fill]:not([data-fill="idle"]) .gv-rc-count.gv-punch { animation-name: gv-punch-flood; }
+@keyframes gv-punch-flood {
+  0%   { transform: scale(1); }
+  22%  { transform: scale(1.34); }
+  55%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* TEXT ON THE FLOOD (0.13.1). Every piece of text in the zone (count, target
+   label, hint) must be readable on its stage, on every accent, in both
+   themes — the hint was once left on --gv-ink-dim and was ~1.2:1 on the
+   green. From warm on the zone is tinted, and the dim grey is ~4.2:1 on the
+   light theme's tint, so full --gv-ink is used (on hot and peak, coloured floods: light ink
+   on the dark theme's deep amber and red, dark ink on the light theme's pale
+   ones — and the flood only covers the bottom of the zone until the target
+   is met, so the ink also has to read on the bare page: --gv-ink does).
+   done is the accent at full strength, so the FIXED dark ink: it reads on
+   every accent in both themes and does not flip with the theme.
+   tests/rc-zone-stages.test.cjs. */
+.gv-rc-zone[data-fill="warm"] .gv-rc-target,
+.gv-rc-zone[data-fill="warm"] .gv-rc-hint,
+.gv-rc-zone[data-fill="hot"] .gv-rc-target,
+.gv-rc-zone[data-fill="hot"] .gv-rc-hint,
+.gv-rc-zone[data-fill="peak"] .gv-rc-target,
+.gv-rc-zone[data-fill="peak"] .gv-rc-hint { color: var(--gv-ink); }
+.gv-rc-zone[data-fill="done"] .gv-rc-count,
+.gv-rc-zone[data-fill="done"] .gv-rc-target,
+.gv-rc-zone[data-fill="done"] .gv-rc-hint { color: var(--gv-ink-fixed); }
 
 /* What you are filling towards. IN FLOW, under the number — it was absolute
    at a fixed offset from the zone's bottom, which works only if the zone is
@@ -1898,7 +1958,6 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   color: var(--gv-ink-dim);
   pointer-events: none;
 }
-.gv-rc-zone[data-fill="done"] .gv-rc-target { color: var(--gv-ink-fixed); }
 
 /* The first-set start gate — one tap before any clock runs. */
 
@@ -2072,7 +2131,8 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
      steal the hit area it sits in front of. */
   pointer-events: none;
 }
-.gv-rc-zone.gv-rc-flash .gv-rc-count { color: var(--gv-lime); }
+.gv-rc-zone:not([data-fill]).gv-rc-flash .gv-rc-count,
+.gv-rc-zone[data-fill="idle"].gv-rc-flash .gv-rc-count { color: var(--gv-lime); }
 
 /* "Type" swaps the giant count for a number box IN PLACE. It inherits the
    display face and size so the screen does not lurch when it appears.

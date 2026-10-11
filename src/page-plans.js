@@ -4,9 +4,9 @@
    via "Open note", and everything written here round-trips through
    plan-parse so hand-written coaching cues survive. */
 
-const { el, ico, prose, clickableCard, backButton } = require('./dom');
+const { el, ico, prose, clickableCard, backButton, toggleRow } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
-const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription } = require('./plan-parse');
+const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
 const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
@@ -54,14 +54,24 @@ async function saveThenReload(ctx, plan) {
    build Today (ctx.parallelPlans / ctx.fallbackPlans: fallback wins over
    parallel), plus "active" meaning the plan Today actually runs —
    ctx.activePlan(), which falls back to the first main plan when nothing is
-   flagged — so the list never badges a different plan than Today follows. */
+   flagged — so the list never badges a different plan than Today follows.
+
+   A PAUSED plan (plan-parse.js isPaused) is in use by nothing, so its role is
+   '' — it sorts with the ordinary plans, not in the "in use" group. The list
+   still says "paused" on it (pausedBadge below): the role decides the ORDER,
+   the badge tells the truth about why it is not leading. */
 function planRole(p, activePlan) {
-  if (String(p.fm.fallback) === 'true') return 'fills-gaps';
-  if (String(p.fm.parallel) === 'true') return 'alongside';
+  if (String(p.fm.fallback) === 'true') return isPaused(p) ? '' : 'fills-gaps';
+  if (String(p.fm.parallel) === 'true') return isPaused(p) ? '' : 'alongside';
   return activePlan && p === activePlan ? 'active' : '';
 }
 const ROLE_RANK = { active: 0, alongside: 1, 'fills-gaps': 2, '': 3 };
 const ROLE_BADGE = { active: 'active', alongside: 'alongside', 'fills-gaps': 'fills gaps' };
+/* The badge words for a plan: its role, or "paused". */
+function badgeWord(p, activePlan) {
+  const role = planRole(p, activePlan);
+  return role ? ROLE_BADGE[role] : isPaused(p) ? 'paused' : '';
+}
 
 /* Plans in use lead the list (active, then the ones running alongside it,
    then the gap-filler); everything else keeps the order it had. */
@@ -167,16 +177,17 @@ function planCards(ctx, shown, activeNow) {
   const list = el('div', { class: 'gv-card-list' });
   for (const p of shown) {
     const role = planRole(p, activeNow);
+    const badge = badgeWord(p, activeNow);
     const active = role === 'active';
     const days = p.model.days;
     const c = clickableCard(
       { class: `gv-card gv-plan-card${active ? ' active' : ''}`,
-        'aria-label': `Open ${p.name}${role ? `, ${ROLE_BADGE[role]}` : ''}` },
+        'aria-label': `Open ${p.name}${badge ? `, ${badge}` : ''}` },
       () => ctx.nav('plans', { plan: p.name }),
       el('div', { class: 'gv-plan-main' },
         el('div', { class: 'gv-plan-name' },
           el('span', {}, p.name),
-          role ? el('span', { class: 'gv-badge' }, ROLE_BADGE[role]) : ''),
+          badge ? el('span', { class: 'gv-badge' }, badge) : ''),
         el('div', { class: 'gv-plan-meta' },
           `${days.length} day${days.length === 1 ? '' : 's'} / week · ${days.reduce((n, d) => n + d.items.length, 0)} exercises`),
         /* What the whole plan asks you to own, so you can tell at a glance
@@ -253,7 +264,9 @@ function renderDetail(ctx, root, plan) {
   if (active) {
     actions.append(el('span', { class: 'gv-badge' }, 'active'));
   } else if (isFallback || isParallel) {
-    actions.append(el('span', { class: 'gv-dim' }, isFallback ? 'Fills empty days' : 'Runs alongside the active plan'));
+    /* The control is a full-width row under the toolbar (below), not a
+       toolbar button: the toolbar already carries Back, the title, Edit and
+       Open note on a 390px phone. */
   } else {
     actions.append(el('button', {
       class: 'gv-btn gv-btn-ghost', type: 'button',
@@ -288,6 +301,27 @@ function renderDetail(ctx, root, plan) {
     ico('file-text'), el('span', {}, 'Open note')));
   bar.append(actions);
   root.append(bar);
+
+  /* A plan that runs alongside the active one, or fills its empty days, is on
+     Today until you say otherwise. This is the switch (it was static text:
+     "Runs alongside the active plan", with no way to manage it). Pausing
+     writes `paused: true` into the note's frontmatter and nothing else; the
+     plan stays in the library and on the Plans list, it just stops landing on
+     Today. The active plan and ordinary plans do not get this row: they have
+     "Make active". */
+  if (!active && (isFallback || isParallel)) {
+    const paused = isPaused(plan);
+    root.append(toggleRow(
+      paused ? 'Paused' : 'On Today',
+      isFallback
+        ? (paused ? 'It will not fill your empty days. Nothing is deleted. Switch on to bring it back.'
+          : 'Fills any weekday your active plan leaves empty. Switch off to pause it.')
+        : (paused ? 'Its days are not added to Today. Nothing is deleted. Switch on to bring it back.'
+          : 'Runs alongside your active plan: its days are added to Today. Switch off to pause it.'),
+      !paused,
+      async on => { await ctx.io.setPaused(plan, !on); ctx.reload(); },
+      { label: 'Show on Today' }));
+  }
 
   if (plan.model.intro.length) {
     /* First paragraph only until asked — a plan's rationale is worth having
@@ -576,4 +610,4 @@ function openAddItem(ctx, plan, day) {
   }).open();
 }
 
-module.exports = { render, planRole, orderPlans, planMatches };
+module.exports = { render, planRole, orderPlans, planMatches, badgeWord };

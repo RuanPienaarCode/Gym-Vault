@@ -11,6 +11,7 @@ const { WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, startOfWeek, addDays } = require('./dates');
 const { distanceInWeek, ladderWeek, workoutDate, num } = require('./stats');
 const { runRows, longestRun, paceOf, fmtPace } = require('./run-records');
+const { isPaused } = require('./plan-parse');
 
 
 function render(ctx, root) {
@@ -51,6 +52,12 @@ function render(ctx, root) {
       : 'No running plan yet — create one on the Plans page and mark it parallel.'));
   }
   root.append(hero);
+  /* A paused running plan still drives THIS page (ctx.runPlan reads every
+     parallel plan); it just is not on Today. Say so, or "where are my runs on
+     Today" has no answer. */
+  if (plan && isPaused(plan)) {
+    root.append(el('p', { class: 'gv-dim' }, 'This plan is paused, so its runs are not on Today. Switch it back on from the Plan page.'));
+  }
 
   /* ---- this week's runs, straight from the plan ---- */
   if (plan) {

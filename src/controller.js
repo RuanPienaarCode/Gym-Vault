@@ -6,6 +6,7 @@ const { Notice, normalizePath } = require('obsidian');
 const { el, ico, clear } = require('./dom');
 const { makeIo } = require('./data');
 const { ConfirmModal } = require('./modals');
+const { isPaused } = require('./plan-parse');
 const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
@@ -92,6 +93,36 @@ function resolveDaysOn(weekday, activePlan, parallelPlans, fallbackPlans) {
     }
   }
   return out;
+}
+
+/* WHICH PLANS RUN ALONGSIDE, pure and exported (0.13.1, paused).
+
+   ctx.parallelPlans / ctx.fallbackPlans are thin wrappers over these, for the
+   same reason ctx.daysOn wraps resolveDaysOn: the closure form could only be
+   tested by writing a second copy of the rule.
+
+   A PAUSED plan (plan-parse.js isPaused) is left out unless `includePaused`
+   is set. Today builds its days from the filtered lists; the one caller that
+   needs every plan whether or not it is switched on is runPlanOf. */
+const isParallelPlan = p => String(p.fm.parallel) === 'true';
+const isFallbackPlan = p => String(p.fm.fallback) === 'true';
+function parallelPlansOf(plans, opts) {
+  const all = !!(opts && opts.includePaused);
+  return (plans || []).filter(p => isParallelPlan(p) && !isFallbackPlan(p) && (all || !isPaused(p)));
+}
+function fallbackPlansOf(plans, opts) {
+  const all = !!(opts && opts.includePaused);
+  return (plans || []).filter(p => isFallbackPlan(p) && (all || !isPaused(p)));
+}
+
+/* The plan the Running page reads its ladder and run days from. Chosen from
+   EVERY parallel plan, paused or not: pausing "Trail Base" stops its days
+   landing on Today, and must not blank the Running page's ladder and targets
+   (the page's own data, not Today's schedule). `isRunExercise(name)` says
+   whether an exercise is measured in km. */
+function runPlanOf(plans, isRunExercise) {
+  const all = parallelPlansOf(plans, { includePaused: true });
+  return all.find(p => p.model.days.some(d => d.items.some(i => isRunExercise(i.exercise)))) || all[0] || null;
 }
 
 /* True when NOTHING carries the active flag and activePlan() is merely
@@ -209,15 +240,17 @@ function mountApp(view) {
   ctx.activePlanIsImplicit = () =>
     (ctx.data ? isImplicitActive(ctx.data.plans.filter(p => !isParallel(p))) : false);
   const isFallback = p => String(p.fm.fallback) === 'true';
-  ctx.parallelPlans = () => (ctx.data ? ctx.data.plans.filter(p => isParallel(p) && !isFallback(p)) : []);
-  ctx.fallbackPlans = () => (ctx.data ? ctx.data.plans.filter(isFallback) : []);
+  /* Paused plans are skipped (parallelPlansOf / fallbackPlansOf): Today, the
+     week strip and the plan switcher all read these two. */
+  ctx.parallelPlans = () => (ctx.data ? parallelPlansOf(ctx.data.plans) : []);
+  ctx.fallbackPlans = () => (ctx.data ? fallbackPlansOf(ctx.data.plans) : []);
   /* Every non-parallel plan, for the switcher. */
   ctx.mainPlans = () => (ctx.data ? ctx.data.plans.filter(p => !isParallel(p) && !isFallback(p)) : []);
   const isRunExercise = name => !!ctx.data && ctx.data.exercises.some(e =>
     e.name.toLowerCase() === (name || '').toLowerCase() && (e.fm.unit || '') === 'km');
-  ctx.runPlan = () =>
-    ctx.parallelPlans().find(p => p.model.days.some(d => d.items.some(i => isRunExercise(i.exercise))))
-    || ctx.parallelPlans()[0] || null;
+  /* From the UNFILTERED parallel plans: a paused running plan still owns the
+     Running page's ladder (see runPlanOf). */
+  ctx.runPlan = () => (ctx.data ? runPlanOf(ctx.data.plans, isRunExercise) : null);
   /* Every {plan, day} scheduled on a weekday, active plan first. The rule
      itself is resolveDaysOn, up at the top of this file — see its comment
      for why it is not written out here any more. */
@@ -751,4 +784,7 @@ function renderSetup(ctx, root) {
 /* NAV is exported for the guard suite (tests/nav.test.cjs) and the preview
    harness, which both need the real tab list rather than a copy of it — a
    copied nav is a nav that silently stops matching the app. */
-module.exports = { mountApp, NAV, resolveDaysOn, isImplicitActive, describeDraft };
+module.exports = {
+  mountApp, NAV, resolveDaysOn, isImplicitActive, describeDraft,
+  isPaused, parallelPlansOf, fallbackPlansOf, runPlanOf,
+};

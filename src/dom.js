@@ -89,7 +89,9 @@ function clickableCard(attrs, onActivate, ...kids) {
    accessible name lives on the ROW (aria-label) because the row is the whole
    hit target; the switch glyph itself is decorative. `onChange(next)` gets
    the value it is being moved TO — callers re-render themselves, since this
-   module knows nothing about the app controller.
+   module knows nothing about the app controller. `opts.label` is the
+   accessible name when the visible name is the STATE ("On Today" / "Paused"):
+   a switch whose name flips with its value reads as a contradiction.
 
    `disabled` renders the row inert and unfocusable but still readable, for a
    toggle that has nothing to act on (a warm-up with no mobility exercises in
@@ -108,7 +110,7 @@ function toggleRow(name, desc, value, onChange, opts = {}) {
     return el('div', { class: cls, 'aria-disabled': 'true' }, ...body);
   }
   return clickableCard(
-    { class: cls, role: 'switch', 'aria-checked': on ? 'true' : 'false', 'aria-label': name },
+    { class: cls, role: 'switch', 'aria-checked': on ? 'true' : 'false', 'aria-label': opts.label || name },
     () => onChange(!on),
     ...body);
 }

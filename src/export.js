@@ -10,6 +10,7 @@
 
 const { BODY_COLUMNS, WORKOUT_COLUMNS, WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, fmtShort, addDays, fromISO } = require('./dates');
+const { isPaused } = require('./plan-parse');
 const {
   num, exerciseBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, sessionCount, workoutDate,
 } = require('./stats');
@@ -94,7 +95,7 @@ function buildSummary(data, options) {
     L.push('## Current programme');
     L.push('');
     for (const p of data.plans) {
-      const tag = String(p.fm.parallel) === 'true' ? 'runs alongside'
+      const tag = String(p.fm.parallel) === 'true' ? (isPaused(p) ? 'runs alongside, paused' : 'runs alongside')
         : String(p.fm.active) === 'true' ? 'active' : 'inactive';
       L.push(`### ${p.name} (${tag})`);
       L.push('');
@@ -241,6 +242,7 @@ function buildJson(data, options) {
       name: p.name,
       active: String(p.fm.active) === 'true',
       parallel: String(p.fm.parallel) === 'true',
+      ...(isPaused(p) ? { paused: true } : {}),
       ladder: p.fm.ladder,
       start_date: p.fm.start_date,
       days: p.model.days.map(d => ({ weekday: d.weekday, name: d.name, items: d.items })),

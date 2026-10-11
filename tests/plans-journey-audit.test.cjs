@@ -144,14 +144,17 @@ function renderRoot(renderFn, ctx) {
     const restRoot = renderRoot(CURRENT.render, restCtx);
     assert.ok(!byTag(restRoot, 'button').some(b => b.textContent.includes('Make active')),
       'NEW: a fallback plan must not offer "Make active"');
-    assert.ok(flat(restRoot).some(n => n.tag === 'span' && n.textContent === 'Fills empty days'),
+    /* 0.13.1: the static "Fills empty days" text became a switch row (paused
+       plans) — it must still SAY what the plan does. tests/plan-paused.test.cjs
+       drives the switch itself. */
+    assert.ok(flat(restRoot).some(n => n.tag === 'div' && /^Fills any weekday your active plan leaves empty/.test(n.textContent)),
       'NEW: a fallback plan must say what it actually does instead');
 
     const { ctx: runCtx } = makeCtx(plans, { openPlan: 'Running' });
     const runRoot = renderRoot(CURRENT.render, runCtx);
     assert.ok(!byTag(runRoot, 'button').some(b => b.textContent.includes('Make active')),
       'NEW: a parallel plan must not offer "Make active"');
-    assert.ok(flat(runRoot).some(n => n.tag === 'span' && n.textContent === 'Runs alongside the active plan'),
+    assert.ok(flat(runRoot).some(n => n.tag === 'div' && /^Runs alongside your active plan/.test(n.textContent)),
       'NEW: a parallel plan must say what it actually does instead');
   }
 
