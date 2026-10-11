@@ -41,12 +41,14 @@ function render(ctx, root) {
     class: 'gv-search', type: 'search', placeholder: 'Search exercises…', value: ui.q, 'aria-label': 'Search records',
     oninput: e => { ui.q = e.target.value; draw(); },
   });
-  root.append(el('div', { class: 'gv-toolbar' },
+  const rows = allRecords(data.workouts, data.exercises);
+  /* The count under the title is the mockups' "14 BESTS" (Apex and Lock In
+     draw it; the other skins hide it). Same rows the list prints. */
+  root.append(el('div', { class: 'gv-toolbar gv-toolbar-records' },
     back,
     el('h2', { class: 'gv-toolbar-title' }, 'Records'),
+    el('p', { class: 'gv-kicker gv-records-count' }, `${rows.length} ${rows.length === 1 ? 'best' : 'bests'}`),
     search));
-
-  const rows = allRecords(data.workouts, data.exercises);
   if (!rows.length) {
     root.append(el('div', { class: 'gv-empty-line' },
       'No records yet — log a set and the first one becomes the number to beat.'));

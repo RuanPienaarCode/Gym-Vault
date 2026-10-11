@@ -109,13 +109,26 @@ assert.ok(
 
    So: exactly one rule, and it is the .gv-page one. */
 {
-  const rules = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+  const all = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .filter(m => /var\(\s*--view-bottom-spacing/.test(m[2]));
-  assert.strictEqual(
-    rules.length, 1,
-    'exactly one rule may claim --view-bottom-spacing clearance (nested claims stack); found: ' +
-    rules.map(r => r[1].trim()).join(' | '),
-  );
+  /* The one other legitimate claimant: the BOTTOM TAB BAR of Apex and Lock In in a narrow pane (design fidelity).
+     It sits below .gv-page rather than inside it, so it cannot stack with it - provided the page gives its own
+     clearance up (checked below) and the bar uses the host's value DIRECTLY: --view-bottom-spacing is the
+     unitless 0 on a phone whose navbar is not floating, so inside calc() it is invalid. */
+  const navClaims = all.filter(m => /\.gv-nav\s*$/.test(m[1].trim()));
+  const rules = all.filter(m => !navClaims.includes(m));
+  for (const m of navClaims) {
+    const sel = m[1].trim();
+    assert.match(sel, /body\.is-phone\s+\.gv-app\.gv-skin-(apex|lockin)\.gv-narrow\s+\.gv-nav$/, `a bottom-bar clearance claim must be phone-only and skin+narrow scoped: ${sel}`);
+    const decl = /padding-bottom\s*:\s*([^;]+);?/.exec(m[2]);
+    assert.ok(decl && /^var\(\s*--view-bottom-spacing\s*,\s*0px\s*\)$/.test(decl[1].trim()),
+      `${sel}: use the host clearance directly, as padding-bottom: var(--view-bottom-spacing, 0px). Inside calc() the unitless 0 of a non-floating phone navbar makes the whole declaration invalid. Got: ${decl && decl[1]}`);
+    const skin = /gv-skin-(apex|lockin)/.exec(sel)[1];
+    const giveUp = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(r => new RegExp(`body\\.is-phone\\s+\\.gv-app\\.gv-skin-${skin}\\.gv-narrow:not\\(\\.gv-focus\\)\\s+\\.gv-page\\s*$`).test(r[1].trim()));
+    assert.ok(giveUp && /padding-bottom\s*:/.test(giveUp[2]) && !/view-bottom-spacing/.test(giveUp[2]),
+      `${skin}: the bar carries the host clearance, so the page must give its own up (body.is-phone .gv-app.gv-skin-${skin}.gv-narrow:not(.gv-focus) .gv-page { padding-bottom: ... }), or the two stack. In focus mode the bar is hidden and the page's own clearance must come back (hence :not(.gv-focus)).`);
+  }
+  assert.ok(navClaims.length === 0 || navClaims.length === 2, 'the bottom bar is a two-skin design (Apex and Lock In): both or neither');
   assert.match(
     rules[0][1].trim(), /\.gv-page\s*$/,
     'the --view-bottom-spacing clearance must sit on .gv-page, the scroll container every page ' +

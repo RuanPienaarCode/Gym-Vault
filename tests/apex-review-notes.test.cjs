@@ -201,7 +201,7 @@ const HOST_H3 = {
     ['.gv-timed-play', ['div.gv-session-page', 'button.gv-timed-play'], 'wh'],
   ];
   /* Slabs that are not controls. */
-  const PASSIVE = ['.gv-tag', '.gv-badge', '.gv-ex-best', '.gv-day', '.gv-tile', '.gv-logo .gv-ico', '.gv-setup-logo', '.gv-session-complete-ico',
+  const PASSIVE = ['.gv-tag', '.gv-badge', '.gv-ex-best', '.gv-day', '.gv-tile', '.gv-logo .gv-ico', '.gv-setup-logo', '.gv-session-complete-ico', '.gv-hero-chip-row',
     '.gv-week-progress', '.gv-pb-target', '.gv-pb-moment', '.gv-pb-delta', '.gv-rec-delta', '.gv-recrow.gv-rec-new'];
   /* Deliberately under 44, with the reason the stylesheet gives: row-level
      remove buttons are destructive and sit beside content you scroll past. */

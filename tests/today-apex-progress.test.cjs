@@ -111,11 +111,13 @@ const lastWeek = () => addDays(WK, -3);
   (function walk(n) { for (const c of n.children || []) { if (c.nodeType !== 1) continue; if (c.tag === 'span') spans.push(c); walk(c); } })(t);
   assert.ok(spans.length >= 3, 'a strip of spans');
   assert.ok(spans.some(s => s.textContent === 'Lock in') && spans.some(s => s.textContent === 'No days off') && spans.some(s => s.textContent === 'Earn it'));
-  /* between the hero's title block and the Rx list */
+  /* between the hero's head (kicker, title, chips, sub) and the Rx list. The
+     head is one wrapper so Lock In can flood it alone; the title lives in it. */
   const hero = one(root, 'gv-hero');
-  const order = hero.children.map(c => clsOf(c).find(x => /^gv-(hero-title|hero-sub|ticker|rx)$/.test(x)) || (c.tag === 'h2' ? 'gv-hero-title' : ''));
-  const iTitle = order.indexOf('gv-hero-title'), iTick = order.indexOf('gv-ticker'), iRx = order.indexOf('gv-rx');
-  assert.ok(iTitle >= 0 && iTick > iTitle && iRx > iTick, `ticker sits between title block and Rx list (order: ${order.join(', ')})`);
+  const order = hero.children.map(c => clsOf(c).find(x => /^gv-(hero-head|ticker|rx)$/.test(x)) || '');
+  const iHead = order.indexOf('gv-hero-head'), iTick = order.indexOf('gv-ticker'), iRx = order.indexOf('gv-rx');
+  assert.ok(iHead === 0 && iTick > iHead && iRx > iTick, `ticker sits between the head block and the Rx list (order: ${order.join(', ')})`);
+  assert.ok(one(hero.children[iHead], 'gv-hero-title'), 'the title is inside the head');
 }
 /* a rest day has no "No days off" banner over it */
 {
