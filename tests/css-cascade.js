@@ -26,6 +26,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const SRC_CSS = path.join(__dirname, '..', 'src', 'styles.css');
+const { POSTER_SKINS } = require('../src/constants');
 
 /* ---------- stylesheet parsing ---------- */
 
@@ -97,7 +98,15 @@ function parseStylesheet(css) {
         const line = lineAt(i);
         const idx = order++;
         for (const sel of splitTop(prelude, ',')) {
-          if (sel.trim()) rules.push({ selector: sel.trim(), decls, line, order: idx, media });
+          if (!sel.trim()) continue;
+          /* `.gv-skin-poster` is the hook Apex and Lock In share (constants.js
+             POSTER_SKINS: the root wears it in addition to gv-skin-<key>). The
+             engine reads it as the two per-skin rules it stands for - same
+             line, same source order - so every guard keeps looking at
+             `.gv-app.gv-skin-apex ...` and `.gv-app.gv-skin-lockin ...`. */
+          if (/\bgv-skin-poster\b/.test(sel)) {
+            for (const skin of POSTER_SKINS) rules.push({ selector: sel.trim().replace(/\bgv-skin-poster\b/g, 'gv-skin-' + skin), decls, line, order: idx, media, shared: true });
+          } else rules.push({ selector: sel.trim(), decls, line, order: idx, media });
         }
       }
       i = close + 1;

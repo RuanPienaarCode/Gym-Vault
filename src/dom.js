@@ -499,6 +499,20 @@ function backButton(ctx, fallback) {
   return b;
 }
 
+/* The stat tile Today, Running, Profile, Exercise detail, Run records and the
+   completion screen all build: icon, big figure, label. `extraClass` is Today's
+   one variant (a tile that needs its own hook). tests/dom-shared-builders.test.cjs
+   pins the DOM this produces against the markup each page used to write inline. */
+function statTile(icon, big, label, extraClass) {
+  return el('div', { class: `gv-tile${extraClass ? ` ${extraClass}` : ''}` },
+    el('div', { class: 'gv-tile-ico' }, icon),
+    el('div', { class: 'gv-tile-big' }, big),
+    el('div', { class: 'gv-tile-label' }, label));
+}
+
+/* The one-line empty state every page uses. */
+const emptyLine = (...kids) => el('div', { class: 'gv-empty-line' }, ...kids);
+
 module.exports = {
-  backButton, numericInput, normaliseNumber, el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented
+  backButton, numericInput, normaliseNumber, el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented, statTile, emptyLine
 };

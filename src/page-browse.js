@@ -6,7 +6,7 @@
    already have is ever overwritten. Series (a plan in numbered phases) are
    grouped so a four-phase programme reads as one thing, not four. */
 
-const { el, ico, backButton } = require('./dom');
+const { el, ico, backButton, emptyLine } = require('./dom');
 
 function render(ctx, root) {
   const ui = ctx.state.browseUi || (ctx.state.browseUi = { index: null, error: null, loading: false, busy: null });
@@ -26,9 +26,9 @@ function render(ctx, root) {
 
   const draw = () => {
     while (listWrap.firstChild) listWrap.removeChild(listWrap.firstChild);
-    if (ui.loading) { listWrap.append(el('div', { class: 'gv-empty-line' }, 'Fetching the library…')); return; }
+    if (ui.loading) { listWrap.append(emptyLine('Fetching the library…')); return; }
     if (ui.error) {
-      listWrap.append(el('div', { class: 'gv-empty-line' },
+      listWrap.append(emptyLine(
         `Could not reach the library (${ui.error}). Check the connection, or the library URL in Settings.`));
       return;
     }

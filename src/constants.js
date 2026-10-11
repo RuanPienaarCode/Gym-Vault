@@ -93,6 +93,15 @@ const SKINS = [
   ['editorial', 'Editorial — magazine cover: huge type, hairlines, no floods'],
 ];
 
+/* Apex and Lock In are one poster in two palettes (slabs, giant condensed
+   italic type, one accent). The rules they have in common are written ONCE in
+   styles.css against `.gv-skin-poster`; the app root (and the rep-counter
+   modal, which wears the skin too) carries that class IN ADDITION to
+   gv-skin-<key>. Floor and Editorial do not. tests/skin-family.test.cjs pins
+   that every place that sets the skin class sets this one. */
+const POSTER_SKINS = ['apex', 'lockin'];
+const skinClasses = skin => (POSTER_SKINS.indexOf(skin) >= 0 ? [`gv-skin-${skin}`, 'gv-skin-poster'] : [`gv-skin-${skin}`]);
+
 /* Accent palettes. Each key maps to a gv-accent-<key> class that re-points
    the --gv-lime* tokens; the color values live ONLY in styles.css (one
    declaration per palette — never restate a hex here). */
@@ -200,7 +209,7 @@ const GOAL_METRICS = [
 const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms', 'core', 'glutes', 'quads', 'hamstrings', 'calves', 'full body'];
 
 module.exports = {
-  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, ACCENTS, MUSIC_APPS, SOUND_MODES,
+  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, MUSIC_APPS, SOUND_MODES,
   GUIDE_MODES, GUIDE_MINUTES, GUIDE_REST, PAGE_TITLES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

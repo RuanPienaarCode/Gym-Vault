@@ -6,13 +6,12 @@
    plan's FRONTMATTER (`ladder`, `start_date`) rather than being parsed out
    of prose, so "which week am I in" is data, not a guess. */
 
-const { el, ico, fmt, fmtSeconds } = require('./dom');
+const { el, ico, fmt, fmtSeconds, statTile, emptyLine } = require('./dom');
 const { WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, startOfWeek, addDays } = require('./dates');
 const { distanceInWeek, ladderWeek, workoutDate, num } = require('./stats');
 const { runRows, longestRun, paceOf, fmtPace } = require('./run-records');
 const { isPaused } = require('./plan-parse');
-
 
 function render(ctx, root) {
   const { data, settings } = ctx;
@@ -114,10 +113,10 @@ function render(ctx, root) {
   const longest = longestRunRow ? longestRunRow.km : null;
   const lastRun = runs.reduce((d, r) => (r.date && (!d || r.date > d) ? r.date : d), null);
   root.append(el('div', { class: 'gv-tiles' },
-    tile(ico('footprints'), fmt(thisWeekKm, ' km'), 'this week'),
-    tile(ico('chart-line'), fmt(lastWeekKm, ' km'), 'last week'),
-    tile(ico('trophy'), fmt(longest, ' km'), 'longest run'),
-    tile(ico('history'), lastRun ? fmtShort(lastRun) : '—', 'last run')));
+    statTile(ico('footprints'), fmt(thisWeekKm, ' km'), 'this week'),
+    statTile(ico('chart-line'), fmt(lastWeekKm, ' km'), 'last week'),
+    statTile(ico('trophy'), fmt(longest, ' km'), 'longest run'),
+    statTile(ico('history'), lastRun ? fmtShort(lastRun) : '—', 'last run')));
 
   /* ---- the ladder strip ---- */
   if (ladder.length) {
@@ -182,16 +181,8 @@ function render(ctx, root) {
     }
     root.append(list);
   } else {
-    root.append(el('div', { class: 'gv-empty-line' }, 'No runs logged yet — the first one starts the trend.'));
+    root.append(emptyLine('No runs logged yet — the first one starts the trend.'));
   }
-}
-
-
-function tile(icon, big, label) {
-  return el('div', { class: 'gv-tile' },
-    el('div', { class: 'gv-tile-ico' }, icon),
-    el('div', { class: 'gv-tile-big' }, big),
-    el('div', { class: 'gv-tile-label' }, label));
 }
 
 module.exports = { render };

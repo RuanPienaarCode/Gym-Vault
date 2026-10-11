@@ -57,7 +57,9 @@ for (const skin of SKINS) {
     ok(/^\.gv-app\.gv-skin-(apex|lockin)\b/.test(r.selector), `src/styles.css:${r.line} \`${r.selector}\` styles a poster node outside a skin scope: Floor and Editorial would wear it`);
   }
 }
-eq(shape(SKINS[0]), shape(SKINS[1]), 'Apex and Lock In carry the same live-set selectors, in the same order');
+/* The rules the two skins have in common are written once (`.gv-skin-poster`, which the engine reads as one rule per skin), so
+   they sit among Apex's rules and the pair no longer interleave in the same order: the contract is the same SET of selectors. */
+eq(shape(SKINS[0]).sort(), shape(SKINS[1]).sort(), 'Apex and Lock In carry the same live-set selectors');
 
 for (const skin of SKINS) {
   const own = mine(skin);
@@ -79,7 +81,7 @@ for (const skin of SKINS) {
     const slab = rules.find(x => !x.media && x.selector.split(',').some(s => s.trim() === `.gv-app${skin.cls} ${sel}`) && decl(x, 'position'));
     ok(slab, `${skin.key}: ${sel} has no positioned rule`);
     eq([decl(slab, 'position'), decl(slab, 'isolation')], ['relative', 'isolate'], `${skin.key}: ${sel} must be positioned and isolated so its ::before stays behind it`);
-    ok(/var\(--gv-(apex|li)-chip\)/.test(decl(slab, '--gv-slab') || ''), `${skin.key}: ${sel} names its --gv-slab (the colour behind its text)`);
+    ok(/var\(--gv-(apex|li|poster)-chip\)/.test(decl(slab, '--gv-slab') || ''), `${skin.key}: ${sel} names its --gv-slab (the colour behind its text)`);
     const before = rules.find(x => !x.media && x.selector.split(',').some(s => s.trim() === `.gv-app${skin.cls} ${sel}::before`));
     ok(before, `${skin.key}: ${sel}::before is missing`);
     eq([decl(before, 'z-index'), /skewX\(-?\d+deg\)/.test(decl(before, 'transform') || '')], ['-1', true], `${skin.key}: ${sel}::before is the leaning slab behind the label`);

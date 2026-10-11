@@ -13,7 +13,7 @@
    thing people actually do with these is drag back and forth between two
    dates, not watch a slideshow. */
 
-const { el, ico, clear } = require('./dom');
+const { el, ico, clear, emptyLine } = require('./dom');
 const { fmtShort } = require('./dates');
 const { photosForPose, poseByKey } = require('./progress-photos');
 
@@ -41,7 +41,7 @@ function renderPhotoViewer(host, opts) {
   clear(host);
 
   if (!list.length) {
-    host.append(el('div', { class: 'gv-empty-line' }, `No ${poseDef ? poseDef.label.toLowerCase() : pose} photos yet.`));
+    host.append(emptyLine(`No ${poseDef ? poseDef.label.toLowerCase() : pose} photos yet.`));
     return () => {};
   }
 

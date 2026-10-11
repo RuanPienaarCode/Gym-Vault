@@ -13,7 +13,7 @@
    would eventually show a different best from the exercise's own page, and
    nothing would say which was wrong. */
 
-const { el, ico, fmtSeconds, clickableCard, backButton } = require('./dom');
+const { el, ico, fmtSeconds, clickableCard, backButton, emptyLine } = require('./dom');
 const { MUSCLE_GROUPS } = require('./constants');
 const { allRecords, latestRecord } = require('./records');
 const { pbDelta, marginText } = require('./progress');
@@ -55,7 +55,7 @@ function render(ctx, root) {
       recordsKicker(rows, todayISO()).text ? el('span', { class: 'gv-records-new' }, ` \u00b7 ${recordsKicker(rows, todayISO()).text}`) : ''),
     search));
   if (!rows.length) {
-    root.append(el('div', { class: 'gv-empty-line' },
+    root.append(emptyLine(
       'No records yet — log a set and the first one becomes the number to beat.'));
     rewardsUi.mountRecords(ctx, root);
     return;
@@ -102,7 +102,7 @@ function render(ctx, root) {
       (!ui.muscle || musclesFor(r.exercise).includes(ui.muscle)));
 
     if (!shown.length) {
-      listWrap.append(el('div', { class: 'gv-empty-line' }, 'No matches.'));
+      listWrap.append(emptyLine('No matches.'));
       return;
     }
 

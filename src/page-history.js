@@ -1,7 +1,7 @@
 'use strict';
 /* History — activity heatmap plus every logged session, newest first. */
 
-const { el, ico, fmtSeconds, clickableCard } = require('./dom');
+const { el, ico, fmtSeconds, clickableCard, emptyLine } = require('./dom');
 const { todayISO, addDays, startOfWeek, fmtShort, monthLabel, weekdayKey } = require('./dates');
 const { workoutDates, workoutDate, weekStreak, sessionCount, sessionVolume, sessionSets } = require('./stats');
 const { streakFlame } = require('./streak-flame');
@@ -51,7 +51,7 @@ function render(ctx, root) {
   root.append(streakFlame(weekStreak([...dates], settings.weekStart, today)));
 
   if (!data.workouts.length) {
-    root.append(el('div', { class: 'gv-empty-line' }, 'Nothing logged yet — your first session will land here.'));
+    root.append(emptyLine('Nothing logged yet — your first session will land here.'));
     return;
   }
 
