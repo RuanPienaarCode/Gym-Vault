@@ -194,7 +194,23 @@ Gym/
   Progress Photos/<pose>/<date>.jpg   # the folder IS the record — no index note
   Voice/<cue>.wav       # your own recordings: count-5 … count-1, go, rep-1 … rep-30,
                         # target, record, goal — the filename is the cue
+  Rewards.md            # the XP ledger: one table row per award, append-only
 ```
+
+**Rewards (XP, levels, weekly quest, medals).** XP is counted forward from the
+day the feature arrives — past workouts earn nothing — and is never stored as a
+total: `Rewards.md` holds one line per award (`date | kind | key | xp | note`)
+and every total and level is the sum of those lines. Each award has a stable
+key (`session:<workout file>`, `week-streak:<week>`, `quest:<week>` …), so
+paying the same key twice is a no-op: a double tap on Finish, a retry, or the
+same session finishing on two devices cannot pay twice. Lines are only ever
+appended, to the file's current text, so two synced devices merge by adding
+lines; a hand-edited or broken line is skipped without losing the others. The
+weekly quest and the medals are derived from your plans and your logged
+history, never stored. The engine is `src/rewards.js` (rules) and
+`src/rewards-ledger.js` (file format); the vault reads and writes are
+`io.readRewards` / `io.appendRewards` in `src/data.js`. The `rewards` setting
+(on by default) turns it all off: nothing is awarded and the ledger is not read.
 
 ## Development
 

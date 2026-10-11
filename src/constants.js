@@ -44,6 +44,8 @@ const DEFAULT_SETTINGS = {
   /* Raw base of a plan library repo (see RuanPienaarCode/gym_plans). Any
      repo with the same shape — plans.json + plans/ + exercises/ — works. */
   planRepo: 'https://raw.githubusercontent.com/RuanPienaarCode/gym_plans/main',
+  /* XP, levels, the weekly quest and medals (rewards.js). Off means nothing is awarded and the ledger is never read. */
+  rewards: true,
 };
 
 /* How a guided session is played — [key, name, description]. Keys are what
