@@ -293,7 +293,14 @@ const flush = () => new Promise(r => setImmediate(r));
 /* Find helpers */
 const page = ctx => ctx.view.contentEl.querySelector('main.gv-page');
 const byLabel = (root, label) => root.querySelectorAll('button').concat(root.querySelectorAll('[role=button]')).find(b => b.getAttribute('aria-label') === label);
-const byText = (root, text) => root.querySelectorAll('button').find(b => b.textContent.trim() === text);
+/* The primary slab reads "Tick set" in the two poster skins (live-chrome.js
+   tickCopy) and "Done" in the others; the guards that finish a set by its label
+   ask for 'Done' and are skin-blind, so 'Done' also matches 'Tick set'. The
+   copy rule itself is pinned in live-chrome.test.cjs. */
+const byText = (root, text) => root.querySelectorAll('button').find(b => {
+  const t = b.textContent.trim();
+  return t === text || (text === 'Done' && t === 'Tick set');
+});
 const countText = ctx => { const n = page(ctx).querySelector('.gv-session-count'); return n ? n.textContent : null; };
 const spoken = () => speech.filter(s => s.op === 'speak').map(s => s.text);
 /* What was actually HEARD: an utterance is cut if a cancel lands < minMs after it started. */

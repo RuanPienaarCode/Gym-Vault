@@ -258,7 +258,9 @@ let slabs = [];
   const PASSIVE = ['.gv-tag', '.gv-badge', '.gv-ex-best', '.gv-day', '.gv-tile', '.gv-logo .gv-ico', '.gv-setup-logo', '.gv-session-complete-ico', '.gv-hero-chip',
     '.gv-week-progress', '.gv-pb-target', '.gv-pb-moment', '.gv-pb-delta', '.gv-rec-delta', '.gv-recrow.gv-rec-new',
     /* rewards: drawn, never tappable (tests/rewards-css.test.cjs C6 pins that rewards-ui.js builds no control) */
-    '.gv-rw-xpchip', '.gv-rw-quest', '.gv-rw-unlock'];
+    '.gv-rw-xpchip', '.gv-rw-quest', '.gv-rw-unlock',
+    /* the live set's "Move n of N" chip and its "Tap to count" chip: labels, not controls */
+    '.gv-live-chip', '.gv-rc-tapchip'];
   const CONTROLS = ['.gv-btn', '.gv-btn-go', '.gv-btn-finish', '.gv-btn-hero-ghost', '.gv-icon-btn', '.gv-head-btn', '.gv-set-done', '.gv-dial-step', '.gv-timed-play', '.gv-chip', '.gv-segmented-btn'];
   /* TRIPWIRE: a new slab must be measured as a control or listed as passive */
   const keys = slabs.map(s => s.replace(/^\.gv-app\.gv-skin-lockin /, ''));
@@ -325,9 +327,9 @@ let slabs = [];
     for (const frame of lockText.slice(open + 1, i).matchAll(/\{([^{}]*)\}/g)) for (const d of frame[1].split(';')) { const k = d.split(':')[0].trim(); if (k) props.add(k.toLowerCase()); }
     kfs[m[1]] = props;
   }
-  assert.deepStrictEqual(Object.keys(kfs).sort(), ['gv-li-marquee', 'gv-li-pulse'], 'Lock In declares the ticker and the CTA pulse, and nothing else moves on its own');
+  assert.deepStrictEqual(Object.keys(kfs).sort(), ['gv-li-marquee', 'gv-li-pulse', 'gv-live-blink'], 'Lock In declares the ticker, the CTA pulse and the live set\'s pip blink, and nothing else moves on its own');
   const looping = lock.filter(r => !r.media && r.decls.some(d => d.prop === 'animation' && !/^none\b/.test(d.value)));
-  assert.ok(looping.length >= 2, `expected the ticker and the CTA pulse, found ${looping.length}`);
+  assert.ok(looping.length >= 3, `expected the ticker, the CTA pulse and the pip blink, found ${looping.length}`);
   const calm = new Set(lock.filter(r => r.media && /prefers-reduced-motion:\s*reduce/.test(r.media) && r.decls.some(d => d.prop === 'animation' && /^none\b/.test(d.value))).map(r => r.selector));
   for (const r of looping) {
     assert.ok(calm.has(r.selector), `${r.selector} animates forever but has no prefers-reduced-motion rule that stops it`);

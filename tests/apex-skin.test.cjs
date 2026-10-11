@@ -196,7 +196,7 @@ const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
   }
   assert.ok(loops.length >= 4, `expected the ticker, CTA pulse and both glow loops, found ${loops.length}`);
   const names = new Set(loops.map(l => l.name));
-  for (const n of ['gv-apex-marquee', 'gv-apex-pulse', 'gv-apex-halo', 'gv-apex-glow']) assert.ok(names.has(n), `the ${n} loop is no longer found by this guard`);
+  for (const n of ['gv-apex-marquee', 'gv-apex-pulse', 'gv-apex-halo', 'gv-apex-glow', 'gv-live-blink']) assert.ok(names.has(n), `the ${n} loop is no longer found by this guard`);
   /* the shadow itself is static: the loop rules that carry a glow declare no animated-property keyframes of their own */
   for (const sel of ['.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten::after', '.theme-dark .gv-app.gv-skin-apex .gv-pb-new::after']) {
     const rule = apex.find(r => r.selector === sel && r.decls.some(d => d.prop === 'animation'));

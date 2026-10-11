@@ -38,6 +38,7 @@ const { musicButton } = require('./music-picker');
 const timedPlan = require('./timed-plan');
 const timerState = require('./timer-state');
 const { classifyKind, liveBest, pbTarget, pbDelta, marginText, pctText } = require('./progress');
+const chrome = require('./live-chrome');
 
 const FLASH_MS = 180;
 const HOLD_CHECKPOINT_S = 15;
@@ -48,6 +49,8 @@ const MEDIA_CYCLE_MS = 1100; // time each frame holds before crossfading to the 
    frames is unchanged, because slice() takes what is there. Beyond four the
    cycle outlasts a working set and starts reading as a slideshow. */
 const MEDIA_MAX_FRAMES = 4;
+/* The poster skins' weight stepper moves in the smallest plate that exists. */
+const WEIGHT_STEP_KG = 2.5;
 
 /* WHAT A LIVE SET HAS OBSERVED. The tap counter watches reps and the hold's
    stopwatch watches seconds — see applyCompletion for what the list means and
@@ -411,6 +414,24 @@ function renderActive(ctx, root, draft, sess) {
     el('div', { class: 'gv-session-skips' },
       el('span', { class: 'gv-session-skip-kicker' }, 'Skip'), skipSetBtn, skipExBtn));
 
+  /* THE POSTER CHROME (Apex + Lock In; live-chrome.js). A different arrangement
+     of the SAME controls: the skip buttons built above move down into the
+     sheet beside the counter's own, and the top row is the close button and
+     "Move n of N". Floor and Editorial never reach this and build exactly the
+     nodes they always did. A run (distance) keeps the plain chrome: its body
+     has no sheet for the skips to live in. */
+  if (posterSkin(ctx) && !entry.distance) {
+    root.append(posterTop(ctx, draft, entryIndex));
+    root.append(posterHead(ctx, sess, entry, entryIndex, setIndex));
+    const posterBody = entry.duration ? durationBody(ctx, draft, sess, entry, set)
+      : entry.weighted ? weightedBody(ctx, draft, sess, entry, set)
+        : repsBody(ctx, draft, sess, entry, set);
+    const skipSlot = posterBody.querySelector('.gv-live-skips');
+    if (skipSlot) skipSlot.append(el('span', { class: 'gv-session-skip-kicker' }, 'Skip'), skipSetBtn, skipExBtn);
+    root.append(posterBody);
+    return;
+  }
+
   root.append(topBar(ctx, draft, extra));
   root.append(exerciseBlock(ctx, sess, entry));
 
@@ -435,6 +456,64 @@ function exerciseBlock(ctx, sess, entry) {
      everything; this cap is guided-view only). */
   const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES)) : null;
   return el('div', { class: 'gv-session-exblock' }, head, img || '');
+}
+
+/* ---------- the poster chrome (live-chrome.js) ---------- */
+
+function posterSkin(ctx) { return chrome.isLockInSkin((ctx.settings || {}).skin); }
+
+/* Close, the song, and which move this is: the mockups' top row. The thin
+   session bar stays under it, because "how far through the whole session" is
+   a real figure the chip does not carry. */
+function posterTop(ctx, draft, entryIndex) {
+  return el('div', { class: 'gv-session-top gv-live-top' },
+    el('div', { class: 'gv-session-top-row gv-live-toprow' }, exitButton(ctx, draft), musicButton(ctx) || '',
+      el('span', { class: 'gv-live-chip' }, chrome.moveLabel(entryIndex, draft.entries.length))),
+    progressBar(draft));
+}
+
+/* The name, the plan's target (and what the set before logged), the media as a
+   thumbnail beside them, and the rail of set pips. The h2 and the media are the
+   same nodes the plain block builds; only their arrangement differs. */
+function posterHead(ctx, sess, entry, entryIndex, setIndex) {
+  const ex = findExercise(ctx, entry.exercise);
+  const img = ex ? guidedImageBlock(sess, ex, resolveExerciseImages(ctx, ex).slice(0, MEDIA_MAX_FRAMES)) : null;
+  const sub = chrome.subLine(entry, setIndex, fmtSeconds);
+  const label = chrome.railLabel(setIndex, entry.sets.length);
+  return el('div', { class: 'gv-session-exblock gv-live-head' + (img ? ' has-media' : '') },
+    el('div', { class: 'gv-live-headtext' },
+      el('h2', { class: 'gv-display gv-session-exname gv-live-name' }, entry.exercise),
+      sub ? el('div', { class: 'gv-session-target gv-live-sub' }, sub) : ''),
+    img || '',
+    el('div', { class: 'gv-live-rail', role: 'img', 'aria-label': label },
+      ...chrome.railPips(entry.sets, setIndex).map(p => el('span', { class: `gv-live-pip is-${p}` })),
+      el('b', {}, label)));
+}
+
+/* The small slab under the count saying what a tap does. Decoration: the
+   zone's own aria-label already says it. */
+function tapChip(text) { return el('div', { class: 'gv-rc-tapchip', 'aria-hidden': 'true' }, text); }
+
+/* The sheet under the counter: what comes next, the controls used once per
+   set, and (for a set-by-set screen) the one big slab. `tickBtn` is the SAME
+   button the plain screen's bar holds, with the same listener. The "up next"
+   row is real flow: where Tick set leads, and the rest the plan gives it. */
+function posterSheet(ctx, draft, sess, utilityKids, tickBtn) {
+  const next = chrome.nextUp(draft, sess.pos);
+  const rest = restSecondsFor(ctx);
+  let nextRow = '';
+  if (next) {
+    const lead = next.last ? 'Last set' : rest > 0 ? 'Rest · starts on tick' : 'Up next';
+    nextRow = el('div', { class: 'gv-live-next' },
+      rest > 0 && !next.last ? el('div', { class: 'gv-live-ring', 'aria-hidden': 'true' }, el('b', {}, fmtSeconds(rest))) : '',
+      el('div', { class: 'gv-live-nextbody' },
+        el('p', { class: 'gv-live-lbl' }, lead),
+        el('p', { class: 'gv-live-nx' }, next.last ? "Then you're done" : `Up next: ${next.name}`,
+          !next.last && next.detail ? el('small', {}, next.detail) : '')));
+  }
+  return el('div', { class: 'gv-live-sheet' }, nextRow,
+    el('div', { class: 'gv-live-utility' }, ...utilityKids, el('div', { class: 'gv-live-skips' })),
+    tickBtn ? el('div', { class: 'gv-live-tickwrap' }, tickBtn) : '');
 }
 
 /* One compact media frame with every resolved image stacked absolutely
@@ -706,7 +785,7 @@ function muteButton(ctx, sess, onToggle) {
 
    `kind` only decides how a figure is written ('seconds' as 0:45-style times,
    everything else as plain numbers). */
-function pbTargetBlock(best, kind) {
+function pbTargetBlock(best, kind, rich) {
   if (best === null || best === undefined) return null;
   const say = v => (kind === 'seconds' ? fmtSeconds(v) : String(v));
   const label = el('span', { class: 'gv-pb-target-label' });
@@ -724,8 +803,13 @@ function pbTargetBlock(best, kind) {
      and the stale words are never left to be read. */
   const live = el('span', { class: 'gv-sr-only', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
   let wasBeaten = null;
-  const node = el('div', { class: 'gv-pb-target', role: 'group' }, label, now, togo,
-    el('div', { class: 'gv-pb-target-bar' }, fill), live);
+  /* POSTER SKINS ONLY (live-chrome.js): the mockup's "PB target" kicker above
+     the label, and the 0 / n% / PB n scale under the bar. The same figures the
+     slab already holds, laid out as the design draws them. */
+  const kicker = rich ? el('span', { class: 'gv-pb-target-kicker' }, 'PB target') : '';
+  const marks = rich ? el('div', { class: 'gv-pb-target-marks', 'aria-hidden': 'true' }, el('span', {}), el('span', {}), el('span', {})) : null;
+  const node = el('div', { class: 'gv-pb-target', role: 'group' }, kicker, label, now, togo,
+    el('div', { class: 'gv-pb-target-bar' }, fill), marks || '', live);
   const set = current => {
     const t = pbTarget(best, current);
     if (!t) return;
@@ -737,6 +821,11 @@ function pbTargetBlock(best, kind) {
     now.textContent = `You're on ${say(t.current)}`;
     togo.textContent = t.beaten ? `${say(t.over)} over` : `${say(t.toGo)} to go`;
     fill.setAttribute('style', `width:${t.pct}%`);
+    if (marks) {
+      marks.children[0].textContent = say(0);
+      marks.children[1].textContent = t.beaten ? 'New PB' : `${Math.round(t.pct)}% of PB`;
+      marks.children[2].textContent = `PB ${say(t.best)}`;
+    }
     node.setAttribute('aria-label', t.beaten
       ? `New personal best: ${say(t.current)}, beating ${say(t.best)}`
       : `Personal best target: beat ${say(t.best)}, you are on ${say(t.current)}, ${say(t.toGo)} to go`);
@@ -756,11 +845,12 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   /* BEFORE anything below reads sess.motionOn (the hint line, the count-in's
      hint): which exercise is this, and does it count from motion? */
   resolveMotion(ctx, sess, entry);
+  const poster = posterSkin(ctx);
 
   /* aria-live: see rep-counter-modal.js's countEl for why speech isn't
      enough on its own. */
   const countEl = el('div', { class: 'gv-rc-count gv-session-count', 'aria-live': 'polite', 'aria-atomic': 'true' }, String(sess.counter.count));
-  const zone = el('div', { class: 'gv-rc-zone gv-session-zone', role: 'button', tabindex: '0', 'aria-label': `Tap to count a rep for ${entry.exercise}` }, countEl);
+  const zone = el('div', { class: 'gv-rc-zone gv-session-zone' + (poster ? ' gv-live-zone' : ''), role: 'button', tabindex: '0', 'aria-label': `Tap to count a rep for ${entry.exercise}` }, countEl);
 
   /* The plan already said what this set is for, so nothing has to be asked:
      "4 x 12" fills towards 12. An open-ended line ("submax") gets no meter
@@ -771,7 +861,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      a plain reps entry with history; absent for a weighted one (its record is
      weight, which the tap counter does not observe), a run, or an exercise
      never logged. Kept in step wherever the meter is. */
-  const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_REPS.observed), 'reps');
+  const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_REPS.observed), 'reps', poster);
   /* The detonation the meter charges towards — only exists when the meter
      does, and fires once via markHit's own guard. */
   const powerUp = meter ? attachPowerUp(zone, 'Reps reached') : null;
@@ -781,7 +871,9 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      line you glance at mid-set. Naming the thing is shorter AND clearer. */
   const targetEl = target
     ? el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(target)}`)
-    : '';
+    /* The poster's count has a caption under it; an open-ended set still
+       needs one to say what the numeral counts. */
+    : (poster ? el('div', { class: 'gv-rc-target' }, 'Reps') : '');
 
   let flashTimer = null;
   /* Fires once, when the target is first met — not on every rep past it.
@@ -837,7 +929,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
 
   const hintEl = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' }, sess.motionOn ? 'Counting your movement — taps still work' : '');
   const sensEl = el('div', { class: 'gv-rc-sens' });
-  zone.append(targetEl, hintEl, sensEl);
+  zone.append(targetEl, hintEl, sensEl, poster ? tapChip('Tap to count') : '');
 
   /* Count in, in the counter's own display. Keyed by POSITION so the screen
      can re-render for any of the reasons it does without restarting the
@@ -916,7 +1008,8 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     },
   });
 
-  const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
+  const tick = chrome.tickCopy((ctx.settings || {}).skin);
+  const doneBtn = el('button', { class: tick.poster ? 'gv-btn-go gv-live-tick' : 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, tick.label));
   /* OBSERVED_REPS ALWAYS — this button is shared by a plain reps entry
      AND a weighted one (weightedBody wraps this same body). The tap counter
      watched the reps either way; it never watched the weight, so this list
@@ -957,7 +1050,13 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     settingsBtn, muteButton(ctx, sess), doneBtn);
   /* Both sheets host on the BODY, not the zone: they have to cover the
      controls as well, or the button stays visible under its own panel. */
-  const body = el('div', { class: 'gv-session-body gv-xp-host' }, extraTop || '', pb ? pb.node : '', zone, bar);
+  /* The poster arrangement: PB target, the count, the weight stepper (when the
+     entry has one), then the sheet. The settings, mute and Tick buttons are the
+     ones built above; `bar` just stops being their parent. */
+  const body = poster
+    ? el('div', { class: 'gv-session-body gv-xp-host gv-live' }, pb ? pb.node : '', zone, extraTop || '',
+      posterSheet(ctx, draft, sess, [...bar.children].filter(n => n !== doneBtn), doneBtn))
+    : el('div', { class: 'gv-session-body gv-xp-host' }, extraTop || '', pb ? pb.node : '', zone, bar);
   focusMode(ctx);
   return body;
 }
@@ -997,6 +1096,29 @@ function weightedBody(ctx, draft, sess, entry, set) {
     'aria-label': `Weight in kilograms — ${entry.exercise}`,
   }, v => { set.weight_kg = v; set.touched = true; keepDraft(ctx); });
   const weightRow = el('div', { class: 'gv-session-weightrow' }, weightInput, el('span', { class: 'gv-set-unit' }, 'kg'));
+  if (posterSkin(ctx)) {
+    /* POSTER: the weight as a stepper, minus and plus either side of the same
+       field (design 07 / 10). The buttons write exactly what typing does, so
+       the figure is the user's and the set counts as touched. */
+    const step = dir => {
+      const cur = parseFloat(weightInput.value);
+      const next = Math.max(0, Math.round(((Number.isFinite(cur) ? cur : 0) + dir * WEIGHT_STEP_KG) * 100) / 100);
+      weightInput.value = String(next);
+      set.weight_kg = String(next);
+      set.touched = true;
+      keepDraft(ctx);
+    };
+    const stepBtn = (dir, icon, label) => {
+      const b = el('button', { class: 'gv-icon-btn gv-live-step', type: 'button', 'aria-label': label }, ico(icon));
+      b.addEventListener('click', () => step(dir));
+      return b;
+    };
+    const stepper = el('div', { class: 'gv-live-weight' },
+      stepBtn(-1, 'minus', `Weight minus ${WEIGHT_STEP_KG} kilograms`),
+      el('div', { class: 'gv-live-weightval' }, weightInput, el('span', { class: 'gv-set-unit' }, 'kg')),
+      stepBtn(1, 'plus', `Weight plus ${WEIGHT_STEP_KG} kilograms`));
+    return repsBody(ctx, draft, sess, entry, set, stepper);
+  }
   return repsBody(ctx, draft, sess, entry, set, weightRow);
 }
 
@@ -1029,6 +1151,7 @@ function durationBody(ctx, draft, sess, entry, set) {
     sess.holdFor = setKey(sess.pos);
   }
   const hold = sess.hold;
+  const poster = posterSkin(ctx);
 
   /* What the numeral shows: the running clock, else the frozen figure. A
      screen rebuilt mid-hold (a re-render, or coming back to a paused one)
@@ -1036,7 +1159,7 @@ function durationBody(ctx, draft, sess, entry, set) {
   const shownSeconds = () => (hold.running ? heldSeconds(hold) : (hold.frozenSeconds || 0));
   const countEl = el('div', { class: 'gv-rc-count gv-session-count' }, fmtSeconds(shownSeconds()));
   const zone = el('div', {
-    class: 'gv-rc-zone gv-session-zone', role: 'button', tabindex: '0',
+    class: 'gv-rc-zone gv-session-zone' + (poster ? ' gv-live-zone gv-live-hold' : ''), role: 'button', tabindex: '0',
     'aria-label': hold.running ? 'Tap to stop the hold' : 'Tap to start the hold',
   }, countEl);
   /* countEl above ticks every second (below) — an aria-live region there
@@ -1060,11 +1183,12 @@ function durationBody(ctx, draft, sess, entry, set) {
      is not reps, so the badge says what was actually reached. */
   const powerUp = meter ? attachPowerUp(zone, 'Time reached') : null;
   if (target) zone.append(el('div', { class: 'gv-rc-target' }, `Target ${counterTarget.describeTarget(target)}`));
+  else if (poster) zone.append(el('div', { class: 'gv-rc-target' }, 'Hold'));
 
   /* The hold's best to beat, against the same whole seconds the stop button
      will record (Math.round of the clock), so the flag flips on the second
      Done would call it a record. */
-  const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_SECONDS.observed), 'seconds');
+  const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_SECONDS.observed), 'seconds', poster);
   if (pb) pb.set(Math.round(shownSeconds()));
 
   const currentSeconds = () => heldSeconds(hold);
@@ -1075,10 +1199,12 @@ function durationBody(ctx, draft, sess, entry, set) {
      on build, on pause, on resume and on begin — so a screen rebuilt from
      `hold` always reads right. */
   const hintEl = el('div', { class: 'gv-rc-hint' });
-  zone.append(hintEl);
+  const chip = poster ? tapChip('Tap to start') : null;
+  zone.append(hintEl, chip || '');
   const playBtn = playButton(hold.paused === true);
+  const doneLabel = chrome.tickCopy((ctx.settings || {}).skin).label;
   const doneBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-hold-done', type: 'button' },
-    ico('check'), el('span', {}, 'Done'));
+    ico('check'), el('span', {}, doneLabel));
   /* THE PLAY BUTTON NEVER MOVES. Done appears beside it only while paused, and
      if it were added to a centred row the button just pressed would slide
      left — so a second tap at the same spot would land on Done and end the
@@ -1086,7 +1212,7 @@ function durationBody(ctx, draft, sess, entry, set) {
      paused), with an identical hidden twin on the other side to keep the play
      button centred. No CSS: the visibility is written inline. */
   const spacer = el('button', { class: 'gv-btn gv-btn-ghost gv-hold-spacer', type: 'button', disabled: 'true', tabindex: '-1', 'aria-hidden': 'true' },
-    ico('check'), el('span', {}, 'Done'));
+    ico('check'), el('span', {}, doneLabel));
   spacer.disabled = true;
   spacer.style.setProperty('visibility', 'hidden');
   const controls = el('div', { class: 'gv-timed-controls' }, spacer, playBtn, doneBtn);
@@ -1095,6 +1221,7 @@ function durationBody(ctx, draft, sess, entry, set) {
     zone.classList.toggle('gv-session-zone-live', hold.running && !paused);
     zone.setAttribute('aria-label', paused ? 'Tap to resume the hold' : hold.running ? 'Tap to stop the hold' : 'Tap to start the hold');
     hintEl.textContent = paused ? 'Paused · tap to resume' : '';
+    if (chip) chip.textContent = paused ? 'Tap to resume' : hold.running ? 'Tap to stop' : 'Tap to start';
     syncPlayButton(playBtn, paused);
     /* Nothing to pause before the hold has begun (the count-in has Skip). */
     playBtn.disabled = !hold.running;
@@ -1229,6 +1356,13 @@ function durationBody(ctx, draft, sess, entry, set) {
   paintState();
   const bar = el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(ctx, sess));
   focusMode(ctx);
+  if (poster) {
+    /* The hold has no Tick slab (stopping IS completing); the sheet carries
+       what is next and the controls used once per set. The pause row stays
+       between the count and the sheet, exactly where the plain screen has it. */
+    return el('div', { class: 'gv-session-body gv-live' }, pb ? pb.node : '', zone, controls, checkpointEl,
+      posterSheet(ctx, draft, sess, [...bar.children], null));
+  }
   return el('div', { class: 'gv-session-body' }, pb ? pb.node : '', zone, controls, checkpointEl, bar);
 }
 

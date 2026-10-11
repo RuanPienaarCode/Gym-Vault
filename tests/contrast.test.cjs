@@ -298,6 +298,26 @@ const PROBES = [
       glyph('Next call-out: glyph', ['section.gv-rw-medals', 'div.gv-rw-next', HEX('lock'), 'div.gv-rw-hex-in', 'span.gv-ico', 'svg'], 'rewards'));
     return out;
   })(),
+  /* ---- THE LIVE SET, poster chrome (Apex + Lock In; live-chrome.js). Probed in every skin, so the
+     unstyled Floor/Editorial resolve too; the nodes only exist in the poster skins. The sheet's own
+     text sits on a two-colour gradient: live-poster-css.test.cjs measures both ends. ---- */
+  text('live: Move n of N chip', ['div.gv-session-page', 'div.gv-session-top.gv-live-top', 'div.gv-session-top-row.gv-live-toprow', 'span.gv-live-chip'], 'poster'),
+  text('live: sub line', ['div.gv-session-page', 'div.gv-session-exblock.gv-live-head', 'div.gv-live-headtext', 'div.gv-session-target.gv-live-sub'], 'poster'),
+  text('live: set rail label', ['div.gv-session-page', 'div.gv-session-exblock.gv-live-head', 'div.gv-live-rail', 'b'], 'poster'),
+  text('live: PB target kicker', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target', 'span.gv-pb-target-kicker'], 'poster'),
+  text('live: PB target kicker (beaten)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target.is-beaten', 'span.gv-pb-target-kicker'], 'poster'),
+  text('live: PB target scale', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target', 'div.gv-pb-target-marks', 'span'], 'poster'),
+  text('live: PB target scale (beaten)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target.is-beaten', 'div.gv-pb-target-marks', 'span'], 'poster'),
+  text('live: tap chip (idle zone)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-rc-zone.gv-session-zone.gv-live-zone', 'div.gv-rc-tapchip'], 'poster'),
+  text('live: count caption (idle zone)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-rc-zone.gv-session-zone.gv-live-zone', 'div.gv-rc-target'], 'poster'),
+  text('live: Tick set label', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-tickwrap', 'button.gv-btn-go.gv-live-tick', 'span'], 'poster'),
+  glyph('live: Tick set check', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-tickwrap', 'button.gv-btn-go.gv-live-tick', 'span.gv-ico', 'svg'], 'poster'),
+  glyph('live: weight stepper glyph', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-weight', 'button.gv-icon-btn.gv-live-step', 'span.gv-ico', 'svg'], 'poster'),
+  text('live: weight figure', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-weight', 'div.gv-live-weightval', 'input.gv-set-input.gv-session-weight'], 'poster'),
+  text('live: weight unit', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-weight', 'div.gv-live-weightval', 'span.gv-set-unit'], 'poster'),
+  glyph('live: utility icon glyph (sheet)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-utility', 'button.gv-icon-btn', 'span.gv-ico', 'svg'], 'poster'),
+  text('live: skip button label (sheet)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-utility', 'div.gv-live-skips', 'button.gv-btn.gv-btn-ghost.gv-btn-small.gv-session-skip', 'span'], 'poster'),
+  text('live: skip kicker (sheet)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-utility', 'div.gv-live-skips', 'span.gv-session-skip-kicker'], 'poster'),
 ];
 
 const need = (probe, size, weight) => (probe.kind === 'glyph' ? 3 : (size >= 24 || (size >= 18.66 && weight >= 700)) ? 3 : 4.5);
