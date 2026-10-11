@@ -6,6 +6,7 @@ const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 const sound = require('./sound');
 const { progressOf } = require('./voice-pack');
+const { rewardsEnabled } = require('./rewards');
 
 /* A TEXT BOX IS NOT COMMITTED UNTIL YOU STOP TYPING.
 
@@ -96,6 +97,17 @@ class GymSettingTab extends PluginSettingTab {
             this.plugin.refreshViews();
           });
       });
+
+    new Setting(c)
+      .setName('Rewards')
+      .setDesc('XP, levels, a weekly quest and medals, tracked in Gym/Rewards.md. Off means nothing is awarded, shown or written.')
+      .addToggle(t => t
+        .setValue(rewardsEnabled(this.plugin.settings))
+        .onChange(async v => {
+          this.plugin.settings.rewards = v;
+          await this.plugin.saveSettings();
+          this.plugin.refreshViews();
+        }));
 
     new Setting(c)
       .setName('Accent color')

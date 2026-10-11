@@ -14,6 +14,7 @@ const { targetFirstNumber, targetWeight, targetIsDuration, targetDurationSeconds
 const { FormModal, ConfirmModal, EndSessionModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
 const { motionPref, setMotionPref } = require('./motion-count');
+const rewardsFlow = require('./rewards-flow');
 
 /* `opts.setsPerEntry` (an array, one count per day item) overrides the plan's
    prescribed set count. A TIMED guided session needs it: the schedule decides
@@ -417,15 +418,23 @@ async function finishSession(ctx, draft) {
   if (draft.finishing) return;
   draft.finishing = true;
   const duration_min = Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));
+  let path;
   try {
-    await ctx.io.saveWorkout({ date: draft.date, plan: draft.plan, day: draft.day, duration_min, rows });
+    path = await ctx.io.saveWorkout({ date: draft.date, plan: draft.plan, day: draft.day, duration_min, rows });
   } catch (e) {
     draft.finishing = false;
     ctx.notice(`could not save the session (${e.message || e})`);
     return;
   }
+  /* THE ONE PLACE XP IS WRITTEN (rewards-flow.js). Here, after the note exists and
+     under the finishing guard above, so a session abandoned without saving earns
+     nothing and a second tap cannot pay twice. It never throws and is given a
+     moment at most: a failed or slow award does not fail or hold up a finished
+     session. Awarded BEFORE the draft is cleared, because the records a guided
+     session found live on ctx.state.session / the carry for THIS draft. */
+  const award = await rewardsFlow.awardWithin(ctx, draft, rows, path, rewardsFlow.flow.AWARD_WAIT_MS);
   ctx.state.logDraft = null;
-  ctx.notice('Session logged. Strong work.');
+  ctx.notice(award && award.xp ? `Session logged. Strong work. +${award.xp} XP` : 'Session logged. Strong work.');
   ctx.nav('dashboard');
   ctx.reload();
 }

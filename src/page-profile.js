@@ -13,6 +13,7 @@ const { FormModal } = require('./modals');
 const { POSES, poseSummary, beforeAfter, photosForPose } = require('./progress-photos');
 const { PhotoCaptureModal } = require('./photo-capture');
 const { renderPhotoViewer } = require('./photo-viewer');
+const rewardsUi = require('./rewards-ui');
 
 function render(ctx, root) {
   const { data } = ctx;
@@ -42,6 +43,8 @@ function render(ctx, root) {
     el('div', { class: 'gv-card-actions' },
       iconBtn('pencil', 'Edit profile', () => openEditProfile(ctx))));
   root.append(idCard);
+  /* Level, rank ladder and the sessions / PBs / medals counts (rewards). Empty when rewards are off or the ledger cannot be read. */
+  rewardsUi.mountProfile(ctx, root);
 
   /* Health tiles. */
   const bmiVal = bmi(latest.weight_kg, fm.height_cm);

@@ -1881,6 +1881,9 @@ function tile(icon, big, label) {
     el('div', { class: 'gv-tile-label' }, label));
 }
 
+/* The XP card and the medal-unlocked card on the completion screen (rewards). */
+const rewardsUi = require('./rewards-ui');
+
 /* THE PERSONAL-BEST MOMENT: the big "12 -> 14" the completion screen leads
    with, one per record in sess.records (so exactly the records applyCompletion
    already detected - this builds nothing of its own to celebrate).
@@ -1966,12 +1969,16 @@ function renderComplete(ctx, root, draft, sess) {
     else { ctx.state.logDraft = null; ctx.nav('dashboard'); } // nothing was ever saveable — same as EndSessionModal's onDiscard
   });
 
+  /* The rewards card sits between the records and the tiles. null when rewards are off. It previews what
+     "Finish & save" will pay; the XP is written by page-log.finishSession, never from here. */
+  const rewardsSlot = rewardsUi.completeSlot(ctx);
   root.append(el('div', { class: 'gv-session-complete' },
     el('div', { class: 'gv-session-complete-ico' }, ico('trophy')),
     el('h2', { class: 'gv-display gv-session-complete-title' }, 'Session done'),
     wins.length ? el('div', { class: 'gv-session-wins' }, wins.join(' · ')) : '',
     ...broken.map(pbMoment),
     recordList,
+    rewardsSlot || '',
     el('div', { class: 'gv-tiles gv-session-complete-tiles' },
       tile(ico('check'), String(doneSets), 'sets done'),
       tile(ico('timer'), `${totalMin} min`, 'elapsed')),
@@ -1979,6 +1986,7 @@ function renderComplete(ctx, root, draft, sess) {
     el('button', { class: 'gv-btn gv-btn-ghost gv-session-review', type: 'button', onclick: () => ctx.nav('log') },
       ico('list'), el('span', {}, 'Review in log')),
     el('p', { class: 'gv-microcopy' }, 'No zero days.')));
+  rewardsUi.mountComplete(ctx, rewardsSlot, { draft, sess, rows: buildRows(draft) });
 }
 
 /* applyCompletion and classifyKind are exported so the observed-kind trust

@@ -212,6 +212,15 @@ history, never stored. The engine is `src/rewards.js` (rules) and
 `io.readRewards` / `io.appendRewards` in `src/data.js`. The `rewards` setting
 (on by default) turns it all off: nothing is awarded and the ledger is not read.
 
+The screens are `src/rewards-view.js` (the words and figures, pure),
+`src/rewards-flow.js` (the per-render ledger cache, Session complete's preview
+and the one place awards are written: after `page-log.finishSession` has saved
+the note, never throwing and never holding the finish up) and
+`src/rewards-ui.js` (the markup; each skin draws it in its own register). Today
+shows a level row, an "up to +N XP" chip and the weekly quest; Session complete
+an XP card and any medal unlocked; Records the medals; Profile the level and
+rank ladder.
+
 ## Development
 
 ```

@@ -17,7 +17,9 @@ const { el, ico, fmtSeconds, clickableCard, backButton } = require('./dom');
 const { MUSCLE_GROUPS } = require('./constants');
 const { allRecords, latestRecord } = require('./records');
 const { pbDelta, marginText } = require('./progress');
-const { fmtShort } = require('./dates');
+const { fmtShort, todayISO } = require('./dates');
+const rewardsUi = require('./rewards-ui');
+const { recordsKicker } = require('./rewards-view');
 
 const KIND_LABEL = { reps: 'reps', weight: 'weight', seconds: 'hold' };
 
@@ -47,11 +49,15 @@ function render(ctx, root) {
   root.append(el('div', { class: 'gv-toolbar gv-toolbar-records' },
     back,
     el('h2', { class: 'gv-toolbar-title' }, 'Records'),
-    el('p', { class: 'gv-kicker gv-records-count' }, `${rows.length} ${rows.length === 1 ? 'best' : 'bests'}`),
+    /* "14 bests" and, when a best was beaten today, "· 1 new today" (design 07's sub line). recordsKicker
+       counts only beaten records: a first-ever figure is a baseline, not a record. */
+    el('p', { class: 'gv-kicker gv-records-count' }, `${rows.length} ${rows.length === 1 ? 'best' : 'bests'}`,
+      recordsKicker(rows, todayISO()).text ? el('span', { class: 'gv-records-new' }, ` \u00b7 ${recordsKicker(rows, todayISO()).text}`) : ''),
     search));
   if (!rows.length) {
     root.append(el('div', { class: 'gv-empty-line' },
       'No records yet — log a set and the first one becomes the number to beat.'));
+    rewardsUi.mountRecords(ctx, root);
     return;
   }
 
@@ -130,6 +136,10 @@ function render(ctx, root) {
     }
   };
   draw();
+
+  /* Medals sit with the personal bests: derived from the whole history (no ledger read), hidden when
+     rewards are off. The filters above do not touch them. */
+  rewardsUi.mountRecords(ctx, root);
 
   /* Runs are measured, not counted, and their records live on their own
      page (see page-run-records.js). Say so here, where someone looking for
