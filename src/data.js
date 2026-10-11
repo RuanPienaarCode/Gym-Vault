@@ -19,6 +19,8 @@ const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SE
 const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
 const { clipFileName, keyFromFileName } = require('./voice-pack');
 const { workoutDate, sameName } = require('./stats');
+const rewardsLedger = require('./rewards-ledger');
+const { rewardsEnabled } = require('./rewards');
 
 /* Windows/OSX-illegal filename characters, folded to '-' so an exercise or
    plan named from user input always lands on disk. */
@@ -107,6 +109,7 @@ function makeIo(plugin) {
     workouts: () => `${root()}/Workouts`,
     goals: () => `${root()}/Goals`,
     profile: () => `${root()}/Profile.md`,
+    rewards: () => `${root()}/Rewards.md`,
     bodyLog: () => `${root()}/Body Log.md`,
     attachments: () => `${root()}/Attachments`,
     exports: () => `${root()}/Exports`,
@@ -383,6 +386,87 @@ function makeIo(plugin) {
     const table = buildMdTable(BODY_COLUMNS, rows, extraLabels);
     const next = replaceFirstTable(text, table);
     await writeFile(path, next !== null ? next : text.replace(/\n*$/, '\n\n') + table + '\n');
+  }
+
+  /* ---- rewards ledger (Gym/Rewards.md) --------------------------------------
+
+     An append-only list, one line per award (rewards-ledger.js owns the format).
+     XP is the sum of its lines, so there is nothing stored to drift, and the
+     file lives in the vault rather than data.json because data.json syncs as a
+     whole file and the other device's settings save would clobber it.
+
+     appendRewards writes ONLY the new lines, and it applies them to the file's
+     CURRENT text inside vault.process (via applyToFile), never to a copy read
+     earlier: a line another device synced in since our last read is kept, ours
+     lands after it. Keys already in that current text are skipped, so a retry,
+     a double-tap or the same session finishing on two devices cannot pay twice.
+     Saves of this one file run through exclusive(), so two appends in flight
+     both land. Its path is stamped in _ownWrites like every other write here.
+
+     LIMIT: if iCloud resolves a genuine two-device conflict by keeping one whole
+     copy of the file, the other device's lines in that copy are gone; the
+     ledger cannot know a session was paid. Appending (never rewriting) makes
+     that the only way a line is lost.
+
+     Rewards off (settings.rewards === false): readRewards returns an empty ledger
+     and appendRewards writes nothing - neither touches the vault. */
+  function findRewardsFile() {
+    const path = paths.rewards();
+    const exact = v.getFileByPath(path);
+    if (exact) return exact;
+    /* macOS and iOS volumes are case-insensitive: a hand-made `rewards.md` is
+       this file, and creating a second one would be refused (see writeIfAbsent). */
+    const dir = v.getFolderByPath(root());
+    const lower = path.toLowerCase();
+    return (dir && (dir.children || []).find(c => c instanceof TFile && (c.path || '').toLowerCase() === lower)) || null;
+  }
+
+  /* The parsed ledger: parseLedger's result plus {exists, disabled, unreadable}. */
+  async function readRewards() {
+    const base = (text, extra) => Object.assign(rewardsLedger.parseLedger(text), { exists: false, disabled: false, unreadable: false }, extra);
+    if (!rewardsEnabled(plugin.settings)) return base('', { disabled: true });
+    const f = findRewardsFile();
+    if (!f) return base('');
+    try { return base(await v.read(f), { exists: true }); }
+    catch (e) { return base('', { exists: true, unreadable: true }); }
+  }
+
+  /* entries: [{date, kind, key, xp, note}] (rewards.awardsForSession's output).
+     Resolves {appended, skipped, created, disabled}; rejects only when the vault
+     itself fails, so the caller should catch - a failed award must not fail a
+     finished session. */
+  async function appendRewards(entries) {
+    const list = Array.isArray(entries) ? entries : [];
+    if (!rewardsEnabled(plugin.settings)) return { appended: [], skipped: [], created: false, disabled: true };
+    if (!list.length) return { appended: [], skipped: [], created: false, disabled: false };
+    await ensureFolder(root());
+    return exclusive(paths.rewards(), async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const f = findRewardsFile();
+        if (f) {
+          /* Nothing new on disk -> no write at all (no mtime churn for sync). */
+          const pre = rewardsLedger.appendToText(await v.read(f), list);
+          if (!pre.appended.length) return { appended: [], skipped: pre.skipped, created: false, disabled: false };
+          let result = null;
+          const res = await applyToFile(f.path, current => {
+            result = rewardsLedger.appendToText(current, list);
+            return result.appended.length ? result.text : null;
+          });
+          if (res.gone) continue;                      // deleted under us: create it next round
+          return { appended: result.appended, skipped: result.skipped, created: false, disabled: false };
+        }
+        const made = rewardsLedger.appendToText(null, list);
+        if (!made.appended.length) return { appended: [], skipped: made.skipped, created: false, disabled: false };
+        try {
+          await tracked(paths.rewards(), () => v.create(paths.rewards(), made.text));
+          return { appended: made.appended, skipped: made.skipped, created: true, disabled: false };
+        } catch (e) {
+          /* Another device created it first: append to theirs on the next round. */
+          if (!findRewardsFile()) throw e;
+        }
+      }
+      throw new Error(`Rewards: could not write "${paths.rewards()}".`);
+    });
   }
 
   async function createExercise(ex) {
@@ -889,7 +973,7 @@ function makeIo(plugin) {
   }
 
   return {
-    paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveExport, saveProfile, appendBodyRow,
+    paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveExport, saveProfile, appendBodyRow, readRewards, appendRewards,
     fetchPlanIndex, installPlan,
     createExercise, saveExercise, createGoal, saveGoal,
     createPlan, savePlan, setActivePlan, setPaused, saveWorkout, trash, safeName,
