@@ -86,7 +86,7 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Style')
-      .setDesc('How the gym looks. Every style uses the same data.')
+      .setDesc('How the gym looks. Every style uses the same data. Lock In is designed around the Blaze (orange) accent; it never changes your accent for you.')
       .addDropdown(d => {
         for (const [key, label] of SKINS) d.addOption(key, label);
         d.setValue(this.plugin.settings.skin || 'apex')

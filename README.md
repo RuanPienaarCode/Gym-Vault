@@ -105,7 +105,7 @@ stay in the device voice.
 
 **Worth turning on.** Settings → *Download images for offline*, so the
 exercise library works with no connection. There's also an accent colour and
-three visual styles (Apex is the default; Floor and Editorial are still there).
+four visual styles (Apex is the default; Lock In, a black-and-one-hot-accent skin designed around the Blaze accent, Floor and Editorial are also there).
 
 ## Privacy and network use
 
