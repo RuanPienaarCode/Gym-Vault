@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<!-- MOCKUP ONLY — design exploration for Gym Vault. Not production code.
+     Direction 08: THREE LINES — terrace-culture heritage x technical grid, 2026 register.
+     Generic parallel stripes only: no logo, trefoil, badge or trademarked slogan. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault — 08 Three Lines</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#0E0E10;     /* base */
+    --char:#1C1C20;      /* raised panels */
+    --line:#3A3A42;      /* hairlines, empty cells, borders on dark */
+    --ink:#050506;       /* bezel, tab bar */
+    --white:#FFFFFF;     /* text on dark, paper cards, stripes */
+    --paper-2:#EDEDEF;   /* recessed cell on white */
+    --red:#FF3B1F;       /* ACTION: CTA, current set, today, active tab, PB stamp */
+    --blue:#2E7BFF;      /* DATA: meters, heatmap, bars, pace */
+    --blue-hi:#8DB6FF;   /* peak heatmap tier, small blue text on dark */
+    --mute-c:#55555E;    /* secondary text on white (7.5:1) */
+    --mute-n:#A1A1AA;    /* secondary text on black / charcoal (7:1+) */
+    --page:#D6D6DA;
+
+    /* One variable family, two widths. Fallbacks: Arial Black is wide, Impact is tall. */
+    --wide:'Archivo','Arial Black','Helvetica Neue',Arial,sans-serif;
+    --tall:'Archivo','Impact','Haettenschweiler','Arial Narrow Bold','Arial Narrow',sans-serif;
+    --body:'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--page);color:var(--black);font-family:var(--body);font-size:15px;line-height:1.45;font-weight:500}
+  button{font:inherit;color:inherit}
+  :focus-visible{outline:3px solid var(--red);outline-offset:2px;box-shadow:0 0 0 5px var(--black)}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+  /* ---------- type roles ---------- */
+  .w{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;letter-spacing:-.015em;line-height:.92}
+  .t{font-family:var(--tall);font-stretch:62%;font-weight:900;line-height:.8;font-variant-numeric:tabular-nums}
+  .kick{margin:0;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--mute-n)}
+  .sheet .kick{color:var(--mute-c)}
+
+  /* ---------- the stripe system ---------- */
+  /* divider: three equal lines, nothing else. Never ascending, never slanted into a mark. */
+  .tl{display:block;height:15px;--c:var(--white);
+      background:linear-gradient(to bottom,var(--c) 0 3px,transparent 3px 6px,var(--c) 6px 9px,transparent 9px 12px,var(--c) 12px 15px)}
+  /* three-line meter: three parallel bars, each its own measure */
+  .lines{display:grid;gap:9px;margin:0;padding:0;list-style:none}
+  .ln{display:grid;grid-template-columns:62px 1fr 46px;align-items:center;gap:8px}
+  .ln-l{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+  .ln-v{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:12px;text-align:right;white-space:nowrap}
+  .ln-v i{font-style:normal;font-weight:700;opacity:.8}
+  .bar{display:block;height:10px;background:var(--bar-bg,rgba(14,14,16,.14));overflow:hidden}
+  .bar b{display:block;height:100%;background:var(--bar-fg,var(--blue));transform-origin:left;transform:scaleX(var(--p));animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+  .sheet .ln-l,.sheet .ln-v{color:var(--black)}
+  .dark-bar{--bar-bg:rgba(255,255,255,.14);--bar-fg:var(--blue)}
+  @keyframes grow{from{transform:scaleX(0)}}
+
+  /* jersey tile: a tee silhouette holding a squad number */
+  .shirt{flex:0 0 auto;width:44px;height:44px;background:var(--black);color:var(--white);display:grid;place-items:center;
+         clip-path:polygon(22% 0,38% 0,50% 14%,62% 0,78% 0,100% 24%,86% 40%,80% 33%,80% 100%,20% 100%,20% 33%,14% 40%,0 24%);
+         font-family:var(--tall);font-stretch:62%;font-weight:900;font-size:25px;line-height:1;padding-top:7px}
+
+  /* ---------- page header (same shell as the other numbered files) ---------- */
+  .dirbar{position:sticky;top:0;z-index:40;background:var(--black);color:#fff;padding:0 16px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;border-bottom:3px solid var(--red)}
+  .dirbar h1{margin:0;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:16px;letter-spacing:.02em;text-transform:uppercase;color:var(--white)}
+  .dirbar .pick{background:var(--red);color:var(--black);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:3px 9px}
+  .dirbar p{margin:0;padding:8px 0;font-size:12.5px;color:#D4D4D8;flex:1 1 240px}
+  @media (max-width:700px){.dirbar{position:static}}
+  .dirbar a{color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;min-height:44px;padding:0 6px}
+
+  .brief{max-width:1240px;margin:0 auto;padding:28px 16px 0;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr))}
+  .brief section{background:var(--black);color:#E4E4E7;padding:20px 18px 22px}
+  .brief h2{margin:0 0 12px;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--red)}
+  .brief p,.brief li{font-size:13.5px;line-height:1.55;margin:0;color:#D4D4D8}
+  .brief p+p{margin-top:10px}
+  .brief ul{margin:0;padding-left:18px}
+  .brief li{margin-bottom:8px}
+  .brief b{color:#fff}
+  .sw{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:0;list-style:none}
+  .sw li{margin:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#fff}
+  .sw i{width:28px;height:28px;border:2px solid #fff;flex:0 0 auto}
+  .brief code{background:var(--char);color:var(--blue-hi);padding:1px 5px;font-size:12px}
+
+  /* ---------- gallery ---------- */
+  .stage{max-width:1760px;margin:0 auto;padding:30px 8px 64px;display:flex;flex-wrap:wrap;gap:34px 26px;justify-content:center;align-items:flex-start}
+  .unit{width:min(100%,406px);margin:0}
+  .cap{margin:0 0 12px;display:flex;flex-direction:column;gap:2px}
+  .cap span{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:17px;text-transform:uppercase;letter-spacing:-.01em}
+  .cap small{font-size:12.5px;font-weight:600;color:#3F3F46}
+  .phone{background:var(--ink);border-radius:46px;padding:8px;box-shadow:0 22px 40px -18px rgba(0,0,0,.5)}
+  .screen{position:relative;border-radius:38px;overflow:hidden;min-height:860px;display:flex;flex-direction:column;background:var(--black);color:var(--white)}
+  .grow{flex:1 1 auto}
+
+  .status{display:flex;justify-content:space-between;align-items:center;height:44px;padding:6px 26px 0;font-size:14px;font-weight:800;color:var(--white);background:var(--black);position:relative;z-index:2}
+  .status .isl{position:absolute;left:50%;top:10px;width:96px;height:26px;border-radius:20px;background:var(--ink);transform:translateX(-50%)}
+  .status .sys{display:flex;gap:7px;align-items:center;font-size:11px;font-weight:800;letter-spacing:.04em}
+  .status .batt{width:24px;height:12px;border:2px solid var(--white);position:relative;border-radius:3px}
+  .status .batt::before{content:'';position:absolute;inset:1px 5px 1px 1px;background:var(--white)}
+
+  .tabbar{background:var(--ink);padding:2px 6px 6px}
+  .tabs{display:grid;grid-template-columns:repeat(5,1fr)}
+  .tab{position:relative;min-height:56px;border:0;background:none;color:var(--mute-n);cursor:pointer;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+       font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  .tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .tab:hover{color:#fff}
+  .tab[aria-current=page]{color:var(--red)}
+  .tab[aria-current=page]::before{content:'';position:absolute;top:0;left:50%;width:22px;height:10px;transform:translateX(-50%);
+       background:linear-gradient(to bottom,var(--red) 0 2px,transparent 2px 4px,var(--red) 4px 6px,transparent 6px 8px,var(--red) 8px 10px)}
+  .home{display:block;width:120px;height:5px;border-radius:3px;background:#6B6B73;margin:6px auto 4px}
+
+  .btn{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:60px;padding:0 20px;border:0;cursor:pointer;
+       background:var(--red);color:var(--black);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:20px;letter-spacing:-.01em;text-transform:uppercase;
+       box-shadow:5px 5px 0 var(--white);transition:transform .12s,box-shadow .12s}
+  .btn:hover{transform:translate(2px,2px);box-shadow:3px 3px 0 var(--white)}
+  .btn:active{transform:translate(5px,5px);box-shadow:0 0 0 var(--white)}
+  .btn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:square}
+  .btn--ghost{background:var(--black);color:var(--white);box-shadow:inset 0 0 0 2px var(--white);min-height:52px;font-size:14px}
+  .btn--ghost:hover{background:var(--white);color:var(--black);transform:none;box-shadow:inset 0 0 0 2px var(--white)}
+
+  /* =========================================================
+     TODAY — black hero, white kit sheet
+     ========================================================= */
+  .hero{position:relative;overflow:hidden;background:var(--black);padding:8px 20px 24px}
+  .hero::before{ /* sleeve: three equal upright stripes down the right edge */
+    content:'';position:absolute;right:14px;top:62px;bottom:0;width:30px;
+    background:linear-gradient(to right,var(--white) 0 6px,transparent 6px 12px,var(--white) 12px 18px,transparent 18px 24px,var(--white) 24px 30px);
+    animation:slide 1s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes slide{from{transform:translateY(-100%)}}
+  .hero>*{position:relative}
+  .hero .ghost{position:absolute;right:58px;top:34px;font-size:176px;color:var(--char);pointer-events:none}
+  .hero .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:22px}
+  .chip{display:inline-flex;align-items:center;min-height:26px;padding:0 9px;border:2px solid currentColor;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+  .chip--fill{background:var(--white);color:var(--black);border-color:var(--white)}
+  .hero-title{margin:10px 0 0;font-size:56px;color:var(--white)}
+  .hero-title em{font-style:normal;color:transparent;-webkit-text-stroke:2px var(--white)}
+  .hero-sub{margin:14px 0 20px;font-size:14px;font-weight:700;color:var(--mute-n)}
+  .hero-sub b{color:var(--white)}
+
+  .kit{background:var(--white);color:var(--black);flex:1 1 auto;padding:0 20px 22px}
+  .kit .tl{margin:0 -20px;--c:var(--white);background-color:var(--black)}
+  .sec{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:20px 0 10px}
+  .sec h3{margin:0;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:15px;text-transform:uppercase;letter-spacing:-.005em}
+  .sec span{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute-c)}
+  .lineup{list-style:none;margin:0;padding:0;border-top:2px solid var(--black)}
+  .lineup li{display:flex;align-items:center;gap:12px;min-height:62px;padding:8px 0;border-bottom:1px solid rgba(14,14,16,.25)}
+  .lineup .nm{flex:1 1 auto;min-width:0}
+  .lineup b{display:block;font-size:16px;font-weight:800;line-height:1.15}
+  .lineup small{display:block;font-size:12px;font-weight:600;color:var(--mute-c);margin-top:2px}
+  .lineup .rxv{text-align:right;flex:0 0 auto}
+  .lineup .rxv strong{display:block;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:17px;line-height:1}
+  .lineup .rxv small{margin-top:5px}
+
+  .week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:0;padding:0;list-style:none;align-items:end}
+  .wd{min-height:66px;padding:7px 0 6px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;border:2px solid var(--black);text-align:center}
+  .wd .d{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:13px;line-height:1}
+  .wd .s{font-size:10.5px;font-weight:800;letter-spacing:.04em}
+  .wd svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:4;stroke-linecap:square}
+  .wd.done{background:var(--black);color:var(--white)}
+  .wd.done svg{color:var(--white)}
+  .wd.rest{border-style:dashed;border-color:rgba(14,14,16,.45);color:var(--mute-c);
+           background:repeating-linear-gradient(135deg,transparent 0 5px,rgba(14,14,16,.09) 5px 7px)}
+  .wd.today{min-height:78px;background:var(--red);box-shadow:3px 3px 0 var(--black)}
+  .wd.plan{background:transparent}
+
+  .duo{display:grid;grid-template-columns:128px 1fr;gap:16px;align-items:stretch;margin-top:22px}
+  .back{position:relative;background:var(--black);color:var(--white);padding:12px 22px 12px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;overflow:hidden}
+  .back::before,.back::after{content:'';position:absolute;top:0;bottom:0;width:15px;
+       background:linear-gradient(to right,var(--white) 0 3px,transparent 3px 6px,var(--white) 6px 9px,transparent 9px 12px,var(--white) 12px 15px)}
+  .back::before{left:0}.back::after{right:0}
+  .back .nm{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:11px;letter-spacing:.14em}
+  .back .n{font-size:84px;color:var(--white)}
+  .back .u{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--white)}
+
+  /* =========================================================
+     LIVE SET — all black, giant count
+     ========================================================= */
+  .live{padding:6px 20px 18px;display:flex;flex-direction:column;gap:14px;flex:1 1 auto}
+  .l-top{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center}
+  .x{width:48px;height:48px;border:2px solid var(--white);background:none;cursor:pointer;display:grid;place-items:center}
+  .x svg{width:20px;height:20px;stroke:var(--white);stroke-width:3;fill:none;stroke-linecap:square}
+  .x:hover{background:var(--white)}.x:hover svg{stroke:var(--black)}
+  .clock{font-size:34px;color:var(--white)}
+  .segs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:0;padding:0;list-style:none}
+  .segs li{height:8px;background:var(--line);overflow:hidden}
+  .segs li b{display:block;height:100%;background:var(--blue);transform-origin:left;transform:scaleX(var(--p,0));animation:grow .9s both}
+  .l-ex h3{margin:6px 0 0;font-size:40px;color:var(--white)}
+  .l-ex p.sub{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mute-n)}
+  .sets{display:flex;align-items:center;gap:8px;margin:0;padding:0;list-style:none}
+  .sets li{width:48px;height:48px;display:grid;place-items:center;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:16px;border:2px solid var(--line);color:var(--mute-n)}
+  .sets li.dn{background:var(--white);color:var(--black);border-color:var(--white)}
+  .sets li.dn svg{width:20px;height:20px;stroke:var(--black);stroke-width:4;fill:none;stroke-linecap:square}
+  .sets li.cu{border:3px solid var(--red);color:var(--red);animation:ring 1.8s ease-in-out infinite}
+  @keyframes ring{50%{box-shadow:0 0 0 5px rgba(255,59,31,.3)}}
+  .sets .of{margin-left:auto;text-align:right;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--white);line-height:1.25}
+
+  .rep{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;gap:18px;padding:12px 0 8px}
+  .rep::before{content:'';position:absolute;left:-20px;right:-20px;top:50%;height:60px;transform:translateY(-50%);z-index:-1;
+       background:linear-gradient(to bottom,rgba(255,255,255,.14) 0 14px,transparent 14px 23px,rgba(255,255,255,.14) 23px 37px,transparent 37px 46px,rgba(255,255,255,.14) 46px 60px);
+       animation:sweep 1s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes sweep{from{transform:translateY(-50%) translateX(-60px);opacity:0}}
+  .rep .num{font-size:238px;color:var(--white);text-shadow:6px 6px 0 var(--blue);animation:bump 2.4s ease-in-out infinite;transform-origin:50% 60%}
+  @keyframes bump{0%,70%,100%{transform:scale(1)}80%{transform:scale(1.045)}}
+  .rep .of{display:flex;flex-direction:column;gap:6px}
+  .rep .of b{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:30px;line-height:.9;text-transform:uppercase}
+  .rep .of span{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--mute-n)}
+  .ctl{display:grid;grid-template-columns:72px 1fr;gap:12px}
+  .ctl .minus{min-height:72px;border:2px solid var(--white);background:none;cursor:pointer;color:var(--white);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:30px}
+  .ctl .minus:hover{background:var(--white);color:var(--black)}
+  .ctl .btn{min-height:72px;font-size:26px}
+
+  .pair{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:10px}
+  .card-c{background:var(--white);color:var(--black);padding:12px 12px 12px}
+  .card-c .kick{color:var(--mute-c)}
+  .card-n{background:var(--char);color:var(--white);padding:12px 9px;border:2px solid var(--line)}
+  .big{display:flex;align-items:baseline;gap:6px;margin:10px 0 10px}
+  .big .t{font-size:60px}
+  .big small{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:13px}
+  .step{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .step button{min-height:46px;border:2px solid var(--black);background:none;cursor:pointer;color:var(--black);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:12px}
+  .step button:hover{background:var(--black);color:var(--white)}
+  .card-c .pbn{margin:9px 0 0;font-size:11.5px;font-weight:700;color:var(--mute-c)}
+  .rest-t{font-size:60px;color:var(--white);margin:10px 0 8px}
+  .rest-bars{--bar-bg:rgba(255,255,255,.16);--bar-fg:var(--blue);display:grid;gap:4px;margin-bottom:10px}
+  .rest-bars .bar{height:6px}
+  .presets{display:grid;grid-template-columns:repeat(3,minmax(44px,1fr));gap:2px}
+  .presets button{min-height:46px;border:2px solid var(--line);background:none;color:var(--white);cursor:pointer;font-size:12px;font-weight:800}
+  .presets button[aria-pressed=true]{background:var(--white);color:var(--black);border-color:var(--white)}
+  .presets button:hover{border-color:var(--white)}
+
+  .next{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 14px;background:var(--white);color:var(--black);width:100%;border:0;cursor:pointer;text-align:left}
+  .next .tag{background:var(--black);color:var(--white);font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:5px 8px}
+  .next b{display:block;font-size:15px;font-weight:800;line-height:1.15}
+  .next small{font-size:12px;font-weight:600;color:var(--mute-c)}
+  .next svg{margin-left:auto;width:24px;height:24px;stroke:var(--black);stroke-width:3;fill:none;stroke-linecap:square;flex:0 0 auto}
+
+  /* =========================================================
+     FULL TIME — matchday ticket recap
+     ========================================================= */
+  .done-s{background:var(--black);position:relative;overflow:hidden}
+  .conf{position:absolute;inset:0;pointer-events:none;z-index:0}
+  .conf i{position:absolute;top:-30px;left:var(--x);width:9px;height:26px;background:var(--c,var(--red));transform:rotate(var(--r));animation:fall var(--d) linear infinite;animation-delay:var(--dl,0s);opacity:.9}
+  .conf i:nth-child(3n){--c:var(--white)}
+  .conf i:nth-child(5n){width:6px;height:18px}
+  @keyframes fall{to{transform:translateY(900px) rotate(calc(var(--r) + 200deg))}}
+  .ft{position:relative;z-index:1;padding:8px 20px 22px;flex:1 1 auto;display:flex;flex-direction:column}
+  .ft h3{margin:10px 0 0;font-size:48px;color:var(--white)}
+  .ft h3 em{font-style:normal;color:var(--red)}
+  .ft .lede{margin:10px 0 22px;font-size:14px;font-weight:600;color:var(--mute-n)}
+  .ft .lede b{color:var(--white)}
+
+  .ticket{position:relative;background:var(--white);color:var(--black);box-shadow:6px 6px 0 var(--red);margin-right:6px}
+  .tk-head{background:var(--white);display:flex;justify-content:space-between;gap:10px;padding:10px 38px 9px 30px;border-bottom:2px solid var(--black);font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+  .tk-head span:last-child{color:var(--mute-c)}
+  .ticket::before{content:'';position:absolute;left:0;top:0;bottom:0;width:15px;
+       background:linear-gradient(to right,var(--black) 0 3px,transparent 3px 6px,var(--black) 6px 9px,transparent 9px 12px,var(--black) 12px 15px)}
+  .tk-art{position:absolute;right:8px;top:44px;bottom:12px;writing-mode:vertical-rl;font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--mute-c)}
+  .tk-main{position:relative;padding:18px 34px 18px 30px}
+  .tk-main h4{margin:6px 0 0;font-size:26px}
+  .pb-n{display:flex;align-items:flex-end;gap:10px;margin-top:12px}
+  .pb-n .t{font-size:150px;color:var(--black)}
+  .pb-n small{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:17px;text-transform:uppercase;line-height:1;padding-bottom:6px}
+  .delta{margin:12px 0 0;font-size:13px;font-weight:700}
+  .delta b{background:var(--black);color:var(--white);padding:2px 7px;margin-right:6px}
+  .stamp{position:absolute;right:40px;bottom:16px;transform:rotate(-4deg);border:4px solid var(--red);color:var(--red);padding:5px 10px 4px;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:19px;line-height:1;text-transform:uppercase;background:var(--white);animation:thump .6s cubic-bezier(.2,1.4,.4,1) .35s both}
+  @keyframes thump{from{transform:rotate(-4deg) scale(2.2);opacity:0}}
+  .tear{position:relative;border-top:2px dashed var(--black);margin:0 22px 0 18px}
+  .tear::before,.tear::after{content:'';position:absolute;top:-13px;width:24px;height:24px;border-radius:50%;background:var(--black)}
+  .tear::before{left:-30px}.tear::after{right:-34px}
+  .tk-stub{padding:16px 34px 16px 30px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:0 0 14px;padding:0;list-style:none;border-top:2px solid var(--black)}
+  .stats li{padding:10px 4px 0 0}
+  .stats .t{display:block;font-size:28px;white-space:nowrap}
+  .stats span.l{display:block;margin-top:5px;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute-c)}
+  .barcode{height:34px;margin-top:14px;background:repeating-linear-gradient(90deg,var(--black) 0 2px,transparent 2px 4px,var(--black) 4px 5px,transparent 5px 8px,var(--black) 8px 11px,transparent 11px 13px,var(--black) 13px 14px,transparent 14px 17px)}
+  .bc-n{display:flex;justify-content:space-between;margin-top:5px;font-size:10px;font-weight:700;letter-spacing:.18em;color:var(--mute-c)}
+  .pips{display:flex;gap:4px;margin-top:2px}
+  .pips i{flex:1;height:10px;background:var(--black)}
+  .pips i.n{background:transparent;border:2px solid var(--black)}
+  .share{margin-top:24px;display:grid;gap:12px}
+  .fmt{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .fmt button{min-height:46px;border:2px solid var(--line);background:var(--black);color:var(--white);cursor:pointer;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  .fmt button[aria-pressed=true]{background:var(--white);color:var(--black);border-color:var(--white)}
+
+  /* =========================================================
+     RECORDS + HEATMAP
+     ========================================================= */
+  .rc-top{padding:8px 20px 22px;background:var(--black);position:relative;overflow:hidden}
+  .rc-top h3{margin:10px 0 0;font-size:46px;color:var(--white)}
+  .seg{display:grid;grid-template-columns:1fr 1fr;margin-top:16px;border:2px solid var(--white)}
+  .seg button{min-height:46px;border:0;background:none;cursor:pointer;color:var(--white);font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+  .seg button[aria-pressed=true]{background:var(--white);color:var(--black)}
+  .heat-w{margin-top:18px;background:var(--char);padding:14px 12px 12px}
+  .heat-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .heat-h b{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:13px;text-transform:uppercase}
+  .heat{display:grid;grid-template-columns:14px 1fr;gap:6px}
+  .heat .dy{display:grid;grid-template-rows:repeat(7,1fr);font-size:10px;font-weight:800;color:var(--mute-n);line-height:1;text-align:center;gap:3px}
+  .heat .dy span{display:grid;place-items:center}
+  .grid{display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;grid-auto-columns:1fr;gap:3px}
+  .h{display:block;aspect-ratio:1;background:#2A2A31}
+  .h.l0{background:#2A2A31}
+  .h.l1{background:#1B3F8A}
+  .h.l2{background:#2460C9}
+  .h.l3{background:var(--blue)}
+  .h.l4{background:var(--blue-hi)}
+  .h.f{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line)}
+  .months{display:flex;justify-content:space-between;margin:6px 0 0 20px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute-n)}
+  .legend{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--mute-n)}
+  .legend .h{width:12px}
+  .heat-f{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px;flex-wrap:wrap}
+  .heat-sum{display:flex;gap:16px}
+  .heat-sum div{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute-n)}
+  .heat-sum .t{display:block;font-size:28px;color:var(--white);margin-bottom:3px}
+
+  .rc-list{background:var(--white);color:var(--black);flex:1 1 auto;padding:0 20px 20px}
+  .rc-list .tl{margin:0 -20px;--c:var(--white);background-color:var(--black)}
+  .filters{display:flex;gap:6px;overflow:hidden;margin:16px 0 4px;flex-wrap:wrap}
+  .filters button{min-height:44px;padding:0 11px;border:2px solid var(--black);background:none;cursor:pointer;color:var(--black);font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+  .filters button[aria-pressed=true]{background:var(--black);color:var(--white)}
+  .pbs{list-style:none;margin:6px 0 0;padding:0;border-top:2px solid var(--black)}
+  .pbs li{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;min-height:68px;padding:9px 0;border-bottom:1px solid rgba(14,14,16,.25)}
+  .pbs b{display:block;font-size:15.5px;font-weight:800;line-height:1.15}
+  .pbs small{display:block;margin-top:3px;font-size:12px;font-weight:600;color:var(--mute-c)}
+  .pbs .v{text-align:right}
+  .pbs .v .t{font-size:38px}
+  .pbs .v span:not(.t){display:block;margin-top:4px;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mute-c)}
+  .new{display:inline-block;background:var(--red);color:var(--black);box-shadow:inset 0 0 0 2px var(--black);font-size:10px;font-weight:900;letter-spacing:.1em;padding:1px 6px;margin-left:6px;vertical-align:2px}
+
+  /* =========================================================
+     RUNNING
+     ========================================================= */
+  .run-h{padding:8px 20px 22px;background:var(--black);position:relative;overflow:hidden}
+  .run-h .km{display:flex;align-items:flex-end;gap:10px;margin-top:12px}
+  .run-h .km .t{font-size:150px;color:var(--white);text-shadow:5px 5px 0 var(--blue)}
+  .run-h .km span.w{font-size:24px;color:var(--white);padding-bottom:12px}
+  .run-h .meter{margin-top:12px}
+  .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:116px;margin:16px 0 0;padding:0;list-style:none}
+  .days li{height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;gap:6px;text-align:center}
+  .days li i{display:block;height:var(--h);background:var(--blue)}
+  .days li.p i{background:transparent;border:2px dashed var(--mute-n)}
+  .days li.z i{height:3px;background:var(--line)}
+  .days li span{font-size:10.5px;font-weight:800;color:var(--mute-n);letter-spacing:.04em}
+  .days li em{font-style:normal;font-size:11px;font-weight:800;color:var(--white)}
+  .run-k{background:var(--white);color:var(--black);flex:1 1 auto;padding:0 20px 20px}
+  .run-k .tl{margin:0 -20px;--c:var(--white);background-color:var(--black)}
+  .bib{position:relative;margin:22px 4px 0;background:var(--white);border:2px solid var(--black);padding:28px 18px 16px;box-shadow:5px 5px 0 var(--black);
+       background-image:
+         radial-gradient(circle at 14px 14px,var(--white) 0 4.5px,var(--black) 5px 6.5px,transparent 7px),
+         radial-gradient(circle at calc(100% - 14px) 14px,var(--white) 0 4.5px,var(--black) 5px 6.5px,transparent 7px),
+         radial-gradient(circle at 14px calc(100% - 14px),var(--white) 0 4.5px,var(--black) 5px 6.5px,transparent 7px),
+         radial-gradient(circle at calc(100% - 14px) calc(100% - 14px),var(--white) 0 4.5px,var(--black) 5px 6.5px,transparent 7px)}
+  .bib .tl{margin:0 -18px 0;--c:var(--black);background-color:transparent;position:absolute;left:36px;right:36px;top:9px;height:15px;width:auto}
+  .bib .kick{color:var(--mute-c);text-align:center;margin-top:12px}
+  .bib .pace{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-top:4px}
+  .bib .pace .t{font-size:112px;color:var(--blue)}
+  .bib .pace small{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:15px;padding-bottom:8px}
+  .bib .sub{margin:8px 0 0;text-align:center;font-size:12.5px;font-weight:700;color:var(--mute-c)}
+  .ladder{list-style:none;margin:0;padding:0;border-top:2px solid var(--black)}
+  .ladder li{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;min-height:50px;border-bottom:1px solid rgba(14,14,16,.25)}
+  .ladder .d{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:13px}
+  .ladder .p{color:var(--blue);font-family:var(--tall);font-stretch:62%;font-weight:900;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+  .ladder .p small{font-family:var(--body);font-stretch:100%;font-size:10.5px;font-weight:800;letter-spacing:.08em;margin-left:4px;color:var(--mute-c)}
+  .ladder .tt{font-size:12px;font-weight:700;color:var(--mute-c);text-align:right}
+  .note{margin:10px 0 0;font-size:12px;font-weight:600;color:var(--mute-c)}
+  .steps{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:0;padding:0;list-style:none}
+  .steps li{min-height:56px;border:2px solid var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:15px;line-height:1}
+  .steps li small{font-family:var(--body);font-stretch:100%;font-size:10px;font-weight:800;letter-spacing:.06em;margin-top:4px}
+  .steps li.dn{background:var(--black);color:var(--white)}
+  .steps li.dn small{color:var(--mute-n)}
+  .steps li.nx{background:var(--red);box-shadow:3px 3px 0 var(--black)}
+  .steps li.lt{border-style:dashed;border-color:rgba(14,14,16,.5);color:var(--mute-c)}
+
+  @media (max-width:420px){
+    .stage{padding:20px 8px 48px}
+    .hero-title{font-size:50px}
+    .rep .num{font-size:210px}
+    .pb-n .t{font-size:128px}
+    .tk-art{display:none}
+    .tk-head,.tk-main,.tk-stub{padding-right:16px}
+    .stamp{right:14px}
+    .bib .pace .t{font-size:92px}
+    .run-h .km .t{font-size:124px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none!important;transition:none!important}
+    .conf{display:none}
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-today" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-ex" viewBox="0 0 24 24"><path d="M6 7v10M3 9v6M18 7v10M21 9v6M6 12h12"/></symbol>
+    <symbol id="i-plans" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M3 6h2M3 12h2M3 18h2"/></symbol>
+    <symbol id="i-hist" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-me" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+    <symbol id="i-chk" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M3 12h17M13 5l7 7-7 7"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 14v7h16v-7"/></symbol>
+  </defs>
+</svg>
+
+<header class="dirbar">
+  <h1>08 · Three Lines</h1>
+  <span class="pick">Proposed</span>
+  <p>Activewear kit on a technical grid: black and white blocks, solar red for action, signal blue for data, and three parallel lines as the graphic system.</p>
+  <a href="index.html">All directions</a>
+</header>
+
+<div class="brief">
+  <section aria-labelledby="b-intent">
+    <h2 id="b-intent">Intent</h2>
+    <p><b>A training kit, not a dashboard.</b> Every stat is a squad number, every session ends as a ticket you would actually post, and the only ornament is three equal parallel lines: dividers, 3-bar meters, jersey sleeves, the active tab. Colour has two jobs only: red means <i style="font-style:normal;color:var(--red)">act</i>, blue means <i style="font-style:normal;color:var(--blue-hi)">measure</i>.</p>
+    <p>Photography-free by design: energy comes from type, colour and stripes. The lines are white on black, always equal length and never ascending, so they stay a generic pattern. Geometry is square and upright (no slant, no italics), and white paper cards (ticket, bib, kit sheet) sit on black, which keeps it apart from 07's single-accent, forward-leaning look.</p>
+  </section>
+  <section aria-labelledby="b-pal">
+    <h2 id="b-pal">Palette &amp; type</h2>
+    <ul class="sw">
+      <li><i style="background:#0E0E10"></i>Black #0E0E10</li>
+      <li><i style="background:#1C1C20"></i>Charcoal #1C1C20</li>
+      <li><i style="background:#3A3A42"></i>Line #3A3A42</li>
+      <li><i style="background:#FFFFFF"></i>White #FFFFFF</li>
+      <li><i style="background:#FF3B1F"></i>Solar red #FF3B1F</li>
+      <li><i style="background:#2E7BFF"></i>Signal blue #2E7BFF</li>
+    </ul>
+    <p><b>Archivo</b>, one variable family used at two widths: <b>Expanded 900</b> for words, headings and buttons; <b>Condensed 900</b> for jersey numerals. Body is Archivo 500. Fallbacks are Arial Black (wide) and Impact (tall), both present on iOS.</p>
+    <p>Text on red is black (5.4:1), never white (3.6:1). Secondary greys are #A1A1AA on dark and #55555E on white. Blue is used for large type and graphics; small blue text on dark uses #8DB6FF. The heatmap ramps charcoal, #1B3F8A, #2460C9, #2E7BFF, with #8DB6FF for the peak day.</p>
+  </section>
+  <section aria-labelledby="b-trade">
+    <h2 id="b-trade">Trade-offs</h2>
+    <ul>
+      <li><b>Close to 07 on the surface.</b> Black plus a hot accent is the same first impression. 08 stays apart only through the red-plus-blue pairing, the upright square geometry and the white-stripe and paper-card system; if those get diluted it collapses into 07.</li>
+      <li><b>Strict roles leave no spare colour.</b> Red is action and achievement, blue is data, so there is nothing left for warnings or destructive actions. Red for "End session" or "Delete" would fight the red PB stamp and CTA.</li>
+      <li><b>White sheets are bright.</b> The kit sheets and ticket give hard colour-blocking, but a large white area at night on an OLED phone glares, and a fixed kit ignores the Obsidian theme. Archivo needs a bundled woff2 for offline iPhone use.</li>
+    </ul>
+  </section>
+</div>
+
+<main class="stage">
+
+  <!-- ================= 1. TODAY ================= -->
+  <figure class="unit">
+    <figcaption class="cap"><h2 class="cap" style="margin:0"><span>Today</span></h2><small>Plan day as the hero, lineup, week strip, streak jersey</small></figcaption>
+    <div class="phone"><div class="screen">
+      <div class="status" aria-hidden="true"><span>9:41</span><span class="isl"></span><span class="sys">5G <i class="batt"></i></span></div>
+
+      <div class="hero">
+        <span class="ghost t" aria-hidden="true">03</span>
+        <div class="row"><span class="chip chip--fill">Wk 41</span><span class="chip">Foundation block</span></div>
+        <p class="kick">Saturday 10 Oct · Day 3 of 5</p>
+        <h3 class="hero-title w">Lower<br>Body <em>A</em></h3>
+        <p class="hero-sub"><b>4 exercises</b> · 14 sets · est. <b>52 min</b></p>
+        <button class="btn" type="button">Start session <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      </div>
+      <span class="tl" style="background-color:var(--black);--c:var(--white)" aria-hidden="true"></span>
+
+      <div class="kit" style="padding-top:2px">
+        <div class="sec"><h3>Today's lineup</h3><span>4 in the squad</span></div>
+        <ol class="lineup">
+          <li><span class="shirt" aria-hidden="true">1</span><div class="nm"><b>Back Squat</b><small>Quads · glutes · barbell</small></div><div class="rxv"><strong>5 × 5</strong><small>100 kg</small></div></li>
+          <li><span class="shirt" aria-hidden="true">2</span><div class="nm"><b>Romanian Deadlift</b><small>Hamstrings · barbell</small></div><div class="rxv"><strong>3 × 8</strong><small>80 kg</small></div></li>
+          <li><span class="shirt" aria-hidden="true">3</span><div class="nm"><b>Walking Lunge</b><small>Quads · glutes · dumbbells</small></div><div class="rxv"><strong>3 × 12</strong><small>20 kg each</small></div></li>
+          <li><span class="shirt" aria-hidden="true">4</span><div class="nm"><b>Plank</b><small>Core · bodyweight</small></div><div class="rxv"><strong>3 × 60s</strong><small>hold</small></div></li>
+        </ol>
+
+        <div class="sec"><h3>This week</h3><span>3 of 5 done</span></div>
+        <ol class="week" aria-label="This week, Monday to Sunday">
+          <li class="wd done"><span class="d">M</span><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chk"/></svg><span class="s">UPR</span></li>
+          <li class="wd done"><span class="d">T</span><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chk"/></svg><span class="s">RUN</span></li>
+          <li class="wd rest"><span class="d">W</span><span class="s" aria-hidden="true">·</span><span class="s">REST</span></li>
+          <li class="wd done"><span class="d">T</span><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chk"/></svg><span class="s">RUN</span></li>
+          <li class="wd rest"><span class="d">F</span><span class="s" aria-hidden="true">·</span><span class="s">REST</span></li>
+          <li class="wd today" aria-current="date"><span class="d">S</span><span class="s" aria-hidden="true">▶</span><span class="s">LWR</span></li>
+          <li class="wd plan"><span class="d">S</span><span class="s" aria-hidden="true">○</span><span class="s">RUN</span></li>
+        </ol>
+
+        <div class="duo">
+          <div class="back" aria-label="Streak: 6 weeks">
+            <span class="nm" aria-hidden="true">ALEX</span>
+            <span class="n t" aria-hidden="true">6</span>
+            <span class="u">Week<br>streak</span>
+          </div>
+          <div class="sheet">
+            <p class="kick" style="margin-bottom:10px">Three lines</p>
+            <ul class="lines">
+              <li class="ln"><span class="ln-l">Sessions</span><span class="bar"><b style="--p:.6"></b></span><span class="ln-v">3<i>/5</i></span></li>
+              <li class="ln"><span class="ln-l">Sets</span><span class="bar"><b style="--p:.56"></b></span><span class="ln-v">18<i>/32</i></span></li>
+              <li class="ln"><span class="ln-l">Minutes</span><span class="bar"><b style="--p:.51"></b></span><span class="ln-v">133<i>/260</i></span></li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="tabbar"><nav class="tabs" aria-label="Main navigation, Today screen">
+        <button class="tab" type="button" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-today"/></svg>Today</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plans"/></svg>Plans</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hist"/></svg>History</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-me"/></svg>Profile</button>
+      </nav><i class="home" aria-hidden="true"></i></div>
+    </div></div>
+  </figure>
+
+  <!-- ================= 2. LIVE SET ================= -->
+  <figure class="unit">
+    <figcaption class="cap"><h2 class="cap" style="margin:0"><span>Live set</span></h2><small>Giant rep count, load, rest timer, next up</small></figcaption>
+    <div class="phone"><div class="screen">
+      <div class="status" aria-hidden="true"><span>9:41</span><span class="isl"></span><span class="sys">5G <i class="batt"></i></span></div>
+
+      <div class="live">
+        <div class="l-top">
+          <button class="x" type="button" aria-label="End session"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+          <p class="kick" style="text-align:center">Lower Body A</p>
+          <time class="clock t" datetime="PT24M18S" aria-label="Elapsed 24 minutes 18 seconds">24:18</time>
+        </div>
+        <ol class="segs" aria-label="Exercise 1 of 4">
+          <li><b style="--p:.36"></b></li><li></li><li></li><li></li>
+        </ol>
+
+        <div class="l-ex">
+          <p class="kick">Exercise 1 of 4</p>
+          <h3 class="w">Back Squat</h3>
+          <p class="sub">Target 5 × 5 · last time 100 kg × 5</p>
+        </div>
+
+        <ol class="sets" aria-label="Sets">
+          <li class="dn"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chk"/></svg><span class="sr">Set 1 done</span></li>
+          <li class="cu" aria-current="step">2</li>
+          <li>3</li><li>4</li><li>5</li>
+          <li class="of" style="border:0;width:auto;display:block;margin-left:auto"><span>Set 2<br>of 5</span></li>
+        </ol>
+
+        <div class="rep" role="group" aria-label="Rep count 3 of 5">
+          <span class="num t" aria-hidden="true">3</span>
+          <div class="of" aria-hidden="true"><b>of 5</b><span>Reps</span></div>
+        </div>
+
+        <div class="ctl">
+          <button class="minus" type="button" aria-label="Remove one rep">−</button>
+          <button class="btn" type="button">+1 Rep</button>
+        </div>
+
+        <div class="pair">
+          <div class="card-c">
+            <p class="kick">Load</p>
+            <div class="big"><span class="t">100</span><small>kg</small></div>
+            <div class="step"><button type="button" aria-label="Minus 2.5 kilograms">−2.5</button><button type="button" aria-label="Plus 2.5 kilograms">+2.5</button></div>
+            <p class="pbn">PB 105 kg × 5</p>
+          </div>
+          <div class="card-n">
+            <p class="kick">Rest · armed</p>
+            <div class="rest-t t">2:00</div>
+            <div class="rest-bars" aria-hidden="true">
+              <span class="bar"><b style="--p:1"></b></span><span class="bar"><b style="--p:1"></b></span><span class="bar"><b style="--p:1"></b></span>
+            </div>
+            <div class="presets" role="group" aria-label="Rest length">
+              <button type="button" aria-pressed="false">1:30</button><button type="button" aria-pressed="true">2:00</button><button type="button" aria-pressed="false">3:00</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="next" type="button">
+          <span class="tag">Next up</span>
+          <span><b>Romanian Deadlift</b><small>3 × 8 · 80 kg</small></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg>
+        </button>
+      </div>
+
+      <div class="tabbar"><nav class="tabs" aria-label="Main navigation, Live set screen">
+        <button class="tab" type="button" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-today"/></svg>Today</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plans"/></svg>Plans</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hist"/></svg>History</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-me"/></svg>Profile</button>
+      </nav><i class="home" aria-hidden="true"></i></div>
+    </div></div>
+  </figure>
+
+  <!-- ================= 3. FULL TIME / PR ================= -->
+  <figure class="unit">
+    <figcaption class="cap"><h2 class="cap" style="margin:0"><span>Session complete</span></h2><small>New PB on a matchday ticket you can share</small></figcaption>
+    <div class="phone"><div class="screen done-s">
+      <div class="conf" aria-hidden="true">
+        <i style="--x:8%;--r:20deg;--d:7s"></i><i style="--x:19%;--r:-30deg;--d:9s;--dl:-3s"></i><i style="--x:31%;--r:50deg;--d:8s;--dl:-6s"></i>
+        <i style="--x:44%;--r:-12deg;--d:10s;--dl:-1s"></i><i style="--x:57%;--r:35deg;--d:7.5s;--dl:-4s"></i><i style="--x:68%;--r:-45deg;--d:9.5s;--dl:-7s"></i>
+        <i style="--x:79%;--r:15deg;--d:8.5s;--dl:-2s"></i><i style="--x:90%;--r:-25deg;--d:10.5s;--dl:-5s"></i><i style="--x:25%;--r:60deg;--d:11s;--dl:-8s"></i><i style="--x:73%;--r:-5deg;--d:12s;--dl:-9s"></i>
+      </div>
+      <div class="status" aria-hidden="true"><span>10:34</span><span class="isl"></span><span class="sys">5G <i class="batt"></i></span></div>
+
+      <div class="ft">
+        <p class="kick">Session 47 banked</p>
+        <h3 class="w">Full time<em>.</em></h3>
+        <p class="lede">Week 6 streak alive. <b>14 of 14 sets</b> logged.</p>
+
+        <article class="ticket" aria-label="Session recap card">
+          <div class="tk-head"><span>Matchday · Admit one</span><span>10 Oct 2026</span></div>
+          <span class="tk-art" aria-hidden="true">Art. GV-08-0047</span>
+          <div class="tk-main">
+            <span class="stamp" aria-label="New personal best">New PB</span>
+            <p class="kick" style="color:var(--mute-c)">Alex · Lower Body A</p>
+            <h4 class="w">Back Squat</h4>
+            <div class="pb-n"><span class="t" aria-label="105">105</span><small>kg<br>× 5</small></div>
+            <p class="delta"><b>+5 kg</b>vs 3 Oct</p>
+          </div>
+          <div class="tear" aria-hidden="true"></div>
+          <div class="tk-stub">
+            <ul class="stats">
+              <li><span class="t">52:14</span><span class="l">Time</span></li>
+              <li><span class="t">5,190</span><span class="l">Kg lifted</span></li>
+              <li><span class="t">14</span><span class="l">Sets</span></li>
+              <li><span class="t">85</span><span class="l">Reps</span></li>
+            </ul>
+            <p class="kick" style="color:var(--mute-c);margin-bottom:6px">Streak · 6 of 8 weeks to the next badge</p>
+            <div class="pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="n"></i><i class="n"></i></div>
+            <div class="barcode" aria-hidden="true"></div>
+            <div class="bc-n" aria-hidden="true"><span>GV 08 0047</span><span>261010 · 1034</span></div>
+          </div>
+        </article>
+
+        <div class="grow"></div>
+        <div class="share">
+          <div class="fmt" role="group" aria-label="Card format">
+            <button type="button" aria-pressed="true">Story</button><button type="button" aria-pressed="false">Square</button><button type="button" aria-pressed="false">Link</button>
+          </div>
+          <button class="btn" type="button">Share card <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg></button>
+          <button class="btn btn--ghost" type="button">Save to history</button>
+        </div>
+      </div>
+
+      <div class="tabbar"><nav class="tabs" aria-label="Main navigation, Session complete screen">
+        <button class="tab" type="button" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-today"/></svg>Today</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plans"/></svg>Plans</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hist"/></svg>History</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-me"/></svg>Profile</button>
+      </nav><i class="home" aria-hidden="true"></i></div>
+    </div></div>
+  </figure>
+
+  <!-- ================= 4. RECORDS + HEATMAP ================= -->
+  <figure class="unit">
+    <figcaption class="cap"><h2 class="cap" style="margin:0"><span>History · Records</span></h2><small>Activity heatmap, personal bests as a squad sheet</small></figcaption>
+    <div class="phone"><div class="screen">
+      <div class="status" aria-hidden="true"><span>9:41</span><span class="isl"></span><span class="sys">5G <i class="batt"></i></span></div>
+
+      <div class="rc-top">
+        <p class="kick">History</p>
+        <h3 class="w">Records</h3>
+        <div class="seg" role="group" aria-label="History view">
+          <button type="button" aria-pressed="true">Records</button><button type="button" aria-pressed="false">Sessions</button>
+        </div>
+
+        <div class="heat-w dark-bar">
+          <div class="heat-h"><b>Last 18 weeks</b><span class="legend" aria-hidden="true">Less <i class="h l0"></i><i class="h l1"></i><i class="h l2"></i><i class="h l3"></i><i class="h l4"></i> More</span></div>
+          <div class="heat" role="img" aria-label="Activity heatmap, last 18 weeks. 47 sessions, 4 to 5 most weeks, Monday to Saturday busiest.">
+            <div class="dy" aria-hidden="true"><span>M</span><span></span><span>W</span><span></span><span>F</span><span></span><span>S</span></div>
+            <div class="grid"><i class="h l2"></i><i class="h l1"></i><i class="h l1"></i><i class="h l0"></i><i class="h l0"></i><i class="h l1"></i><i class="h l2"></i><i class="h l3"></i><i class="h l2"></i><i class="h l1"></i><i class="h l2"></i><i class="h l0"></i><i class="h l2"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l3"></i><i class="h l0"></i><i class="h l1"></i><i class="h l1"></i><i class="h l3"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l3"></i><i class="h l3"></i><i class="h l0"></i><i class="h l2"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l2"></i><i class="h l0"></i><i class="h l0"></i><i class="h l0"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l0"></i><i class="h l0"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l1"></i><i class="h l2"></i><i class="h l2"></i><i class="h l2"></i><i class="h l0"></i><i class="h l0"></i><i class="h l0"></i><i class="h l1"></i><i class="h l1"></i><i class="h l2"></i><i class="h l1"></i><i class="h l0"></i><i class="h l0"></i><i class="h l3"></i><i class="h l2"></i><i class="h l1"></i><i class="h l1"></i><i class="h l1"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l2"></i><i class="h l2"></i><i class="h l3"></i><i class="h l3"></i><i class="h l0"></i><i class="h l2"></i><i class="h l0"></i><i class="h l3"></i><i class="h l2"></i><i class="h l2"></i><i class="h l3"></i><i class="h l0"></i><i class="h l2"></i><i class="h l0"></i><i class="h l2"></i><i class="h l2"></i><i class="h l1"></i><i class="h l2"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l3"></i><i class="h l3"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l2"></i><i class="h l0"></i><i class="h l1"></i><i class="h l2"></i><i class="h l0"></i><i class="h l2"></i><i class="h l0"></i><i class="h l3"></i><i class="h l2"></i><i class="h l2"></i><i class="h l2"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l3"></i><i class="h l0"></i><i class="h l2"></i><i class="h l1"></i><i class="h l0"></i><i class="h l1"></i><i class="h l0"></i><i class="h l4"></i><i class="h f"></i></div>
+          </div>
+          <div class="months" aria-hidden="true"><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span></div>
+          <div class="heat-f">
+            <div class="heat-sum">
+              <div><span class="t">47</span>Sessions</div>
+              <div><span class="t">6 wk</span>Streak</div>
+              <div><span class="t">4.1</span>Per week</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="tl" style="background-color:var(--black);--c:var(--white)" aria-hidden="true"></span>
+
+      <div class="rc-list" style="padding-top:2px">
+        <div class="filters" role="group" aria-label="Filter records">
+          <button type="button" aria-pressed="true">All 9</button><button type="button" aria-pressed="false">Strength</button><button type="button" aria-pressed="false">Skill</button><button type="button" aria-pressed="false">Run</button>
+        </div>
+        <ol class="pbs">
+          <li><span class="shirt" aria-hidden="true">1</span><div><b>Back Squat <span class="new">NEW</span></b><small>10 Oct · +5 kg on last best</small></div><div class="v"><span class="t">105</span><span>kg × 5</span></div></li>
+          <li><span class="shirt" aria-hidden="true">2</span><div><b>Romanian Deadlift</b><small>26 Sep</small></div><div class="v"><span class="t">90</span><span>kg × 8</span></div></li>
+          <li><span class="shirt" aria-hidden="true">3</span><div><b>Pull-ups</b><small>19 Sep</small></div><div class="v"><span class="t">12</span><span>reps</span></div></li>
+          <li><span class="shirt" aria-hidden="true">4</span><div><b>Plank</b><small>5 Oct · +10s</small></div><div class="v"><span class="t">3:10</span><span>hold</span></div></li>
+          <li><span class="shirt" aria-hidden="true">5</span><div><b>Walking Lunge</b><small>1 Oct</small></div><div class="v"><span class="t">24</span><span>kg × 12 each</span></div></li>
+        </ol>
+      </div>
+
+      <div class="tabbar"><nav class="tabs" aria-label="Main navigation, History screen">
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-today"/></svg>Today</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plans"/></svg>Plans</button>
+        <button class="tab" type="button" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hist"/></svg>History</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-me"/></svg>Profile</button>
+      </nav><i class="home" aria-hidden="true"></i></div>
+    </div></div>
+  </figure>
+
+  <!-- ================= 5. RUNNING ================= -->
+  <figure class="unit">
+    <figcaption class="cap"><h2 class="cap" style="margin:0"><span>Running</span></h2><small>Weekly km, best 5K pace on a race bib, long-run ladder</small></figcaption>
+    <div class="phone"><div class="screen">
+      <div class="status" aria-hidden="true"><span>9:41</span><span class="isl"></span><span class="sys">5G <i class="batt"></i></span></div>
+
+      <div class="run-h">
+        <p class="kick">Running · Week 41</p>
+        <div class="km"><span class="t" aria-label="14.2">14.2</span><span class="w">km</span></div>
+        <p class="kick" style="margin-top:6px;color:var(--white)">of 27 km planned · long run Sunday</p>
+        <ol class="days" aria-label="Kilometres per day, Monday to Sunday">
+          <li class="z"><i></i><em>–</em><span>M</span></li>
+          <li><i style="--h:48%"></i><em>6.2</em><span>T</span></li>
+          <li class="z"><i></i><em>–</em><span>W</span></li>
+          <li><i style="--h:62%"></i><em>8.0</em><span>T</span></li>
+          <li class="z"><i></i><em>–</em><span>F</span></li>
+          <li class="z"><i></i><em>–</em><span>S</span></li>
+          <li class="p"><i style="--h:100%"></i><em>13</em><span>S</span></li>
+        </ol>
+      </div>
+      <span class="tl" style="background-color:var(--black);--c:var(--white)" aria-hidden="true"></span>
+
+      <div class="run-k" style="padding-top:2px">
+        <section class="bib" aria-label="Best 5K pace">
+          <span class="tl" aria-hidden="true"></span>
+          <p class="kick">Best 5K pace</p>
+          <div class="pace"><span class="t">4:52</span><small>/ km</small></div>
+          <p class="sub">24:20 for 5.0 km · 14 Sep</p>
+        </section>
+
+        <div class="sec"><h3>Pace over distance</h3><span>One run each</span></div>
+        <ol class="ladder">
+          <li><span class="d">1 km</span><span class="p">4:21<small>/km</small></span><span class="tt">4:21</span></li>
+          <li><span class="d">5 km</span><span class="p">4:52<small>/km</small></span><span class="tt">24:20</span></li>
+          <li><span class="d">10 km</span><span class="p">5:08<small>/km</small></span><span class="tt">51:20</span></li>
+          <li><span class="d">21.1 km</span><span class="p">5:41<small>/km</small></span><span class="tt">2:00:00</span></li>
+        </ol>
+        <p class="note">A pace is one run's own time over its own distance.</p>
+
+        <div class="sec"><h3>Long-run ladder</h3><span>Next: 13 km</span></div>
+        <ol class="steps" aria-label="Long run ladder, km">
+          <li class="dn">8<small>DONE</small></li><li class="dn">10<small>DONE</small></li><li class="dn">12<small>DONE</small></li><li class="nx">13<small>SUN</small></li><li class="lt">14<small>LATER</small></li>
+        </ol>
+      </div>
+
+      <div class="tabbar"><nav class="tabs" aria-label="Main navigation, Running screen">
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-today"/></svg>Today</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</button>
+        <button class="tab" type="button" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plans"/></svg>Plans</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hist"/></svg>History</button>
+        <button class="tab" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-me"/></svg>Profile</button>
+      </nav><i class="home" aria-hidden="true"></i></div>
+    </div></div>
+  </figure>
+
+</main>
+
+<div class="brief" style="padding-bottom:56px">
+  <section aria-labelledby="b-map" style="grid-column:1/-1">
+    <h2 id="b-map">Mapping onto <code>src/styles.css</code></h2>
+    <ul>
+      <li><b>It is a palette preset plus one display token.</b> The kit maps onto the existing token set: <code>--gv-bg</code> / <code>--gv-surface</code> become black and charcoal, <code>--gv-lime</code> becomes solar red (as the yellow preset at line 2633 already swaps it), a new data token carries signal blue, and <code>--gv-display</code> points at Archivo. No new layout engine is needed.</li>
+      <li><b>Two new primitives.</b> <code>.gv-tl</code> (the three-line divider, a single gradient) and a three-row variant of the existing <code>.gv-bar</code>. Both are pure CSS and reuse the width maths from <code>goalProgress()</code>.</li>
+      <li><b>The ticket is a new component, not a restyle.</b> The session-complete card and the PB stamp would be new markup in <code>page-session.js</code>; the share-as-image step needs a canvas render, which this mockup does not prove.</li>
+    </ul>
+  </section>
+</div>
+
+</body>
+</html>

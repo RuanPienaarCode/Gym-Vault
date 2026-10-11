@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<!-- MOCKUP ONLY — design exploration for Gym Vault. Not production code.
+     Direction 07 of 7: JUST DO IT (internal codename) — a sport-brand-app register pushed into 2026 Gen Z:
+     monochrome base, huge condensed italic type, one hot orange, sticker moments, short cheeky copy.
+     Inspired by, not copying: no logo, no swoosh, no brand slogans on screen. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gym Vault — 07 Just Do It</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,800;1,900&family=Barlow:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0a0a;
+    --coal:#171717;
+    --iron:#2b2b2b;
+    --ash:#a6a6a6;
+    --white:#ffffff;
+    --hot:#ff4d00;
+    --hot-hi:#ff6b1a;
+    --hot-lo:#f23500;
+    /* Condensed italic display. Barlow Condensed from Google Fonts; if it never loads (offline, iOS)
+       the chain falls to Arial Narrow / Impact, which are condensed but have no true italic — the
+       browser slants them synthetically. See trade-offs. */
+    --display:'Barlow Condensed','Arial Narrow','Roboto Condensed','Helvetica Neue Condensed',Impact,'Haettenschweiler',system-ui,sans-serif;
+    --body:'Barlow',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --slant:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);
+    --star:polygon(50.0% 0.0%,56.4% 9.5%,65.5% 2.4%,68.6% 13.5%,79.4% 9.5%,79.0% 21.0%,90.5% 20.6%,86.5% 31.4%,97.6% 34.5%,90.5% 43.6%,100.0% 50.0%,90.5% 56.4%,97.6% 65.5%,86.5% 68.6%,90.5% 79.4%,79.0% 79.0%,79.4% 90.5%,68.6% 86.5%,65.5% 97.6%,56.4% 90.5%,50.0% 100.0%,43.6% 90.5%,34.5% 97.6%,31.4% 86.5%,20.6% 90.5%,21.0% 79.0%,9.5% 79.4%,13.5% 68.6%,2.4% 65.5%,9.5% 56.4%,0.0% 50.0%,9.5% 43.6%,2.4% 34.5%,13.5% 31.4%,9.5% 20.6%,21.0% 21.0%,20.6% 9.5%,31.4% 13.5%,34.5% 2.4%,43.6% 9.5%);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:#e3e3e3;color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+  button{font:inherit;color:inherit}
+  /* double ring so the focus outline reads on black, white and orange alike */
+  :focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px #000}
+
+  /* ---- direction strip (house style of 01–06) ---- */
+  .dirbar{
+    position:sticky;top:0;z-index:50;background:var(--ink);color:#fff;
+    padding:10px 16px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;
+    border-bottom:3px solid var(--hot);
+  }
+  .dirbar h1{margin:0;font-family:var(--display);font-style:italic;font-weight:900;font-size:22px;letter-spacing:.02em;text-transform:uppercase;color:var(--hot)}
+  .dirbar p{margin:0;font-size:12.5px;color:#d4d4d4;flex:1 1 260px}
+  .dirbar a{color:#fff;font-size:12px;font-weight:700}
+
+  .page{max-width:1720px;margin:0 auto;padding:0 12px 60px}
+
+  /* ---- brief: intent / palette / type ---- */
+  .brief{margin:24px auto 0;max-width:1180px;background:#fff;border:3px solid var(--ink);display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .brief > div{padding:20px 22px;border-bottom:1px solid #d9d9d9}
+  .brief h2{margin:0 0 8px;font-family:var(--display);font-style:italic;font-weight:900;font-size:22px;text-transform:uppercase;letter-spacing:.02em}
+  .brief p{margin:0 0 8px;font-size:14px;color:#333}
+  .swatches{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+  .swatches li{width:84px;font-size:11px;font-weight:700;line-height:1.3;color:#222}
+  .swatches i{display:block;height:34px;margin-bottom:5px;border:1px solid #bdbdbd}
+  .spec{font-family:var(--display);font-style:italic;font-weight:900;text-transform:uppercase;line-height:.85;font-size:54px;margin:4px 0 8px}
+  .spec span{color:transparent;-webkit-text-stroke:2px var(--ink)}
+  .brief code{background:#eee;padding:1px 5px;font-size:12.5px}
+
+  /* ---- phone row ---- */
+  .row{display:flex;flex-wrap:wrap;justify-content:center;gap:48px 36px;margin-top:40px;align-items:flex-start}
+  .unit{width:min(390px,100%);margin:0}
+  .unit > h2{margin:0 0 4px;padding-bottom:6px;border-bottom:3px solid var(--ink);font-family:var(--display);font-style:italic;font-weight:900;font-size:22px;text-transform:uppercase;letter-spacing:.02em}
+  .unit > p{margin:0 0 14px;font-size:13px;color:#333;min-height:40px}
+
+  /* ---- phone frame ---- */
+  .phone{
+    --bg:var(--ink);--fg:#fff;--mute:var(--ash);--line:var(--iron);--card:var(--coal);
+    --top:var(--ink);--topfg:#fff;
+    position:relative;width:100%;height:844px;display:flex;flex-direction:column;overflow:hidden;
+    background:var(--bg);color:var(--fg);
+    border:7px solid #1b1b1b;border-radius:54px;
+    box-shadow:0 0 0 2px #000,0 36px 60px -26px rgba(0,0,0,.55);
+    container-type:inline-size;
+  }
+  .phone.light{--bg:#fff;--fg:var(--ink);--mute:#4a4a4a;--line:#d6d6d6;--card:#f1f1f1;--top:#fff;--topfg:var(--ink)}
+  .island{position:absolute;z-index:6;top:10px;left:50%;width:108px;height:30px;margin-left:-54px;background:#000;border-radius:20px}
+  .status{
+    flex:0 0 auto;height:48px;padding:14px 26px 0;display:flex;justify-content:space-between;align-items:flex-start;
+    background:var(--top);color:var(--topfg);font:700 15px/1 var(--body);position:relative;z-index:5;
+  }
+  .status svg{height:12px;width:auto;display:block}
+  .status .r{display:flex;gap:6px;align-items:center}
+  .scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;position:relative}
+  .scroll::-webkit-scrollbar{display:none}
+
+  /* ---- shared type ---- */
+  .mega,.disp{font-family:var(--display);font-style:italic;font-weight:900;text-transform:uppercase;line-height:.82;letter-spacing:-.01em;margin:0}
+  .outline{color:transparent;-webkit-text-stroke:2px var(--oc,#0a0a0a)}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .kick{margin:0;font:700 12px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase}
+  .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ---- tab bar ---- */
+  .tabs{
+    flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg);border-top:1px solid var(--line);
+    padding:0 4px 20px;position:relative;z-index:4;
+  }
+  .phone.hotbg .tabs{background:var(--ink);border-color:var(--iron);--fg:#fff}
+  .tab{
+    position:relative;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    color:var(--mute);text-decoration:none;font:800 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;
+    background:none;border:0;cursor:pointer;
+  }
+  .phone.hotbg .tab{color:var(--ash)}
+  .tab[aria-current="page"]{color:var(--fg)}
+  .phone:not(.light) .tab[aria-current="page"]{color:#fff}
+  .tab[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:22%;right:22%;height:4px;background:var(--hot);transform:skewX(-24deg)}
+  .tab[aria-current="page"] .ic{stroke:var(--hot)}
+  .phone.light .tab[aria-current="page"] .ic{stroke:var(--ink)}
+
+  /* ---- slanted controls ---- */
+  .slant{clip-path:var(--slant)}
+  .chip{display:inline-block;padding:7px 14px;font:800 15px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;background:var(--ink);color:#fff;clip-path:var(--slant);min-height:30px}
+
+  /* =========================================================
+     A — TODAY
+     ========================================================= */
+  .phone.today{--top:var(--hot-hi);--topfg:var(--ink)}
+  .hero{
+    position:relative;overflow:hidden;color:var(--ink);padding:6px 20px 42px;
+    background:linear-gradient(165deg,var(--hot-hi) 0%,var(--hot) 50%,var(--hot-lo) 100%);
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 26px),0 100%);
+  }
+  .hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(100deg,rgba(10,10,10,.09) 0 2px,transparent 2px 24px);pointer-events:none}
+  .hero::after{content:"";position:absolute;top:0;bottom:0;right:-30px;width:110px;background:rgba(255,255,255,.14);transform:skewX(-18deg);pointer-events:none}
+  .hero > *{position:relative;z-index:1}
+  .hero .kick{padding:6px 0 10px}
+  .hero h3{margin:0}
+  .hero .mega{display:block;font-size:38cqw;font-size:148px}
+  .hero-row{display:flex;align-items:flex-end;gap:14px;margin-top:4px}
+  .hero .mega.out{font-size:18cqw;font-size:70px}
+  .hero .chips{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:6px}
+  .sticker{
+    position:absolute;z-index:2;right:14px;bottom:36px;width:98px;height:98px;background:#fff;color:var(--ink);
+    clip-path:var(--star);transform:rotate(12deg);display:grid;place-items:center;text-align:center;
+    animation:wobble 3.4s ease-in-out infinite;
+  }
+  .sticker b{display:block;font:italic 900 40px/.85 var(--display)}
+  .sticker span{display:block;font:800 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+  
+
+  .ticker{position:relative;z-index:3;margin:-22px -12px 0;background:#fff;color:var(--ink);transform:rotate(-2deg);overflow:hidden;white-space:nowrap;border-block:2px solid var(--ink)}
+  .ticker div{display:inline-flex;animation:marquee 16s linear infinite}
+  .ticker span{font:italic 900 19px/1 var(--display);text-transform:uppercase;letter-spacing:.06em;padding:8px 0}
+  .ticker span::after{content:"\2022";color:var(--hot);margin:0 14px;font-style:normal}
+
+  .rx{list-style:none;margin:10px 0 0;padding:0 20px}
+  .rx li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:49px;border-bottom:1px solid var(--line)}
+  .rx .nm{font:800 22px/1 var(--display);text-transform:uppercase;letter-spacing:.01em}
+  .rx .last{display:block;font:500 12px/1.2 var(--body);color:var(--mute);text-transform:none;letter-spacing:0;margin-top:3px}
+  .rx .rxv{font:italic 900 32px/1 var(--display);color:var(--hot);white-space:nowrap}
+
+  .weekbox{padding:12px 20px 4px}
+  .wk-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .wk-head h4{margin:0;font:italic 900 20px/1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+  .wk-head span{font:700 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+  .wk{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .wk li{
+    min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);background:var(--coal);color:#fff;
+  }
+  .wk .d{font:italic 900 22px/1 var(--display)}
+  .wk .s{font:800 11px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+  .wk .done{background:var(--hot);color:var(--ink)}
+  .wk .now{background:#fff;color:var(--ink)}
+  .wk .rest{background:transparent;color:var(--mute);box-shadow:inset 0 0 0 0}
+  .wk .rest .d{opacity:.8}
+
+  .cta-wrap{position:sticky;bottom:0;padding:16px 20px 10px;background:linear-gradient(180deg,rgba(10,10,10,0),var(--ink) 38%)}
+  .cta-pulse{position:relative}
+  .cta-pulse::before{content:"";position:absolute;inset:0;background:var(--hot);clip-path:var(--slant);animation:ring 1.9s ease-out infinite}
+  .cta{
+    position:relative;width:100%;min-height:62px;border:0;cursor:pointer;background:#fff;color:var(--ink);
+    font:italic 900 34px/1 var(--display);text-transform:uppercase;letter-spacing:.02em;
+    display:flex;align-items:center;justify-content:center;gap:12px;clip-path:var(--slant);
+  }
+  .cta:hover{background:var(--hot);color:var(--ink)}
+  .cta svg{width:30px;height:30px;stroke-width:3}
+
+  /* =========================================================
+     B — LIVE SET (full-bleed orange)
+     ========================================================= */
+  .phone.live{--top:var(--hot-hi);--topfg:var(--ink);--bg:var(--hot)}
+  .live .stage{
+    position:relative;flex:1 1 auto;color:var(--ink);overflow:hidden;
+    background:linear-gradient(170deg,var(--hot-hi) 0%,var(--hot) 45%,var(--hot-lo) 100%);
+    padding:6px 20px 0;display:flex;flex-direction:column;
+  }
+  .live .stage::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(100deg,rgba(10,10,10,.08) 0 2px,transparent 2px 26px);pointer-events:none}
+  .live .stage > *{position:relative;z-index:1}
+  .l-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .iconbtn{width:48px;height:48px;border:0;background:var(--ink);color:#fff;display:grid;place-items:center;cursor:pointer;clip-path:var(--slant)}
+  .iconbtn .ic{stroke-width:3}
+  .l-name{margin:6px 0 0;font-size:40px;line-height:.9}
+  .setrail{display:flex;align-items:center;gap:6px;margin-top:10px}
+  .setrail .pip{width:34px;height:12px;background:rgba(10,10,10,.28);transform:skewX(-24deg)}
+  .setrail .pip.done{background:var(--ink)}
+  .setrail .pip.cur{background:var(--ink);animation:blink 1.1s ease-in-out infinite}
+  .setrail b{margin-left:8px;font:800 17px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+
+  .counter{position:relative;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:0;background:none;cursor:pointer;color:inherit;width:100%;padding:0}
+  .bigrep{position:relative;font-family:var(--display);font-style:italic;font-weight:900;line-height:1;font-size:74cqw;font-size:290px}
+  .bigrep .ghost{position:absolute;left:50%;top:50%;transform:translate(-44%,-50%);color:transparent;-webkit-text-stroke:3px rgba(10,10,10,.35);pointer-events:none;line-height:.8}
+  .roll{display:block;height:.8em;overflow:hidden;position:relative;padding:0 .12em;margin:0 -.12em}
+  .roll-track{display:block;transform:translateY(-88.889%);animation:roll 7s infinite}
+  .roll-track span{display:block;height:.8em;line-height:.8}
+  .counter .cap{margin-top:-4px;font:800 20px/1 var(--display);letter-spacing:.14em;text-transform:uppercase}
+  .counter .tap{margin-top:8px;font:700 12px var(--body);letter-spacing:.12em;text-transform:uppercase;background:var(--ink);color:#fff;padding:7px 12px;clip-path:var(--slant)}
+
+  .wt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0 28px}
+  .wt output{display:block;text-align:center;font:italic 900 56px/.9 var(--display)}
+  .wt output small{font-size:22px;letter-spacing:.06em;margin-left:5px}
+  .wt .iconbtn{width:60px;height:56px}
+
+  .sheet{
+    position:relative;flex:0 0 auto;background:var(--ink);color:#fff;padding:30px 20px 14px;margin-top:-22px;
+    clip-path:polygon(0 22px,100% 0,100% 100%,0 100%);z-index:3;
+  }
+  .sheet-row{display:flex;align-items:center;gap:14px}
+  .ring{position:relative;width:76px;height:76px;flex:0 0 auto}
+  .ring svg{width:76px;height:76px;transform:rotate(-90deg)}
+  .ring circle{fill:none;stroke-width:8}
+  .ring .tr{stroke:var(--iron)}
+  .ring .pg{stroke:var(--hot);stroke-dasharray:201;stroke-dashoffset:0;animation:drain 90s linear infinite paused}
+  .ring b{position:absolute;inset:0;display:grid;place-items:center;font:italic 900 26px/1 var(--display)}
+  .sheet .lbl{font:700 11.5px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--ash);margin:0}
+  .sheet .nx{font:italic 900 26px/.95 var(--display);text-transform:uppercase;margin:4px 0 0}
+  .sheet .nx small{display:block;font:700 13px var(--body);font-style:normal;letter-spacing:0;text-transform:none;color:var(--ash);margin-top:4px}
+  .tick-btn{
+    margin-top:14px;width:100%;min-height:64px;border:0;cursor:pointer;background:var(--hot);color:var(--ink);
+    font:italic 900 30px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;clip-path:var(--slant);
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .tick-btn:hover{background:#fff}
+
+  /* =========================================================
+     C — SESSION COMPLETE / PB
+     ========================================================= */
+  .phone.done{overflow:hidden}
+  .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+  .confetti i{position:absolute;top:-30px;width:10px;height:26px;background:var(--hot);transform:rotate(25deg);animation:fall 6s linear infinite}
+  .confetti i:nth-child(3n){background:#fff;height:18px}
+  .confetti i:nth-child(4n){width:6px;height:34px}
+  .done .scroll{z-index:2}
+  .d-top{display:flex;align-items:center;justify-content:space-between;padding:2px 20px 0}
+  .d-top .kick{color:var(--ash)}
+  .sharecard{
+    position:relative;margin:8px 20px 0;padding:14px 18px 12px;color:var(--ink);overflow:hidden;transform:rotate(-2deg);
+    background:linear-gradient(160deg,var(--hot-hi) 0%,var(--hot) 48%,var(--hot-lo) 100%);
+    box-shadow:0 22px 40px -18px rgba(255,77,0,.55);
+  }
+  .sharecard::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(100deg,rgba(10,10,10,.09) 0 2px,transparent 2px 22px)}
+  .sharecard::after{content:"";position:absolute;top:0;bottom:0;left:-40px;width:90px;background:rgba(255,255,255,.14);transform:skewX(-18deg)}
+  .sharecard > *{position:relative;z-index:1}
+  .sc-head{display:flex;justify-content:space-between;align-items:flex-start}
+  .wordmark{font:italic 900 18px/1 var(--display);text-transform:uppercase;letter-spacing:.04em}
+  .sc-head .kick{margin-top:4px}
+  .sc-title .mega{display:block}
+  .sc-title .t1{font-size:15cqw;font-size:58px}
+  .sc-title .t2{font-size:36cqw;font-size:140px;margin-top:0;margin-left:-4px}
+  .sc-title .t2 em{font-style:inherit;font-size:.5em;letter-spacing:0;margin-left:6px}
+  .sc-lift{margin:8px 0 0;font:italic 900 32px/.95 var(--display);text-transform:uppercase}
+  .sc-lift b{display:inline-block;background:var(--ink);color:#fff;padding:6px 10px 5px;margin-top:8px;clip-path:var(--slant);font-size:34px}
+  .sc-lift small{display:block;font:800 17px/1 var(--display);font-style:normal;letter-spacing:.08em;margin-top:10px}
+  .sc-foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding-top:10px;border-top:2px solid var(--ink);font:800 16px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+  .sc-sticker{position:absolute !important;z-index:3;top:-6px;right:-4px;width:96px;height:96px;background:#fff;color:var(--ink);clip-path:var(--star);transform:rotate(14deg);display:grid;place-items:center;text-align:center;animation:wobble 3.4s ease-in-out infinite}
+  .sc-sticker b{font:italic 900 34px/.9 var(--display);display:block}
+  .sc-sticker span{font:800 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+  .totals{display:grid;grid-template-columns:repeat(3,1fr);margin:20px 20px 0;border-top:3px solid #fff}
+  .totals div{padding:10px 0 0}
+  .totals div + div{padding-left:14px;border-left:1px solid var(--iron)}
+  .totals b{display:block;font:italic 900 40px/.9 var(--display)}
+  .totals b small{font-size:.45em;letter-spacing:.04em;margin-left:3px;color:var(--ash)}
+  .totals span{display:block;margin-top:5px;font:700 11.5px/1.2 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--ash)}
+  .d-actions{padding:16px 20px 8px;display:grid;gap:10px}
+  .btn-w,.btn-g{min-height:56px;border:0;cursor:pointer;clip-path:var(--slant);font:italic 900 28px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;justify-content:center;gap:10px}
+  .btn-w{background:#fff;color:var(--ink)}
+  .btn-w:hover{background:var(--hot)}
+  .btn-g{background:var(--coal);color:#fff;min-height:48px;font-size:22px}
+  .btn-g:hover{background:var(--iron)}
+  .microcopy{margin:2px 0 8px;text-align:center;font:800 14px/1 var(--display);letter-spacing:.16em;text-transform:uppercase;color:var(--ash)}
+
+  /* =========================================================
+     D — RECORDS + HEATMAP
+     ========================================================= */
+  .r-head{padding:6px 20px 0}
+  .r-back{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0;background:none;border:0;color:var(--ash);font:800 15px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+  .r-back .ic{width:20px;height:20px;stroke-width:3}
+  .r-head .mega{font-size:25cqw;font-size:96px;margin-top:0}
+  .r-head .sub{margin:10px 0 0;font:700 12px/1.3 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--ash)}
+  .r-head .sub b{color:var(--hot)}
+  .chips{display:flex;gap:6px;padding:10px 20px 2px;overflow:hidden}
+  .fchip{min-height:44px;padding:0 16px;border:0;cursor:pointer;background:var(--coal);color:#fff;font:800 16px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;clip-path:var(--slant)}
+  .fchip[aria-pressed="true"]{background:#fff;color:var(--ink)}
+  .recs{list-style:none;margin:6px 0 0;padding:0 20px}
+  .recs li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:58px;border-bottom:1px solid var(--iron);position:relative}
+  .recs .nm{font:800 21px/1 var(--display);text-transform:uppercase;letter-spacing:.01em}
+  .recs .when{display:block;font:500 12px/1.2 var(--body);color:var(--ash);text-transform:none;letter-spacing:0;margin-top:3px}
+  .recs .val{font:italic 900 36px/1 var(--display);color:var(--hot);white-space:nowrap}
+  .recs .val small{font-size:.5em;color:#fff;margin-left:3px;letter-spacing:.04em}
+  .recs .new{background:#fff;color:var(--ink);font:900 italic 13px/1 var(--display);letter-spacing:.08em;padding:3px 8px 2px;margin-left:8px;vertical-align:3px;clip-path:var(--slant);text-transform:uppercase}
+  .recs li.top .nm{color:#fff}
+  .heatbox{padding:18px 20px 12px}
+  .heat-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .heat-head h4{margin:0;font:italic 900 22px/1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+  .heat-head span{font:700 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--ash)}
+  .months{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;margin-bottom:4px;font:800 11px/1 var(--display);letter-spacing:.08em;color:var(--ash);text-transform:uppercase}
+  .months span{white-space:nowrap;overflow:visible}
+  .heat{display:grid;grid-template-columns:repeat(16,1fr);grid-template-rows:repeat(7,auto);grid-auto-flow:column;gap:3px}
+  .heat i{aspect-ratio:1.35/1;background:#262626;display:block;transform:skewX(-10deg)}
+  .heat i.l1{background:#6a2a10}
+  .heat i.l2{background:#c13c00}
+  .heat i.l3{background:var(--hot)}
+  .heat i.pb{background:#fff}
+  .heat i.fu{background:transparent}
+  .heat i.td{outline:2px solid #fff;outline-offset:-2px}
+  .legend{display:flex;align-items:center;gap:5px;justify-content:flex-end;margin-top:10px;font:700 11.5px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--ash)}
+  .legend i{width:14px;height:14px;display:block;transform:skewX(-10deg)}
+
+  /* =========================================================
+     E — RUNNING (light base)
+     ========================================================= */
+  .run-hero{padding:6px 20px 0}
+  .run-hero .kick{color:#4a4a4a}
+  .run-big{display:flex;align-items:flex-end;gap:10px;margin-top:6px}
+  .run-big .mega{font-size:33cqw;font-size:128px}
+  .run-big .u{font:italic 900 40px/1 var(--display);text-transform:uppercase;padding-bottom:6px}
+  .run-hero .of{margin:6px 0 0;font:700 13px/1.3 var(--body);color:#2b2b2b}
+  .run-hero .of b{background:linear-gradient(180deg,transparent 58%,var(--hot) 58%,var(--hot) 92%,transparent 92%)}
+  .bars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:128px;padding:0 20px;margin-top:10px}
+  .bar{display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:100%;gap:4px}
+  .bar .col{display:block;background:var(--hot);transform:skewX(-10deg);position:relative}
+  .bar .col.plan{background:repeating-linear-gradient(115deg,var(--ink) 0 3px,#fff 3px 7px);border:2px solid var(--ink)}
+  .bar .col.none{background:#d6d6d6;height:6px !important}
+  .bar .v{text-align:center;font:800 13px/1 var(--display);letter-spacing:.02em;color:var(--ink)}
+  .bar .dd{text-align:center;font:italic 900 20px/1 var(--display);color:var(--ink)}
+  .bar.today .dd{background:var(--ink);color:#fff;clip-path:var(--slant)}
+  .pbblock{position:relative;margin-top:16px;background:var(--ink);color:#fff;padding:24px 20px 16px;clip-path:polygon(0 18px,100% 0,100% 100%,0 100%);overflow:hidden}
+  .pbblock .lbl{margin:0;font:700 12px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--ash)}
+  .pbblock .pace{display:flex;align-items:flex-end;gap:8px;margin-top:6px;color:var(--hot)}
+  .pbblock .pace .mega{font-size:25cqw;font-size:98px}
+  .pbblock .pace span{font:italic 900 30px/1 var(--display);padding-bottom:6px;text-transform:uppercase;color:#fff}
+  .pbblock .sticker{right:16px;bottom:18px;width:88px;height:88px;animation:wobble 3.4s ease-in-out infinite}
+  .pbblock .sticker b{font-size:30px}
+  .runs{list-style:none;margin:0;padding:6px 20px 0;background:var(--ink);color:#fff}
+  .runs li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:56px;border-bottom:1px solid var(--iron)}
+  .runs .nm{font:800 20px/1 var(--display);text-transform:uppercase;letter-spacing:.01em}
+  .runs .nm small{display:block;font:500 12px/1.2 var(--body);color:var(--ash);text-transform:none;letter-spacing:0;margin-top:3px}
+  .runs .km{font:italic 900 28px/1 var(--display);white-space:nowrap}
+  .runs .km small{font-size:.55em;margin-left:3px;color:var(--ash)}
+  .runs li.next .km{color:var(--hot)}
+  .light .scroll{background:var(--ink)}
+  .light .scroll > .top{background:#fff}
+
+  /* ---- trade-offs ---- */
+  .tradeoffs{max-width:1180px;margin:56px auto 0;background:var(--ink);color:#e8e8e8;padding:26px 24px;border-top:6px solid var(--hot)}
+  .tradeoffs h2{margin:0 0 6px;font:italic 900 26px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;color:var(--hot)}
+  .tradeoffs h3{margin:18px 0 6px;font:800 12px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:#fff}
+  .tradeoffs p,.tradeoffs li{font-size:14px;line-height:1.6;color:#d6d6d6;margin:0}
+  .tradeoffs ul{margin:0;padding-left:18px}
+  .tradeoffs li{margin-bottom:8px}
+  .tradeoffs code{background:#262626;color:#ff8a4a;padding:1px 5px;font-size:12.5px}
+
+  /* ---- motion ---- */
+  @keyframes ring{0%{transform:scale(1,1);opacity:.85}100%{transform:scale(1.07,1.4);opacity:0}}
+  @keyframes marquee{to{transform:translateX(-50%)}}
+  @keyframes wobble{0%,100%{transform:rotate(12deg) scale(1)}50%{transform:rotate(7deg) scale(1.06)}}
+  .sc-sticker{animation-name:wobble2}
+  @keyframes wobble2{0%,100%{transform:rotate(14deg) scale(1)}50%{transform:rotate(8deg) scale(1.07)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+  @keyframes fall{to{transform:translateY(900px) rotate(200deg)}}
+  /* counting: 0 1 2 … 7 stepping, lands on 8 and holds */
+  @keyframes roll{
+    0%{transform:translateY(0);animation-timing-function:steps(8,jump-end)}
+    55%,100%{transform:translateY(-88.889%)}
+  }
+  @keyframes drain{to{stroke-dashoffset:201}}
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none !important;transition:none !important}
+  }
+  @media (max-width:420px){
+    .page{padding:0 8px 40px}
+    .phone{border-width:5px;border-radius:44px}
+  }
+</style>
+</head>
+<body>
+
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-today" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-ex" viewBox="0 0 24 24"><path d="M7 7v10M3.5 9.5v5M17 7v10M20.5 9.5v5M7 12h10"/></symbol>
+  <symbol id="i-plans" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></symbol>
+  <symbol id="i-hist" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></symbol>
+  <symbol id="i-me" viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></symbol>
+</svg>
+
+<header class="dirbar">
+  <h1>07 · Lock In</h1>
+  <p>Sport-brand app energy pushed into 2026: black-and-white base, giant condensed italics, one hot orange, stickers and short cheeky copy. Rest is quiet; action is loud.</p>
+  <a href="index.html">All directions</a>
+</header>
+
+<div class="page">
+
+  <!-- ============ BRIEF ============ -->
+  <section class="brief" aria-label="Direction brief">
+    <div>
+      <h2>Intent</h2>
+      <p>Make logging feel like a drop, not a spreadsheet. Type is the photography: one giant word per screen (PUSH, 8, PB), a full-bleed orange block wherever you act, and a sticker whenever you earn something.</p>
+      <p>Built entirely from type, colour, slants and gradients, so it works with zero user photos. Nothing here uses a logo, a swoosh or a brand slogan.</p>
+    </div>
+    <div>
+      <h2>Palette</h2>
+      <p>Monochrome does the work; orange is the only hue. Black text sits on orange (6:1); white text never does.</p>
+      <ul class="swatches">
+        <li><i style="background:#0a0a0a"></i>Ink<br>#0A0A0A</li>
+        <li><i style="background:#171717"></i>Coal<br>#171717</li>
+        <li><i style="background:#2b2b2b"></i>Iron<br>#2B2B2B</li>
+        <li><i style="background:#a6a6a6"></i>Ash<br>#A6A6A6</li>
+        <li><i style="background:#ffffff"></i>White<br>#FFFFFF</li>
+        <li><i style="background:linear-gradient(90deg,#ff6b1a,#ff4d00,#f23500)"></i>Hot<br>#FF4D00</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Type</h2>
+      <div class="spec" aria-hidden="true">Push <span>day</span></div>
+      <p>Display: <strong>Barlow Condensed</strong> 800 / 900 italic, uppercase, line-height .82, tight tracking. Body: <strong>Barlow</strong> 500 / 700, falling back to the system stack. Motion cues: every slab, chip and button is a parallelogram (<code>clip-path</code>), so the whole UI leans forward.</p>
+    </div>
+  </section>
+
+  <!-- ============ PHONES ============ -->
+  <div class="row">
+
+    <!-- ---------- A: TODAY ---------- -->
+    <section class="unit" aria-labelledby="ua">
+      <h2 id="ua">A — Today</h2>
+      <p>The plan day is the hero. One orange flood on the page, one white button under your thumb.</p>
+      <div class="phone today dark">
+        <div class="island" aria-hidden="true"></div>
+        <div class="status" aria-hidden="true">
+          <span>9:41</span>
+          <span class="r">
+            <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4"/><rect x="5" y="5" width="3" height="7"/><rect x="10" y="2" width="3" height="10"/><rect x="15" y="0" width="3" height="12"/></svg>
+            <svg viewBox="0 0 27 12" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="22" height="11" rx="3"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.5" fill="currentColor" stroke="none"/><path d="M25 4v4" stroke-width="2"/></svg>
+          </span>
+        </div>
+        <div class="scroll" tabindex="0" aria-label="Today screen, scrollable">
+          <header class="hero">
+            <p class="kick">Sat 10 Oct · Upper split</p>
+            <h3 class="mega">Push<span class="sr"> Day</span></h3>
+            <div class="hero-row">
+              <p class="mega out outline" aria-hidden="true" style="margin:0">Day.</p>
+              <div class="chips">
+                <span class="chip">13 sets</span>
+                <span class="chip">~48 min</span>
+              </div>
+            </div>
+            <div class="sticker" role="img" aria-label="9 week streak"><div><b>9</b><span>wk streak</span></div></div>
+          </header>
+
+          <div class="ticker" aria-hidden="true">
+            <div>
+              <span>Lock in</span><span>No days off</span><span>Earn it</span><span>Lock in</span><span>No days off</span><span>Earn it</span>
+              <span>Lock in</span><span>No days off</span><span>Earn it</span><span>Lock in</span><span>No days off</span><span>Earn it</span>
+            </div>
+          </div>
+
+          <ul class="rx" aria-label="Today's prescription">
+            <li><span class="nm">Bench Press<span class="last">Last: 80 kg</span></span><span class="rxv">4×8–12</span></li>
+            <li><span class="nm">Incline DB Press<span class="last">Last: 24 kg</span></span><span class="rxv">3×10</span></li>
+            <li><span class="nm">Cable Fly<span class="last">Last: 15 kg</span></span><span class="rxv">3×12</span></li>
+            <li><span class="nm">Dips<span class="last">Last: 14 reps</span></span><span class="rxv">3×AMRAP</span></li>
+          </ul>
+
+          <section class="weekbox" aria-label="This week">
+            <div class="wk-head"><h4>This week</h4><span>3 of 5 done</span></div>
+            <ol class="wk">
+              <li class="done"><span class="d">M</span><span class="s">Done</span></li>
+              <li class="done"><span class="d">T</span><span class="s">Done</span></li>
+              <li class="rest"><span class="d">W</span><span class="s">Rest</span></li>
+              <li class="done"><span class="d">T</span><span class="s">Done</span></li>
+              <li class="rest"><span class="d">F</span><span class="s">Rest</span></li>
+              <li class="now" aria-current="date"><span class="d">S</span><span class="s">Today</span></li>
+              <li><span class="d">S</span><span class="s">Run</span></li>
+            </ol>
+          </section>
+
+          <div class="cta-wrap">
+            <div class="cta-pulse">
+              <button class="cta" type="button">Lock in <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="Primary">
+          <a class="tab" href="#" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-today"/></svg>Today</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-plans"/></svg>Plans</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-hist"/></svg>History</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-me"/></svg>Profile</a>
+        </nav>
+      </div>
+    </section>
+
+    <!-- ---------- B: LIVE SET ---------- -->
+    <section class="unit" aria-labelledby="ub">
+      <h2 id="ub">B — Live set</h2>
+      <p>Full-bleed orange. The rep count is the screen; tap anywhere on it to add one. Rest and next-up wait in the black sheet.</p>
+      <div class="phone live hotbg dark">
+        <div class="island" aria-hidden="true"></div>
+        <div class="status" aria-hidden="true">
+          <span>9:58</span>
+          <span class="r">
+            <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4"/><rect x="5" y="5" width="3" height="7"/><rect x="10" y="2" width="3" height="10"/><rect x="15" y="0" width="3" height="12"/></svg>
+            <svg viewBox="0 0 27 12" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="22" height="11" rx="3"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.5" fill="currentColor" stroke="none"/><path d="M25 4v4" stroke-width="2"/></svg>
+          </span>
+        </div>
+        <div class="stage">
+          <div class="l-top">
+            <button class="iconbtn" type="button" aria-label="End session"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+            <span class="chip">Move 1 of 4 · 9:58</span>
+          </div>
+          <h3 class="disp l-name">Bench Press</h3>
+          <div class="setrail" role="img" aria-label="Set 2 of 4">
+            <span class="pip done"></span><span class="pip cur"></span><span class="pip"></span><span class="pip"></span>
+            <b>Set 2 of 4</b>
+          </div>
+
+          <button class="counter" type="button" aria-label="8 reps. Tap to add a rep.">
+            <span class="bigrep" aria-hidden="true">
+              <span class="ghost">8</span>
+              <span class="roll"><span class="roll-track"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></span></span>
+            </span>
+            <span class="cap">Reps · aim 8–12</span>
+            <span class="tap">Tap to count</span>
+          </button>
+
+          <div class="wt">
+            <button class="iconbtn" type="button" aria-label="Weight minus 2.5 kilograms"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
+            <output aria-label="Weight 80 kilograms">80<small>KG</small></output>
+            <button class="iconbtn" type="button" aria-label="Weight plus 2.5 kilograms"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          </div>
+        </div>
+        <div class="sheet">
+          <div class="sheet-row">
+            <div class="ring" role="img" aria-label="Rest timer, 1 minute 30 seconds, starts when you tick the set">
+              <svg viewBox="0 0 76 76" aria-hidden="true"><circle class="tr" cx="38" cy="38" r="32"/><circle class="pg" cx="38" cy="38" r="32" style="stroke-dashoffset:60"/></svg>
+              <b aria-hidden="true">1:30</b>
+            </div>
+            <div>
+              <p class="lbl">Rest · starts on tick</p>
+              <p class="nx">Up next: Incline DB Press<small>3 × 10 · 24 kg</small></p>
+            </div>
+          </div>
+          <button class="tick-btn" type="button"><svg class="ic" style="width:30px;height:30px;stroke-width:3.4" aria-hidden="true"><use href="#i-check"/></svg>Tick set</button>
+        </div>
+        <nav class="tabs" aria-label="Primary">
+          <a class="tab" href="#" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-today"/></svg>Today</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-plans"/></svg>Plans</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-hist"/></svg>History</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-me"/></svg>Profile</a>
+        </nav>
+      </div>
+    </section>
+
+    <!-- ---------- C: SESSION COMPLETE / PB ---------- -->
+    <section class="unit" aria-labelledby="uc">
+      <h2 id="uc">C — Session complete</h2>
+      <p>The recap is a sticker-and-card moment built to be screenshotted or shared. Totals sit under it, plain.</p>
+      <div class="phone done dark">
+        <div class="island" aria-hidden="true"></div>
+        <div class="confetti" aria-hidden="true">
+          <i style="left:8%;animation-delay:-1s"></i><i style="left:19%;animation-delay:-4s;animation-duration:7s"></i><i style="left:31%;animation-delay:-2.5s"></i>
+          <i style="left:44%;animation-delay:-5s;animation-duration:5s"></i><i style="left:57%;animation-delay:-3s"></i><i style="left:68%;animation-delay:-.5s;animation-duration:7.5s"></i>
+          <i style="left:79%;animation-delay:-4.5s"></i><i style="left:90%;animation-delay:-2s;animation-duration:6.5s"></i>
+        </div>
+        <div class="status" aria-hidden="true">
+          <span>10:51</span>
+          <span class="r">
+            <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4"/><rect x="5" y="5" width="3" height="7"/><rect x="10" y="2" width="3" height="10"/><rect x="15" y="0" width="3" height="12"/></svg>
+            <svg viewBox="0 0 27 12" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="22" height="11" rx="3"/><rect x="2.5" y="2.5" width="12" height="7" rx="1.5" fill="currentColor" stroke="none"/><path d="M25 4v4" stroke-width="2"/></svg>
+          </span>
+        </div>
+        <div class="scroll" tabindex="0" aria-label="Session complete screen, scrollable">
+          <div class="d-top">
+            <p class="kick">Session logged · 49:12</p>
+            <button class="iconbtn" style="background:var(--coal)" type="button" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+          </div>
+
+          <article class="sharecard" aria-label="Share card: new personal best, Bench Press 82.5 kilograms">
+            <div class="sc-head">
+              <div><div class="wordmark">Gym Vault</div><p class="kick">Sam · 10 Oct 2026</p></div>
+            </div>
+            <h3 class="sc-title">
+              <span class="mega t1 outline">New</span>
+              <span class="mega t2">PB<em>.</em></span>
+            </h3>
+            <p class="sc-lift">Bench Press<br><b>82.5 kg × 8</b><small>+2.5 kg on your last best</small></p>
+            <div class="sc-foot"><span>Told you.</span><span>9 wk streak</span></div>
+            <div class="sc-sticker" role="img" aria-label="Personal best"><div><b>PB</b><span>#14</span></div></div>
+          </article>
+
+          <div class="totals" aria-label="Session totals">
+            <div><b>13</b><span>Sets</span></div>
+            <div><b>3,940<small>KG</small></b><span>Volume</span></div>
+            <div><b>131</b><span>Reps</span></div>
+          </div>
+
+          <div class="d-actions">
+            <button class="btn-w" type="button"><svg class="ic" style="stroke-width:3" aria-hidden="true"><use href="#i-share"/></svg>Share the card</button>
+            <button class="btn-g" type="button">Save &amp; done</button>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="Primary">
+          <a class="tab" href="#" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-today"/></svg>Today</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-plans"/></svg>Plans</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-hist"/></svg>History</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-me"/></svg>Profile</a>
+        </nav>
+      </div>
+    </section>
+
+    <!-- ---------- D: RECORDS + HEATMAP ---------- -->
+    <section class="unit" aria-labelledby="ud">
+      <h2 id="ud">D — Records &amp; activity</h2>
+      <p>History's two halves on one dark page: bests as big orange numerals, 16 weeks of showing up as a heat grid.</p>
+      <div class="phone dark">
+        <div class="island" aria-hidden="true"></div>
+        <div class="status" aria-hidden="true">
+          <span>11:06</span>
+          <span class="r">
+            <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4"/><rect x="5" y="5" width="3" height="7"/><rect x="10" y="2" width="3" height="10"/><rect x="15" y="0" width="3" height="12"/></svg>
+            <svg viewBox="0 0 27 12" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="22" height="11" rx="3"/><rect x="2.5" y="2.5" width="12" height="7" rx="1.5" fill="currentColor" stroke="none"/><path d="M25 4v4" stroke-width="2"/></svg>
+          </span>
+        </div>
+        <div class="scroll" tabindex="0" aria-label="Records screen, scrollable">
+          <header class="r-head">
+            <button class="r-back" type="button"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg>History</button>
+            <h3 class="mega">Records</h3>
+            <p class="sub">14 bests · <b>1 new today</b></p>
+          </header>
+          <div class="chips" role="group" aria-label="Filter records">
+            <button class="fchip" type="button" aria-pressed="true">All</button>
+            <button class="fchip" type="button" aria-pressed="false">Weight</button>
+            <button class="fchip" type="button" aria-pressed="false">Reps</button>
+            <button class="fchip" type="button" aria-pressed="false">Hold</button>
+          </div>
+          <ul class="recs">
+            <li class="top"><span class="nm">Bench Press<span class="new">New</span><span class="when">Today · was 80 kg</span></span><span class="val">82.5<small>KG</small></span></li>
+            <li><span class="nm">Deadlift<span class="when">12 Sep</span></span><span class="val">140<small>KG</small></span></li>
+            <li><span class="nm">Pull-ups<span class="when">1 Oct</span></span><span class="val">12<small>REPS</small></span></li>
+                        <li><span class="nm">Plank<span class="when">3 Oct</span></span><span class="val">3:05</span></li>
+          </ul>
+
+          <section class="heatbox" aria-label="Activity, last 16 weeks">
+            <div class="heat-head"><h4>16 weeks</h4><span>53 sessions</span></div>
+            <div class="months" aria-hidden="true"><span style="grid-column:2/5">Jul</span><span style="grid-column:6/9">Aug</span><span style="grid-column:11/14">Sep</span><span style="grid-column:15/17">Oct</span></div>
+            <div class="heat" role="img" aria-label="Heat grid: darker means no session, brighter orange means a longer session. 53 sessions in the last 16 weeks.">
+              <i class="l2"></i><i></i><i></i><i class="l3"></i><i></i><i class="l2"></i><i></i>
+              <i class="l1"></i><i class="l2"></i><i></i><i class="l3"></i><i></i><i></i><i></i>
+              <i class="l3"></i><i class="l1"></i><i></i><i></i><i class="l1"></i><i class="l1"></i><i></i>
+              <i class="l2"></i><i class="l3"></i><i></i><i class="l2"></i><i></i><i class="pb"></i><i></i>
+              <i class="l2"></i><i></i><i></i><i class="l0"></i><i></i><i class="l1"></i><i class="l3"></i>
+              <i class="l1"></i><i></i><i></i><i></i><i></i><i class="l1"></i><i></i>
+              <i class="l2"></i><i></i><i></i><i class="l3"></i><i></i><i></i><i></i>
+              <i class="l1"></i><i></i><i></i><i class="l1"></i><i></i><i class="l2"></i><i></i>
+              <i class="l2"></i><i class="l2"></i><i></i><i class="pb"></i><i></i><i class="l2"></i><i></i>
+              <i class="l2"></i><i></i><i></i><i class="l0"></i><i></i><i class="l3"></i><i></i>
+              <i class="l1"></i><i></i><i></i><i class="l3"></i><i></i><i></i><i></i>
+              <i class="pb"></i><i class="l1"></i><i class="l2"></i><i class="l2"></i><i></i><i class="l3"></i><i></i>
+              <i></i><i class="l1"></i><i></i><i class="l2"></i><i></i><i class="l3"></i><i></i>
+              <i class="l3"></i><i></i><i></i><i class="l2"></i><i class="l1"></i><i class="l2"></i><i></i>
+              <i class="l2"></i><i class="l2"></i><i></i><i class="l3"></i><i></i><i class="l2"></i><i></i>
+              <i class="l3"></i><i class="l2"></i><i></i><i class="l2"></i><i></i><i class="pb td"></i><i class="fu"></i>
+            </div>
+            <div class="legend" aria-hidden="true">Less <i style="background:#262626"></i><i style="background:#6a2a10"></i><i style="background:#c13c00"></i><i style="background:#ff4d00"></i> More <i style="background:#fff;margin-left:8px"></i> PB day</div>
+          </section>
+        </div>
+        <nav class="tabs" aria-label="Primary">
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-today"/></svg>Today</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-plans"/></svg>Plans</a>
+          <a class="tab" href="#" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-hist"/></svg>History</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-me"/></svg>Profile</a>
+        </nav>
+      </div>
+    </section>
+
+    <!-- ---------- E: RUNNING (optional) ---------- -->
+    <section class="unit" aria-labelledby="ue">
+      <h2 id="ue">E — Running</h2>
+      <p>The one light screen: proves the system flips. Same type, same slant, black for the pace record.</p>
+      <div class="phone light">
+        <div class="island" aria-hidden="true"></div>
+        <div class="status" aria-hidden="true">
+          <span>7:12</span>
+          <span class="r">
+            <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4"/><rect x="5" y="5" width="3" height="7"/><rect x="10" y="2" width="3" height="10"/><rect x="15" y="0" width="3" height="12"/></svg>
+            <svg viewBox="0 0 27 12" fill="none" stroke="currentColor"><rect x=".5" y=".5" width="22" height="11" rx="3"/><rect x="2.5" y="2.5" width="18" height="7" rx="1.5" fill="currentColor" stroke="none"/><path d="M25 4v4" stroke-width="2"/></svg>
+          </span>
+        </div>
+        <div class="scroll" tabindex="0" aria-label="Running screen, scrollable">
+          <div class="top">
+            <header class="run-hero">
+              <p class="kick">Week 41 · Run plan</p>
+              <div class="run-big"><h3 class="mega">14.2</h3><span class="u">km</span></div>
+              <p class="of">of <b>24.6 km</b> this week. Sunday's long one closes it out.</p>
+            </header>
+            <div class="bars" role="img" aria-label="Kilometres per day: Tuesday 6.2, Thursday 8.0, Sunday 10.4 planned">
+              <div class="bar"><span class="v">&nbsp;</span><span class="col none" style="height:6px"></span><span class="dd">M</span></div>
+              <div class="bar"><span class="v">6.2</span><span class="col" style="height:50px"></span><span class="dd">T</span></div>
+              <div class="bar"><span class="v">&nbsp;</span><span class="col none" style="height:6px"></span><span class="dd">W</span></div>
+              <div class="bar"><span class="v">8.0</span><span class="col" style="height:64px"></span><span class="dd">T</span></div>
+              <div class="bar"><span class="v">&nbsp;</span><span class="col none" style="height:6px"></span><span class="dd">F</span></div>
+              <div class="bar today"><span class="v">&nbsp;</span><span class="col none" style="height:6px"></span><span class="dd">S</span></div>
+              <div class="bar"><span class="v">10.4</span><span class="col plan" style="height:84px"></span><span class="dd">S</span></div>
+            </div>
+          </div>
+          <div class="pbblock">
+            <p class="lbl">Best 5K pace</p>
+            <div class="pace"><span class="mega">4:58</span><span>/km</span></div>
+            <p class="lbl" style="margin-top:8px">Set Sat 3 Oct · 24:50 total</p>
+            <div class="sticker" role="img" aria-label="Personal best"><div><b>PB</b><span>-11s</span></div></div>
+          </div>
+          <ul class="runs" aria-label="This week's runs">
+            <li><span class="nm">Tue · Easy<small>5:41 /km</small></span><span class="km">6.2<small>KM</small></span></li>
+            <li><span class="nm">Thu · Tempo<small>5:12 /km</small></span><span class="km">8.0<small>KM</small></span></li>
+            <li class="next"><span class="nm">Sun · Long run<small>Planned · easy pace</small></span><span class="km">10.4<small>KM</small></span></li>
+          </ul>
+        </div>
+        <nav class="tabs" aria-label="Primary">
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-today"/></svg>Today</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-ex"/></svg>Exercises</a>
+          <a class="tab" href="#" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-plans"/></svg>Plans</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-hist"/></svg>History</a>
+          <a class="tab" href="#"><svg class="ic" aria-hidden="true"><use href="#i-me"/></svg>Profile</a>
+        </nav>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ============ TRADE-OFFS ============ -->
+  <aside class="tradeoffs" aria-labelledby="to">
+    <h2 id="to">Trade-offs</h2>
+    <h3>Wins</h3>
+    <p>Every screen has one word or number you can read from across the gym (PUSH, 8, PB, 4:58), and one place the colour goes. Rewards are the loudest thing in the app, which is the right place for them, and the share card gives the plugin a reason to be seen outside Obsidian.</p>
+    <h3>Costs</h3>
+    <ul>
+      <li><strong>Loud is tiring on reading surfaces.</strong> It suits Today, the live set and the recap. Exercise how-to text, the plan editor and Settings would need a calm register (this file's Records and Running screens are the ceiling for density), or the app will shout at people who are just reading.</li>
+      <li><strong>The font is load-bearing.</strong> The look depends on a true condensed italic. Obsidian mobile is often offline, so Barlow Condensed (OFL) has to ship inside the plugin folder; the Impact / Arial Narrow fallback is only condensed, and its italic is faked by the browser. Orange is also unusable for small text on white (3.3:1), so on light themes it is limited to large type and graphics, as on screen E.</li>
+      <li><strong>Voice and motion are opinionated.</strong> Short, cheeky copy ("Told you.", "Lock in") and wobbling stickers will delight some people and grate on others; they need a plain-copy setting and a reduced-motion path (this file already honours <code>prefers-reduced-motion</code>). Parallelogram clipping also cuts off focus rings and shadows, so production needs a wrapper element for those.</li>
+    </ul>
+    <h3>Mapping onto <code>src/styles.css</code></h3>
+    <ul>
+      <li>One accent token, <code>--gv-lime</code> to the orange, plus a <code>--gv-slant</code> clip-path used by <code>.gv-btn</code>, chips and the week cells. The sticker is a single clip-path class that the streak, the PB and the Running record all reuse.</li>
+    </ul>
+  </aside>
+
+</div>
+</body>
+</html>
