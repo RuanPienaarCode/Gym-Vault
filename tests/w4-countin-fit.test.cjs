@@ -49,7 +49,7 @@ for (const skin of ['apex', 'lockin']) {
     for (const theme of ['light', 'dark']) {
       check(`${skin}/${theme}/${t.tier}: digit + label + hint + unit stack fits a ${t.zone}px zone`, () => {
         const root = `div.view-content.gv-app.gv-skin-${skin}.gv-accent-lime${t.classes.map(c => '.' + c).join('')}`;
-        const zone = 'div.gv-rc-zone.gv-session-zone.gv-live-zone';
+        const zone = 'div.gv-rc-zone.gv-session-zone.gv-live-zone.gv-rc-arming';   // the zone during the count-in
         const at = leaf => cx.chainOf([`body.theme-${theme}`, root, 'div.gv-session-page', zone, leaf]);
         const get = (leaf, prop) => { const c = cx.computed(at(leaf), prop, rules); return c ? c.value : null; };
         const fs = px(get('div.gv-rc-count.gv-session-count.gv-rc-countin', 'font-size'), t.vw, t.vh);
