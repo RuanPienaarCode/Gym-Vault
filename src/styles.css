@@ -342,7 +342,9 @@
   cursor: pointer;
   box-shadow: none;
 }
-.gv-app .gv-head-btn:hover { color: var(--gv-ink); background: var(--gv-lime-ghost); }
+@media (hover: hover) {
+  .gv-app .gv-head-btn:hover { color: var(--gv-ink); background: var(--gv-lime-ghost); }
+}
 .gv-app .gv-head-btn.on { background: var(--gv-ink); color: var(--gv-lime-hi); }
 /* --gv-ink flips to near-white in dark mode (see the .theme-dark block
    above), which would strand lime-hi text at ~1.3:1 — flip the flood itself
@@ -401,7 +403,9 @@
   box-shadow: none;
 }
 .gv-nav-btn .gv-ico svg { width: 20px; height: 20px; }
-.gv-app .gv-nav-btn:hover { color: var(--gv-ink); background: var(--gv-lime-ghost); }
+@media (hover: hover) {
+  .gv-app .gv-nav-btn:hover { color: var(--gv-ink); background: var(--gv-lime-ghost); }
+}
 .gv-app .gv-nav-btn.on { background: var(--gv-ink); color: var(--gv-lime-hi); }
 .theme-dark .gv-app .gv-nav-btn.on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
 
@@ -484,7 +488,9 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
 }
 .theme-dark .gv-app .gv-btn { background: var(--gv-lime); border-color: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-btn .gv-ico svg { width: 14px; height: 14px; }
-.gv-btn:hover { filter: brightness(1.15); }
+@media (hover: hover) {
+  .gv-btn:hover { filter: brightness(1.15); }
+}
 /* .gv-app, to out-rank `.gv-app .gv-btn` above: bare, this lost to it and a small button was full size (W4-6). */
 .gv-app .gv-btn-small { padding: 7px 11px; }
 .gv-app .gv-btn-ghost, .theme-dark .gv-app .gv-btn-ghost {
@@ -493,7 +499,9 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
   border: 2px solid var(--gv-ink);
   box-shadow: none;
 }
-.gv-btn-ghost:hover { background: var(--gv-lime-ghost); filter: none; }
+@media (hover: hover) {
+  .gv-btn-ghost:hover { background: var(--gv-lime-ghost); filter: none; }
+}
 .theme-dark .gv-app .gv-btn-ghost { border-color: var(--gv-line-2); }
 .gv-app .gv-btn-danger-ghost, .theme-dark .gv-app .gv-btn-danger-ghost {
   background: var(--gv-surface);
@@ -513,13 +521,17 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
   cursor: pointer;
 }
 .theme-dark .gv-app .gv-icon-btn { border-color: var(--gv-line-2); }
-.gv-app .gv-icon-btn:hover { background: var(--gv-lime-ghost); }
+@media (hover: hover) {
+  .gv-app .gv-icon-btn:hover { background: var(--gv-lime-ghost); }
+}
 .gv-icon-btn-small { width: 28px; height: 28px; border-width: 1px; }
 /* A latched icon button — motion counting is ON. Filled rather than merely
    tinted, because this one is read at arm's length from the floor, and
    because `aria-pressed` alone tells a screen reader but not an eye. */
 .gv-app .gv-icon-btn-on { background: var(--gv-ink); color: var(--gv-lime); }
-.gv-app .gv-icon-btn-on:hover { background: var(--gv-ink); }
+@media (hover: hover) {
+  .gv-app .gv-icon-btn-on:hover { background: var(--gv-ink); }
+}
 .theme-dark .gv-app .gv-icon-btn-on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-icon-btn-small .gv-ico svg { width: 13px; height: 13px; }
 
@@ -730,10 +742,14 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
   cursor: pointer;
 }
 .theme-dark .gv-app .gv-add-line { border-color: var(--gv-line-2); color: var(--gv-ink); }
-.gv-app .gv-add-line:hover { background: var(--gv-lime-ghost); color: var(--gv-lime-deep); }
+@media (hover: hover) {
+  .gv-app .gv-add-line:hover { background: var(--gv-lime-ghost); color: var(--gv-lime-deep); }
+}
 /* lime-deep is a dark green: on the dark ghost it is 3.1:1 (volt 2.3) — the
    same flip every other lime-deep text rule in this file already makes. */
-.theme-dark .gv-app .gv-add-line:hover { color: var(--gv-lime); }
+@media (hover: hover) {
+  .theme-dark .gv-app .gv-add-line:hover { color: var(--gv-lime); }
+}
 .gv-add-line .gv-ico svg { width: 14px; height: 14px; }
 
 /* Floor slab progress bar — acting register even at rest, because it's a
@@ -812,7 +828,9 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
      leak, which is too tight on a narrow phone. */
   padding: 0 22px;
 }
-.gv-app .gv-btn-go:hover { background: #000; }
+@media (hover: hover) {
+  .gv-app .gv-btn-go:hover { background: #000; }
+}
 /* Rest day: no flood — a bordered invitation instead. */
 .gv-app .gv-btn-hero-ghost {
   display: flex;
@@ -832,7 +850,9 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
   cursor: pointer;
 }
 .theme-dark .gv-app .gv-btn-hero-ghost { border-color: var(--gv-line-2); }
-.gv-app .gv-btn-hero-ghost:hover { background: var(--gv-lime-ghost); }
+@media (hover: hover) {
+  .gv-app .gv-btn-hero-ghost:hover { background: var(--gv-lime-ghost); }
+}
 
 /* Week — typographic row, today is an ink block. */
 .gv-week {
@@ -930,7 +950,9 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
   border-bottom: 1px solid var(--gv-line);
   padding: 13px 2px;
 }
-.gv-ex-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+@media (hover: hover) {
+  .gv-ex-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+}
 .gv-ex-idx { font-family: var(--gv-display); font-size: 14px; color: var(--gv-ink-dim); width: 26px; flex: 0 0 auto; }
 .gv-ex-main { flex: 1 1 auto; min-width: 0; }
 .gv-ex-name {
@@ -1195,7 +1217,9 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 /* ---------- plans ---------- */
 
 .gv-plan-card { display: flex; gap: 12px; align-items: center; cursor: pointer; margin-bottom: -1px; }
-.gv-plan-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+@media (hover: hover) {
+  .gv-plan-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+}
 .gv-plan-card.active { box-shadow: inset 4px 0 0 var(--gv-lime); }
 .gv-plan-main { flex: 1 1 auto; min-width: 0; }
 .gv-plan-name { display: flex; align-items: center; gap: 10px; font-family: var(--gv-display); font-size: 22px; text-transform: uppercase; line-height: 1; }
@@ -1320,13 +1344,17 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
    0.11.2 journey audit) — same hover affordance as the plan/goal cards
    above, at row scale rather than card scale. */
 .gv-day-item-link { cursor: pointer; border-radius: 4px; }
-.gv-day-item-link:hover { background: var(--gv-lime-ghost); }
+@media (hover: hover) {
+  .gv-day-item-link:hover { background: var(--gv-lime-ghost); }
+}
 
 /* ---------- goals ---------- */
 
 .gv-goal-grid { display: flex; flex-direction: column; gap: 10px; }
 .gv-goal-card { display: flex; gap: 14px; align-items: center; cursor: pointer; margin-bottom: -1px; }
-.gv-goal-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+@media (hover: hover) {
+  .gv-goal-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+}
 .gv-goal-card.done { box-shadow: inset 4px 0 0 var(--gv-lime); }
 .gv-goal-ring { flex: 0 0 auto; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; }
 .gv-ring { width: 64px; height: 64px; }
@@ -1378,7 +1406,9 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 .gv-planswap::before { content: ''; position: absolute; top: -16px; bottom: -16px; left: -6px; right: -6px; }
 .gv-planswap .gv-ico svg { width: 12px; height: 12px; }
 .gv-optrow-static { cursor: default; opacity: 0.75; }
-.gv-optrow-static:hover { background: var(--gv-surface); }
+@media (hover: hover) {
+  .gv-optrow-static:hover { background: var(--gv-surface); }
+}
 
 /* ---------- plan library ---------- */
 
@@ -1411,7 +1441,9 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 
 .gv-export-lede { margin: 0 0 4px; }
 .gv-optrow { display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: -1px; }
-.gv-optrow:hover { background: var(--gv-lime-ghost); }
+@media (hover: hover) {
+  .gv-optrow:hover { background: var(--gv-lime-ghost); }
+}
 .gv-optrow.on { box-shadow: inset 4px 0 0 var(--gv-lime); }
 /* Most option rows are divs (clickableCard), but the music row is a real
    <button> — and app.css styles the bare element with BOTH `white-space:
@@ -1531,7 +1563,9 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 
 .gv-session-card { padding: 0; overflow: hidden; margin-bottom: -1px; }
 .gv-session-head { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; }
-.gv-session-head:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+@media (hover: hover) {
+  .gv-session-head:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+}
 /* The head is date/day on the left, a one-line summary, then the actions. The
    actions are FIXED (a clipped trash button is a delete you cannot reach) and
    both text blocks may shrink and wrap: day and plan names are the user's own
@@ -1760,9 +1794,13 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   gap: 10px;
   padding: 0 25px;
 }
-.gv-app .gv-btn-finish:hover { background: var(--gv-ink); color: var(--gv-lime-hi); }
+@media (hover: hover) {
+  .gv-app .gv-btn-finish:hover { background: var(--gv-ink); color: var(--gv-lime-hi); }
+}
 /* Dark: the hover block is near-white, so the label is fixed ink (1.34:1 before). */
-.theme-dark .gv-app .gv-btn-finish:hover { color: var(--gv-ink-fixed); }
+@media (hover: hover) {
+  .theme-dark .gv-app .gv-btn-finish:hover { color: var(--gv-ink-fixed); }
+}
 .gv-app .gv-btn-discard {
   margin-top: 10px;
   width: 100%;
@@ -1776,7 +1814,9 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   text-transform: uppercase;
   color: var(--gv-ink-dim);
 }
-.gv-app .gv-btn-discard:hover { color: var(--gv-danger); }
+@media (hover: hover) {
+  .gv-app .gv-btn-discard:hover { color: var(--gv-danger); }
+}
 
 /* ---------- setup ---------- */
 
@@ -2783,7 +2823,9 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
   color: var(--gv-lime-hi);
 }
 .theme-dark .gv-app .gv-logtop .gv-btn-ghost { border-color: rgba(16, 20, 11, 0.4); color: var(--gv-lime-deep); }
-.gv-app .gv-logtop .gv-btn-ghost:hover { background: rgba(245, 247, 239, 0.12); }
+@media (hover: hover) {
+  .gv-app .gv-logtop .gv-btn-ghost:hover { background: rgba(245, 247, 239, 0.12); }
+}
 .gv-logtop-guided { flex: 0 0 auto; }
 
 /* Dashboard hero's secondary "Log manually" — a quiet ghost, not competing
@@ -2888,7 +2930,9 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
    --gv-surface (#171c10) in dark mode — already a low-contrast pairing —
    blends away to nothing at 0.4. "Inert" has to still mean "visible". */
 .gv-app .gv-optrow-off { cursor: default; }
-.gv-app .gv-optrow-off:hover { background: var(--gv-surface); }
+@media (hover: hover) {
+  .gv-app .gv-optrow-off:hover { background: var(--gv-surface); }
+}
 .gv-optrow-off .gv-switch { opacity: 0.45; }
 .theme-dark .gv-app .gv-optrow-off .gv-switch { opacity: 0.8; }
 
@@ -2903,7 +2947,9 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   color: var(--gv-ink);
 }
 .theme-dark .gv-app .gv-dial-step { border-color: var(--gv-line-2); }
-.gv-app .gv-dial-step:hover { background: var(--gv-lime-ghost); }
+@media (hover: hover) {
+  .gv-app .gv-dial-step:hover { background: var(--gv-lime-ghost); }
+}
 .gv-dial-step .gv-ico svg { width: 22px; height: 22px; }
 .gv-dial-readout { min-width: 116px; text-align: center; }
 .gv-dial-value {
@@ -3006,7 +3052,9 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 .theme-dark .gv-app .gv-guidesetup .gv-optrow-tick { color: var(--gv-ink); }
 .gv-guidesetup .gv-dial-value,
 .theme-dark .gv-app .gv-guidesetup .gv-dial-value { color: var(--gv-ink); }
-.gv-app .gv-guidesetup .gv-dial-step:hover { background: var(--gv-line); }
+@media (hover: hover) {
+  .gv-app .gv-guidesetup .gv-dial-step:hover { background: var(--gv-line); }
+}
 .gv-app .gv-guidesetup .gv-switch.on { background: var(--gv-ink); border-color: var(--gv-ink); }
 /* That ink track is the page's text colour, so the thumb must be the OPPOSITE of it:
    the surface in light (the fixed ink thumb was ink on ink, 1.0:1), the fixed ink in
@@ -3088,7 +3136,9 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   background: var(--gv-lime);
   color: var(--gv-ink-fixed);
 }
-.gv-app .gv-timed-play:hover { background: var(--gv-lime-hi); }
+@media (hover: hover) {
+  .gv-app .gv-timed-play:hover { background: var(--gv-lime-hi); }
+}
 .gv-timed-play .gv-ico svg { width: 30px; height: 30px; }
 
 body.is-phone .gv-app .gv-timed-dial { width: min(64vw, 196px); margin: 2px auto 10px; }
@@ -3289,7 +3339,9 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   white-space: normal;
 }
 .gv-app .gv-voice-rec .gv-ico svg { width: 30px; height: 30px; }
-.gv-app .gv-voice-rec:hover { background: var(--gv-lime-ghost); }
+@media (hover: hover) {
+  .gv-app .gv-voice-rec:hover { background: var(--gv-lime-ghost); }
+}
 .gv-app .gv-voice-rec.live { border-color: var(--gv-danger); color: var(--gv-danger); }
 .gv-app .gv-voice-rec.review { border-color: var(--gv-lime-deep); color: var(--gv-lime-deep); }
 .theme-dark .gv-app .gv-voice-rec.review { border-color: var(--gv-lime); color: var(--gv-lime); }
@@ -3620,7 +3672,9 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   background: var(--gv-ink);
   color: var(--gv-lime-hi);
 }
-.gv-app.gv-skin-editorial .gv-btn-go:hover { background: var(--gv-lime-deep); color: #ffffff; }
+@media (hover: hover) {
+  .gv-app.gv-skin-editorial .gv-btn-go:hover { background: var(--gv-lime-deep); color: #ffffff; }
+}
 .theme-dark .gv-app.gv-skin-editorial .gv-btn-go { background: var(--gv-lime); color: var(--gv-ink-fixed); }
 
 /* Week: done days flood softly, today is underlined — not an ink block. */
@@ -4118,7 +4172,9 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-skin-poster .gv-logo-text { font-size: 24px; font-weight: 900; letter-spacing: 0.02em; }
 .gv-app.gv-skin-poster .gv-logo .gv-ico { --gv-slab: var(--gv-lime); padding: 6px; color: var(--gv-ink-fixed); }
 .gv-app.gv-skin-poster .gv-head-btn { --gv-slab: transparent; flex: 0 0 auto; color: var(--gv-ink-dim); }
-.gv-app.gv-skin-poster .gv-head-btn:hover { --gv-slab: var(--gv-poster-chip); color: var(--gv-ink); }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-head-btn:hover { --gv-slab: var(--gv-poster-chip); color: var(--gv-ink); }
+}
 .gv-app.gv-skin-poster .gv-head-btn.on { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
 
 .gv-app.gv-skin-poster .gv-nav { border-bottom: 1px solid var(--gv-line); }
@@ -4129,7 +4185,9 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   font-weight: 800;
   letter-spacing: 0.08em;
 }
-.gv-app.gv-skin-poster .gv-nav-btn:hover { background-color: transparent; color: var(--gv-ink); }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-nav-btn:hover { background-color: transparent; color: var(--gv-ink); }
+}
 .gv-app.gv-skin-apex .gv-nav-btn.on { background-color: transparent; color: var(--gv-accent-text); }
 /* The active tab: a short leaning bar sitting ON the bottom rule (the mockup's
    tab). bottom: 0, never negative: .gv-nav scrolls sideways (overflow-x: auto
@@ -4159,18 +4217,26 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   font-weight: 900;
   letter-spacing: 0.06em;
 }
-.gv-app.gv-skin-poster .gv-btn:hover { --gv-slab: var(--gv-lime-hi); filter: none; }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-btn:hover { --gv-slab: var(--gv-lime-hi); filter: none; }
+}
 .gv-app.gv-skin-poster .gv-btn.gv-btn-small { --gv-slab-pull: 5px; min-height: 44px; padding: 6px 14px; font-size: 14px; }
 .gv-app.gv-skin-poster .gv-btn.gv-btn-ghost { --gv-slab: var(--gv-poster-chip); color: var(--gv-ink); }
-.gv-app.gv-skin-poster .gv-btn.gv-btn-ghost:hover { --gv-slab: var(--gv-line); }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-btn.gv-btn-ghost:hover { --gv-slab: var(--gv-line); }
+}
 .gv-app.gv-skin-poster .gv-btn.gv-btn-danger-ghost { --gv-slab: var(--gv-poster-chip); color: var(--gv-danger); }
 
 /* flex: 0 0 auto on both: their 44px (touch) box is only a ceiling in a crowded
    flex row, and the session header squeezed the End button to 42. */
 .gv-app.gv-skin-poster .gv-icon-btn { --gv-slab: var(--gv-poster-chip); flex: 0 0 auto; color: var(--gv-ink); }
-.gv-app.gv-skin-poster .gv-icon-btn:hover { --gv-slab: var(--gv-line); }
-.gv-app.gv-skin-apex .gv-icon-btn-on,
-.gv-app.gv-skin-apex .gv-icon-btn-on:hover { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-icon-btn:hover { --gv-slab: var(--gv-line); }
+}
+.gv-app.gv-skin-apex .gv-icon-btn-on { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+@media (hover: hover) {
+  .gv-app.gv-skin-apex .gv-icon-btn-on:hover { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+}
 
 .gv-app.gv-skin-poster .gv-chips { gap: 8px; }
 .gv-app.gv-skin-poster .gv-chip {
@@ -4389,7 +4455,9 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   font-weight: 900;
   letter-spacing: 0.02em;
 }
-.gv-app.gv-skin-poster .gv-btn-go:hover { --gv-slab: var(--gv-lime-hi); background-color: transparent; }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-btn-go:hover { --gv-slab: var(--gv-lime-hi); background-color: transparent; }
+}
 /* A slow pulse behind Today's CTA only (not the rest or finish screens). */
 .gv-app.gv-skin-apex .gv-hero > .gv-hero-action .gv-btn-go::after {
   content: '';
@@ -4419,7 +4487,9 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   font-weight: 900;
   letter-spacing: 0.03em;
 }
-.gv-app.gv-skin-poster .gv-btn-hero-ghost:hover { --gv-slab: var(--gv-line); }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-btn-hero-ghost:hover { --gv-slab: var(--gv-line); }
+}
 .gv-app.gv-skin-poster .gv-hero-manual { --gv-slab-pull: 2px; min-height: 44px; font-size: 15px; }
 
 /* The week: seven leaning cells. Today is the inverse (ink); done is the
@@ -5351,8 +5421,10 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
   font-weight: 900;
   letter-spacing: 0.03em;
 }
-.gv-app.gv-skin-poster .gv-btn-finish:hover,
-.theme-dark .gv-app.gv-skin-poster .gv-btn-finish:hover { --gv-slab: var(--gv-lime-hi); background-color: transparent; color: var(--gv-ink-fixed); }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-btn-finish:hover,
+  .theme-dark .gv-app.gv-skin-poster .gv-btn-finish:hover { --gv-slab: var(--gv-lime-hi); background-color: transparent; color: var(--gv-ink-fixed); }
+}
 
 /* ---------- the live session ---------- */
 
@@ -5372,11 +5444,17 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 .gv-app.gv-skin-poster .gv-session-rest-clock-wrap { font-weight: 900; }
 .gv-app.gv-skin-apex .gv-timed-count { font-weight: 900; }
 .gv-app.gv-skin-apex .gv-timed-play { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
-.gv-app.gv-skin-apex .gv-timed-play:hover { --gv-slab: var(--gv-lime-hi); }
+@media (hover: hover) {
+  .gv-app.gv-skin-apex .gv-timed-play:hover { --gv-slab: var(--gv-lime-hi); }
+}
 .gv-app.gv-skin-poster .gv-dial-step { --gv-slab: var(--gv-poster-chip); color: var(--gv-ink); }
-.gv-app.gv-skin-poster .gv-dial-step:hover { --gv-slab: var(--gv-line); }
-.gv-app.gv-skin-poster .gv-guidesetup .gv-dial-step:hover,
-.theme-dark .gv-app.gv-skin-poster .gv-guidesetup .gv-dial-step:hover { background-color: transparent; }
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-dial-step:hover { --gv-slab: var(--gv-line); }
+}
+@media (hover: hover) {
+  .gv-app.gv-skin-poster .gv-guidesetup .gv-dial-step:hover,
+  .theme-dark .gv-app.gv-skin-poster .gv-guidesetup .gv-dial-step:hover { background-color: transparent; }
+}
 .gv-app.gv-skin-poster .gv-dial-value { font-weight: 900; }
 .gv-app.gv-skin-poster .gv-logo .gv-ico,
 .gv-app.gv-skin-poster .gv-setup-logo,
@@ -5729,8 +5807,10 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 /* ---------- controls ---------- */
 
 
-.gv-app.gv-skin-lockin .gv-icon-btn-on,
-.gv-app.gv-skin-lockin .gv-icon-btn-on:hover { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-lockin .gv-icon-btn-on { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+@media (hover: hover) {
+  .gv-app.gv-skin-lockin .gv-icon-btn-on:hover { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
+}
 
 /* The mockup's selected chip is the inverse slab: white on black, black on white. */
 .gv-app.gv-skin-lockin .gv-chip.on { --gv-slab: var(--gv-li-pop); color: var(--gv-li-pop-ink); }
@@ -5918,7 +5998,9 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 
 /* On the flood the CTA is the inverse slab (the mockup's white CTA). */
 .gv-app.gv-skin-lockin .gv-hero .gv-btn-go { --gv-slab: var(--gv-li-pop); color: var(--gv-li-pop-ink); }
-.gv-app.gv-skin-lockin .gv-hero .gv-btn-go:hover { --gv-slab: var(--gv-li-pop-hover); }
+@media (hover: hover) {
+  .gv-app.gv-skin-lockin .gv-hero .gv-btn-go:hover { --gv-slab: var(--gv-li-pop-hover); }
+}
 .gv-app.gv-skin-lockin .gv-hero > .gv-hero-action .gv-btn-go::after {
   content: '';
   position: absolute;
@@ -6383,7 +6465,9 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
 .gv-app.gv-skin-lockin .gv-session-complete-title { font-size: clamp(44px, 15vw, 76px); font-weight: 900; line-height: 0.84; }
 .gv-app.gv-skin-lockin .gv-timed-count { font-weight: 900; }
 .gv-app.gv-skin-lockin .gv-timed-play { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
-.gv-app.gv-skin-lockin .gv-timed-play:hover { --gv-slab: var(--gv-lime-hi); }
+@media (hover: hover) {
+  .gv-app.gv-skin-lockin .gv-timed-play:hover { --gv-slab: var(--gv-lime-hi); }
+}
 
 /* Live set: the target slab. An accent edge at rest; it floods once the set is
    past the record (the mockup's full-flood live screen, spent on the moment

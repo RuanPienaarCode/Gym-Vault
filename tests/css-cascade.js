@@ -16,8 +16,10 @@
    match asks for THROWS instead of being skipped — a silently ignored rule is
    exactly how a guard ends up passing against the bug it was written for.
    Rules inside @media are ignored (the probes describe the resting state of a
-   touch phone and of a desktop pane without hover-only styling), and
-   @keyframes / @font-face are skipped.
+   touch phone and of a desktop pane), EXCEPT `@media (hover: hover)`, which is
+   read as matching: every :hover rule lives in one (iOS keeps hover stuck after
+   a tap), and the hover-contrast probes describe the desktop pointer that sees
+   them. @keyframes / @font-face are skipped.
 
    Host (Obsidian app.css) rules are not loaded: it is proprietary and absent
    in CI. A test that needs one states it as data (see host-input-width) and
@@ -257,6 +259,8 @@ function matchesAt(sel, chain, at, k) {
 
 /* ---------- cascade ---------- */
 
+const HOVER_MEDIA = /^@media\s*\(\s*hover\s*:\s*hover\s*\)$/;
+
 const parsedCache = new Map();
 const selFor = text => { let p = parsedCache.get(text); if (!p) { p = parseSelector(text); p.spec = specificity(p); parsedCache.set(text, p); } return p; };
 
@@ -268,7 +272,7 @@ function declarationsFor(chain, props, rules, extra) {
   const all = (extra || []).map((r, i) => Object.assign({ order: -1000 + i, host: true }, r)).concat(rules);
   const hits = [];
   for (const r of all) {
-    if (r.media) continue;
+    if (r.media && !HOVER_MEDIA.test(r.media)) continue;
     if (!r.decls.some(d => props.includes(d.prop))) continue;
     const sel = selFor(r.selector);
     if (!matchesAt(sel, chain, chain.length - 1, sel.compounds.length - 1)) continue;
