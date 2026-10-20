@@ -70,6 +70,67 @@ function plainEntry(entry) {
 
 const hasLoggedWork = entries => entries.some(e => e.sets.some(setCounts));
 
+/* WHAT THE LIVE SESSION HOLDS BESIDES SETS (fix wave F2: audit C-05 + R2-04).
+   page-session.js keeps one plain-data block on the draft, `draft.live`:
+
+     records   the personal bests broken so far (sess.records) — rewards-flow
+               reads them off the session to celebrate and PAY them, so a best
+               earned before iOS evicted the app must come back with the draft;
+     goalCount / metGoals   the goals met so far, so a restored session does not
+               announce the same goal a second time;
+     paused    a PAUSED clock that has to survive a relaunch: a hold's banked
+               seconds ('hold') or a rest's remaining time ('rest'). A paused
+               circuit ('timed') is deliberately not here — its schedule is not
+               kept, so there is nothing to put it back on.
+
+   Whitelisted field by field, like the sets: it is read back from whatever the
+   device holds. Anything malformed is dropped, never repaired by guessing. */
+const nonNeg = n => (finite(n) && n >= 0 ? n : 0);
+const idStr = v => (typeof v === 'string' && v ? v : null);
+
+function plainRecord(r) {
+  if (!r || typeof r !== 'object') return null;
+  const key = idStr(r.key), exercise = idStr(r.exercise), kind = idStr(r.kind);
+  if (!key || !exercise || !kind) return null;
+  const fig = v => (typeof v === 'string' || finite(v) ? v : null);
+  const val = fig(r.val);
+  if (val === null) return null;
+  return { key, exercise, kind, val, prev: fig(r.prev) };
+}
+
+function plainPaused(p) {
+  if (!p || typeof p !== 'object') return null;
+  if (p.kind === 'hold') {
+    const key = idStr(p.key);
+    if (!key) return null;
+    return {
+      kind: 'hold', key, bankedSeconds: nonNeg(p.bankedSeconds), targetHit: p.targetHit === true,
+      lastAnnounced: finite(p.lastAnnounced) ? p.lastAnnounced : -1,
+      lastLiveAnnounced: finite(p.lastLiveAnnounced) ? p.lastLiveAnnounced : -1,
+    };
+  }
+  if (p.kind === 'rest') {
+    const next = idStr(p.next);
+    if (!next) return null;
+    return { kind: 'rest', next, bankedSeconds: nonNeg(p.bankedSeconds), callouts: (Array.isArray(p.callouts) ? p.callouts : []).filter(c => typeof c === 'string') };
+  }
+  return null;
+}
+
+function plainLive(live) {
+  if (!live || typeof live !== 'object') return null;
+  const records = (Array.isArray(live.records) ? live.records : []).map(plainRecord).filter(Boolean);
+  const metGoals = (Array.isArray(live.metGoals) ? live.metGoals : []).filter(g => typeof g === 'string');
+  const goalCount = Number.isInteger(live.goalCount) && live.goalCount > 0 ? live.goalCount : 0;
+  const paused = plainPaused(live.paused);
+  if (!records.length && !metGoals.length && !goalCount && !paused) return null;
+  return { records, goalCount, metGoals, paused };
+}
+
+/* A paused hold with seconds on it is work in progress even though no set is
+   ticked yet: a plank paused at 40 s on set 1 is the whole session so far. */
+const hasPausedWork = live => !!(live && live.paused && live.paused.kind === 'hold' && live.paused.bankedSeconds > 0);
+
 /* The draft as plain JSON, or null when there is nothing worth keeping — no
    set ticked and no figure typed. A session you had only just started comes
    back as nothing to lose, and offering it would leave a card on Today that
@@ -77,12 +138,11 @@ const hasLoggedWork = entries => entries.some(e => e.sets.some(setCounts));
 function snapshotDraft(draft, now) {
   if (!draft || typeof draft !== 'object' || !Array.isArray(draft.entries)) return null;
   const entries = draft.entries.map(plainEntry).filter(Boolean);
-  if (!hasLoggedWork(entries)) return null;
-  return {
-    v: STORE_VERSION,
-    savedAt: finite(now) ? now : Date.now(),
-    draft: { date: str(draft.date), plan: str(draft.plan), day: str(draft.day), startedAt: finite(draft.startedAt) ? draft.startedAt : Date.now(), entries },
-  };
+  const live = plainLive(draft.live);
+  if (!hasLoggedWork(entries) && !hasPausedWork(live)) return null;
+  const out = { date: str(draft.date), plan: str(draft.plan), day: str(draft.day), startedAt: finite(draft.startedAt) ? draft.startedAt : Date.now(), entries };
+  if (live) out.live = live;
+  return { v: STORE_VERSION, savedAt: finite(now) ? now : Date.now(), draft: out };
 }
 
 /* A stored value back into a draft the log page can render, or null when it is
@@ -97,12 +157,15 @@ function restoreDraft(raw, now) {
      it was is not one to save under a guess. */
   if (typeof d.date !== 'string' || !ISO_DATE.test(d.date)) return null;
   const entries = d.entries.map(plainEntry).filter(Boolean);
-  if (!hasLoggedWork(entries)) return null;
+  const live = plainLive(d.live);
+  if (!hasLoggedWork(entries) && !hasPausedWork(live)) return null;
   const t = finite(now) ? now : Date.now();
   let startedAt = finite(d.startedAt) ? d.startedAt : t;
   if (finite(raw.savedAt) && t - raw.savedAt > STALE_GAP_MS) startedAt += t - raw.savedAt;
   if (startedAt > t) startedAt = t; // a clock that moved backwards must not make elapsed negative
-  return { date: d.date, plan: str(d.plan), day: str(d.day), startedAt, entries };
+  const out = { date: d.date, plan: str(d.plan), day: str(d.day), startedAt, entries };
+  if (live) out.live = live;
+  return out;
 }
 
 /* What happened to a save, as the shell needs to tell the user. */

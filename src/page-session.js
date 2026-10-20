@@ -78,6 +78,11 @@ function render(ctx, root) {
     const carry = ctx.state.sessionCarry;
     const carryMatches = !!carry && carry.draft === draft;
     ctx.state.sessionCarry = null;
+    /* THE OTHER WAY BACK: a session restored from the device after iOS evicted
+       the app (audit C-05 + R2-04). There is no carry then, but the draft came
+       back with its `live` block (draft-store.js), so the same fields are read
+       from that. Either way `tally` is plain data of one shape. */
+    const tally = carryMatches ? carry : restoredTally(draft);
     ctx.state.session = {
       pos: flow.initialPosition(draft),
       phase: 'active',
@@ -99,7 +104,7 @@ function render(ctx, root) {
       motionOn: false, motionChoices: {}, motionKey: '', motionHint: '', stopMotion: null,
       hold: null, holdFor: null,
       workoutsAtStart: ctx.data.workouts, // snapshot: never includes THIS session's own rows (they aren't saved until Finish)
-      metGoals: carryMatches ? carry.metGoals : new Set(),
+      metGoals: tally.metGoals,
       /* [{key, exercise, kind, val, prev}] — every best broken this session,
          with what it beat.
 
@@ -108,8 +113,8 @@ function render(ctx, root) {
          best twice in one session, which sess.records deliberately collapses
          into one row. Two figures derived by different rules, in the same
          object, three lines apart. */
-      records: carryMatches ? carry.records : [],
-      goalCount: carryMatches ? carry.goalCount : 0,
+      records: tally.records,
+      goalCount: tally.goalCount,
       confettiStop: null,
       completionCelebrated: false,
       mediaCycleTimer: null,
@@ -127,9 +132,12 @@ function render(ctx, root) {
     /* A clock that was PAUSED when the user left comes back paused, at the
        same value. A running one is not carried: it starts over, as it always
        did. */
-    if (carryMatches) restorePaused(ctx.state.session, draft, carry.paused);
+    restorePaused(ctx.state.session, draft, tally.paused);
   }
   const sess = ctx.state.session;
+  /* The draft's own copy of the tally and any pause, kept in step from here on
+     (see syncLive) so the next device-local write carries them. */
+  syncLive(draft, sess);
 
   /* The media-cycle timer (guidedImageBlock, below) is deliberately NOT
      ctx.setPageInterval — that single slot belongs to the hold-timer / rest
@@ -181,6 +189,7 @@ function render(ctx, root) {
        session branch is the other half — it only ever applies this for the
        SAME draft, and only once. */
     ctx.state.sessionCarry = { draft: ctx.state.logDraft, records: sess.records, goalCount: sess.goalCount, metGoals: sess.metGoals, paused: pausedSnapshot(sess) };
+    syncLive(ctx.state.logDraft, sess);
     ctx.state.session = null;
   };
   if (!sess.wakeLock) sess.wakeLock = holdWakeLock();
@@ -351,6 +360,51 @@ function pausedSnapshot(sess) {
     return { kind: 'hold', key: sess.holdFor, bankedSeconds: h.bankedSeconds, targetHit: h.targetHit === true, lastAnnounced: h.lastAnnounced, lastLiveAnnounced: h.lastLiveAnnounced };
   }
   return null;
+}
+
+/* THE SESSION'S STATE THAT MUST OUTLIVE A KILL, AS PLAIN DATA ON THE DRAFT.
+   The device-local copy (draft-store.js) is taken from ctx.state.logDraft by
+   the controller, which knows nothing about this session object — so what
+   would otherwise die with it is mirrored onto the draft as `draft.live`
+   (draft-store.js lists what it keeps and why). It has to be written at the
+   moment the thing changes, not on the next render: the controller writes the
+   copy BEFORE it renders, and an app sent to the background mid-pause gets no
+   later chance.
+
+   A paused circuit is left out: its schedule is not kept, so after a relaunch
+   there is nothing to put the pause back on. */
+function liveBlock(sess) {
+  const snap = pausedSnapshot(sess);
+  return {
+    records: (sess.records || []).map(r => ({ key: r.key, exercise: r.exercise, kind: r.kind, val: r.val, prev: r.prev })),
+    goalCount: sess.goalCount || 0,
+    metGoals: [...(sess.metGoals || [])],
+    paused: snap && snap.kind !== 'timed' ? snap : null,
+  };
+}
+
+function syncLive(draft, sess) {
+  if (draft && sess) draft.live = liveBlock(sess);
+}
+
+/* Mirror, then write the device-local copy now — for the in-place changes
+   (a hold paused or resumed) that re-render nothing. */
+function keepLive(ctx, draft, sess) {
+  syncLive(draft, sess);
+  keepDraft(ctx);
+}
+
+/* The inverse, for a session starting fresh on a draft that came back from the
+   device: the draft-store already validated it, this only gives it the shapes
+   the session uses (a Set, fresh arrays). */
+function restoredTally(draft) {
+  const live = (draft && draft.live) || {};
+  return {
+    records: (Array.isArray(live.records) ? live.records : []).map(r => Object.assign({}, r)),
+    goalCount: Number.isInteger(live.goalCount) ? live.goalCount : 0,
+    metGoals: new Set(Array.isArray(live.metGoals) ? live.metGoals : []),
+    paused: live.paused || null,
+  };
 }
 
 /* Put a paused clock back on a FRESH session — only if the session lands on
@@ -1383,6 +1437,7 @@ function durationBody(ctx, draft, sess, entry, set) {
     if (meter) meter.set(secs);
     paintState();
     checkpointEl.textContent = 'Paused';
+    keepLive(ctx, draft, sess);
   };
 
   const resumeHold = () => {
@@ -1390,6 +1445,7 @@ function durationBody(ctx, draft, sess, entry, set) {
     Object.assign(hold, timerState.resumeClock(hold, Date.now()));
     paintState();
     checkpointEl.textContent = 'Resumed';
+    keepLive(ctx, draft, sess);
   };
 
   playBtn.addEventListener('click', () => { if (hold.paused) resumeHold(); else pauseHold(); });
@@ -1672,6 +1728,7 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
     }
   } catch (e) { console.error('gym-vault goals', e); }
 
+  syncLive(draft, sess);
   return callouts;
 }
 
@@ -1786,6 +1843,7 @@ function renderRest(ctx, root, draft, sess) {
     if (sess.rest.paused) sess.rest = timerState.resumeClock(sess.rest, now);
     else { sess.rest = timerState.pauseClock(sess.rest, now); sound.cancel(); }
     paintRest();
+    keepLive(ctx, draft, sess);
   });
   paintRest();
 
