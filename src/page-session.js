@@ -360,8 +360,26 @@ function pausedSnapshot(sess) {
 function restorePaused(sess, draft, snap) {
   if (!snap) return;
   if (snap.kind === 'timed') {
-    if (!sess.timed || sess.timed.index !== snap.index) return;
-    Object.assign(sess.timed, timerState.frozenClock(snap.bankedSeconds), { spokenAt: snap.spokenAt, announcedFor: snap.announcedFor });
+    const tp = sess.timed;
+    const intervals = (draft.timed && draft.timed.intervals) || [];
+    const iv = intervals[snap.index];
+    if (!tp || !iv) return;
+    /* WHERE A FRESH SESSION LANDS IS NOT WHERE THE PAUSE WAS (audit C-04).
+       timed-plan.initialIndex puts a fresh session on the TRANSITION before the
+       first unfinished work interval, so a circuit paused on interval 3 never
+       found itself on interval 3 and came back running, its frozen seconds
+       gone. The user's own pause is a better answer than that default, so the
+       session moves to it — provided it is not BEHIND where the session would
+       start (a hand-logged set has moved things on), and not a work interval
+       whose set has since been handled on the overview. */
+    if (snap.index < tp.index) return;
+    if (iv.kind === 'work') {
+      const entry = draft.entries[iv.entryIndex];
+      const set = entry && entry.sets && entry.sets[iv.setIndex];
+      if (set && flow.isHandled(set)) return;
+    }
+    tp.index = snap.index;
+    Object.assign(tp, timerState.frozenClock(snap.bankedSeconds), { spokenAt: snap.spokenAt, announcedFor: snap.announcedFor });
     return;
   }
   if (flow.isDone(draft, sess.pos)) return;
@@ -1820,7 +1838,13 @@ function timedElapsed(tp) {
 
 function startInterval(sess, index) {
   const tp = sess.timed;
-  Object.assign(tp, timerState.startClock(Date.now()));
+  /* A PAUSE IS NOT UNDONE BY AN ARROW (audit L3-11). Skip and Previous used to
+     start a running clock on the new interval even from a pause. A paused
+     circuit stays paused, at zero, on whichever interval it moves to; Resume
+     is what starts it. The automatic advance at the end of an interval can
+     never reach here paused (the tick returns first), so a running circuit
+     is unchanged. */
+  Object.assign(tp, tp.paused ? timerState.frozenClock(0) : timerState.startClock(Date.now()));
   tp.index = index;
   tp.spokenAt = null;
   tp.announcedFor = null;
