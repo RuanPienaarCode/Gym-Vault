@@ -79,8 +79,10 @@ function render(ctx, root) {
   /* ---- what this is, and where it stands ---- */
   const hero = el('div', { class: 'gv-hero gv-voice-hero' });
   hero.append(el('p', { class: 'gv-kicker' }, 'Count yourself in'));
+  /* The PROGRESS, always: with nothing recorded this used to fall back to 'Your
+     voice', which the toolbar's own <h2> had just said (R1-06). */
   hero.append(el('h3', { class: 'gv-display gv-hero-title' },
-    el('span', { class: 'gv-mark' }, progress.recorded ? `${progress.recorded} of ${progress.total}` : 'Your voice')));
+    el('span', { class: 'gv-mark' }, `${progress.recorded} of ${progress.total}`)));
   hero.append(el('p', { class: 'gv-hero-sub' },
     progress.recorded === progress.total
       ? 'Every clip is yours. Anything you re-record replaces the old take.'
