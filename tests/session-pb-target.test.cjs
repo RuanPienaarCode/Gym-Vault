@@ -5,7 +5,9 @@
    live-session-harness.js). What has to be true:
 
      - it shows "Beat 12 / You're on N / x to go" against the best the session
-       started with (sess.workoutsAtStart), never this session's own sets;
+       started with (sess.workoutsAtStart) - raised to a better set this session
+       has already logged (fix wave F2, R2-09: one bar for the live flag and the
+       announcement);
      - it updates IN PLACE as reps are counted - the node survives every tap, so
        the screen is not re-rendered per rep (the count-in, the meter and the
        power-up all depend on that);
@@ -96,12 +98,12 @@ const tapN = (b, n) => { const z = q(b, '.gv-session-zone'); for (let i = 0; i <
     }
   });
 
-  await check('6. the target does not move when this session logs a better set (it is against the START best)', async () => {
+  await check('6. the target moves up when this session logs a better set (fix wave F2, R2-09: max of the start best and this session\'s own)', async () => {
     const b = await guided('## D (any)\n\n- Push-ups | 2 x 10\n');
     H.advance(6000); tapN(b, 14);
     H.click(H.byText(H.page(b.ctx), 'Done'));
     H.advance(6000);
-    assert.strictEqual(text(b, '.gv-pb-target-label'), 'Beat 12', 'set 2 still chases 12, the best going in - the 14 is this session\'s own, and the record row keeps one best-of-session');
+    assert.strictEqual(text(b, '.gv-pb-target-label'), 'Beat 14', 'set 2 chases the 14 just set; "Beat 12" was stale and disagreed with the announcement (tests/f2-repeat-best.test.cjs pins the rule)');
   });
 
   await check('7. a weighted entry gets no target (its record is weight; the counter observes reps)', async () => {

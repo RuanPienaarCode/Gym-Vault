@@ -1039,7 +1039,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      a plain reps entry with history; absent for a weighted one (its record is
      weight, which the tap counter does not observe), a run, or an exercise
      never logged. Kept in step wherever the meter is. */
-  const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_REPS.observed), 'reps', poster);
+  const pb = pbTargetBlock(liveTarget(ctx, sess, entry, OBSERVED_REPS.observed), 'reps', poster);
   /* The detonation the meter charges towards — only exists when the meter
      does, and fires once via markHit's own guard. */
   const powerUp = meter ? attachPowerUp(zone, 'Reps reached') : null;
@@ -1416,7 +1416,7 @@ function durationBody(ctx, draft, sess, entry, set) {
   /* The hold's best to beat, against the same whole seconds the stop button
      will record (Math.round of the clock), so the flag flips on the second
      Done would call it a record. */
-  const pb = pbTargetBlock(liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, OBSERVED_SECONDS.observed), 'seconds', poster);
+  const pb = pbTargetBlock(liveTarget(ctx, sess, entry, OBSERVED_SECONDS.observed), 'seconds', poster);
   if (pb) pb.set(Math.round(shownSeconds()));
 
   const currentSeconds = () => heldSeconds(hold);
@@ -1676,6 +1676,33 @@ function describeMargin(kind, val, prev) {
   return d ? marginText(kind, d.abs) : '';
 }
 
+/* THE FIGURE A SET HAS TO BEAT RIGHT NOW (audit R2-09) — ONE RULE, used by the
+   announcement (applyCompletion) and by the live "Beat n" target (liveTarget),
+   so the flag on the counter and the callout after Done cannot disagree:
+
+       max( the history best going in,  the record already set for this
+                                        exercise+kind in THIS session )
+
+   Both used to read the history snapshot alone, so repeating a best you had just
+   set re-announced "NEW BEST (was 8)" with confetti, and the next set's target
+   still chased the 8. `historyBest` null/undefined (never logged) stays that:
+   there is nothing to beat, and the first-ever set is not a record. */
+function recordKey(entry, kind) { return `${entry.exercise}/${kind}`; }
+
+function figureToBeat(sess, historyBest, entry, kind) {
+  if (historyBest === null || historyBest === undefined) return historyBest;
+  const row = (sess.records || []).find(r => r.key === recordKey(entry, kind));
+  const mine = row ? parseFloat(row.val) : NaN;
+  return Number.isFinite(mine) && mine > historyBest ? mine : historyBest;
+}
+
+/* The live screen's target: progress.liveBest (which already applies the
+   observed-kind and claimableKinds gates), raised to this session's own best. */
+function liveTarget(ctx, sess, entry, observed) {
+  const base = liveBest(sess.workoutsAtStart, findExercise(ctx, entry.exercise), entry, observed);
+  return base === null || base === undefined ? base : figureToBeat(sess, base, entry, classifyKind(entry));
+}
+
 /* Newly-met goals since the session started: compares the goal's progress
    using ONLY history from before this session (sess.workoutsAtStart) against
    history PLUS everything completed in this draft so far — a synthetic,
@@ -1766,7 +1793,7 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
        none, and keeps claiming what it observed, as it always did. */
     const claimable = !!kind && (!note || records.claimableKinds(note).indexOf(kind) !== -1);
     if (kind && trustworthy && claimable) {
-      const prev = records.previousBest(sess.workoutsAtStart, entry.exercise, kind);
+      const prev = figureToBeat(sess, records.previousBest(sess.workoutsAtStart, entry.exercise, kind), entry, kind);
       const val = valueForKind(set, kind);
       if (records.isRecord(prev, val)) {
         /* Keep the DETAIL, not just the tally. The completion screen used to
@@ -1779,7 +1806,7 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
            racing each other. previousBest already reads from
            sess.workoutsAtStart for exactly this reason; the display has to
            honour the same snapshot rule or it would contradict it. */
-        const key = `${entry.exercise}/${kind}`;
+        const key = recordKey(entry, kind);
         const existing = sess.records.find(r => r.key === key);
         if (existing) {
           /* THE BEST OF THE SESSION, NOT THE LATEST ATTEMPT (0.11.2 journey
