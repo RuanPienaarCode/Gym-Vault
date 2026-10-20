@@ -59,7 +59,10 @@ check('L2-16 "* " and "+ " bullets and "1." / "1)" numbered lines are exercise i
   const body = ['## A (mon)', '', '* Pull-ups | 3X8', '+ Rows | 4 sets of 10', '1. Dips | 3 x 12', '2) Dead Hang | 30s', '10. Squats'].join('\n');
   const items = parsePlanBody(body).days[0].items;
   assert.deepStrictEqual(items.map(i => [i.exercise, i.sets, i.target]),
-    [['Pull-ups', 3, '8'], ['Rows', 4, '10'], ['Dips', 3, '12'], ['Dead Hang', null, '30s'], ['Squats', null, '']]);
+    [['Pull-ups', 3, '8'], ['Rows', 4, '10'], ['Dips', 3, '12'], ['Dead Hang', null, '30s']]);
+  /* "10. Squats" has no "| prescription": with a numbered marker that reads
+     exactly like a coach's numbered note, so it stays text (int-plan-prose-bullets). */
+  assert.ok(parsePlanBody(body).days[0].notes.includes('10. Squats'), 'a numbered line with no prescription stays a note');
 });
 
 check('L2-16 an indented "* " line stays an annotation, a thematic break stays prose', () => {

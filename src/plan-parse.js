@@ -45,7 +45,8 @@ function parsePrescription(text) {
   const t = (text || '').trim();
   const m = t.match(/^(\d+)\s*[x×]\s*(.+)$/);
   if (m) return { sets: +m[1], target: m[2].trim() };
-  const m2 = t.match(/^(\d+)\s*(?:sets?\s*(?:of\s+|[xX×]\s*)|[X]\s*)(.+)$/i);
+  /* A capital X needs a number after it, so "5 Xtreme" stays a name. */
+  const m2 = t.match(/^(\d+)\s*(?:sets?\s*(?:of\s+|[xX×]\s*)|X\s*(?=\d))(.+)$/i);
   if (m2) return { sets: +m2[1], target: m2[2].trim() };
   return { sets: null, target: t };
 }
@@ -54,7 +55,11 @@ function parsePrescription(text) {
    `- `, `* `, `+ `, or a number with `.` / `)` ("1. ", "2) "). Matched on the
    RAW line, so an indented marker stays the author's own annotation. A line
    of three or more `*` / `-` / `_` (a thematic break such as `* * *`) is a
-   rule, never an exercise. */
+   rule, never an exercise. A `- ` line is an exercise as it always was; the
+   other markers also need a `| prescription`, because "1. Warm up 5 min" and
+   "* keep elbows in" are a coach's notes and look exactly like "10. Squats" —
+   reading prose as exercises would put junk on Today, missing a bare
+   "10. Squats" only leaves it as text. */
 const ITEM_LINE = /^(-|[*+]|\d+[.)]) /;
 const THEMATIC_BREAK = /^([*_-])(?:\s*\1){2,}\s*$/;
 const KEPT_MARKER = /^(?:[*+]|\d+[.)]) $/;
@@ -164,8 +169,8 @@ function parsePlanBody(body) {
        logged as exercises, inflated the set count, and the write-back
        flattened the author's nesting on disk. Match the RAW line. */
     const bullet = day && !fenced ? line.match(ITEM_LINE) : null;
-    if (bullet && (bullet[1] === '-' || !THEMATIC_BREAK.test(line.trim()))) {
-      const cells = splitBarePipes(line.slice(bullet[0].length)).map(c => c.trim());
+    const cells = bullet ? splitBarePipes(line.slice(bullet[0].length)).map(c => c.trim()) : null;
+    if (bullet && (bullet[1] === '-' || (!THEMATIC_BREAK.test(line.trim()) && cells.length > 1 && cells[0] !== ''))) {
       /* Everything after the FIRST pipe is the prescription — rejoining
          keeps a hand-written `- A | B | C` intact instead of dropping C. */
       const { sets, target } = parsePrescription(cells.slice(1).join(' | '));

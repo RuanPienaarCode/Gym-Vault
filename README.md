@@ -183,10 +183,15 @@ Keep the elbows tucked on this one.
 - **A day** is a `##` heading ending in a weekday in brackets: `(mon)` to
   `(sun)`. `(any)` is a wildcard that fills whatever weekday nothing else
   claims; it is meant for a *fallback* plan (below). A `##` heading with no
-  weekday is not a day, so it folds into the day above it.
+  weekday is not a day, so it folds into the day above it, and the Exercises
+  page names it in a warning so a missing weekday doesn't go unnoticed.
 - **An exercise line** is `- Name | sets x target`. The name should match an
   exercise note in `Gym/Exercises/`. The sets count is optional: `- Push-ups |
   12` means the default of 3 sets of 12. A bare `- Push-ups` is fine too.
+  `* `, `+ ` and numbered (`1.` / `1)`) bullets also work, as long as the line
+  has its `| prescription` (`1. Rows | 3 x 10`); without one, a starred or
+  numbered line is read as a note, so a coach's numbered list stays prose.
+  Hand-written shapes such as `3X8` and `4 sets of 10` are understood too.
 - **Weight** is `@ 20kg` anywhere in the target (kilograms).
 - **Time**: a target such as `30-45s`, `60 sec` or `2 min` makes a timed set.
   For a range the first number is used, and the unit is read (`2 min` is 120
@@ -195,7 +200,8 @@ Keep the elbows tucked on this one.
   time; its target (`1 x 5 km`) is shown as you wrote it.
 - **Free text and percentages**: `submax` or `65% max` are kept and shown as
   written. They are notes to yourself, so the set counter counts without a
-  target for them.
+  target for them. A rep count at a load, such as `8 @ 75%`, is still eight
+  reps.
 - **Prose** between lines, under a day or above the first one, is kept exactly
   where you wrote it. An *indented* bullet is your own annotation on the line
   above, not an exercise.
@@ -256,8 +262,8 @@ reasons only, and to these hosts:
 - **raw.githubusercontent.com**, for the plan library. *Plans → Browse* reads
   the library index, the plans you pick and the exercise notes they need from
   the repository set under Settings → *Plan library*. The default is
-  `RuanPienaarCode/gym_plans`; point it at your own repository, or any host
-  that serves the same files, to change that. Some starter exercise images
+  `RuanPienaarCode/gym_plans`; point it at your own repository, or any https
+  host that serves the same files, to change that (plain http is refused). Some starter exercise images
   also come from this host (the free-exercise-db project).
 - **wger.de**, for some starter exercises' demonstration photos and videos
   (CC-BY-SA, credited in the exercise notes).
