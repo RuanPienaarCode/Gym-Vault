@@ -14,6 +14,7 @@ const { VIEW_TYPE, DEFAULT_SETTINGS } = require('./constants');
 const { GymView } = require('./view');
 const { GymSettingTab } = require('./settings-tab');
 const { RepCounterModal } = require('./rep-counter-modal');
+const { weekdayKey, todayISO } = require('./dates');
 
 class GymPlugin extends Plugin {
   async onload() {
@@ -32,11 +33,8 @@ class GymPlugin extends Plugin {
       callback: async () => {
         await this.activateView();
         this.forEachView(ctl => {
-          const ctx = ctl.ctx;
-          const plan = ctx.activePlan();
-          const wk = require('./dates').weekdayKey(require('./dates').todayISO());
-          const day = plan ? plan.model.days.find(d => d.weekday === wk) : null;
-          ctx.startLog(plan, day || null);
+          const { plan, day } = GymPlugin.logTargetFor(ctl.ctx);
+          ctl.ctx.startLog(plan, day);
         });
       },
     });
@@ -114,5 +112,17 @@ class GymPlugin extends Plugin {
 
   async saveSettings() { await this.saveData(this.settings); }
 }
+
+/* WHAT "Log today's workout" OPENS. The first entry of ctx.daysOn for today -
+   the rule Today's hero uses (controller.resolveDaysOn: the active plan's own
+   day, then its `(any)` day, then parallel plans, then a fallback), so the
+   command and the screen cannot disagree about what today is. It used to look
+   in the active plan's days by weekday alone, so on a run or rest day it
+   opened an empty log named after the strength plan. Nothing scheduled is a
+   plain freestyle log, with no plan name that would be wrong. */
+GymPlugin.logTargetFor = (ctx, iso) => {
+  const hit = ctx.daysOn(weekdayKey(iso || todayISO()))[0];
+  return hit ? { plan: hit.plan, day: hit.day } : { plan: null, day: null };
+};
 
 module.exports = GymPlugin;
