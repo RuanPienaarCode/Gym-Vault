@@ -355,18 +355,27 @@ function syncPlayButton(btn, paused) {
 /* A HOLD THAT WAS OUT OF SIGHT WAS NOT OBSERVED (audit B-hold-away). The
    stopwatch is wall-clock time, so a plank started and then forgotten while the
    app sat in the background (the Music button, a call, a locked phone) read an
-   hour on return, and stopping it announced a NEW BEST. The page becoming hidden
-   while a hold is RUNNING flags that hold `away`; its seconds are still saved,
-   but it completes with observed: [] and so claims no record (heldObserved). A
-   hold that was paused when the page was hidden is not flagged: a paused clock
-   cannot run away. One listener per session, removed by pageCleanup. */
+   hour on return, and stopping it announced a NEW BEST. A RUNNING hold that is
+   out of sight for longer than AWAY_GRACE_MS is flagged `away`; its seconds are
+   still saved, but it completes with observed: [] and so claims no record
+   (heldObserved). The grace is for the glance: skipping a song in the music app
+   mid-plank is still a plank the user was watching, and costing a PB for it
+   would punish the Music button this screen offers. A hold that was paused when
+   the page was hidden is not flagged: a paused clock cannot run away. One
+   listener per session, removed by pageCleanup. */
+const AWAY_GRACE_MS = 15000;
 function watchAway(sess, root) {
   const doc = (root && root.ownerDocument) || (typeof document !== 'undefined' ? document : null);
   if (!doc || typeof doc.addEventListener !== 'function') return;
   const onChange = () => {
-    if (doc.visibilityState !== 'hidden') return;
     const h = sess.hold;
-    if (h && h.running && !h.paused) h.away = true;
+    if (!h) return;
+    if (doc.visibilityState === 'hidden') {
+      if (h.running && !h.paused) h.hiddenAt = Date.now();
+      return;
+    }
+    if (h.hiddenAt != null && Date.now() - h.hiddenAt > AWAY_GRACE_MS) h.away = true;
+    h.hiddenAt = null;
   };
   doc.addEventListener('visibilitychange', onChange);
   sess.stopAwayWatch = () => doc.removeEventListener('visibilitychange', onChange);
@@ -2401,12 +2410,8 @@ function renderComplete(ctx, root, draft, sess) {
      the module at call time and guarded because tests/session-fix-complete-screen
      stubs page-log without it; the fallback is the rule it replaced (floored at
      1, same as finishSession's own), and is dead code wherever sessionMinutes
-     exists. Bracket access on purpose: sessionMinutes is lane F3's export, and
-     tests/module-exports.test.cjs (which reads `pageLog.name` statically) would
-     fail this tree until it lands. The typeof guard is what makes an absent
-     export safe at runtime; once page-log exports it, turn this into plain
-     `pageLog.sessionMinutes(draft)` and that guard checks the seam. */
-  const sessionMinutes = pageLog['sessionMinutes'];
+     exists. */
+  const sessionMinutes = pageLog.sessionMinutes;
   const totalMin = typeof sessionMinutes === 'function'
     ? sessionMinutes(draft)
     : Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));

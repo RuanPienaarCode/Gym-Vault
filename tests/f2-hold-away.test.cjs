@@ -115,6 +115,21 @@ const setHidden = hidden => {
     assert.strictEqual((sess(b).records || []).length, 0, 'still no claim');
   });
 
+  await check('F2-7g. a glance away (skip a song, under the grace) does not cost the claim; a minute away does', async () => {
+    const b = await start();
+    H.advance(6000); H.advance(10000);
+    setHidden(true); H.advance(8000); setHidden(false);   // eight seconds in the music app
+    H.advance(37000);
+    H.tapZone(zone(b));
+    assert.strictEqual((sess(b).records || []).length, 1, 'a 55 s plank with an 8 s glance away is still a record');
+
+    const c = await start();
+    H.advance(6000); H.advance(10000);
+    setHidden(true); H.advance(60000); setHidden(false);  // a minute away is not a glance
+    H.tapZone(zone(c));
+    assert.strictEqual((sess(c).records || []).length, 0, 'a minute out of sight claims nothing');
+  });
+
   let bad = 0;
   for (const [name, err] of results) {
     if (err) { bad++; console.error(`FAIL  ${name}\n      ${String(err && err.message || err).split('\n').join('\n      ')}`); }
