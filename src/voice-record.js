@@ -83,7 +83,12 @@ async function startRecording(opts) {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: false,
     });
-  } catch (e) { throw new Error(describeError(e)); }
+  } catch (e) {
+    /* Refused (or no microphone): the context made above for the tap's sake would otherwise stay open,
+       and on iOS an open context is what keeps the audio session in its recording state. */
+    try { ac.close(); } catch (err) { /* ignore */ }
+    throw new Error(describeError(e));
+  }
 
   /* Belt and braces: unlock() already resumed it in the tap, but a context
      that went to sleep between then and now would record silence. */

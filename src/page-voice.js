@@ -43,9 +43,20 @@ function uiState(ctx) {
       takeBuffer: null, // the take decoded, for the preview
       error: '',
       loaded: false,
+      starting: false,  // a microphone has been asked for and has not answered yet
+      captureId: 0,     // bumped whenever a pending start is abandoned (see abandonStart)
     };
   }
   return ctx.state.voiceUi;
+}
+
+/* A microphone that was asked for and has not answered yet belongs to nobody once the page is left
+   or the wizard restarted: when it does arrive its handler sees a different captureId and releases
+   it. The flag that blocks a second tap is cleared at the same moment, so a prompt the user walked
+   away from cannot leave the record button dead (L3-14). */
+function abandonStart(ui) {
+  ui.captureId++;
+  ui.starting = false;
 }
 
 function render(ctx, root) {
@@ -57,6 +68,7 @@ function render(ctx, root) {
      the same rule countdown.stop() follows: teardown is not a decision. */
   ctx.state.pageCleanup = () => {
     if (ui.rec) { try { ui.rec.cancel(); } catch (e) { /* ignore */ } ui.rec = null; }
+    abandonStart(ui);
     if (ui.phase === 'recording') ui.phase = 'ready';
     sound.cancel();
   };
@@ -197,6 +209,7 @@ async function deleteClip(ctx, ui, key) {
 
 function startWizard(ctx, ui, keys) {
   if (ui.rec) { try { ui.rec.cancel(); } catch (e) { /* ignore */ } ui.rec = null; }
+  abandonStart(ui);
   ui.queue = keys.slice();
   ui.at = 0;
   ui.phase = 'ready';
@@ -208,6 +221,7 @@ function startWizard(ctx, ui, keys) {
 
 function endWizard(ctx, ui) {
   if (ui.rec) { try { ui.rec.cancel(); } catch (e) { /* ignore */ } ui.rec = null; }
+  abandonStart(ui);
   ui.queue = [];
   ui.at = 0;
   ui.phase = 'idle';
@@ -282,6 +296,11 @@ function renderWizard(ctx, root, ui) {
   };
 
   btn.addEventListener('click', () => {
+    /* The microphone has been asked for and has not answered: the face already says "Tap to stop", but
+       there is nothing to stop yet. A tap here used to flip the page back to ready, the NEXT tap opened
+       a second capture, and the first microphone was then adopted and later overwritten, never released.
+       Ignore it; the stop works the moment the microphone is live. */
+    if (ui.starting) return;
     if (ui.phase === 'recording') { stopTake(); return; }
     if (ui.phase === 'review') { sound.unlock(); if (ui.takeBuffer) sound.playBuffer(ui.takeBuffer); return; }
     if (ui.phase !== 'ready') return;
@@ -289,15 +308,20 @@ function renderWizard(ctx, root, ui) {
     sound.unlock();
     ui.error = '';
     ui.phase = 'recording';
+    ui.starting = true;
+    const myCapture = ++ui.captureId;
     setFace('square', 'Tap to stop', 'live');
     startRecording({
       onLevel: v => levelFill.style.setProperty('--gv-level', String(Math.min(1, v * 4))),
       onLimit: () => stopTake(),
     }).then(rec => {
-      /* Stopped (or left) before the microphone came up: release it. */
-      if (ui.phase !== 'recording') { rec.cancel(); return; }
+      /* Left, or the wizard restarted, before the microphone came up: it is nobody's, release it. */
+      if (ui.captureId !== myCapture || ui.phase !== 'recording') { if (ui.captureId === myCapture) ui.starting = false; rec.cancel(); return; }
+      ui.starting = false;
       ui.rec = rec;
     }).catch(e => {
+      if (ui.captureId !== myCapture) return;
+      ui.starting = false;
       ui.error = e.message || String(e);
       ui.phase = 'ready';
       ctx.rerender();
