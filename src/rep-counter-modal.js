@@ -322,7 +322,14 @@ class RepCounterModal extends Modal {
        the gesture that dismisses the countdown lands as the first rep and
        every set starts one ahead. Same guard, same reason, as the guided
        screen's registerTap. */
-    if (this._countIn && !this._countIn.armed()) { this._countIn.skip(); return; }
+    if (this._countIn && !this._countIn.armed()) {
+      this._countIn.skip();
+      /* The skip arms the counter at once and a fresh one has no debounce
+         memory, so a double tap's echo counted rep one (audit L3-04). Stamp the
+         skip as a tap and the ordinary debounce covers it. */
+      this.state = { count: this.state.count, lastTapAt: Date.now() };
+      return;
+    }
     const now = Date.now();
     const result = tap(this.state, now);
     this.state = result.state;

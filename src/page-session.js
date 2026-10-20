@@ -21,7 +21,7 @@ const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
 const flow = require('./session-flow');
 const records = require('./records');
 const confetti = require('./confetti');
-const { createCounter, tap, undo } = require('./rep-counter');
+const { createCounter, tap, undo, DEBOUNCE_MS } = require('./rep-counter');
 const { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton } = require('./rep-counter-shared');
 const counterTarget = require('./counter-target');
 const { helpButton } = require('./explainer');
@@ -148,6 +148,15 @@ function render(ctx, root) {
      creates its own (or none) — otherwise it keeps ticking against detached
      nodes and a second one stacks on top of it next render. */
   if (sess.mediaCycleTimer) { window.clearInterval(sess.mediaCycleTimer); sess.mediaCycleTimer = null; }
+  /* THE COUNT-IN DIES WITH ITS SCREEN (audit L3-03). Done, Skip, a nav to Rest
+     or to the completion screen all re-render without ever reaching the
+     counter that owns the count-in, so the old sequencer kept ticking against
+     detached nodes: it spoke "3, 2, 1, Begin" over Rest and then threw from its
+     own timer (the set's counter was gone). Every full render starts by
+     stopping it. A render that is still ON a set whose count has not finished
+     (a vault sync landing mid-gate) builds a fresh one below, resuming from
+     sess.countInStartedAt, exactly as it already did. */
+  if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
   /* The Muscle Map's animation loop, same rule: the thumbnail it draws into is
      rebuilt by every render, so the previous loop stops here, exactly once,
      before this render mounts its own (or none). The map also ends itself the
@@ -1069,7 +1078,15 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      gesture that dismisses the countdown lands as the first rep and every
      set starts one ahead. */
   const registerTap = () => {
-    if (countIn && !countIn.armed()) { countIn.skip(); return; }
+    if (countIn && !countIn.armed()) {
+      countIn.skip();
+      /* AND IT LEAVES A DEBOUNCE BEHIND (audit L3-04). Skipping arms the counter
+         at once, and a fresh counter has no memory of a previous tap, so a double
+         tap — the second landing 60 ms later — counted as rep one. Stamping the
+         skip as a tap makes the ordinary debounce cover its own echo. */
+      sess.counter = { count: sess.counter.count, lastTapAt: Date.now() };
+      return;
+    }
     const result = tap(sess.counter, Date.now());
     sess.counter = result.state;
     if (!result.counted) return;
@@ -1185,7 +1202,19 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      must not grow a 'weight' entry just because the entry is weighted —
      that would be right back to finding 2 (an untouched @60kg prefill
      claiming a false record). */
-  doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }, OBSERVED_REPS));
+  doneBtn.addEventListener('click', () => {
+    /* A TICK ON A COUNT-IN IS NOT A SET (audit R2-14). Inside the five seconds
+       nothing has been counted, and "Tick set" saved a 0-rep set that counted
+       for XP and the quest. With nothing on the counter it is the same gesture
+       a tap on the zone is — "ready" — and skips the count-in; a count the user
+       typed in already is a real set and still saves. */
+    if (countIn && !countIn.armed() && !(sess.counter.count > 0)) {
+      countIn.skip();
+      sess.counter = { count: sess.counter.count, lastTapAt: Date.now() };
+      return;
+    }
+    completeSet(ctx, draft, sess, set, entry, { reps: String(sess.counter.count) }, OBSERVED_REPS);
+  });
 
   /* SIX BUTTONS BECAME FOUR, AND THEN THREE. Motion, Type and the explainer
      are decisions made once, at the start of a set — they sat at thumb
@@ -1481,8 +1510,14 @@ function durationBody(ctx, draft, sess, entry, set) {
   playBtn.addEventListener('click', () => { if (hold.paused) resumeHold(); else pauseHold(); });
   doneBtn.addEventListener('click', () => { if (hold.running && hold.paused) stopHold(); });
 
+  /* When the tap that skipped the count-in landed. Skipping BEGINS the hold in
+     the same breath, so a double tap's echo 60 ms later used to stop it at
+     about zero seconds and save that (audit L3-04). Taps inside the counter's
+     own debounce window after it are the same gesture, not a stop. */
+  let skippedAt = null;
   const startStop = () => {
-    if (holdCountIn && !holdCountIn.armed()) { holdCountIn.skip(); return; }
+    if (holdCountIn && !holdCountIn.armed()) { holdCountIn.skip(); skippedAt = Date.now(); return; }
+    if (skippedAt !== null && Date.now() - skippedAt < DEBOUNCE_MS) return;
     if (!hold.running) beginHold();
     /* A tap on a PAUSED hold resumes it. Never completes: from the paused
        state a stray tap must not be able to save a half-set — Done is the
