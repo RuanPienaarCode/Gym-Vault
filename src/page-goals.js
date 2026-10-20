@@ -1,7 +1,7 @@
 'use strict';
 /* Goals — progress toward each target, derived from real logged data. */
 
-const { el, ico, fmt, fmtSeconds, ring, emptyLine } = require('./dom');
+const { el, ico, fmt, fmtSeconds, ring, clickableCard, emptyLine } = require('./dom');
 const { GOAL_METRICS } = require('./constants');
 const { goalCurrent, goalIssue, goalProgress, countLabel } = require('./stats');
 const { todayISO, daysBetween, fmtShort } = require('./dates');
@@ -53,7 +53,12 @@ function render(ctx, root) {
     const dl = g.fm.deadline;
     const dLeft = dl ? daysBetween(today, dl) : null;
 
-    const card = el('div', { class: `gv-card gv-goal-card${done ? ' done' : ''}` },
+    /* clickableCard, not a div with a click listener: role=button, tabindex 0
+       and Enter/Space come with it, and the nested Edit/Delete buttons keep
+       firing on their own (the same pattern as the exercise cards). */
+    const card = clickableCard(
+      { class: `gv-card gv-goal-card${done ? ' done' : ''}`, 'aria-label': `Open goal note: ${g.name}` },
+      () => ctx.openFile(g.file),
       el('div', { class: 'gv-goal-ring' }, done ? ico('trophy', 'gv-trophy') : ring(p ?? 0, 64, `${g.name} progress`)),
       el('div', { class: 'gv-goal-main' },
         el('div', { class: 'gv-goal-name' }, g.name),
@@ -71,7 +76,6 @@ function render(ctx, root) {
           title: 'Delete goal?', message: `"${g.name}" will be deleted, following your Obsidian "Deleted files" setting.`,
           onConfirm: async () => { await ctx.io.trash(g.file); ctx.reload(); },
         }).open())));
-    card.addEventListener('click', e => { if (!e.target.closest('button')) ctx.openFile(g.file); });
     list.append(card);
   }
   root.append(list);
