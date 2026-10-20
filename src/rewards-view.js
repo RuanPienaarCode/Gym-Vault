@@ -14,7 +14,7 @@
    CONTRACT
      groupDigits(n)                        2700 -> '2,700' (no locale: Intl differs by engine)
      xpChipFor(day, settings)              null when rewards are off or the day has no planned sets, else
-                                           {xp, sets, label:'Up to +145 XP', title}.
+                                           {xp, sets, label:'From +145 XP', title}.
                                            THE RULE: what a session could pay today = XP.session + XP.set x the
                                            sets the plan asks for (progress.itemSets, the same count the hero's
                                            "N sets" chip prints). Nothing speculative: no PB, no streak week, no
@@ -76,8 +76,8 @@ function xpChipFor(day, settings) {
   const xp = XP.session + XP.set * sets;
   return {
     xp, sets,
-    label: `Up to +${groupDigits(xp)} XP`,
-    title: `Up to ${groupDigits(xp)} XP today: ${XP.session} for finishing the session and ${XP.set} for each of the ${sets} planned sets. `
+    label: `From +${groupDigits(xp)} XP`,
+    title: `From ${groupDigits(xp)} XP today: ${XP.session} for finishing the session and ${XP.set} for each of the ${sets} planned sets. `
       + 'A personal best, a streak week and the weekly quest pay extra on top of that.',
   };
 }

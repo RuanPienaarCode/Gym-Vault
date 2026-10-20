@@ -58,7 +58,7 @@ check('V2 the XP chip rule: session + 5 per planned set; off / empty -> null; sa
   assert.strictEqual(chip.sets, 9);
   assert.strictEqual(chip.xp, R.XP.session + R.XP.set * 9, 'XP.session + XP.set * planned sets');
   assert.strictEqual(chip.xp, 145);
-  assert.strictEqual(chip.label, 'Up to +145 XP');
+  assert.strictEqual(chip.label, 'From +145 XP');
   assert.ok(/100/.test(chip.title) && /5/.test(chip.title) && /9/.test(chip.title), `the title names what it counted: ${chip.title}`);
   assert.ok(/personal best|streak|quest/i.test(chip.title) && /extra|more|on top/i.test(chip.title), 'and says the rest pays extra, nothing speculative included');
   /* an item with no set count is the plan's default of three, the same rule the hero's "N sets" chip uses */

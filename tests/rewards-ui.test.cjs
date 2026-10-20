@@ -104,7 +104,7 @@ check('U1 Today: empty on the first paint, filled when the ledger lands', async 
   assert.strictEqual(text(first(lvl, 'gv-rw-level-into')), want.intoText);
   assert.strictEqual(text(first(lvl, 'gv-rw-level-to')), want.toText);
   assert.strictEqual(text(first(lvl, 'gv-rw-hex-num')), String(want.level));
-  assert.strictEqual(text(first(s.chip, 'gv-rw-xpchip')), 'Up to +145 XP', 'the XP chip rule: 100 + 5 x 9 planned sets');
+  assert.strictEqual(text(first(s.chip, 'gv-rw-xpchip')), 'From +145 XP', 'the XP chip rule: 100 + 5 x 9 planned sets');
   const q = first(s.quest, 'gv-rw-quest');
   assert.ok(q, 'the quest card');
   assert.strictEqual(text(first(q, 'gv-rw-quest-xp')), '+120 XP');
@@ -319,7 +319,7 @@ check('U12 the real Today page fills its own slots; a rest day has no chip', asy
   assert.strictEqual(page.children[0].children.length, 0, 'empty on the first paint');
   await flush();
   assert.ok(first(page.children[0], 'gv-rw-level'), 'filled when the ledger lands');
-  assert.strictEqual(text(first(first(root, 'gv-hero-chips'), 'gv-rw-xpchip')), 'Up to +145 XP', 'the chip sits in the hero chips');
+  assert.strictEqual(text(first(first(root, 'gv-hero-chips'), 'gv-rw-xpchip')), 'From +145 XP', 'the chip sits in the hero chips');
   const quest = first(root, 'gv-slot-quest');
   assert.ok(first(quest, 'gv-rw-quest'));
   const order = page.children.map(c => clsOf(c).find(x => /^gv-(week|slot-quest)$/.test(x)) || '').filter(Boolean);
