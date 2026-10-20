@@ -3,6 +3,11 @@
 #   - "Verify tag matches manifest version": Obsidian matches the release tag to
 #     manifest.version EXACTLY. This fails the run before publishing a mismatched
 #     tag, so you never ship a release Obsidian cannot find.
+#     The same check also requires package.json and package-lock.json (both of
+#     its version fields) to carry that version, so the files `npm ci` installs
+#     from cannot lag the release.
+#   - "Verify the tagged commit is on main": a tag on a side-branch commit would
+#     publish code that never went through main's review and CI.
 #   - attest-build-provenance: lets anyone run
 #     `gh attestation verify main.js -R RuanPienaarCode/Gym-Vault`.
 #   - gh release create with the three raw assets: manifest.json + main.js +
@@ -27,6 +32,18 @@ jobs:
       # SHA-pinned: this workflow mints provenance with contents:write, so a
       # moving tag is the one thing in it that could change without review.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Full history: "is the tagged commit an ancestor of main" cannot be
+          # answered from a depth-1 clone.
+          fetch-depth: 0
+
+      - name: Verify the tagged commit is on main
+        run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tagged commit $GITHUB_SHA is not on main. Merge it to main, then tag main." >&2
+            exit 1
+          fi
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -73,6 +90,21 @@ jobs:
             echo "Obsidian matches releases to the manifest version exactly — no 'v' prefix." >&2
             exit 1
           fi
+          # The package files must carry the same version: package-lock.json is
+          # what `npm ci` installs from, and a lag there is a release that was
+          # built from a different version than it announces.
+          PKG_VERSION=$(jq -r .version package.json)
+          if [ "$PKG_VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "package.json version '$PKG_VERSION' does not match manifest version '$MANIFEST_VERSION'." >&2
+            exit 1
+          fi
+          for q in '.version' '.packages[""].version'; do
+            V=$(jq -r "$q" package-lock.json)
+            if [ "$V" != "$MANIFEST_VERSION" ]; then
+              echo "package-lock.json $q is '$V', not manifest version '$MANIFEST_VERSION'." >&2
+              exit 1
+            fi
+          done
           # versions.json maps plugin version -> minAppVersion. Obsidian reads it
           # to decide which release an older app may install; a missing entry
           # silently strands users on the previous version.
