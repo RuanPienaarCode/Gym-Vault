@@ -127,6 +127,13 @@ function latestStats(rows) {
      row shouldn't blank stats it didn't remeasure. */
   const out = {};
   for (const r of rows) for (const c of BODY_COLUMNS) if (r[c.key]) out[c.key] = r[c.key];
+  /* A blood pressure is ONE reading: the systolic and diastolic must come
+     from the same row, or the tile prints a pair nobody measured. Use the
+     newest row that has both; none -> no pair at all. */
+  delete out.bp_systolic; delete out.bp_diastolic;
+  for (const r of rows) {
+    if (r.bp_systolic && r.bp_diastolic) { out.bp_systolic = r.bp_systolic; out.bp_diastolic = r.bp_diastolic; }
+  }
   return out;
 }
 
