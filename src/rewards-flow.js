@@ -110,13 +110,17 @@ function medalsFor(ctx, workouts) {
    holds both; a session finished from the log page after leaving the guided one
    finds them in the carry the guided page stashed for THIS draft; a manual session
    has no records (the guided counter is what detects them) and the loaded history
-   stands in for "before". */
+   stands in for "before". A draft that came back after the app was closed carries
+   its records on `draft.live` (draft-store), and resuming it from Today's card goes
+   straight to the log page with no session or carry, so that copy is the last
+   source. */
 function sessionInputs(ctx, draft) {
   const sess = ctx.state && ctx.state.session;
   const carry = ctx.state && ctx.state.sessionCarry;
   if (sess) return { records: sess.records || [], workouts: sess.workoutsAtStart || ctx.data.workouts };
   if (carry && carry.draft === draft) return { records: carry.records || [], workouts: ctx.data.workouts };
-  return { records: [], workouts: ctx.data.workouts };
+  const kept = draft && draft.live && Array.isArray(draft.live.records) ? draft.live.records : [];
+  return { records: kept, workouts: ctx.data.workouts };
 }
 
 function awardsFor(ctx, draft, rows, workoutKey, ledgerState, inputs, keySuffix) {
