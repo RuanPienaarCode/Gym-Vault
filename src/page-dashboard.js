@@ -8,7 +8,7 @@ const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort } = require('./dates');
 const { workoutDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets, countLabel, countNoun } = require('./stats');
 const { streakFlame } = require('./streak-flame');
-const { itemSets, isRestDay } = require('./plan-parse');
+const { itemSets, isRestDay, targetDurationSeconds } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
 const { PlanPickerModal } = require('./modals');
 const { pbInReach, reachText, weekPlan, weekProgress, weekWords, streakRisk, streakRiskText } = require('./progress');
@@ -30,8 +30,18 @@ function kitChips(ctx, day) {
    estMinutes is the ONE minutes rule. It fed the "9 sets · est. 15 min" line
    alone; the Apex / Lock In slab chips read it too, so the two cannot
    disagree. */
-function estMinutes(setsTotal) {
-  return Math.max(15, Math.round(setsTotal * 1.8 / 5) * 5);
+function estMinutes(load) {
+  /* A bare number is a set count (1.8 min a set). A day is read line by line:
+     a set takes the longer of that 1.8 and the time its line WRITES, so
+     `1 x 30 min easy` is 30 minutes, not "~15". A short hold ("3 x 60s")
+     stays under the per-set allowance and reads exactly as before. */
+  const raw = typeof load === 'number'
+    ? load * 1.8
+    : ((load && load.items) || []).reduce((n, it) => {
+        const sets = itemSets(it), written = targetDurationSeconds(it.target || '');
+        return n + Math.max(sets * 1.8, written ? sets * written / 60 : 0);
+      }, 0);
+  return Math.max(15, Math.round(raw / 5) * 5);
 }
 
 /* The Start button's words, keyed by skin. Apex and Lock In wear the mockups'
@@ -92,11 +102,11 @@ function titleNode(name) {
    chips and hide the text line they replace; the other skins hide the chips.
    `xpSlot` is the empty span for "up to +N XP": rewards-ui fills it (rewards on,
    ledger read), and it draws nothing while it is empty. */
-function heroChips(setsTotal, xpSlot) {
+function heroChips(setsTotal, minutes, xpSlot) {
   return el('div', { class: 'gv-hero-chips' },
     el('div', { class: 'gv-hero-chip-row' },
       el('span', { class: 'gv-hero-chip' }, countLabel(setsTotal, 'set')),
-      el('span', { class: 'gv-hero-chip gv-hero-chip-min' }, `~${estMinutes(setsTotal)} min`)),
+      el('span', { class: 'gv-hero-chip gv-hero-chip-min' }, `~${minutes} min`)),
     xpSlot);
 }
 
@@ -244,7 +254,8 @@ function render(ctx, root) {
     const { plan: dayPlan, day } = todays[0];
     const setsTotal = day.items.reduce((n, it) => n + itemSets(it), 0);
     addTitle(day.name);
-    stage.append(heroChips(setsTotal, xpSlot));
+    const minutes = estMinutes(day);
+    stage.append(heroChips(setsTotal, minutes, xpSlot));
     trainingDay = day;
     stage.classList.add('has-chips');
     const prose = (day.notes || []).join(' ').trim();
@@ -275,7 +286,7 @@ function render(ctx, root) {
       el('span', { style: 'top:74%;left:-8%;width:50%' }));
     slab.append(speed);
     slab.append(el('div', { class: 'gv-hero-action-line' },
-      el('span', { class: 'gv-shout gv-shout-est' }, `${countLabel(setsTotal, 'set')} · est. ${estMinutes(setsTotal)} min`),
+      el('span', { class: 'gv-shout gv-shout-est' }, `${countLabel(setsTotal, 'set')} · est. ${minutes} min`),
       el('span', { class: 'gv-shout' },
         lastDate ? `Last: ${fmtShort(lastDate)} · ${countLabel(sessionSets(last.rows), 'set')}` : 'First session — make it count')));
     const copy = startCopy(settings.skin, doneToday);
