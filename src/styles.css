@@ -5092,6 +5092,53 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
   .gv-app.gv-skin-poster .gv-live-zone .gv-session-count { font-size: min(40vw, 17vh, 208px); }
   .gv-app.gv-skin-poster .gv-live-head .gv-session-exname.gv-live-name { font-size: clamp(30px, 11vw, 40px); }
 }
+/* THE LIVE SET FILLS THE PANE EXACTLY (usability fix wave, M-01). The page used
+   to be `min-height: 100%`, so the moment the header, the PB target, the count
+   and the sheet needed more than the pane the page simply grew, and "Tick set"
+   sat below the fold on every iPhone (393x852: pane 741px, content 1014px).
+   `height: 100%` makes the pane the budget: the count zone is the one flexible
+   piece and takes whatever is left, down to its own small floor, and the
+   compaction below (keyed on the PANE through controller.js's `gv-short` and
+   `gv-shorter`, not on the window: an 852px window is a 741px pane) trims the
+   fixed pieces so the floor is never needed. The zone is `touch-action: none`,
+   so it cannot be dragged to scroll the Tick slab into view: the fit has to be
+   done by layout. A page that still cannot fit overflows and scrolls. */
+.gv-app.gv-skin-poster .gv-session-page { height: 100%; }
+.gv-app.gv-skin-poster.gv-short .gv-live-head .gv-session-exname.gv-live-name { font-size: clamp(30px, 10vw, 40px); }
+.gv-app.gv-skin-poster.gv-short .gv-live-head { margin-bottom: 4px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-toprow { margin-bottom: 2px; }
+.gv-app.gv-skin-poster.gv-short .gv-pb-target-marks { display: none; }
+.gv-app.gv-skin-poster.gv-short .gv-live-rail { margin-top: 6px; }
+.gv-app.gv-skin-poster.gv-short .gv-live .gv-pb-target { margin: 2px 0 6px; padding: 6px 20px 8px; row-gap: 0; }
+.gv-app.gv-skin-poster.gv-short .gv-pb-target-kicker { font-size: 11px; }
+.gv-app.gv-skin-poster.gv-short .gv-pb-target-label { font-size: clamp(28px, 9vw, 34px); }
+.gv-app.gv-skin-poster.gv-short .gv-pb-target-now { font-size: 18px; }
+.gv-app.gv-skin-poster.gv-short .gv-pb-target-togo { font-size: 11.5px; }
+.gv-app.gv-skin-poster.gv-short .gv-pb-target-bar { margin-top: 6px; height: 10px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-zone.gv-session-zone { min-height: 96px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-zone .gv-session-count { font-size: min(34vw, 12vh, 130px); }
+.gv-app.gv-skin-poster.gv-short .gv-live-zone.gv-live-hold .gv-session-count { font-size: min(26vw, 10vh, 110px); }
+.gv-app.gv-skin-poster.gv-short .gv-live-zone .gv-rc-tapchip { display: none; }
+.gv-app.gv-skin-poster.gv-short .gv-live-ring,
+.gv-app.gv-skin-poster.gv-short .gv-live-lbl { display: none; }
+.gv-app.gv-skin-poster.gv-short .gv-live-nx { font-size: 20px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-nx small { display: inline; margin: 0 0 0 8px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-next { margin-bottom: 6px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-sheet { padding-top: 28px; padding-bottom: 10px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-utility { margin-bottom: 8px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-weight { padding-bottom: 16px; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-next { display: none; }
+.gv-app.gv-skin-poster.gv-shorter .gv-pb-target-kicker { display: none; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-head .gv-session-exname.gv-live-name { font-size: clamp(26px, 8vw, 32px); }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-head .gv-session-frame { height: 52px; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-head.has-media { grid-template-columns: minmax(0, 1fr) 70px; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-zone.gv-session-zone { min-height: 84px; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-zone .gv-rc-countin-label { display: none; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-zone .gv-session-count { font-size: min(24vw, 9vh, 76px); }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-zone.gv-live-hold .gv-session-count { font-size: min(20vw, 8vh, 64px); }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-sheet { padding-top: 24px; padding-bottom: 8px; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-tick { min-height: 54px; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-utility { margin-bottom: 6px; }
 @media (prefers-reduced-motion: reduce) {
   .gv-app.gv-skin-poster .gv-live-pip.is-cur { animation: none; }
 }

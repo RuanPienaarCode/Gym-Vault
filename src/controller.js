@@ -30,6 +30,22 @@ const pages = {
   session: require('./page-session'),
 };
 
+/* K4 (usability fix wave 20 Oct 2026, M-01): how short is the PANE? The live
+   set screen needs ~830px of pane to lay out at full size, and a phone's pane
+   is the window less Obsidian's bars (an iPhone 15's 852px window is a 741px
+   pane), so the compaction that used to key on `@media (max-height)` — the
+   WINDOW — never fired where it was needed. controller.js puts `gv-short` on the
+   view root at SHORT_PANE_PX and under, and `gv-shorter` (as well) at
+   SHORTER_PANE_PX and under; styles.css keys on those. 0 means "not measured
+   yet" (a hidden pane reports 0 x 0) and is neither. */
+const SHORT_PANE_PX = 860;
+const SHORTER_PANE_PX = 680;
+function paneHeightTier(h) {
+  if (!(h > 0)) return 0;
+  if (h <= SHORTER_PANE_PX) return 2;
+  return h <= SHORT_PANE_PX ? 1 : 0;
+}
+
 const NAV = [
   { id: 'dashboard', label: 'Today', icon: 'flame' },
   { id: 'exercises', label: 'Exercises', icon: 'dumbbell' },
@@ -639,8 +655,14 @@ function mountApp(view) {
   const watchWidth = () => {
     if (typeof ResizeObserver === 'undefined') return;
     resizeObs = new ResizeObserver(entries => {
-      const w = entries[entries.length - 1].contentRect.width;
+      const rect = entries[entries.length - 1].contentRect;
+      const w = rect.width;
       rootEl.classList.toggle('gv-narrow', w > 0 && w <= 480);
+      /* The PANE's height, the same way: a media query sees the window, and the
+         window is 110px taller than the pane an iPhone actually gives a view. */
+      const tier = paneHeightTier(rect.height);
+      rootEl.classList.toggle('gv-short', tier >= 1);
+      rootEl.classList.toggle('gv-shorter', tier >= 2);
     });
     resizeObs.observe(rootEl);
   };
@@ -788,6 +810,6 @@ function renderSetup(ctx, root) {
    harness, which both need the real tab list rather than a copy of it — a
    copied nav is a nav that silently stops matching the app. */
 module.exports = {
-  mountApp, NAV, resolveDaysOn, isImplicitActive, describeDraft,
+  mountApp, NAV, paneHeightTier, SHORT_PANE_PX, SHORTER_PANE_PX, resolveDaysOn, isImplicitActive, describeDraft,
   isPaused, parallelPlansOf, fallbackPlansOf, runPlanOf,
 };
