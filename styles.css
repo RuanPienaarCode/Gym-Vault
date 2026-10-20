@@ -515,7 +515,8 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
 .theme-dark .gv-app .gv-btn { background: var(--gv-lime); border-color: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-btn .gv-ico svg { width: 14px; height: 14px; }
 .gv-btn:hover { filter: brightness(1.15); }
-.gv-btn-small { padding: 7px 11px; }
+/* .gv-app, to out-rank `.gv-app .gv-btn` above: bare, this lost to it and a small button was full size (W4-6). */
+.gv-app .gv-btn-small { padding: 7px 11px; }
 .gv-app .gv-btn-ghost, .theme-dark .gv-app .gv-btn-ghost {
   background: var(--gv-surface);
   color: var(--gv-ink);
