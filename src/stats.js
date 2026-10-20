@@ -8,8 +8,14 @@
 
 const { startOfWeek, addDays, todayISO, fromISO, toISO, daysBetween } = require('./dates');
 
+/* A hand-typed decimal COMMA ("7,5", "62,25") is read as a decimal point, but
+   only for digits, a comma and one or two digits. Three digits after the comma
+   ("1,000") is a thousands separator or a typo, never 1.0, so it is left to
+   parseFloat exactly as before. */
+const COMMA_DECIMAL = /^\d+,\d{1,2}$/;
 const num = v => {
-  const n = parseFloat(v);
+  const s = typeof v === 'string' ? v.trim() : v;
+  const n = parseFloat(typeof s === 'string' && COMMA_DECIMAL.test(s) ? s.replace(',', '.') : s);
   return Number.isFinite(n) ? n : null;
 };
 
