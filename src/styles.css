@@ -2080,19 +2080,27 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
    here. */
 .gv-rc-zone[data-fill="hot"]::before {
   background: var(--gv-stage-hot); opacity: var(--gv-stage-hot-a);
+  --gv-breathe-a: var(--gv-stage-hot-a);
   animation: gv-fill-breathe 1500ms ease-in-out infinite;
 }
 .gv-rc-zone[data-fill="peak"]::before {
   background: var(--gv-stage-peak); opacity: var(--gv-stage-peak-a);
+  --gv-breathe-a: var(--gv-stage-peak-a);
   animation: gv-fill-breathe 820ms ease-in-out infinite;
 }
 .gv-rc-zone[data-fill="done"]::before {
   background: var(--gv-lime); opacity: var(--gv-stage-done-a);
   animation: gv-fill-hit 620ms ease-out 1;
 }
+/* The breath is the flood's OPACITY, not a `filter: brightness()` (a paint property, repainted every
+   frame of a loop): the compositor runs this one. It goes the way brightness(1.13) went on each
+   ground: up on the near-black dark page (more flood is more light), down on the light page (less
+   flood lets the white through). --gv-breathe-a is the stage's own opacity, set on the stage rules. */
+.gv-rc-zone[data-fill] { --gv-breathe-k: 0.92; }
+.theme-dark .gv-rc-zone[data-fill] { --gv-breathe-k: 1.13; }
 @keyframes gv-fill-breathe {
-  0%, 100% { filter: brightness(1); }
-  50%      { filter: brightness(1.13); }
+  0%, 100% { opacity: var(--gv-breathe-a); }
+  50%      { opacity: calc(var(--gv-breathe-a) * var(--gv-breathe-k)); }
 }
 @keyframes gv-fill-hit {
   0%   { opacity: var(--gv-stage-done-a); }
@@ -3206,28 +3214,35 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 }
 .gv-app .gv-voice-rec .gv-ico svg { width: 30px; height: 30px; }
 .gv-app .gv-voice-rec:hover { background: var(--gv-lime-ghost); }
-.gv-app .gv-voice-rec.live {
-  border-color: var(--gv-danger); color: var(--gv-danger);
-  animation: gv-voice-pulse 1s ease-in-out infinite;
-}
+.gv-app .gv-voice-rec.live { border-color: var(--gv-danger); color: var(--gv-danger); }
 .gv-app .gv-voice-rec.review { border-color: var(--gv-lime-deep); color: var(--gv-lime-deep); }
 .theme-dark .gv-app .gv-voice-rec.review { border-color: var(--gv-lime); color: var(--gv-lime); }
-/* The pulse is --gv-danger at 35% — but a box-shadow cannot take a colour
-   variable inside rgba(), so the keyframes name the light and dark values
-   by hand and the dark theme swaps the animation. Composited over the dark
-   surface, the light-theme red is a near-black maroon that does not read
-   as "live" at all. Same lesson as the disabled switch: one value cannot
-   serve both themes. */
+/* The "live" halo: a disc of --gv-danger, the button's own size, BEHIND the button (z-index -1 in the
+   card, which is its own stacking context, so it paints over the card's surface and under the
+   button's opaque face): only the ring outside the button shows. It grows 14px and fades, moving
+   transform and opacity only. It used to be an animated box-shadow, repainted every frame of the
+   loop. --gv-danger is the theme's own value, so one keyframes serves both; the light red needs less
+   opacity than the dark one to read (0.35 on paper, 0.45 on graphite, as before). */
+.gv-voice-wizard { isolation: isolate; }
+.gv-app .gv-voice-rec { position: relative; }
+.gv-app .gv-voice-rec.live { --gv-pulse-a: 0.35; }
+.theme-dark .gv-app .gv-voice-rec.live { --gv-pulse-a: 0.45; }
+.gv-app .gv-voice-rec.live::after {
+  content: '';
+  position: absolute;
+  top: -3px; right: -3px; bottom: -3px; left: -3px;
+  border-radius: 50%;
+  background: var(--gv-danger);
+  opacity: 0;
+  z-index: -1;
+  pointer-events: none;
+  animation: gv-voice-pulse 1s ease-in-out infinite;
+}
 @keyframes gv-voice-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.35); }
-  50% { box-shadow: 0 0 0 14px rgba(185, 28, 28, 0); }
+  0%, 100% { opacity: var(--gv-pulse-a); transform: scale(1); }
+  50% { opacity: 0; transform: scale(1.206); }
 }
-@keyframes gv-voice-pulse-dark {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.45); }
-  50% { box-shadow: 0 0 0 14px rgba(248, 113, 113, 0); }
-}
-.theme-dark .gv-app .gv-voice-rec.live { animation-name: gv-voice-pulse-dark; }
-@media (prefers-reduced-motion: reduce) { .gv-app .gv-voice-rec.live { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .gv-app .gv-voice-rec.live::after { animation: none; } }
 
 .gv-voice-level { height: 8px; max-width: 260px; margin: 14px auto 0; background: var(--gv-line); overflow: hidden; }
 .gv-voice-level-fill {
