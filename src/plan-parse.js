@@ -19,6 +19,7 @@
 
      day heading   ## <name> (<weekday>)     weekday ∈ mon..sun
      item          - <exercise> | <sets> x <target>
+                   (also `* ` / `+ ` bullets and `1.` / `1)` numbered lines)
                    - <exercise> | <free text>
                    - <exercise>
      weight        an optional `@ <n>kg` anywhere in the target
@@ -33,13 +34,30 @@ const { splitBarePipes, escMd, unescMd } = require('./markdown');
    the day fills whatever weekday nothing else has claimed. */
 const DAY_HEADING = /^##\s+(.+?)\s*\((mon|tue|wed|thu|fri|sat|sun|any)\)\s*$/i;
 
-/* `5 x submax` → {sets: 5, target: 'submax'}; plain text → {sets: null}. */
+/* `5 x submax` → {sets: 5, target: 'submax'}; plain text → {sets: null}.
+
+   Hand-written shapes (L2-16, wave 2) are read as well: "3X8", "3 X 8",
+   "4 sets of 10", "3 sets x 10", "3 sets × 10". The original lowercase
+   `N x text` / `N × text` rule is tried FIRST and unchanged, so every line
+   that parsed before parses identically; the new shapes only claim text that
+   used to be taken whole as the target. */
 function parsePrescription(text) {
   const t = (text || '').trim();
   const m = t.match(/^(\d+)\s*[x×]\s*(.+)$/);
   if (m) return { sets: +m[1], target: m[2].trim() };
+  const m2 = t.match(/^(\d+)\s*(?:sets?\s*(?:of\s+|[xX×]\s*)|[X]\s*)(.+)$/i);
+  if (m2) return { sets: +m2[1], target: m2[2].trim() };
   return { sets: null, target: t };
 }
+
+/* An exercise line starts with one of the list markers markdown allows:
+   `- `, `* `, `+ `, or a number with `.` / `)` ("1. ", "2) "). Matched on the
+   RAW line, so an indented marker stays the author's own annotation. A line
+   of three or more `*` / `-` / `_` (a thematic break such as `* * *`) is a
+   rule, never an exercise. */
+const ITEM_LINE = /^(-|[*+]|\d+[.)]) /;
+const THEMATIC_BREAK = /^([*_-])(?:\s*\1){2,}\s*$/;
+const KEPT_MARKER = /^(?:[*+]|\d+[.)]) $/;
 
 /* Optional `@ 60kg` (or `@ 60 kg`) inside a target string. */
 function targetWeight(target) {
@@ -137,12 +155,17 @@ function parsePlanBody(body) {
        first-class items: they showed up in the day's exercise list, were
        logged as exercises, inflated the set count, and the write-back
        flattened the author's nesting on disk. Match the RAW line. */
-    if (day && !fenced && /^- /.test(line)) {
-      const cells = splitBarePipes(line.slice(2)).map(c => c.trim());
+    const bullet = day && !fenced ? line.match(ITEM_LINE) : null;
+    if (bullet && (bullet[1] === '-' || !THEMATIC_BREAK.test(line.trim()))) {
+      const cells = splitBarePipes(line.slice(bullet[0].length)).map(c => c.trim());
       /* Everything after the FIRST pipe is the prescription — rejoining
          keeps a hand-written `- A | B | C` intact instead of dropping C. */
       const { sets, target } = parsePrescription(cells.slice(1).join(' | '));
       const item = { exercise: unescMd(cells[0] || ''), sets, target };
+      /* Remember a marker other than `- ` so the first save writes the line
+         back the way the author typed it. A `- ` item carries no key at all,
+         so every existing item keeps exactly its old shape. */
+      if (bullet[0] !== '- ') item.marker = bullet[0];
       day.parts.push({ kind: 'item', item });
       day.items.push(item);
       continue;
@@ -240,7 +263,8 @@ const itemSets = it => it.sets || 3;
 
 function serializeItem(it) {
   const rhs = it.sets != null ? `${it.sets} x ${it.target || ''}`.trim() : (it.target || '');
-  return rhs ? `- ${escMd(it.exercise)} | ${rhs}` : `- ${escMd(it.exercise)}`;
+  const lead = it.marker && KEPT_MARKER.test(it.marker) ? it.marker : '- ';
+  return rhs ? `${lead}${escMd(it.exercise)} | ${rhs}` : `${lead}${escMd(it.exercise)}`;
 }
 
 function serializePlanBody(model) {
