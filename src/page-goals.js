@@ -3,7 +3,7 @@
 
 const { el, ico, fmt, fmtSeconds, ring, emptyLine } = require('./dom');
 const { GOAL_METRICS } = require('./constants');
-const { goalCurrent, goalIssue, goalProgress } = require('./stats');
+const { goalCurrent, goalIssue, goalProgress, countLabel } = require('./stats');
 const { todayISO, daysBetween, fmtShort } = require('./dates');
 const { FormModal, ConfirmModal } = require('./modals');
 
@@ -64,7 +64,7 @@ function render(ctx, root) {
           p === null ? el('span', { class: 'gv-dim' }, issue ? ` — ${issue}` : ' — log a workout to start tracking') : ''),
         dl ? el('div', { class: `gv-goal-deadline${dLeft !== null && dLeft < 0 && !done ? ' over' : ''}` },
           done ? `done · target was ${fmtShort(dl)}`
-               : dLeft === null ? '' : dLeft >= 0 ? `${dLeft} days left · ${fmtShort(dl)}` : `${-dLeft} days past ${fmtShort(dl)}`) : ''),
+               : dLeft === null ? '' : dLeft >= 0 ? `${countLabel(dLeft, 'day')} left · ${fmtShort(dl)}` : `${countLabel(-dLeft, 'day')} past ${fmtShort(dl)}`) : ''),
       el('div', { class: 'gv-card-actions' },
         iconBtn('pencil', 'Edit', () => openEdit(ctx, g)),
         iconBtn('trash-2', 'Delete', () => new ConfirmModal(ctx.app, {

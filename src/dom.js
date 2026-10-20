@@ -120,10 +120,13 @@ const fmt = (v, suffix) => (v === null || v === undefined || v === '' ? '—' : 
 
 /* mm:ss for duration metrics (plank 360 → "6:00"). */
 const fmtSeconds = sec => {
-  const n = parseFloat(sec);
-  if (!Number.isFinite(n)) return '—';
-  if (n < 60) return `${Math.round(n)}s`;
-  const m = Math.floor(n / 60), s = Math.round(n % 60);
+  const f = parseFloat(sec);
+  if (!Number.isFinite(f)) return '—';
+  /* Round ONCE, then split: rounding the seconds after the minute split read
+     119.6 as "1:60" and 59.5 as "60s". */
+  const n = Math.round(f);
+  if (n < 60) return `${n}s`;
+  const m = Math.floor(n / 60), s = n % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 };
 
@@ -437,7 +440,16 @@ function segmented(options, current, onPick, opts) {
    not a reason to bring the minus back here — this helper is shared by
    every numeric field in the app. */
 function normaliseNumber(raw) {
-  let v = String(raw == null ? '' : raw).replace(/[^0-9.,]/g, '');
+  /* A phone keyboard set to Arabic, Persian or a full-width IME types digits
+     that are not [0-9]; they used to be erased as junk. Map them to ASCII
+     first (U+0660-0669, U+06F0-06F9, U+FF10-FF19), and the Arabic decimal
+     separator (U+066B) and full-width full stop (U+FF0E) to the point. */
+  let v = String(raw == null ? '' : raw)
+    .replace(/[\u0660-\u0669]/g, c => String(c.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, c => String(c.charCodeAt(0) - 0x06F0))
+    .replace(/[\uFF10-\uFF19]/g, c => String(c.charCodeAt(0) - 0xFF10))
+    .replace(/[\u066B\uFF0E]/g, '.');
+  v = v.replace(/[^0-9.,]/g, '');
   /* A comma IS a decimal point here. */
   v = v.replace(/,/g, '.');
   const i = v.indexOf('.');

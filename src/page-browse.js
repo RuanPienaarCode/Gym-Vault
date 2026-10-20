@@ -7,6 +7,7 @@
    grouped so a four-phase programme reads as one thing, not four. */
 
 const { el, ico, backButton, emptyLine } = require('./dom');
+const { countLabel } = require('./stats');
 
 function render(ctx, root) {
   const ui = ctx.state.browseUi || (ctx.state.browseUi = { index: null, error: null, loading: false, busy: null });
@@ -87,7 +88,7 @@ function phaseRow(ctx, p, have, draw) {
   return el('div', { class: 'gv-browse-phase' },
     el('span', { class: 'gv-browse-phase-n' }, `${p.phase}`),
     el('span', { class: 'gv-browse-phase-name' }, p.name.replace(/^.*?·\s*/, '')),
-    el('span', { class: 'gv-browse-phase-meta' }, `${p.days} days · ${p.exercises.length} exercises`),
+    el('span', { class: 'gv-browse-phase-meta' }, `${countLabel(p.days, 'day')} · ${countLabel(p.exercises.length, 'exercise')}`),
     added
       ? el('span', { class: 'gv-tag' }, 'added')
       : addButton(ctx, 'plan:' + p.name, 'gv-btn gv-btn-ghost gv-btn-small', 'Add', () => installOne(ctx, p, draw)));
@@ -99,7 +100,7 @@ function planCard(ctx, p, have, draw) {
     el('div', { class: 'gv-browse-head' },
       el('div', {},
         el('div', { class: 'gv-browse-name' }, p.name),
-        el('div', { class: 'gv-kicker' }, `${p.days} days · ${p.exercises.length} exercises${p.fallback ? ' · fills empty days' : p.parallel ? ' · runs alongside' : ''}`)),
+        el('div', { class: 'gv-kicker' }, `${countLabel(p.days, 'day')} · ${countLabel(p.exercises.length, 'exercise')}${p.fallback ? ' · fills empty days' : p.parallel ? ' · runs alongside' : ''}`)),
       added
         ? el('span', { class: 'gv-badge' }, 'added')
         : addButton(ctx, 'plan:' + p.name, 'gv-btn gv-btn-small', 'Add', () => installOne(ctx, p, draw))),
