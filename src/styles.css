@@ -546,6 +546,19 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
 }
 .gv-app .gv-chip.on { background: var(--gv-ink); border-color: var(--gv-ink); color: var(--gv-lime-hi); }
 .theme-dark .gv-app .gv-chip.on { background: var(--gv-lime); border-color: var(--gv-lime); color: var(--gv-ink-fixed); }
+/* FLOOR AND EDITORIAL KEEP THE 24px LOOK AND GET A 44px TOUCH BOX (R1-04). Apex and
+   Lock In chips are already min-height 44. The extra reach is a transparent
+   ::before 11px past the chip's padding box above and below (the 1px border is the
+   chip's own, so 11 + 22 + 11 = 44) - the .gv-planswap pattern - and the chip carries
+   8px of margin each side, so that wrapped rows (6px gap + 2 x 8px = 22px = 2 x 11px)
+   have touch boxes that MEET instead of overlapping: where two overlap the
+   later row wins, which would give the bottom of a visible chip to the chip beneath.
+   Page chips only; the rep counter's and photo viewer's chips are in modals and are
+   already 48px. */
+.gv-app.gv-skin-floor .gv-page .gv-chip,
+.gv-app.gv-skin-editorial .gv-page .gv-chip { position: relative; margin: 8px 0; }
+.gv-app.gv-skin-floor .gv-page .gv-chip::before,
+.gv-app.gv-skin-editorial .gv-page .gv-chip::before { content: ''; position: absolute; top: -11px; bottom: -11px; left: -3px; right: -3px; }
 
 /* Reading-register card: paper + hairline, square. */
 .gv-card {
