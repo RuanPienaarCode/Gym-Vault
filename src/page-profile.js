@@ -58,8 +58,8 @@ function render(ctx, root) {
   if (latest.bp_systolic && latest.bp_diastolic) {
     tiles.append(statTile(ico('gauge'), `${latest.bp_systolic}/${latest.bp_diastolic}`, 'blood pressure'));
   }
-  if (latest.cholesterol) tiles.append(statTile(ico('test-tube'), fmt(latest.cholesterol), 'cholesterol'));
-  if (latest.glucose) tiles.append(statTile(ico('droplet'), fmt(latest.glucose), 'glucose'));
+  if (latest.cholesterol) tiles.append(statTile(ico('test-tube'), fmt(latest.cholesterol, unitOf('cholesterol')), 'cholesterol'));
+  if (latest.glucose) tiles.append(statTile(ico('droplet'), fmt(latest.glucose, unitOf('glucose')), 'glucose'));
   root.append(tiles);
 
   /* Weight trend. */
@@ -120,6 +120,14 @@ function render(ctx, root) {
     for (const para of notes.split(/\n\s*\n/)) noteCard.append(el('p', {}, para.replace(/\n/g, ' ')));
     root.append(noteCard);
   }
+}
+
+/* The unit a body-log column is stored in, read from its declared label
+   ("Cholesterol (mmol/L)" -> " mmol/L"), so the tile and the log agree. */
+function unitOf(key) {
+  const col = BODY_COLUMNS.find(c => c.key === key);
+  const m = col && /\(([^)]+)\)/.exec(col.label);
+  return m ? ` ${m[1]}` : '';
 }
 
 function latestStats(rows) {
