@@ -18,7 +18,7 @@ const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
 const { clipFileName, keyFromFileName } = require('./voice-pack');
-const { workoutDate, sameName } = require('./stats');
+const { sameName, compareWorkouts } = require('./stats');
 const rewardsLedger = require('./rewards-ledger');
 const { rewardsEnabled } = require('./rewards');
 
@@ -309,19 +309,14 @@ function makeIo(plugin) {
       data.workouts.push({ name: f.basename, file: f, fm, rows: tableToObjects(body, WORKOUT_COLUMNS) });
       data.present = true;
     }
-    /* Return 0 on equality: returning 1 makes the comparator
-       non-antisymmetric, and two sessions logged on the SAME day (which
-       saveWorkout explicitly supports) then get an unstable order. */
-    /* Sorted by workoutDate(), the one rule for a session's day — not by the
-       raw frontmatter string. A sloppy `date: 2026-8-6` sorted AFTER
-       `2026-09-01` lexically and so became the last workout in the array,
-       which is what the dashboard's "last session" tile reads — a note Today
-       refuses to recognise at all. Unreadable dates sort last, so they never
-       displace a real one. */
-    data.workouts.sort((a, b) => {
-      const x = workoutDate(a) || '', y = workoutDate(b) || '';
-      return x < y ? -1 : x > y ? 1 : 0;
-    });
+    /* Sorted by stats.compareWorkouts, the one order for workout notes: by
+       workoutDate() (not the raw frontmatter string: a sloppy `2026-8-6`
+       sorted AFTER `2026-09-01` lexically and became the "last session" the
+       dashboard reads), then by time of day when the note gives one, then by
+       file name. Unreadable dates sort first, so they never displace a real
+       one. Two sessions on the SAME day (saveWorkout supports that) used to be
+       left in file-name order, so "last" was whichever name sorted last. */
+    data.workouts.sort(compareWorkouts);
     /* Plans and goals name exercises; a renamed or deleted note leaves the
        name pointing at nothing. Said out loud on the Exercises page. */
     data.missingExercises = findMissingExercises(data);

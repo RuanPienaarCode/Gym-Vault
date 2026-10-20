@@ -260,8 +260,18 @@ assert.deepStrictEqual(records.recordHistory(HISTORY, 'Push-ups', undefined), []
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'data.js'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
-  assert.match(src, /data\.workouts\.sort\(\(a, b\) => \{\s*const x = workoutDate\(a\) \|\| '', y = workoutDate\(b\) \|\| '';/,
-    'loadAll must order workouts by workoutDate — the last element of that array IS the "last session" tile');
+  /* Wave 2 (L1-11): the comparator moved into stats.compareWorkouts, which
+     orders by workoutDate FIRST (then time of day, then name). loadAll must
+     use it, and the rule itself is exercised here. */
+  assert.match(src, /data\.workouts\.sort\(compareWorkouts\)/,
+    'loadAll must order workouts by stats.compareWorkouts — the last element of that array IS the "last session" tile');
+  {
+    const { compareWorkouts } = require('../src/stats');
+    const sloppy = { fm: { date: '2026-8-6' }, name: 'a' }, later = { fm: { date: '2026-09-01' }, name: 'b' }, nodate = { fm: {}, name: 'c' };
+    assert.strictEqual([later, sloppy, nodate].sort(compareWorkouts).pop().name, 'b',
+      'compareWorkouts orders by workoutDate: an unreadable date (a sloppy 2026-8-6, or none) never displaces a real last session');
+    assert.strictEqual([sloppy, later, nodate].sort(compareWorkouts).pop().name, 'b');
+  }
   assert.ok(!/const x = a\.fm\.date \|\| '', y = b\.fm\.date \|\| ''/.test(src),
     'the raw-string comparator is what let an unreadable date become your most recent session');
 

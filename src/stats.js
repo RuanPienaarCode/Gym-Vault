@@ -36,6 +36,37 @@ function workoutDate(w) {
   return d ? toISO(d) : null;
 }
 
+/* The time of day a workout note says it was done, as zero-padded "HH:MM", or
+   '' when it says none. Read from a `time:` / `started:` key, else from the
+   time part of `date:` ("2026-08-26T09:30"). The app writes none of these
+   itself, so this only orders sessions a person (or another tool) dated. */
+function workoutTime(w) {
+  const fm = (w && w.fm) || {};
+  for (const raw of [fm.time, fm.started, fm.date]) {
+    const m = String(raw === null || raw === undefined ? '' : raw).match(/(?:^|[T\s])(\d{1,2}):(\d{2})/);
+    if (m && +m[1] < 24 && +m[2] < 60) return (m[1].length < 2 ? '0' : '') + m[1] + ':' + m[2];
+  }
+  return '';
+}
+
+/* THE order of workout notes, oldest first: by day (workoutDate; an unreadable
+   date sorts first, so it never displaces a real "last session"), then by the
+   time of day when the notes give one, then by file name read numerically
+   ("Push 2" before "Push 10"), then by path. Total and independent of the
+   order the files were listed in, so two sessions on one day always come out
+   the same way round. */
+function compareWorkouts(a, b) {
+  const x = workoutDate(a) || '', y = workoutDate(b) || '';
+  if (x !== y) return x < y ? -1 : 1;
+  const tx = workoutTime(a), ty = workoutTime(b);
+  if (tx !== ty) return tx < ty ? -1 : 1;
+  const na = String((a && a.name) || ''), nb = String((b && b.name) || '');
+  const byName = na.localeCompare(nb, undefined, { numeric: true });
+  if (byName) return byName;
+  const pa = String((a && a.file && a.file.path) || ''), pb = String((b && b.file && b.file.path) || '');
+  return pa < pb ? -1 : pa > pb ? 1 : 0;
+}
+
 function workoutDates(workouts) {
   const set = new Set();
   for (const w of workouts) {
@@ -139,7 +170,8 @@ function exerciseBests(workouts, exercise) {
     if (sc !== null && (seconds === null || sc > seconds)) seconds = sc;
     if (di !== null && (distance === null || di > distance)) distance = di;
     if (di !== null) totalDistance += di;
-    if (w.fm && w.fm.date && (!lastDate || w.fm.date > lastDate)) lastDate = w.fm.date;
+    const wd = workoutDate(w);
+    if (wd && (!lastDate || wd > lastDate)) lastDate = wd;
   });
   /* totalDistance stays 0-vs-null honest: null distance means never run. */
   return { reps, weight, seconds, distance, totalDistance: Math.round(totalDistance * 10) / 10, lastDate };
@@ -378,7 +410,7 @@ function bmi(weightKg, heightCm) {
 }
 
 module.exports = {
-  num, workoutDates, workoutDate, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM, best1RM,
+  num, workoutDates, workoutDate, workoutTime, compareWorkouts, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM, best1RM,
   sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek, ranOn,
   goalCurrent, goalIssue, goalProgress, weightSeries, bmi, claimableKinds, claimedBests,
 };
