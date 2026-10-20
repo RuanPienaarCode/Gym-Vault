@@ -16,17 +16,20 @@ desktop and mobile.
   set per exercise. Each exercise opens a detail page: how-to steps (the note
   body, rendered as markdown), an image or video, your bests and recent sets.
   Media comes from `image:` / `video:` frontmatter — a vault path (offline,
-  synced) or an https URL. Seed images are from
+  synced) or an https URL. Starter images are from
   [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
-  (public domain / Unlicense). Tap any image — on the exercise page or the
+  (public domain / Unlicense) and [wger.de](https://wger.de) (CC-BY-SA 4.0);
+  see *Third-party material* below. Tap any image — on the exercise page or the
   thumbnail on the live set — to open it full screen: the frames large, an
   animation you can pause, and previous/next (or swipe). Settings →
   *Animate exercise images* (on by default) controls whether the start/finish
   frames play by themselves; off keeps them still and you can still step
-  through them. Reduced motion always starts paused.
+  through them. Reduced motion always starts paused. Push-ups, the bodyweight
+  squat and pull-ups also have an animated *muscle map* — see *Muscle map*
+  below.
 - **Plans** — weekly training plans as readable notes (`## Day (mon)` +
   `- Exercise | 4 x 8-12 @ 20kg`); one plan is *active* and drives the
-  dashboard.
+  dashboard. The full format is under *Plan format* below.
 - **Goals** — targets measured from real logged data (best reps, best hold,
   heaviest weight, body weight, workouts per week).
 - **History** — activity heatmap and every logged session, plus a Records
@@ -64,12 +67,27 @@ Requires Obsidian 1.8.0 or newer. Works on desktop and on iOS/Android.
 
 ## Usage
 
-**Open it.** Click the dumbbell in the left ribbon, or run **Gym Vault: Open**
-from the command palette.
+**Open it.** Click the dumbbell in the left ribbon, or run **Open gym** from
+the command palette (it appears as *Gym Vault: Open gym*).
 
-**Set up.** On first run it offers to create starter files — example
-exercises, a training plan, goals and a profile note. Nothing you already have
-is overwritten, and you can re-run it any time from Settings → *Starter files*.
+**Set up.** On first run the app offers **Create my gym**. It writes an
+*example* gym for you to edit or replace, all as notes under your Gym folder:
+
+- a starter library of 68 exercises (with demonstration images and some
+  videos linked from the web — see *Privacy and network use*);
+- the **Get Over The Bar** plan, a four-day pull-up and muscle-up programme.
+  It is set as your active plan unless you already have a plan that drives
+  Today, in which case yours stays in charge;
+- a running plan, **Trail Base — Road to 15km**, with a 12-week long-run ladder
+  starting from the Monday of the current week, and a **Rest & Recovery** plan
+  that fills any weekday the others leave empty;
+- ten goals (pull-ups, dips, muscle-ups, box jumps, a plank, pistol squats, a
+  dead hang, two trail-run distances and workouts per week);
+- a `Profile.md` with empty fields and a `Body Log.md` table.
+
+Nothing you already have is overwritten, and you can re-run it any time from
+Settings → *Starter files*. Delete anything you do not want; the plugin works
+from whatever notes are there.
 
 **Train.** *Today* shows what's scheduled. Tap **Start** and choose how you
 want to be guided:
@@ -90,6 +108,18 @@ pick is kept the same way, as `motion_sensitivity`. On iPhone the first grant
 still comes from your tap on the button; if a remembered start can't begin
 without one, the button stays off and says so.
 
+**Count-back and sound.** Settings → *Count-back* chooses how a rep, a
+countdown or a new record is announced: *Voice* (counted out loud), *My voice*
+(your own recordings, below), *Beeps*, *Vibration* (Android only — iOS does not
+allow it) or *Silent* (the count is still on screen).
+
+**Pausing.** The hold timer, the rest countdown and the timed circuit's
+interval each have a pause button; a pause freezes the clock exactly, and what
+the screen stopped on is what the workout saves. Separately, a plan that runs
+alongside your active plan or fills its empty days has a *Show on Today*
+switch on its page: switch it off to pause that plan (it is kept, and writes
+`paused: true` into its note) without deleting anything.
+
 Either way the session is saved to `Gym/Workouts/` when you're done, and you
 can switch to the plain log screen mid-session without losing a thing. Warm-up
 and cool-down are guidance and are deliberately **not** logged — the plan note
@@ -97,7 +127,7 @@ stays the record of what the session actually was.
 
 **Make it yours.** Everything is a note you can edit by hand. A plan is just
 `## Day name (mon)` headings with `- Exercise | 4 x 8-12` lines underneath, so
-the app and the editor always agree.
+the app and the editor always agree (see *Plan format*).
 
 **Get plans from others.** *Plans → Browse* installs shared plans and any
 exercises they need. Point it somewhere else under Settings → *Plan library*.
@@ -117,26 +147,133 @@ again. Anything you have not recorded is spoken by the device voice, per
 word, so a gap is never silence. Exercise names in a timed circuit always
 stay in the device voice.
 
-**Worth turning on.** Settings → *Download images for offline*, so the
-exercise library works with no connection. There's also an accent colour and
-four visual styles (Apex is the default; Lock In, a black-and-one-hot-accent skin designed around the Blaze accent, Floor and Editorial are also there).
+**Worth turning on.** Settings → *Download images for offline* (the *Download
+images* button), so the exercise library works with no connection. There's
+also an accent colour and four visual styles (Apex is the default; Lock In, a
+black-and-one-hot-accent skin designed around the Blaze accent, Floor and
+Editorial are also there).
+
+## Plan format
+
+A plan is a note in `Gym/Plans/`. The structure lives in the note body, so the
+file reads naturally in Obsidian and the app and the editor always agree. An
+invented example:
+
+```
+---
+active: true
+---
+Four days a week. Anything written here, above the first day, is kept.
+
+## Pull day (mon)
+
+Rest about 90 seconds between hard sets.
+
+- Pull-ups | 5 x submax
+- Inverted Rows | 3 x 8-12 @ 20kg
+Keep the elbows tucked on this one.
+- Dead Hang | 2 x 30-45s
+- Bench Press | 4 x 65% max
+
+## Easy day (sat)
+
+- Recovery Walk | 1 x 20 min easy
+```
+
+- **A day** is a `##` heading ending in a weekday in brackets: `(mon)` to
+  `(sun)`. `(any)` is a wildcard that fills whatever weekday nothing else
+  claims; it is meant for a *fallback* plan (below). A `##` heading with no
+  weekday is not a day, so it folds into the day above it.
+- **An exercise line** is `- Name | sets x target`. The name should match an
+  exercise note in `Gym/Exercises/`. The sets count is optional: `- Push-ups |
+  12` means the default of 3 sets of 12. A bare `- Push-ups` is fine too.
+- **Weight** is `@ 20kg` anywhere in the target (kilograms).
+- **Time**: a target such as `30-45s`, `60 sec` or `2 min` makes a timed set.
+  For a range the first number is used, and the unit is read (`2 min` is 120
+  seconds).
+- **Distance**: an exercise whose note has `unit: km` is logged by distance and
+  time; its target (`1 x 5 km`) is shown as you wrote it.
+- **Free text and percentages**: `submax` or `65% max` are kept and shown as
+  written. They are notes to yourself, so the set counter counts without a
+  target for them.
+- **Prose** between lines, under a day or above the first one, is kept exactly
+  where you wrote it. An *indented* bullet is your own annotation on the line
+  above, not an exercise.
+- **Frontmatter**: `active: true` makes it the plan Today follows (*Make
+  active* in the app clears the flag on your other plans). `paused: true`
+  takes a plan that runs alongside, or fills gaps, off Today without deleting
+  it; on any other plan it means nothing.
+
+**A running plan** is an ordinary plan with three differences. It sets
+`parallel: true`, so its days are added to Today alongside your active plan
+instead of replacing it; its exercises have `unit: km`; and its frontmatter
+carries the long-run ladder that the Running page reads:
+
+```
+---
+parallel: true
+ladder: [4, 5, 6, 5, 7, 8]   # kilometres for the weekend long run, week by week
+start_date: 2026-01-05       # the Monday that week 1 begins
+---
+## Long Run (sat)
+
+- Long Trail Run | 1 x per the ladder
+```
+
+A plan with `fallback: true` (the starter *Rest & Recovery*) does not compete
+with the others: it fills any weekday they leave empty.
+
+## Muscle map
+
+Push-ups, the bodyweight squat (a side and a front view) and pull-ups have an
+animated *muscle map* in place of their photos: the body moves through a rep and
+the muscles doing the work heat up with the load. You see it on the exercise
+page, on the live set, and in the full-screen viewer, where a **Muscle map /
+Photos** button switches between the map and the photos.
+
+- Settings → **Exercise visual**: *Basic* shows the working muscles;
+  *Detailed* adds their names, the load and the steps from the note. The same
+  switch is on the map itself.
+- Settings → **Muscle map body**: which body is drawn, male or female.
+- Settings → **Animate exercise images**: off keeps the map and the photo
+  frames still (you can still step through them). Reduced motion always starts
+  paused.
+- **Opting in.** Those three exercises get a map by name. Any other exercise
+  note can opt in with `motion:` in its frontmatter, set to `push-up`, `squat`
+  or `pull-up`. A `motion:` value the app does not know gives no map.
+- **Which muscles work.** The map lights the muscles from the note's `muscles:`
+  that this movement uses as prime movers (`chest, triceps`, or a list). If none
+  of them match, it shows the movement's own prime movers.
 
 ## Privacy and network use
 
 Your training data never leaves your vault. There is no account, no
-telemetry and no server.
+telemetry and no server of ours.
 
-The plugin touches the network only when you ask it to, and only for these:
+The plugin makes network requests, or lets the app load remote files, for these
+reasons only, and to these hosts:
 
-- **Download images for offline** (Settings) fetches the demonstration images
-  referenced by exercise notes.
-- **Plans → Browse** fetches shared plans from the public plan library you
-  have configured.
-- Exercise notes may reference a remote image or video URL, which your vault
-  loads when you open that exercise. Use the offline download to stop that.
-- **The music button** in a guided session opens Spotify or Apple Music in a
-  new window — only when you tap it, and only to the app or playlist you
-  chose yourself. See *Music* below.
+- **raw.githubusercontent.com**, for the plan library. *Plans → Browse* reads
+  the library index, the plans you pick and the exercise notes they need from
+  the repository set under Settings → *Plan library*. The default is
+  `RuanPienaarCode/gym_plans`; point it at your own repository, or any host
+  that serves the same files, to change that. Some starter exercise images
+  also come from this host (the free-exercise-db project).
+- **wger.de**, for some starter exercises' demonstration photos and videos
+  (CC-BY-SA, credited in the exercise notes).
+- **Anything else** an exercise note's `image:` / `video:` points to, if you
+  or a downloaded plan set one.
+
+Opening a starter exercise loads its online images and, if you play it, its
+video. That is an ordinary web request, so the host sees your IP address and the
+file you asked for. To stop that, use Settings → *Download images for offline*
+(the *Download images* button): it fetches every remote image once, stores it
+in `Gym/Attachments/` and points the notes at the local copies, so nothing is
+fetched for images afterwards. Videos keep streaming because they are large.
+
+The music button opens Spotify or Apple Music in a new window only when you tap
+it, and the plugin does not itself send any request to either. The link you
+chose is simply opened by your device. See *Music* below.
 
 **Music.** Optional, off until you set it up. Settings → *Music app* adds a
 button in guided sessions, and Settings → *Playlists* lets you save Spotify or
@@ -190,41 +327,35 @@ Gym/
                         # (only the table's lines are rewritten — headings and
                         #  prose you write around it are left alone)
   Exercises/<name>.md   # frontmatter: type, muscles, equipment, unit
-                        # (optional: motion_sensitivity, motion_counting)
+                        # (optional: image, video, motion, motion_counting,
+                        #  motion_sensitivity)
                         # subfolders are read too, but the NAME must be unique:
                         # plans and goals refer to exercises by name
   Plans/<name>.md       # day sections + exercise lines (see above)
   Goals/<name>.md       # frontmatter: metric, exercise, target, deadline
   Workouts/<date> <day>.md  # frontmatter + a table of logged sets
+  Attachments/<exercise>/   # exercise images saved by "Download images for offline"
+  Exports/              # exports you save from the Export page (.md, .csv, .json)
   Progress Photos/<pose>/<date>.jpg   # the folder IS the record — no index note
   Voice/<cue>.wav       # your own recordings: count-5 … count-1, go, rep-1 … rep-30,
                         # target, record, goal — the filename is the cue
   Rewards.md            # the XP ledger: one table row per award, append-only
 ```
 
-**Rewards (XP, levels, weekly quest, medals).** XP is counted forward from the
-day the feature arrives — past workouts earn nothing — and is never stored as a
-total: `Rewards.md` holds one line per award (`date | kind | key | xp | note`)
-and every total and level is the sum of those lines. Each award has a stable
-key (`session:<workout file>`, `week-streak:<week>`, `quest:<week>` …), so
-paying the same key twice is a no-op: a double tap on Finish, a retry, or the
-same session finishing on two devices cannot pay twice. Lines are only ever
-appended, to the file's current text, so two synced devices merge by adding
-lines; a hand-edited or broken line is skipped without losing the others. The
-weekly quest and the medals are derived from your plans and your logged
-history, never stored. The engine is `src/rewards.js` (rules) and
-`src/rewards-ledger.js` (file format); the vault reads and writes are
-`io.readRewards` / `io.appendRewards` in `src/data.js`. The `rewards` setting
-(on by default) turns it all off: nothing is awarded and the ledger is not read.
-
-The screens are `src/rewards-view.js` (the words and figures, pure),
-`src/rewards-flow.js` (the per-render ledger cache, Session complete's preview
-and the one place awards are written: after `page-log.finishSession` has saved
-the note, never throwing and never holding the finish up) and
-`src/rewards-ui.js` (the markup; each skin draws it in its own register). Today
-shows a level row, an "up to +N XP" chip and the weekly quest; Session complete
-an XP card and any medal unlocked; Records the medals; Profile the level and
-rank ladder.
+**Rewards (XP, levels, weekly quest, medals).** Finishing a session earns XP,
+and XP builds levels, a weekly quest and medals. XP is counted forward from the
+day the feature arrived — past workouts earn nothing. Every award is one line in
+`Gym/Rewards.md` (`date | kind | key | xp | note`); your total and level are
+simply the sum of those lines, and the weekly quest and the medals are worked
+out from your plans and logged history, never stored. Each award has a stable
+key, so paying the same one twice does nothing: a double tap on Finish, a retry,
+or the same session finishing on two synced devices cannot pay twice. Lines are
+only ever appended, so two devices merge by adding lines, and a hand-edited or
+broken line is skipped without losing the others. Today shows your level, an
+"up to +N XP" chip and the weekly quest; Session complete an XP card and any
+medal unlocked; Records the medals; Profile your level and rank ladder. The
+*Rewards* setting (on by default) turns it all off: nothing is awarded, shown
+or written.
 
 ## Development
 
@@ -237,6 +368,30 @@ Both root `main.js` and root `styles.css` are **build output** — edit `src/`.
 The bundle targets `safari15`: the real engine floor on Obsidian mobile. No
 Node APIs, no `innerHTML`, no lookbehind regex literals anywhere in `src/`
 (tests enforce this).
+
+Where the rewards code lives: `src/rewards.js` holds the rules and
+`src/rewards-ledger.js` the file format; vault reads and writes are
+`io.readRewards` / `io.appendRewards` in `src/data.js`. `src/rewards-view.js`
+is the words and figures (pure), `src/rewards-flow.js` the per-render ledger
+cache, Session complete's preview and the one place awards are written (after
+`page-log.finishSession` has saved the note, never throwing and never holding
+the finish up), and `src/rewards-ui.js` the markup, which each skin draws in its
+own register. Award keys look like `session:<workout file>`,
+`week-streak:<week>` and `quest:<week>`.
+
+## Third-party material
+
+- **Fonts.** *Anton* (Vernon Adams) and *Barlow Condensed* (the Barlow Project
+  Authors) are embedded in the stylesheet, under the SIL Open Font License 1.1.
+- **Exercise images.** The starter exercises link demonstration images from
+  [free-exercise-db](https://github.com/yuhonas/free-exercise-db), released
+  under the Unlicense (public domain).
+- **Exercise photos and videos.** Some starter exercises link media from
+  [wger.de](https://wger.de), licensed CC-BY-SA 4.0. The exercise notes that
+  use it credit the authors.
+
+The full licence text for both fonts, and the attributions, are in
+[NOTICE](NOTICE).
 
 ## License
 
