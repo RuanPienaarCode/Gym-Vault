@@ -50,27 +50,34 @@ async function savesSettled(plan) {
    click, and Done (or any control outside the row) needed a second tap. A reload
    that is due while a pointer is down therefore waits until the press is over.
    The watcher is installed when an edit row is built (before any press), once per
-   document, and a lost pointerup cannot hold the reload for more than PRESS_CAP_MS. */
+   document, and a lost pointerup cannot hold the reload for more than PRESS_CAP_MS.
+   The document listeners go through the plugin's registerDomEvent so disabling
+   the plugin removes them; a bare addEventListener is only the fallback when no
+   plugin is reachable. */
 const PRESS_CAP_MS = 1500;
 const pressOfDoc = new WeakMap();   // document -> { down, waiters }
 
-function pressWatch(doc) {
+function pressWatch(doc, ctx) {
   if (!doc || typeof doc.addEventListener !== 'function') return null;
   let s = pressOfDoc.get(doc);
   if (s) return s;
   s = { down: false, waiters: [] };
+  const plugin = ctx && ctx.plugin;
+  const on = (ev, fn) => (plugin && typeof plugin.registerDomEvent === 'function'
+    ? plugin.registerDomEvent(doc, ev, fn, true)
+    : doc.addEventListener(ev, fn, true));
   const flush = () => { s.down = false; for (const fn of s.waiters.splice(0)) fn(); };
-  doc.addEventListener('pointerdown', () => { s.down = true; }, true);
+  on('pointerdown', () => { s.down = true; });
   /* After the click that follows pointerup has been delivered. */
   const end = () => setTimeout(flush, 50);
-  doc.addEventListener('pointerup', end, true);
-  doc.addEventListener('pointercancel', end, true);
+  on('pointerup', end);
+  on('pointercancel', end);
   pressOfDoc.set(doc, s);
   return s;
 }
 
-function afterPress(fn) {
-  const s = pressWatch(typeof document !== 'undefined' ? document : null);
+function afterPress(ctx, fn) {
+  const s = pressWatch(typeof document !== 'undefined' ? document : null, ctx);
   if (!s || !s.down) { fn(); return; }
   let done = false;
   const once = () => { if (!done) { done = true; fn(); } };
@@ -570,9 +577,9 @@ function editableItem(ctx, plan, day, it, idx) {
      rebuild waits. */
   row.addEventListener('focusout', e => {
     if (e.relatedTarget && row.contains(e.relatedTarget)) return;
-    savesSettled(plan).then(() => afterPress(() => ctx.reload()));
+    savesSettled(plan).then(() => afterPress(ctx, () => ctx.reload()));
   });
-  pressWatch(typeof document !== 'undefined' ? document : null);
+  pressWatch(typeof document !== 'undefined' ? document : null, ctx);
   return row;
 }
 
