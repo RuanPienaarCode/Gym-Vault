@@ -2939,7 +2939,10 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--gv-ink-dim);
 }
-.gv-setup-start { margin-top: 6px; }
+/* Bleeds by the page gutter, not .gv-hero-action's literal -17px (written for the Today hero's
+   border + padding): in a narrow pane the gutter is 12px and -17px hung 5px past each edge, so
+   Floor's setup page scrolled sideways. Poster skins zero these margins themselves. */
+.gv-setup-start { margin-top: 6px; margin-left: calc(-1 * var(--gv-page-gutter)); margin-right: calc(-1 * var(--gv-page-gutter)); }
 
 /* ONE FLOOD PER SCREEN, AND ON THIS SCREEN IT IS START.
 
