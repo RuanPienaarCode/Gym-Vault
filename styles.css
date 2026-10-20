@@ -206,6 +206,21 @@
   line-height: 0.92;
   letter-spacing: -0.005em;
 }
+/* Anton has ONE weight (400). Floor and Editorial set their titles and big buttons in it, and the host's own
+   weights (h2 680, h3 660, button 500) made WebKit synthesise a bold on it. Apex and Lock In use
+   Barlow Condensed, which has the weights (W4-9a, L5-07; tests/w4-anton-weight.test.cjs). The plan
+   badge's own 800 on an Anton plan name is NOT here: today-fidelity.test.cjs bars Floor/Editorial
+   selectors that name the badge, and a base-level change would reach the poster skins. */
+.gv-app.gv-skin-floor .gv-toolbar-title,
+.gv-app.gv-skin-floor .gv-logtop-title,
+.gv-app.gv-skin-floor .gv-section-title,
+.gv-app.gv-skin-floor .gv-btn-go,
+.gv-app.gv-skin-floor .gv-btn-finish,
+.gv-app.gv-skin-editorial .gv-toolbar-title,
+.gv-app.gv-skin-editorial .gv-logtop-title,
+.gv-app.gv-skin-editorial .gv-section-title,
+.gv-app.gv-skin-editorial .gv-btn-go,
+.gv-app.gv-skin-editorial .gv-btn-finish { font-weight: 400; }
 .gv-kicker {
   margin: 0;                 /* .gv-session-rest-title renders this as an <h2> */
   font-size: 10.5px;
@@ -2986,12 +3001,15 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   -webkit-appearance: none;
   background: transparent;
 }
-.gv-app .gv-dial-range::-webkit-slider-runnable-track {
+.gv-app .gv-dial-range::-webkit-slider-runnable-track,
+.gv-app .gv-photo-scrub::-webkit-slider-runnable-track {
   height: 6px; border-radius: 6px;
   background: var(--gv-line);
 }
-.theme-dark .gv-app .gv-dial-range::-webkit-slider-runnable-track { background: var(--gv-line-2); }
-.gv-app .gv-dial-range::-webkit-slider-thumb {
+.theme-dark .gv-app .gv-dial-range::-webkit-slider-runnable-track,
+.theme-dark .gv-app .gv-photo-scrub::-webkit-slider-runnable-track { background: var(--gv-line-2); }
+.gv-app .gv-dial-range::-webkit-slider-thumb,
+.gv-app .gv-photo-scrub::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 28px; height: 28px;
   /* (track 6px − thumb 28px) / 2 — centres the thumb on the track. */
@@ -3001,7 +3019,12 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   background: var(--gv-lime);
   box-shadow: none;
 }
-.theme-dark .gv-app .gv-dial-range::-webkit-slider-thumb { border-color: var(--gv-line-2); }
+.theme-dark .gv-app .gv-dial-range::-webkit-slider-thumb,
+.theme-dark .gv-app .gv-photo-scrub::-webkit-slider-thumb { border-color: var(--gv-line-2); }
+/* The progress-photo scrubber is the app's other slider and shares the dial's track and thumb above (one
+   selector list, so they cannot drift). Its layout stays in the photos block; this clears the host's native
+   look, under .gv-app so it out-ranks app.css's input[type='range'] (W4-9b, L5-08). */
+.gv-app .gv-photo-scrub { -webkit-appearance: none; background: transparent; }
 
 .gv-app .gv-setup-music { width: 100%; text-align: left; }
 /* Deliberately its own class rather than .gv-microcopy — the Editorial skin
