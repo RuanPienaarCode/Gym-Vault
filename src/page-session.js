@@ -468,7 +468,7 @@ function restorePaused(sess, draft, snap) {
 }
 
 function findExercise(ctx, name) {
-  return ctx.data.exercises.find(e => sameName(e.name, name));
+  return (ctx.data.exercises || []).find(e => sameName(e.name, name));
 }
 
 /* ---------- active state ---------- */
@@ -1743,13 +1743,29 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
 
   Object.assign(set, values);
   set.done = true;
-  set.touched = true;
+  /* A CLOCK IS NOT THE USER'S WORD (audit L3-05). `touched` is what later reads
+     as "the user typed or measured this" — timedSetValues keeps a touched set's
+     figure, and typedByUser (above) lets it claim a record. A timed interval
+     passes observed: [], its only figure is the schedule elapsing, and marking
+     the set touched turned that clock reading into a "typed" one: re-running the
+     interval then claimed a NEW BEST 1:00 hold from the clock alone. Only a call
+     site that actually watched a figure (the tap counter, the stopwatch) marks
+     the set touched; `done` is what saves it either way. */
+  if (observed.length) set.touched = true;
 
   const callouts = [];
   try {
     const kind = classifyKind(entry);
     const trustworthy = observed.indexOf(kind) !== -1 || typedByUser;
-    if (kind && trustworthy) {
+    /* THE SAME GATE EVERY OTHER SURFACE USES (audit L1-03). Records, Today and
+       the live target all ask records.claimableKinds; this was the one place
+       that did not, so a kg-unit exercise with a "2 x 40s" line got a live NEW
+       BEST for a hold the Records page refuses to show. */
+    const note = findExercise(ctx, entry.exercise);
+    /* Only an exercise WITH a note has a unit to gate on; a bare plan line has
+       none, and keeps claiming what it observed, as it always did. */
+    const claimable = !!kind && (!note || records.claimableKinds(note).indexOf(kind) !== -1);
+    if (kind && trustworthy && claimable) {
       const prev = records.previousBest(sess.workoutsAtStart, entry.exercise, kind);
       const val = valueForKind(set, kind);
       if (records.isRecord(prev, val)) {
