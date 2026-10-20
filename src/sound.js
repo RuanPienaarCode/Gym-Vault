@@ -183,9 +183,11 @@ function unlock() {
   } catch (e) { /* ignore */ }
 }
 
-function speakText(text, settings) {
+function speakText(text, settings, keepQueue) {
   try {
-    window.speechSynthesis.cancel(); // fast reps must not queue a backlog
+    /* fast reps must not queue a backlog - except when this utterance was itself
+       waiting behind a cue (keepQueue): cutting then would cut the cue's tail. */
+    if (!keepQueue) window.speechSynthesis.cancel();
     const u = new window.SpeechSynthesisUtterance(String(text));
     const chosen = pickVoice(window.speechSynthesis.getVoices(), settings && settings.voiceURI);
     if (chosen) u.voice = chosen;
@@ -286,10 +288,82 @@ function playClip(key) { return playBuffer(clips.get(key)); }
    otherwise the device voice saying the same words, otherwise the tone
    shape. Never silence — a gap in the recordings must not be a gap in the
    count. */
-function customOrFallback(key, words, toneKind, settings) {
+function customOrFallback(key, words, toneKind, settings, keepQueue) {
   if (key && clips.has(key) && playClip(key)) return;
-  if (capabilities().speech) return speakText(words, settings);
+  if (capabilities().speech) return speakText(words, settings, keepQueue);
   return playTone(toneKind);
+}
+
+/* ---------- a cue in flight is not cut (fix wave F2, audit L3-06) ----------
+
+   "target", "new record" and "goal met" were never heard: speakText cancels the
+   queue before it speaks, and the callers followed the cue in the SAME TICK with
+   announce(count) or cancel(), so the engine was told to drop it before it had
+   begun. A CELEBRATION cue (record, goal, or any cue given {hold: true}) now
+   holds the floor for roughly as long as it takes to say. Whatever arrives
+   meanwhile - a rep count, the next interval's "Next, ..." - waits behind it:
+   spoken afterwards, WITHOUT a cancel, so it can never cut a cue that runs longer
+   than the estimate. Of several counts only the latest is kept, so the backlog
+   fast reps must not build stays impossible. cancel() clears the lot (mute,
+   pause, leaving the page), and with no cue in flight nothing here changes.
+
+   iOS: the first item always runs inside the caller's own stack (the gesture).
+   Queued items run from a timer, which is how timed mode has always spoken, and
+   only exist once a cue has spoken - so audio is already unlocked. */
+let floorUntil = 0;
+let waiting = [];
+let pumpTimer = null;
+let pumpDue = 0;
+
+/* How long a cue holds the floor, per mode. Generous for speech (a late count
+   is a smaller loss than a clipped cue); tones and buzzes are their own length. */
+function cueHoldMs(mode, kind, words, key) {
+  if (mode === 'voice') return Math.min(1800, Math.max(600, 450 + 65 * String(words || kind).length));
+  if (mode === 'custom') {
+    const secs = key ? clipSeconds(key) : null;
+    return secs ? Math.round(secs * 1000) + 150 : Math.min(1800, Math.max(600, 450 + 65 * String(words || kind).length));
+  }
+  if (mode === 'beep') return toneFor(kind).reduce((n, t) => n + t.ms + 20, 0) + 60;
+  if (mode === 'vibrate') {
+    const b = buzzFor(kind);
+    return (Array.isArray(b) ? b.reduce((n, v) => n + v, 0) : b) + 60;
+  }
+  return 0;
+}
+
+function armPump() {
+  const w = typeof window === 'undefined' ? null : window;
+  if (!w || typeof w.setTimeout !== 'function') return;
+  /* A handle whose time has long passed was lost (a timer that never fired):
+     re-arm rather than wait on it for ever. */
+  if (pumpTimer !== null && Date.now() <= pumpDue + 500) return;
+  pumpDue = Math.max(Date.now(), floorUntil) + 20;
+  pumpTimer = w.setTimeout(pump, Math.max(0, pumpDue - Date.now()));
+}
+
+function pump() {
+  pumpTimer = null;
+  while (waiting.length && Date.now() >= floorUntil) {
+    const item = waiting.shift();
+    item.run(true);
+    if (item.holdMs) floorUntil = Date.now() + item.holdMs;
+  }
+  if (waiting.length) armPump();
+}
+
+/* `run(fromQueue)` makes the noise; `holdMs` > 0 makes it a cue that holds the
+   floor; `isCount` marks a rep/second count, of which only the latest waits. */
+function play(run, holdMs, isCount) {
+  if (waiting.length && Date.now() >= floorUntil) pump();
+  if (!waiting.length && Date.now() >= floorUntil) {
+    run(false);
+    if (holdMs) floorUntil = Date.now() + holdMs;
+    return;
+  }
+  const tail = waiting[waiting.length - 1];
+  if (isCount && tail && tail.isCount) waiting[waiting.length - 1] = { run, holdMs: 0, isCount: true };
+  else waiting.push({ run, holdMs, isCount: !!isCount });
+  armPump();
 }
 
 /* ---------- what callers actually use ---------- */
@@ -305,20 +379,31 @@ function customOrFallback(key, words, toneKind, settings) {
    other mode ignores it. */
 function announce(text, settings, kind) {
   const mode = resolveMode(settings && settings.soundMode, capabilities());
-  if (mode === 'voice') return speakText(text, settings);
-  if (mode === 'custom') return customOrFallback(voicePack.clipKey(kind || 'rep', text), text, 'rep', settings);
-  if (mode === 'beep') return playTone('rep');
-  if (mode === 'vibrate') return buzz('rep');
+  if (mode === 'silent') return;
+  play(fromQueue => {
+    if (mode === 'voice') return speakText(text, settings, fromQueue);
+    if (mode === 'custom') return customOrFallback(voicePack.clipKey(kind || 'rep', text), text, 'rep', settings, fromQueue);
+    if (mode === 'beep') return playTone('rep');
+    if (mode === 'vibrate') return buzz('rep');
+  }, 0, true);
 }
 
 /* Announce an EVENT — 'begin', 'go', 'record', 'goal'. `words` is the spoken
    form; every mode has its own shape for the same event. */
-function cue(kind, words, settings) {
+function cue(kind, words, settings, opts) {
   const mode = resolveMode(settings && settings.soundMode, capabilities());
-  if (mode === 'voice') return speakText(words || kind, settings);
-  if (mode === 'custom') return customOrFallback(voicePack.clipKey(kind, words), words || kind, kind, settings);
-  if (mode === 'beep') return playTone(kind);
-  if (mode === 'vibrate') return buzz(kind);
+  if (mode === 'silent') return;
+  /* A celebration holds the floor (see "a cue in flight is not cut"); a plain
+     cue (begin, the count-in's Begin) does not, as before. `opts.hold` overrides
+     either way - the "target" cue passes it. */
+  const hold = opts && opts.hold !== undefined ? !!opts.hold : (kind === 'record' || kind === 'goal');
+  const key = mode === 'custom' ? voicePack.clipKey(kind, words) : null;
+  play(fromQueue => {
+    if (mode === 'voice') return speakText(words || kind, settings, fromQueue);
+    if (mode === 'custom') return customOrFallback(key, words || kind, kind, settings, fromQueue);
+    if (mode === 'beep') return playTone(kind);
+    if (mode === 'vibrate') return buzz(kind);
+  }, hold ? cueHoldMs(mode, kind, words, key) : 0, false);
 }
 
 /* Stop anything queued. Speech queues and a clip may still be playing;
@@ -326,6 +411,12 @@ function cue(kind, words, settings) {
    when muting mid-count and when leaving a session, where a backlog of
    "seven… eight… nine" playing over the next screen is the bug. */
 function cancel() {
+  waiting = [];
+  floorUntil = 0;
+  if (pumpTimer !== null) {
+    try { window.clearTimeout(pumpTimer); } catch (e) { /* ignore */ }
+    pumpTimer = null;
+  }
   try {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } catch (e) { /* ignore */ }
@@ -356,7 +447,7 @@ function watchVoices(onVoices) {
 
 module.exports = {
   /* pure — unit-tested */
-  MODES, TONES, BUZZES, resolveMode, pickVoice, usableVoices, toneFor, buzzFor, capabilities,
+  MODES, TONES, BUZZES, resolveMode, pickVoice, usableVoices, toneFor, buzzFor, capabilities, cueHoldMs,
   /* effects */
   unlock, announce, cue, cancel, audible, watchVoices,
   /* the user's own clips */

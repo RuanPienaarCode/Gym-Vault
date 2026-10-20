@@ -1086,7 +1086,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
     if (sess.targetHitFor === setKey(sess.pos)) return;
     sess.targetHitFor = setKey(sess.pos);
     if (powerUp) powerUp.fire();
-    if (!sess.muted) sound.cue('go', 'target', ctx.settings);
+    if (!sess.muted) sound.cue('go', 'target', ctx.settings, { hold: true });
   };
   const showRep = () => {
     countEl.textContent = String(sess.counter.count);
@@ -1228,6 +1228,7 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      that would be right back to finding 2 (an untouched @60kg prefill
      claiming a false record). */
   doneBtn.addEventListener('click', () => {
+    sound.unlock(); // audit M-04: Tick is a gesture too, and the rest that follows speaks
     /* A TICK ON A COUNT-IN IS NOT A SET (audit R2-14). Inside the five seconds
        nothing has been counted, and "Tick set" saved a 0-rep set that counted
        for XP and the quest. With nothing on the counter it is the same gesture
@@ -1532,7 +1533,11 @@ function durationBody(ctx, draft, sess, entry, set) {
     keepLive(ctx, draft, sess);
   };
 
-  playBtn.addEventListener('click', () => { if (hold.paused) resumeHold(); else pauseHold(); });
+  playBtn.addEventListener('click', () => {
+    /* A tap this session depends on being able to speak after (audit M-04). */
+    sound.unlock();
+    if (hold.paused) resumeHold(); else pauseHold();
+  });
   doneBtn.addEventListener('click', () => { if (hold.running && hold.paused) stopHold(); });
 
   /* When the tap that skipped the count-in landed. Skipping BEGINS the hold in
@@ -1565,7 +1570,7 @@ function durationBody(ctx, draft, sess, entry, set) {
          it are bonus, not a second announcement. */
       hold.targetHit = true;
       if (powerUp) powerUp.fire();
-      if (!sess.muted) sound.cue('go', 'target', ctx.settings);
+      if (!sess.muted) sound.cue('go', 'target', ctx.settings, { hold: true });
     }
     const whole = Math.floor(secs);
     const atCheckpoint = whole > 0 && whole % HOLD_CHECKPOINT_S === 0;
@@ -1972,6 +1977,7 @@ function renderRest(ctx, root, draft, sess) {
   };
   playBtn.addEventListener('click', () => {
     if (sess.phase !== 'resting' || !sess.rest) return;
+    sound.unlock(); // audit M-04: a gesture the next set's speech depends on
     const now = Date.now();
     if (sess.rest.paused) sess.rest = timerState.resumeClock(sess.rest, now);
     else { sess.rest = timerState.pauseClock(sess.rest, now); sound.cancel(); }
@@ -2077,6 +2083,12 @@ function advanceTimed(ctx, draft, sess, opts) {
   const iv = draft.timed.intervals[tp.index];
   const skip = !!(opts && opts.skip);
 
+  /* BEFORE applyCompletion, not after (audit L3-06): the old interval's leftover
+     "3, 2, 1" is cut here, and then a record cue that applyCompletion starts is
+     the newest thing on the floor. Cancelling afterwards cut that cue the moment
+     it began. */
+  sound.cancel();
+
   if (iv && iv.kind === 'work' && !skip) {
     if (!tp.completed) tp.completed = {};
     if (!tp.completed[tp.index]) {
@@ -2103,7 +2115,6 @@ function advanceTimed(ctx, draft, sess, opts) {
     }
   }
 
-  sound.cancel();
   startInterval(sess, tp.index + 1);
   ctx.rerender();
 }
@@ -2200,6 +2211,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
 
   const playBtn = playButton(tp.paused);
   playBtn.addEventListener('click', () => {
+    sound.unlock(); // audit M-04: the circuit speaks on a timer; this tap is the gesture
     const now = Date.now();
     if (tp.paused) { Object.assign(tp, timerState.resumeClock(tp, now)); tp.stateNote = 'Resumed'; }
     else { Object.assign(tp, timerState.pauseClock(tp, now)); tp.stateNote = 'Paused'; sound.cancel(); }

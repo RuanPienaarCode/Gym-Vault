@@ -287,7 +287,10 @@ class RepCounterModal extends Modal {
        where the number was to where the number would be. */
     this._mountZone();
     this._countIn = attachCountIn(this.zone, this.countEl, {
-      muted: this.muted,
+      /* A FUNCTION, read on every tick (countdown.js): Mute pressed during the
+         five seconds must silence the rest of them. `this.muted` here was a
+         boolean copied when the count-in began (audit L3-07). */
+      muted: () => this.muted,
       settings: this.settings,
       hintEl: this.hintEl,
       onDone: () => {
@@ -359,7 +362,7 @@ class RepCounterModal extends Modal {
          not a second announcement. */
       this._targetHit = true;
       if (this._powerup) this._powerup.fire();
-      if (!this.muted) sound.cue('go', 'target', this.settings);
+      if (!this.muted) sound.cue('go', 'target', this.settings, { hold: true });
     }
     if (!this.muted) sound.announce(this.state.count, this.settings);
   }
