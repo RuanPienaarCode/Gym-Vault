@@ -7,7 +7,7 @@
    that have to ask for it. */
 
 const { el, ico, fmtSeconds, numericInput } = require('./dom');
-const { todayISO, fmtShort } = require('./dates');
+const { todayISO, fmtShort, fromISO, toISO } = require('./dates');
 const { setCounts, sameName } = require('./stats');
 const { targetFirstNumber, targetWeight, targetIsDuration, targetDurationSeconds, itemSets } = require('./plan-parse');
 
@@ -22,7 +22,11 @@ const { isOpenEnded } = require('./counter-target');
    how many rounds fit the time you asked for, and that is what the draft must
    hold — give every entry the plan's 3 sets when the clock only ever plays 2
    and the log fills with empty sets nothing scheduled. A count of 0 still
-   makes one set, because an entry with no sets is unreachable. */
+   makes one set, because an entry with no sets is unreachable.
+
+   `opts.date` (YYYY-MM-DD) logs the session on that day instead of today -
+   the Running page's "Log" on a day earlier this week. A future or unreadable
+   date is ignored (it logs today): a session cannot have happened tomorrow. */
 function startDraft(ctx, plan, day, opts) {
   const perEntry = (opts && opts.setsPerEntry) || null;
   const entries = [];
@@ -33,7 +37,7 @@ function startDraft(ctx, plan, day, opts) {
     });
   }
   ctx.state.logDraft = {
-    date: todayISO(),
+    date: pastDate(opts && opts.date) || todayISO(),
     plan: plan ? plan.name : '',
     day: day ? day.name : '',
     startedAt: Date.now(),
@@ -49,6 +53,14 @@ function startDraft(ctx, plan, day, opts) {
    controller behind it (the unit guards render these pages against a stub). */
 function keepDraft(ctx) {
   if (ctx && typeof ctx.persistDraft === 'function') ctx.persistDraft();
+}
+
+/* A canonical YYYY-MM-DD that is not in the future, or null. */
+function pastDate(iso) {
+  const d = typeof iso === 'string' ? fromISO(iso) : null;
+  if (!d) return null;
+  const canon = toISO(d);
+  return canon <= todayISO() ? canon : null;
 }
 
 function makeEntry(ctx, exercise, sets, target) {

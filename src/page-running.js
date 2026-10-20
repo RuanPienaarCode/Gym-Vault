@@ -87,7 +87,7 @@ function render(ctx, root) {
             el('div', { class: 'gv-runday-rx' }, rx || '')),
           done
             ? el('span', { class: 'gv-badge' }, 'done')
-            : el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startLog(plan, s.day) },
+            : el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startLog(plan, s.day, s.iso < today ? { date: s.iso } : undefined) },
                 ico('play'), el('span', {}, 'Log')));
         list.append(row);
       }
