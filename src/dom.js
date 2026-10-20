@@ -286,9 +286,33 @@ function blocksOf(lines) {
   return blocks;
 }
 
-const words = (text, n) => {
-  const w = text.split(/\s+/).filter(Boolean);
-  return w.length <= n ? text.trim() : `${w.slice(0, n).join(' ')}…`;
+/* The headline for a chunk that has no caps lead-in. It must read as a
+   thought, not a truncation: if the FIRST SENTENCE is short enough it is the
+   headline whole; otherwise it stops at a word boundary at the word limit,
+   dropping any comma/dash left dangling before the ellipsis. A sentence gets
+   two words of allowance over the limit (SENTENCE_WORDS) so a ten-word
+   sentence is finished rather than cut at eight. */
+const HEADLINE_WORDS = 8;
+const SENTENCE_WORDS = 10;
+const ABBREVIATION = /^(?:e\.g|i\.e|vs)\.$/i;
+function firstSentence(text) {
+  const end = /[.!?]+(?=\s|$)/g;
+  let m;
+  while ((m = end.exec(text))) {
+    const head = text.slice(0, m.index + m[0].length);
+    /* "e.g." and "vs." are not sentence ends. A decimal point never matches:
+       the lookahead needs whitespace or the end right after it. */
+    if (ABBREVIATION.test(head.split(/\s+/).pop())) continue;
+    return head;
+  }
+  return text;
+}
+const words = text => {
+  const flat = String(text || '').replace(/\s+/g, ' ').trim();
+  const sentence = firstSentence(flat);
+  const w = sentence.split(' ').filter(Boolean);
+  if (w.length <= SENTENCE_WORDS) return sentence;
+  return `${w.slice(0, HEADLINE_WORDS).join(' ').replace(/[\s,;:\u2013\u2014-]+$/, '')}…`;
 };
 
 /* Groups → [{label, blocks}]. A group that is ONLY a lead-in adopts the
@@ -334,7 +358,7 @@ function chunks(lines) {
     if (c.label) continue;
     const p = c.blocks.find(b => b.kind === 'p');
     const src = p ? p.text : (c.blocks[0] && c.blocks[0].items[0]) || '';
-    c.label = words(src, 8);
+    c.label = words(src);
     c.derived = true;
   }
   return out;
