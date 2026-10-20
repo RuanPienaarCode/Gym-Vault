@@ -180,9 +180,36 @@ const parseEquipment = s => {
   return parts.length > 1 ? parts : (parts[0] || '');
 };
 
-/* Comma-separated field → single string or list (two = start/finish pair). */
+/* Comma-separated field → single string or list (two = start/finish pair).
+
+   A comma separates entries EXCEPT inside a URL or an unclosed [[wikilink]]:
+   `https://x/a.jpg?w=1,2` is one image, not two broken ones (L2-15). Inside an
+   http(s) entry a comma only separates when whitespace, another URL or a
+   [[link]] follows it; plain vault paths split on every comma, as before.
+   Char-by-char — no lookbehind (iOS). */
+function splitImageList(s) {
+  const text = s || '';
+  const out = [];
+  let cur = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === ',') {
+      const rest = text.slice(i + 1);
+      const inLink = cur.indexOf('[[') >= 0 && cur.indexOf(']]') < 0;
+      const inUrl = /^\s*https?:\/\//i.test(cur);
+      if (!inLink && (!inUrl || rest === '' || /^\s/.test(rest) || /^(https?:\/\/|\[\[)/i.test(rest))) {
+        out.push(cur);
+        cur = '';
+        continue;
+      }
+    }
+    cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
 const parseImages = s => {
-  const list = (s || '').split(',').map(x => x.trim()).filter(Boolean);
+  const list = splitImageList(s).map(x => x.trim()).filter(Boolean);
   return list.length > 1 ? list : (list[0] || '');
 };
 
@@ -221,4 +248,4 @@ function openEdit(ctx, ex) {
   }).open();
 }
 
-module.exports = { render, editExercise: openEdit };
+module.exports = { render, editExercise: openEdit, parseImages };
