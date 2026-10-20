@@ -277,6 +277,7 @@ function profileNode(m) {
       el('span', { class: 'gv-rw-profile-togo' }, `${V.groupDigits(h.toNext)} to go`)),
     ladderNode(m.ladder),
     el('p', { class: 'gv-rw-profile-total' }, `${m.totalText} in total`),
+    m.badText ? el('p', { class: 'gv-rw-profile-total gv-rw-profile-bad' }, m.badText) : null,
     el('div', { class: 'gv-rw-stats' },
       el('div', {}, el('b', {}, V.groupDigits(m.counts.sessions)), el('span', {}, 'sessions')),
       el('div', {}, el('b', {}, V.groupDigits(m.counts.pbs)), el('span', {}, 'PBs')),
@@ -294,7 +295,7 @@ function mountProfile(ctx, root) {
       if (c.failed || isGone(slot)) return;
       safe('profile paint', () => {
         const summary = F.summaryFor(ctx, c.value);
-        const model = V.profileModel({ summary, medals: F.medalsFor(ctx), sessionCount: F.sessionCount(ctx.data.workouts) });
+        const model = V.profileModel({ summary, medals: F.medalsFor(ctx), sessionCount: F.sessionCount(ctx.data.workouts), badLines: c.value && c.value.bad ? c.value.bad.length : 0 });
         if (model.hero) slot.append(profileNode(model));
       });
     };

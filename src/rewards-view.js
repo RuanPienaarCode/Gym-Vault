@@ -15,7 +15,7 @@
      groupDigits(n)                        2700 -> '2,700' (no locale: Intl differs by engine)
      xpChipFor(day, settings)              null when rewards are off or the day has no planned sets, else
                                            {xp, sets, label:'From +145 XP', title}.
-                                           THE RULE: what a session could pay today = XP.session + XP.set x the
+                                           THE RULE (a floor, hence "From"): what a session pays today before any extra = XP.session + XP.set x the
                                            sets the plan asks for (progress.itemSets, the same count the hero's
                                            "N sets" chip prints). Nothing speculative: no PB, no streak week, no
                                            quest - the title says they pay extra.
@@ -44,8 +44,9 @@
                                            it had (base) plus what this session added (gain); after a level-up the new
                                            level's bar starts from empty and holds only what spilled over.
      rankLadder(levelFor-result)           the five ranks [{name, from, state:'done'|'current'|'ahead'}]
-     profileModel({summary, medals, sessionCount})
-                                           {hero:levelRow, ladder, totalText:'220 XP', counts:{sessions, pbs, medalsText}}
+     profileModel({summary, medals, sessionCount, badLines})
+                                           {hero:levelRow, ladder, totalText:'220 XP', badText:'' | '2 lines in Rewards.md could not be read',
+                                            counts:{sessions, pbs, medalsText}}
                                            PBs = the Personal Best Hunter figure (personal bests broken, from history).
      recordsKicker(rows, today)            {newToday, text:'1 new today'|''}: records BEATEN today (times >= 2). */
 
@@ -221,6 +222,12 @@ function rankLadder(lvl) {
   return R.RANKS.map((r, i) => ({ name: r.name, from: r.from, state: i < idx ? 'done' : i === idx ? 'current' : 'ahead' }));
 }
 
+function badLinesText(n) {
+  const k = Math.floor(Number(n));
+  if (!(k > 0)) return '';
+  return `${k} ${k === 1 ? 'line' : 'lines'} in Rewards.md could not be read`;
+}
+
 function profileModel(o) {
   const opt = o || {};
   const summary = opt.summary || R.summarise(null, null, {});
@@ -231,6 +238,8 @@ function profileModel(o) {
     hero: levelRow(summary.level),
     ladder: rankLadder(summary.level),
     totalText: `${groupDigits(summary.totalXp)} XP`,
+    /* Rows of Rewards.md the ledger could not read (parseLedger's `bad`): kept out of the total, so say so. */
+    badText: badLinesText(opt.badLines),
     counts: { sessions: opt.sessionCount || 0, pbs: hunter ? hunter.progress.value : 0, medals: sec.earned, medalsTotal: sec.total, medalsText: sec.countText },
   };
 }
