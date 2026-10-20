@@ -178,7 +178,9 @@ function render(ctx, root) {
   const head = el('div', { class: 'gv-hero-head' });
   /* The plan name is the switcher — swapping programme is a thing you do
      from the day you are looking at, not by hunting through Plans. */
-  const kicker = el('p', { class: 'gv-kicker' }, `${fmtShort(today)} · ${WEEKDAY_LABELS[todayKeyName]} · `);
+  /* The separator belongs to the plan name that follows it - with no plan
+     there is nothing after it, and the kicker used to end in " · ". */
+  const kicker = el('p', { class: 'gv-kicker' }, `${fmtShort(today)} · ${WEEKDAY_LABELS[todayKeyName]}${plan ? ' · ' : ''}`);
   if (plan) {
     const swap = el('button', { class: 'gv-planswap', type: 'button', 'aria-label': `Active plan: ${plan.name}. Switch plan` },
       el('span', {}, plan.name), ico('repeat-2'));
@@ -301,6 +303,19 @@ function render(ctx, root) {
       class: 'gv-btn-hero-ghost gv-hero-manual', type: 'button',
       onclick: () => ctx.startLog(dayPlan, day),
     }, el('span', {}, 'Log manually')));
+  } else if (!plan) {
+    /* No active plan at all is not a rest day: "Rest day" on every weekday
+       told a new user nothing was wrong while nothing was set up. */
+    addTitle('No plan yet');
+    sub.append('Pick a plan, or build your own, on the Plans page.');
+    afterHead.push(el('button', {
+      class: 'gv-btn-hero-ghost', type: 'button',
+      onclick: () => ctx.nav('plans'),
+    }, ico('clipboard-list'), el('span', {}, 'Go to Plans')));
+    afterHead.push(el('button', {
+      class: 'gv-btn-hero-ghost', type: 'button',
+      onclick: () => ctx.startLog(null, null),
+    }, ico('plus'), el('span', {}, 'Log a freestyle session')));
   } else {
     addTitle('Rest day');
     const next = nextPlannedDay(ctx, todayKeyName);
