@@ -5,7 +5,7 @@
 
 const { el, ico, fmt, fmtSeconds, clickableCard, statTile, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
-const { todayISO, weekdayKey, fmtShort } = require('./dates');
+const { todayISO, weekdayKey, fmtShort, ISO_DATE } = require('./dates');
 const { workoutDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets, countLabel, countNoun } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { itemSets, isRestDay, targetDurationSeconds } = require('./plan-parse');
@@ -160,9 +160,13 @@ function render(ctx, root) {
        than a new pair of its own: this is the same object (card, label,
        name, one action button) and a second near-identical rule set is how
        two cards drift apart. */
+    /* A draft left open from an earlier day must not pass for today's: name
+       its date (the app's short style) whenever it is not today. */
+    const draftDate = ctx.state.logDraft.date;
+    const stale = typeof draftDate === 'string' && ISO_DATE.test(draftDate) && draftDate !== today;
     page.append(el('div', { class: 'gv-card gv-alsotoday' },
       el('div', { class: 'gv-alsotoday-main' },
-        el('div', { class: 'gv-kicker' }, 'Session in progress'),
+        el('div', { class: 'gv-kicker' }, stale ? `Session in progress · ${fmtShort(draftDate)}` : 'Session in progress'),
         el('div', { class: 'gv-alsotoday-name' }, ctx.describeDraft()),
         el('div', { class: 'gv-alsotoday-plan' }, 'Kept on this device — saved to your vault when you finish')),
       el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.resumeDraft() },
