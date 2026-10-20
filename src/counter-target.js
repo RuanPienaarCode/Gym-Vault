@@ -40,9 +40,14 @@ function makeTarget(kind, value) {
    `Plank | 3 x 65% max` was read as 65 seconds by three callers (the guided
    target, the manual-log prefill, the timed schedule). The one answer, here;
    each caller asks it before taking targetFirstNumber. A WRITTEN duration
-   ("80% for 30s") still wins - callers read that before the bare number. */
+   ("80% for 30s") still wins - callers read that before the bare number.
+
+   Only when the FIRST number is the percentage: "8 @ 75%" is eight reps at a
+   load, and reading any `%` as open-ended took the target, the prefill and the
+   timed interval away from every plan written that way. */
+const LEADING_PERCENT = /^[^0-9]*[0-9]+(?:[.,][0-9]+)?\s*%/;
 function isOpenEnded(target) {
-  return typeof target === 'string' && target.indexOf('%') >= 0;
+  return typeof target === 'string' && LEADING_PERCENT.test(target);
 }
 
 /* The target a PLAN line already implies, so the guided screen does not have

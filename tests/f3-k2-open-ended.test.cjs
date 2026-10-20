@@ -45,7 +45,7 @@ assert.deepStrictEqual(ct.targetFromEntry({ exercise: 'Plank', target: '80% for 
   const ctx = { data: { exercises: [{ name: 'Plank', fm: { unit: 'seconds' } }, { name: 'Squat', fm: { unit: 'kg' } }] }, state: {} };
   startDraft(ctx, { name: 'P' }, { name: 'D', items: [
     { exercise: 'Plank', target: '65% max', sets: 3 },
-    { exercise: 'Squat', target: '5 x 65% max', sets: 5 },
+    { exercise: 'Squat', target: '65% max', sets: 5 },   // plan-parse has split "5 x 65% max": target is the right-hand side
     { exercise: 'Plank', target: '60s', sets: 1 },
   ] });
   const [plank, squat, ctl] = ctx.state.logDraft.entries;
