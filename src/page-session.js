@@ -1655,7 +1655,7 @@ function lastRunForExercise(ctx, name) {
       const secs = parseFloat(r.seconds);
       return {
         distance_km: String(r.distance_km).trim(),
-        minutes: Number.isFinite(secs) ? String(Math.round((secs / 60) * 10) / 10) : '',
+        minutes: Number.isFinite(secs) ? timedPlan.minutesText(secs) : '',
       };
     }
   }

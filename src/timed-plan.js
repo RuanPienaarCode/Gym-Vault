@@ -252,6 +252,17 @@ function initialIndex(schedule, draft, isHandled) {
   return intervals.length;
 }
 
+/* A run's time as the run screen's MINUTES box holds it - the ONE
+   seconds->minutes conversion (page-log.buildRows owns the way back,
+   round(minutes * 60)). It used to round to 0.1 min, so 45 s became "0.8" and
+   was saved as 48 s. Two decimals give every whole second back exactly (the
+   error is at most 0.3 s) and a whole number of minutes still prints plain. */
+function minutesText(seconds) {
+  const s = Math.round(Number(seconds));
+  if (!Number.isFinite(s)) return '';
+  return String(Math.round((s / 60) * 100) / 100);
+}
+
 /* WHAT A FINISHED INTERVAL IS ENTITLED TO WRITE.
 
    A TARGET IS NOT A RESULT. makeEntry prefills reps and weight from the plan
@@ -289,7 +300,7 @@ function initialIndex(schedule, draft, isHandled) {
    is exactly what was measured, same as before this carve-out existed. */
 function timedSetValues(entry, set, seconds) {
   if (entry && entry.distance) {
-    return { minutes: String(Math.round((seconds / 60) * 10) / 10) };
+    return { minutes: minutesText(seconds) };
   }
   if (entry && entry.duration) {
     if (set && set.touched) return {}; // the typed figure wins; don't write over it
@@ -304,6 +315,6 @@ function timedSetValues(entry, set, seconds) {
 }
 
 module.exports = {
-  timedSetValues,
+  timedSetValues, minutesText,
   TIMED_DEFAULTS, MIN_INTERVAL_S, buildSchedule, workSecondsFor, workIntervals, initialIndex,
 };
