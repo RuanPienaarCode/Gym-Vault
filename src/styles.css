@@ -4278,9 +4278,12 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   opacity: 0;
   animation: gv-apex-pulse 1.9s ease-out infinite;
 }
+/* The pulse grows up and down, never sideways: the slab is 12px from the page
+   edge and the page is the scroller, so a wider pulse (it was 1.06) made Today
+   scroll sideways by up to 9px for part of every cycle. tests/f4-pulse-overflow. */
 @keyframes gv-apex-pulse {
   0%   { transform: skewX(-12deg) scale(1, 1); opacity: 0.6; }
-  100% { transform: skewX(-12deg) scale(1.06, 1.4); opacity: 0; }
+  100% { transform: skewX(-12deg) scale(1, 1.4); opacity: 0; }
 }
 .gv-app.gv-skin-poster .gv-btn-hero-ghost {
   --gv-slab: var(--gv-poster-chip);
@@ -5808,7 +5811,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 }
 @keyframes gv-li-pulse {
   0%   { transform: skewX(-12deg) scale(1, 1); opacity: 0.55; }
-  100% { transform: skewX(-12deg) scale(1.06, 1.4); opacity: 0; }
+  100% { transform: skewX(-12deg) scale(1, 1.4); opacity: 0; }
 }
 
 /* The week: seven leaning cells. Today is the inverse slab; done is the
