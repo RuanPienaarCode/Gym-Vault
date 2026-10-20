@@ -365,8 +365,10 @@ function mountApp(view) {
     }).open();
   };
 
-  ctx.startLog = (plan, day) => replacingDraft(() => {
-    pages.log.startDraft(ctx, plan, day);
+  /* `opts` reaches startDraft untouched: Running › This week passes { date }
+     to log a PAST day under that day's date (startDraft refuses a future one). */
+  ctx.startLog = (plan, day, opts) => replacingDraft(() => {
+    pages.log.startDraft(ctx, plan, day, opts);
     ctx.nav('log');
   });
 
