@@ -411,18 +411,28 @@
    this moved to fix. One declaration, every bottom action, no stacking
    (a rule on both would add its clearance twice inside a session).
 
-   max() against the base padding is load-bearing, not belt-and-braces.
-   --view-bottom-spacing is 0 when the navbar is NOT floating, so the
-   clearance branch alone resolves to 12px there — LESS than the 32px the
-   base rule gives every other surface, i.e. this rule would have quietly
-   taken bottom padding away from phones it was meant to leave alone. The
-   floor makes it strictly additive: never less than the base, more when the
-   navbar is actually in the way. */
-body.is-phone .gv-app .gv-page {
+   THE HOST VARIABLE IS NEVER USED IN ARITHMETIC, AND ONLY WHERE IT IS A LENGTH
+   (usability fix wave, M-03). app.css gives --view-bottom-spacing the UNITLESS 0
+   on every phone (`.is-phone`) and a length only under `.is-phone.is-floating-nav,
+   .is-phone.auto-full-screen`. This rule used to be
+   max(32px + inset, calc(var(--view-bottom-spacing) + 12px)) on every phone, and
+   `calc(0 + 12px)` (a number plus a length) is invalid at computed-value time: the
+   whole max() fell back to padding-bottom 0, floor included, on every phone with a
+   normal navbar. So the host's number is applied under the host's own two classes
+   (where it is guaranteed a length) and nowhere else; a phone without them keeps the
+   base rule above (32px + the home-indicator inset). max() against that same floor
+   stays, for a different reason: with the keyboard open the host's value
+   (safe-area - keyboard + navbar) goes negative, and the floor is what the page
+   keeps then. The 12px of air above the navbar is the page's bottom MARGIN rather
+   than a term in the sum, so no arithmetic touches the host variable; Apex and
+   Lock In, whose tab bar carries the clearance, reset it below. */
+body.is-phone.is-floating-nav .gv-app .gv-page,
+body.is-phone.auto-full-screen .gv-app .gv-page {
   padding-bottom: max(
     calc(32px + env(safe-area-inset-bottom, 0px)),
-    calc(var(--view-bottom-spacing, calc(52px + env(safe-area-inset-bottom, 0px))) + 12px)
+    var(--view-bottom-spacing, calc(52px + env(safe-area-inset-bottom, 0px)))
   );
+  margin-bottom: 12px;
 }
 
 /* ---------- shared controls ---------- */
@@ -4654,7 +4664,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-skin-poster.gv-narrow .gv-nav-btn .gv-ico svg { width: 24px; height: 24px; }
 .gv-app.gv-skin-poster.gv-narrow .gv-nav-btn.on::after { top: 0; bottom: auto; }
 body.is-phone .gv-app.gv-skin-poster.gv-narrow .gv-nav { padding-bottom: var(--view-bottom-spacing, 0px); }
-body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding-bottom: 24px; }
+body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding-bottom: 24px; margin-bottom: 0; }
 
 .gv-app.gv-skin-poster.gv-narrow .gv-today { display: flex; flex-direction: column; }
 .gv-app.gv-skin-poster.gv-narrow .gv-hero-today { display: contents; }
