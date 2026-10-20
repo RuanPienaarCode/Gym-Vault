@@ -20,8 +20,11 @@
      5  TOUCH: the weight steppers and the Tick slab keep a 44px box.
      6  MOTION: the one loop (the current pip) animates opacity only and has a
         prefers-reduced-motion stop.
-     7  SHORT PHONES: the rest row loses its ring (<= 800px tall) and then goes
-        (<= 700px) so the count, the one thing that flexes, keeps its room.
+     7  SHORT PANES: the rest row loses its ring (gv-short) and then goes (gv-shorter)
+        so the count, the one thing that flexes, keeps its room. Keyed on the PANE
+        (controller.js puts those classes on the view root), never on a window-height
+        media query: the old @media (max-height: 800/700) blocks were dead weight once
+        the pane classes existed, and none may come back for the live set.
      8  THE SHEET'S TEXT holds 4.5:1 on BOTH ends of the sheet's gradient, in every
         theme and accent (the cascade probe in contrast.test.cjs only knows a flat
         colour, so the gradient's two ends are measured here). */
@@ -110,12 +113,14 @@ for (const skin of SKINS) {
   const calm = rules.find(r => r.media && /prefers-reduced-motion:\s*reduce/.test(r.media) && r.selector === `.gv-app${skin.cls} .gv-live-pip.is-cur`);
   ok(calm && /^none\b/.test(decl(calm, 'animation')), `${skin.key}: the blinking pip has no prefers-reduced-motion stop`);
 
-  /* ---- 7: short phones ---- */
-  const at800 = r => r.media && /max-height:\s*800px/.test(r.media);
-  const at700 = r => r.media && /max-height:\s*700px/.test(r.media);
-  const hidden = pred => rules.filter(r => pred(r) && r.selector.startsWith(`.gv-app${skin.cls} `) && decl(r, 'display') === 'none').map(r => r.selector.slice(`.gv-app${skin.cls} `.length));
-  ok(['.gv-live-ring', '.gv-live-lbl'].every(s => hidden(at800).includes(s)), `${skin.key}: at 800px tall the rest row drops its ring and label`);
-  ok(['.gv-live-next', '.gv-live-zone .gv-rc-tapchip'].every(s => hidden(at700).includes(s)), `${skin.key}: at 700px tall the rest row and the tap chip go`);
+  /* ---- 7: short panes ---- */
+  const unmedia = r => !r.media;
+  const hiddenUnder = tier => rules.filter(r => unmedia(r) && r.selector.startsWith(`.gv-app${skin.cls}.${tier} `) && decl(r, 'display') === 'none').map(r => r.selector.slice(`.gv-app${skin.cls}.${tier} `.length));
+  ok(['.gv-live-ring', '.gv-live-lbl'].every(s => hiddenUnder('gv-short').includes(s)), `${skin.key}: in a short pane (gv-short) the rest row drops its ring and label`);
+  ok(hiddenUnder('gv-short').includes('.gv-live-zone .gv-rc-tapchip'), `${skin.key}: in a short pane the tap chip goes`);
+  ok(hiddenUnder('gv-shorter').includes('.gv-live-next'), `${skin.key}: in a shorter pane (gv-shorter) the rest row goes`);
+  const windowKeyed = rules.filter(r => r.media && /max-height/.test(r.media) && /\.gv-live\b|\.gv-live-/.test(r.selector) && r.selector.indexOf(`.gv-app${skin.cls} `) === 0).map(r => `${r.media} ${r.selector}`);
+  eq(windowKeyed, [], `${skin.key}: a window-height media query styles the live set again (the pane classes own that): ${windowKeyed.join('; ')}`);
   const big = bySel(skin, '.gv-live-zone .gv-session-count');
   ok(/^min\(\d+vw, \d+vh, (\d+)px\)$/.test(decl(big, 'font-size') || '') && Number(/, (\d+)px\)/.exec(decl(big, 'font-size'))[1]) <= 208, `${skin.key}: the count is sized by BOTH the width and the height it has, capped at the mockup's 208px`);
   eq(decl(big, 'font-style'), 'italic', `${skin.key}: the count is the mockup's italic`);

@@ -5177,27 +5177,6 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 .gv-app.gv-skin-poster .gv-live-tickwrap { margin: 0; }
 .gv-app.gv-skin-poster .gv-live-tick { min-height: 62px; margin-top: 0; font-size: 30px; font-style: italic; letter-spacing: 0.03em; }
 .gv-app.gv-skin-poster .gv-live-tick .gv-ico svg { width: 30px; height: 30px; stroke-width: 3.4; }
-/* SHORT PHONES. Obsidian's own bars take height off the screen, and the count
-   is the one thing here that flexes, so the extras give way to it in two
-   steps: the rest row loses its ring and label (up to 800px tall), then goes
-   (up to 700px), and the count steps down with the height it has. */
-@media (max-height: 800px) {
-  .gv-app.gv-skin-poster .gv-live-zone .gv-session-count { font-size: min(46vw, 19vh, 208px); }
-  .gv-app.gv-skin-poster .gv-live-zone.gv-live-hold .gv-session-count { font-size: min(32vw, 15vh, 150px); }
-  .gv-app.gv-skin-poster .gv-live-ring,
-  .gv-app.gv-skin-poster .gv-live-lbl { display: none; }
-  .gv-app.gv-skin-poster .gv-live-nx { font-size: 20px; }
-  .gv-app.gv-skin-poster .gv-live-nx small { display: inline; margin: 0 0 0 8px; }
-  .gv-app.gv-skin-poster .gv-live-next { margin-bottom: 6px; }
-  .gv-app.gv-skin-apex .gv-live-sheet { padding-top: 30px; }
-  .gv-app.gv-skin-poster .gv-live-weight { padding-bottom: 22px; }
-}
-@media (max-height: 700px) {
-  .gv-app.gv-skin-poster .gv-live-next,
-  .gv-app.gv-skin-poster .gv-live-zone .gv-rc-tapchip { display: none; }
-  .gv-app.gv-skin-poster .gv-live-zone .gv-session-count { font-size: min(40vw, 17vh, 208px); }
-  .gv-app.gv-skin-poster .gv-live-head .gv-session-exname.gv-live-name { font-size: clamp(30px, 11vw, 40px); }
-}
 /* THE LIVE SET FILLS THE PANE EXACTLY (usability fix wave, M-01). The page used
    to be `min-height: 100%`, so the moment the header, the PB target, the count
    and the sheet needed more than the pane the page simply grew, and "Tick set"
@@ -6321,9 +6300,6 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 }
 .gv-app.gv-skin-lockin .gv-live-ring b { color: var(--gv-ink); font-family: var(--gv-display); font-size: 19px; font-style: italic; font-weight: 900; }
 .gv-app.gv-skin-lockin .gv-live .gv-timed-controls { margin-bottom: 22px; }
-@media (max-height: 800px) {
-              .gv-app.gv-skin-lockin .gv-live-sheet { padding-top: 30px; }
-  }
 
 
 /* ---------- lists ---------- */
