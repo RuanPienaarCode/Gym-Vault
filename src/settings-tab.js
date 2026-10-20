@@ -407,8 +407,7 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Playlists')
-      .setDesc('Saved Spotify or Apple Music links, offered alongside the music button in a guided session. Paste the share link — "Copy link to playlist" in Spotify, "Share → Copy Link" in Apple Music.')
-      .setHeading();
+      .setDesc('Saved Spotify or Apple Music links, offered alongside the music button in a guided session. Paste the share link — "Copy link to playlist" in Spotify, "Share → Copy Link" in Apple Music.');
 
     const save = async () => {
       await this.plugin.saveSettings();
@@ -453,7 +452,11 @@ class GymSettingTab extends PluginSettingTab {
             new Notice('Gym: that is not a Spotify or Apple Music link. Copy the share link from the app and paste it here.', 7000);
             return;
           }
-          this.plugin.settings.playlists = list.concat([{ name, url: draftUrl.trim() }]);
+          /* Save the link the plugin will actually open (music-link.js parses it the
+             same way at play time): kind and id only, so the `?si=` share token
+             and any utm_* / locale / query tracking a copied link carries is not
+             stored in the vault (L6-03). */
+          this.plugin.settings.playlists = list.concat([{ name, url: parseMusicTarget(draftUrl).https }]);
           await save();
         }));
   }
