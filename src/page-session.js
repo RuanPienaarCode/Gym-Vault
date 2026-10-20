@@ -2292,7 +2292,13 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   }
 
   const totalBefore = schedule.intervals.slice(0, tp.index).reduce((n, i) => n + i.seconds, 0);
+  /* THIS render belongs to this interval only. If the circuit has moved on
+     (tick() below ended the interval and a nested render now owns the clock),
+     a ticker still bound to these nodes must do nothing: it would read the NEW
+     interval's clock against THIS interval's length. */
+  const myIndex = tp.index;
   const tick = () => {
+    if (tp.index !== myIndex || ctx.state.session !== sess) return;
     const elapsed = timedElapsed(tp);
     const remaining = Math.max(0, iv.seconds - elapsed);
     digits.textContent = String(Math.ceil(remaining));
@@ -2322,6 +2328,11 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
     if (remaining <= 0) advanceTimed(ctx, draft, sess);
   };
   tick();
+  /* An interval that was already over ended in that first tick(): advanceTimed
+     re-rendered the next one, which registered ITS ticker. Registering this
+     one now would replace it with a ticker for the interval that just ended
+     (audit L3-09). */
+  if (tp.index !== myIndex || ctx.state.session !== sess) return;
   ctx.setPageInterval(tick, TICK_MS);
 }
 
