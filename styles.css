@@ -553,6 +553,35 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
 .theme-dark .gv-app .gv-icon-btn-on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-icon-btn-small .gv-ico svg { width: 13px; height: 13px; }
 
+/* KEYBOARD FOCUS (W4-7, L5-09). This file sets `box-shadow: none` on its buttons, and the host's own
+   focus ring is a box-shadow, so tabbing through the app showed nothing. An OUTLINE (not touched by
+   that reset) in the accent's own token: --gv-lime-deep on paper, --gv-lime on graphite. Keyboard
+   and switch control only: :focus-visible does not fire on a pointer press.
+   iOS: :focus-visible is invalid before Safari 15.4 and one unknown pseudo-class drops the whole
+   rule list, so it exists ONLY inside @supports selector(:focus-visible) (a block 15.0-15.3 skip),
+   and those engines get the plain :focus ring below (a button does not take focus from a tap
+   there). tests/w4-focus-ring.test.cjs pins the guard, the targets and the ring's 3:1. */
+@supports selector(:focus-visible) {
+  .gv-app button:focus-visible,
+  .gv-app [role='button']:focus-visible,
+  .gv-app [role='switch']:focus-visible,
+  .gv-app a:focus-visible { outline: 2px solid var(--gv-lime-deep); outline-offset: 2px; }
+  .theme-dark .gv-app button:focus-visible,
+  .theme-dark .gv-app [role='button']:focus-visible,
+  .theme-dark .gv-app [role='switch']:focus-visible,
+  .theme-dark .gv-app a:focus-visible { outline-color: var(--gv-lime); }
+}
+@supports not selector(:focus-visible) {
+  .gv-app button:focus,
+  .gv-app [role='button']:focus,
+  .gv-app [role='switch']:focus,
+  .gv-app a:focus { outline: 2px solid var(--gv-lime-deep); outline-offset: 2px; }
+  .theme-dark .gv-app button:focus,
+  .theme-dark .gv-app [role='button']:focus,
+  .theme-dark .gv-app [role='switch']:focus,
+  .theme-dark .gv-app a:focus { outline-color: var(--gv-lime); }
+}
+
 .gv-toolbar {
   display: flex;
   align-items: center;

@@ -211,7 +211,16 @@ const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
 {
   for (const [re, what] of [[/:has\(/, ':has()'], [/color-mix\(/, 'color-mix()'], [/\b\d+dvh\b/, 'dvh'], [/@property/, '@property'],
     [/backdrop-filter/, 'backdrop-filter'], [/\(\?<[=!]/, 'lookbehind']]) assert.ok(!re.test(bare), `${what} is not safe on the iOS 15 floor`);
-  const focus = [...bare.matchAll(/([^{}]*):focus-visible[^{}]*\{/g)];
+  /* A :focus-visible INSIDE `@supports [not] selector(:focus-visible) { ... }` is the guard the message below asks
+     for (15.0-15.3 evaluate it false and skip the block); only a bare one is the hazard. Blank the guarded blocks
+     (their preludes too), then look. */
+  let unguarded = bare;
+  for (const g of [...bare.matchAll(/@supports\s+(?:not\s+)?selector\(\s*:focus-visible\s*\)\s*\{/g)].reverse()) {
+    let depth = 0, i = g.index + g[0].length - 1;
+    for (; i < unguarded.length; i++) { if (unguarded[i] === '{') depth++; else if (unguarded[i] === '}' && --depth === 0) break; }
+    unguarded = unguarded.slice(0, g.index) + unguarded.slice(g.index, i + 1).replace(/[^\n]/g, ' ') + unguarded.slice(i + 1);
+  }
+  const focus = [...unguarded.matchAll(/([^{}]*):focus-visible[^{}]*\{/g)];
   assert.deepStrictEqual(focus.map(m => m[0]), [], 'a bare :focus-visible invalidates its whole rule on iOS 15.0-15.3; guard it with @supports selector()');
   assert.ok(!/\bcqw\b|\bcontainer-type\b|:where\(|inset:/.test(bare.slice(banner)), 'container queries, :where() and the inset shorthand are newer than the floor');
 }
