@@ -2417,6 +2417,19 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   text-align: center;
   box-shadow: none;
   -moz-appearance: textfield;
+  /* The box is as tall as its own type. Obsidian's `input[type='number']
+     { height: var(--input-height) }` (0,1,1) was the only height declared, so a
+     44px box held ~180px digits and showed a strip of them (usability fix wave,
+     M-02). */
+  height: auto;
+}
+/* Focus keeps the lime underline and no ring. Obsidian's number-box focus rules
+   are (0,2,1) - a grey border-color on :focus and a ring on :focus-visible -
+   so the rest-state rule above (0,2,0) lost both; this one is (0,3,0), plain
+   :focus (:focus-visible is invalid before iOS 15.4, and implies :focus). */
+.gv-app .gv-rc-typein:focus {
+  border-bottom-color: var(--gv-lime);
+  box-shadow: none;
 }
 /* The spinners are unusable at this size and steal horizontal room from a
    three-digit count. */
