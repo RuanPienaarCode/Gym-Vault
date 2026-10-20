@@ -1773,7 +1773,12 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 
 /* ---------- modals ---------- */
 
-.gv-modal .gv-modal-err { color: var(--gv-danger); font-size: 13px; min-height: 18px; margin: 4px 0; }
+/* A form modal is a plain Obsidian dialog (.gv-modal, NOT .gv-app, which would put the app
+   root's flex column and every token on it), so --gv-danger is not in scope here: the
+   error line carries its own, the same two values as the app root's tokens
+   (tests/f4-modal-danger.test.cjs pins that they match). */
+.gv-modal .gv-modal-err { --gv-danger: #b91c1c; color: var(--gv-danger); font-size: 13px; min-height: 18px; margin: 4px 0; }
+.theme-dark .gv-modal .gv-modal-err { --gv-danger: #f87171; }
 
 /* ---------- rep counter ----------
    Full-screen tap-to-count takeover (src/rep-counter-modal.js). Obsidian
