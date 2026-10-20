@@ -291,7 +291,8 @@
    including on the iOS 15 floor this plugin still targets.
    Not `display:none` or `visibility:hidden` — both remove the element from
    the accessibility tree, which defeats the entire point. */
-.gv-app .gv-sr-only {
+.gv-app .gv-sr-only,
+.gv-app.gv-narrow .gv-btn-guided-label {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -2695,7 +2696,8 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
    `.gv-nav-btn span` here hides the icon too and every button in a
    narrow pane collapses to an empty block. */
 .gv-app.gv-narrow .gv-nav-label { display: none; }
-.gv-app.gv-narrow .gv-btn-guided-label { display: none; }
+/* The Guided button's word is VISUALLY hidden in a narrow pane (the .gv-sr-only rule up the file
+   carries it): display:none would leave the button with no accessible name. */
 .gv-app.gv-narrow .gv-logtop-guided { padding: 7px 9px; }
 
 /* ---------- touch targets ----------

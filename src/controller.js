@@ -537,10 +537,12 @@ function mountApp(view) {
     for (const item of NAV) {
       if (item.when && !item.when(ctx)) continue;
       const head = item.place === 'head';
+      /* aria-label on EVERY tab: the label span is display:none in a narrow pane (every
+         phone) and Floor/Editorial show the icon alone, so the name has to be on the button. */
       const b = el('button', {
         class: head ? 'gv-head-btn' : 'gv-nav-btn',
         type: 'button', 'data-page': item.id,
-        'aria-label': head ? item.label : null,
+        'aria-label': item.label,
       }, ico(item.icon), head ? '' : el('span', { class: 'gv-nav-label' }, item.label));
       b.addEventListener('click', () => {
         /* Leaving mid-log keeps the draft: coming back to Today offers the
