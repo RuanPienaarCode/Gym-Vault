@@ -147,6 +147,21 @@ function attachTapZone(zone, onTap) {
    Returns {armed, skip, stop}. `armed()` is what a tap handler checks: while
    it is false a tap SKIPS the count-in instead of counting a rep — the tap
    that says "I'm ready" must not also become rep one. */
+/* THE COUNT-IN BORROWS THE COUNT'S NODE, SO THE NODE'S EDITOR MUST END IT.
+   While a count-in runs, countEl shows 5, 4, 3... and every tick rewrites its
+   text. typeCountButton edits that same node in place, so a number box opened
+   in the window was wiped by the next tick (audit L3-12). attachCountIn
+   registers how to end ITS count-in against the node here, and typeCountButton
+   calls endCountIn(countEl) before it opens the box: the hand-over a tap or
+   Tick already performs, so what is typed lands on a counter that is armed and
+   nothing is left to overwrite it. Keyed by node so the guided screen and the
+   modal both get it without either passing the other's state around. */
+const countInEnders = new WeakMap();
+function endCountIn(countEl) {
+  const end = countInEnders.get(countEl);
+  if (end) end();
+}
+
 function attachCountIn(zone, countEl, opts) {
   const o = opts || {};
   let armed = false;
@@ -159,6 +174,7 @@ function attachCountIn(zone, countEl, opts) {
   zone.append(live);
 
   const restore = () => {
+    countInEnders.delete(countEl);
     countEl.classList.remove('gv-rc-countin', 'gv-rc-countin-go');
     zone.classList.remove('gv-rc-arming');
     /* The label goes with the countdown — leaving it behind would put
@@ -218,6 +234,8 @@ function attachCountIn(zone, countEl, opts) {
       if (o.onDone) o.onDone();
     },
   });
+
+  countInEnders.set(countEl, () => { if (!armed) seq.skip(); });
 
   return {
     armed: () => armed,
@@ -345,6 +363,7 @@ function typeCountButton(countEl, opts) {
 
   btn.addEventListener('click', () => {
     if (countEl.querySelector('input')) return; // already editing
+    endCountIn(countEl); // a count-in still running would overwrite the box on its next tick
     const before = String(get());
     const input = el('input', {
       class: 'gv-rc-typein', type: 'number', inputmode: 'numeric', min: '0', step: '1',
