@@ -42,6 +42,42 @@ async function savesSettled(plan) {
   }
 }
 
+/* NEVER RE-RENDER UNDER A PRESS (the swallowed first click on Done).
+
+   Pressing a button moves focus out of the field being edited on MOUSEDOWN, so
+   the row's `focusout` reload re-rendered the page before the press ended; the
+   button the finger was on no longer existed on release, the browser dropped the
+   click, and Done (or any control outside the row) needed a second tap. A reload
+   that is due while a pointer is down therefore waits until the press is over.
+   The watcher is installed when an edit row is built (before any press), once per
+   document, and a lost pointerup cannot hold the reload for more than PRESS_CAP_MS. */
+const PRESS_CAP_MS = 1500;
+const pressOfDoc = new WeakMap();   // document -> { down, waiters }
+
+function pressWatch(doc) {
+  if (!doc || typeof doc.addEventListener !== 'function') return null;
+  let s = pressOfDoc.get(doc);
+  if (s) return s;
+  s = { down: false, waiters: [] };
+  const flush = () => { s.down = false; for (const fn of s.waiters.splice(0)) fn(); };
+  doc.addEventListener('pointerdown', () => { s.down = true; }, true);
+  /* After the click that follows pointerup has been delivered. */
+  const end = () => setTimeout(flush, 50);
+  doc.addEventListener('pointerup', end, true);
+  doc.addEventListener('pointercancel', end, true);
+  pressOfDoc.set(doc, s);
+  return s;
+}
+
+function afterPress(fn) {
+  const s = pressWatch(typeof document !== 'undefined' ? document : null);
+  if (!s || !s.down) { fn(); return; }
+  let done = false;
+  const once = () => { if (!done) { done = true; fn(); } };
+  s.waiters.push(once);
+  setTimeout(once, PRESS_CAP_MS);
+}
+
 /* A structural edit (add/remove/move): save, wait out any other save in
    flight, then show the note as it now is. A refused save (the note changed
    outside the app — savePlan has already said so) lands on the same reload. */
@@ -533,8 +569,9 @@ function editableItem(ctx, plan, day, it, idx) {
      rebuild waits. */
   row.addEventListener('focusout', e => {
     if (e.relatedTarget && row.contains(e.relatedTarget)) return;
-    savesSettled(plan).then(() => ctx.reload());
+    savesSettled(plan).then(() => afterPress(() => ctx.reload()));
   });
+  pressWatch(typeof document !== 'undefined' ? document : null);
   return row;
 }
 
