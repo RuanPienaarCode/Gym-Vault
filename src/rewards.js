@@ -200,7 +200,9 @@ function repsPerSet(item, exercise) {
      entries  everything daysOn gave that weekday
      fresh    the entries that are new to the week (a wildcard day already met on an
               earlier weekday is left out) - the quest reads items from these
-     planDay  the day the strip shows for the weekday, or null
+     planDay  the day the strip shows for the weekday: the first entry that is not a
+              rest day (a parallel plan's day behind the main plan's "Rest" is
+              still planned work), or null
      counts   true when that planDay is one more session for the week's target */
 function weekSchedule(daysOn, today, weekStart) {
   const start = startOfWeek(today, weekStart);
@@ -217,7 +219,7 @@ function weekSchedule(daysOn, today, weekStart) {
       seen.add(e.day);
       return true;
     });
-    const shown = entries[0] && !isRestDay(entries[0].day) ? entries[0] : null;
+    const shown = entries.find(e => !isRestDay(e.day)) || null;
     let counts = !!shown;
     if (shown && shown.day.weekday === 'any') { counts = !counted.has(shown.day); counted.add(shown.day); }
     days.push({ iso, wk, entries, fresh, planDay: shown ? shown.day : null, counts });
