@@ -205,6 +205,19 @@ function distanceInWeek(workouts, refIso, weekStart) {
   return Math.round(km * 10) / 10;
 }
 
+/* THE ONE RULE FOR "A RUN HAPPENED ON THIS DAY". A saved session that day
+   holds a row with a distance, OR a row of a km exercise (`exercises` are the
+   library's notes): a timed circuit saves a run as minutes with no km, and
+   Today ("Logged for today") and the Running page's week list must not read
+   the same saved session two ways. This answers "did it happen" only - the
+   distance figures (week/last-week km, longest run, pace, records) still need
+   a distance, so a km-less row adds no kilometres. */
+function ranOn(workouts, iso, exercises) {
+  const runNames = (exercises || []).filter(e => e.fm && e.fm.unit === 'km').map(e => e.name);
+  return (workouts || []).some(w => workoutDate(w) === iso && (w.rows || []).some(r =>
+    num(r.distance_km) !== null || runNames.some(n => sameName(n, r.exercise))));
+}
+
 /* Which week of a training ladder `today` falls in: 1-based, null before the
    start date, clamped to the last rung once the plan is finished. */
 function ladderWeek(startDate, today, weeks) {
@@ -360,6 +373,6 @@ function bmi(weightKg, heightCm) {
 
 module.exports = {
   num, workoutDates, workoutDate, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM, best1RM,
-  sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek,
+  sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek, ranOn,
   goalCurrent, goalIssue, goalProgress, weightSeries, bmi, claimableKinds, claimedBests,
 };

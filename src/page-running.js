@@ -9,7 +9,7 @@
 const { el, ico, fmt, fmtSeconds, statTile, emptyLine } = require('./dom');
 const { WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, startOfWeek, addDays } = require('./dates');
-const { distanceInWeek, ladderWeek, workoutDate, num } = require('./stats');
+const { distanceInWeek, ladderWeek, num, ranOn } = require('./stats');
 const { runRows, longestRun, paceOf, fmtPace } = require('./run-records');
 const { isPaused } = require('./plan-parse');
 
@@ -71,11 +71,11 @@ function render(ctx, root) {
       root.append(el('div', { class: 'gv-section-title' }, ico('calendar-days'), el('span', {}, 'This week')));
       const list = el('div', { class: 'gv-card-list' });
       for (const s of scheduled) {
-        /* workoutDate, not a bare slice: it is THE rule for a workout's day
-           (stats.js). A `date: 2026-08-26T09:00` matched here by accident;
-           anything else fromISO accepts silently never did. */
-        const done = data.workouts.some(w => workoutDate(w) === s.iso &&
-          (w.rows || []).some(r => num(r.distance_km) !== null));
+        /* stats.ranOn is the one rule for "a run happened that day" - a
+           distance row, or a row of a km exercise (a timed circuit saves a
+           run as minutes with no km). It reads the day through workoutDate,
+           THE rule for a workout's day. */
+        const done = ranOn(data.workouts, s.iso, data.exercises);
         const isLong = /long/i.test(s.day.name);
         const rx = isLong && target !== null ? `${target} km` : (s.day.items[0] ? s.day.items[0].target : '');
         const row = el('div', { class: `gv-card gv-runday${s.iso === today ? ' today' : ''}${done ? ' done' : ''}` },
