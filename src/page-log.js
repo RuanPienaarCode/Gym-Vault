@@ -412,6 +412,24 @@ function buildRows(draft) {
   return rows;
 }
 
+/* THE ONE MINUTES RULE FOR A FINISHED SESSION. duration_min used to be the
+   time the log page had been open, so a 30-minute run entered afterwards
+   saved `1` and History read "1 SET - 1 MIN". The work you entered is a floor:
+   the sum of the counted sets' seconds (a run's minutes are already seconds in
+   buildRows, the one shaping rule - so this cannot disagree with what is
+   saved). It is never a REDUCTION: a live session whose clock ran longer than
+   its entered work keeps the clock. page-session's completion tile calls this
+   too, so the tile and the saved note agree. */
+function sessionMinutes(draft, now = Date.now()) {
+  const elapsedMin = (now - draft.startedAt) / 60000;
+  let workSec = 0;
+  for (const r of buildRows(draft)) {
+    const sec = parseFloat(r.seconds);
+    if (Number.isFinite(sec) && sec > 0) workSec += sec;
+  }
+  return Math.max(1, Math.round(elapsedMin), Math.round(workSec / 60));
+}
+
 async function finishSession(ctx, draft) {
   /* stats.setCounts is the one rule for what gets saved: ticked done OR
      holding any typed figure — sweaty thumbs forget ticks, and silently
@@ -423,7 +441,7 @@ async function finishSession(ctx, draft) {
      second tap mid-await would write "<date> 2.md" with identical rows. */
   if (draft.finishing) return;
   draft.finishing = true;
-  const duration_min = Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));
+  const duration_min = sessionMinutes(draft);
   let path;
   try {
     path = await ctx.io.saveWorkout({ date: draft.date, plan: draft.plan, day: draft.day, duration_min, rows });
@@ -445,4 +463,4 @@ async function finishSession(ctx, draft) {
   ctx.reload();
 }
 
-module.exports = { render, startDraft, buildRows, finishSession, keepDraft, saveMotionPref };
+module.exports = { render, startDraft, buildRows, finishSession, sessionMinutes, keepDraft, saveMotionPref };
