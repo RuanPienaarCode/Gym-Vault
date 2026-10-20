@@ -223,7 +223,7 @@ function makeIo(plugin) {
   /* ---- load everything ------------------------------------------------ */
 
   async function loadAll() {
-    const data = { profile: { fm: {}, body: '' }, body: [], exercises: [], plans: [], goals: [], workouts: [], present: false, unreadable: 0, unreadablePaths: [], duplicateExercises: [], missingExercises: [], rootExists: false };
+    const data = { profile: { fm: {}, body: '' }, body: [], exercises: [], plans: [], goals: [], workouts: [], present: false, unreadable: 0, unreadablePaths: [], duplicateExercises: [], missingExercises: [], foldedHeadings: [], rootExists: false };
     /* Mid-index (a fresh device, a big iCloud sync) an individual read can
        fail while the rest are fine. Skipping the file that failed and
        counting it beats losing the entire load to one bad read. */
@@ -314,6 +314,11 @@ function makeIo(plugin) {
     /* Plans and goals name exercises; a renamed or deleted note leaves the
        name pointing at nothing. Said out loud on the Exercises page. */
     data.missingExercises = findMissingExercises(data);
+    /* A `## Heading` with no (weekday) is read as part of the day above it
+       (plan-parse.js keeps that parse on purpose); say so, per plan. */
+    for (const p of data.plans) {
+      for (const h of (p.model && p.model.folded) || []) data.foldedHeadings.push({ heading: h.heading, plan: p.name, day: h.day });
+    }
     return data;
   }
 

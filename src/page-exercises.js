@@ -57,6 +57,24 @@ function render(ctx, root) {
         + 'Renamed or deleted? Rename the note back, or edit the plan line or goal.')));
   }
 
+  /* A plan heading with no (weekday) is read as part of the day above it —
+     the parse is deliberate (plan-parse.js), so it is said out loud instead. */
+  const folded = data.foldedHeadings || [];
+  if (folded.length) {
+    const SHOW_FOLDED = 3;
+    for (const f of folded.slice(0, SHOW_FOLDED)) {
+      root.append(el('div', { class: 'gv-warn-line' },
+        ico('triangle-alert'),
+        el('span', {}, `\u2018${f.heading}\u2019 in ${f.plan} has no (weekday), so it is read as part of ${f.day}. `
+          + 'Add a weekday like (tue) to make it its own day.')));
+    }
+    if (folded.length > SHOW_FOLDED) {
+      root.append(el('div', { class: 'gv-warn-line' },
+        ico('triangle-alert'),
+        el('span', {}, `${folded.length - SHOW_FOLDED} more plan headings have no (weekday).`)));
+    }
+  }
+
   const chips = el('div', { class: 'gv-chips' });
   const allChip = el('button', { class: `gv-chip${ui.muscle === '' ? ' on' : ''}`, type: 'button' }, 'all');
   allChip.addEventListener('click', () => { ui.muscle = ''; ctx.rerender(); });

@@ -109,6 +109,10 @@ function targetDurationSeconds(target) {
 function parsePlanBody(body) {
   const intro = [];
   const days = [];
+  /* `## Heading` lines that carry no (weekday) and so were folded into the
+     day above. Recorded, NOT acted on: data.js turns this into a load-time
+     warning (see the LEFT DELIBERATELY UNGUARDED note below). */
+  const folded = [];
   let day = null;
   /* Inside a ``` fence everything is an EXAMPLE the author is showing, not
      plan structure. Without this, a fenced `## Fake (tue)` created a real
@@ -148,7 +152,11 @@ function parsePlanBody(body) {
        parser with no UI to ask which. Guessing wrong either way is its own
        silent corruption, on top of the one being fixed. Left alone rather
        than gamed into a guess; a warning surfaced at load time (not a parse
-       rule change) is the safer shape for this, if it is ever worth doing. */
+       rule change) is the safer shape for this, if it is ever worth doing.
+
+       That warning now exists: the heading is recorded in `folded` below
+       (model.folded) and data.js loadAll() reports it as data.foldedHeadings. */
+    if (day && !fenced && /^##\s+\S/.test(line)) folded.push({ heading: line.replace(/^##\s+/, '').trim(), day: day.name });
     /* An INDENTED bullet is the user's own annotation hanging off the line
        above — `  - grip: overhand`, a superset's members — not an exercise.
        Testing the trimmed line made indentation invisible, so those became
@@ -181,7 +189,7 @@ function parsePlanBody(body) {
     while (d.notes.length && d.notes[d.notes.length - 1].trim() === '') d.notes.pop();
   }
   while (intro.length && intro[intro.length - 1].trim() === '') intro.pop();
-  return { intro, days };
+  return { intro, days, folded };
 }
 
 /* Structural edits go through these so parts and items never drift. */
