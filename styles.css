@@ -553,6 +553,29 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
 .theme-dark .gv-app .gv-icon-btn-on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-icon-btn-small .gv-ico svg { width: 13px; height: 13px; }
 
+/* TOUCH BOXES (W4-8, B-L4-10). Hit-tested on a phone: Floor/Editorial buttons were 38px tall, small ones 32px,
+   the Skip pair 26px, every mic/play/delete/tap-count/remove icon button 40x40, Editorial goal rows 36px.
+   Each gets a transparent ::after centred on it, as big as the control or 44px, whichever is larger: a
+   click on it is a click on the control and nothing is painted or moved (the .gv-planswap technique).
+   ::after, because the poster skins paint their slab on ::before; .gv-btn-go is not a .gv-btn and
+   keeps its own ::after. tests/w4-touch-boxes.test.cjs. */
+.gv-app .gv-btn:not(.gv-btn-go),
+.gv-app .gv-btn-hero-ghost,
+.gv-app .gv-icon-btn,
+.gv-app .gv-goal-mini { position: relative; }
+.gv-app .gv-btn:not(.gv-btn-go)::after,
+.gv-app .gv-btn-hero-ghost::after,
+.gv-app .gv-icon-btn::after,
+.gv-app .gv-goal-mini::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
 /* KEYBOARD FOCUS (W4-7, L5-09). This file sets `box-shadow: none` on its buttons, and the host's own
    focus ring is a box-shadow, so tabbing through the app showed nothing. An OUTLINE (not touched by
    that reset) in the accent's own token: --gv-lime-deep on paper, --gv-lime on graphite. Keyboard
