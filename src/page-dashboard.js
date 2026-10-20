@@ -261,7 +261,7 @@ function render(ctx, root) {
     trainingDay = day;
     stage.classList.add('has-chips');
     const prose = (day.notes || []).join(' ').trim();
-    sub.append(doneToday ? 'Logged for today — nice work.' : prose || `${day.items.length} exercises on the plan.`);
+    sub.append(doneToday ? 'Logged for today — nice work.' : prose || `${countLabel(day.items.length, 'exercise')} on the plan.`);
 
     afterHead.push(ticker());
 

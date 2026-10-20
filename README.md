@@ -73,7 +73,7 @@ the command palette (it appears as *Gym Vault: Open gym*).
 **Set up.** On first run the app offers **Create my gym**. It writes an
 *example* gym for you to edit or replace, all as notes under your Gym folder:
 
-- a starter library of 68 exercises (with demonstration images and some
+- a starter library of about 70 exercises (with demonstration images and some
   videos linked from the web — see *Privacy and network use*);
 - the **Get Over The Bar** plan, a four-day pull-up and muscle-up programme.
   It is set as your active plan unless you already have a plan that drives
