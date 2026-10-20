@@ -1136,7 +1136,13 @@ function makeIo(plugin) {
             continue;
           }
         }
-        next.push(have && have.path ? have.path : localPath);
+        /* Stored as a LINK to the path inside the Attachments folder, not as
+           `Gym/Attachments/...`: Obsidian resolves a link path by basename and
+           then by path suffix (case-insensitively), so it keeps working when
+           the Gym folder is renamed or moved. The one reader of `image:`
+           (page-exercise-detail resolveExerciseImages -> vaultFile) resolves
+           `[[...]]` values; absolute paths already stored are left alone. */
+        next.push(`[[Attachments${localPath.slice(paths.attachments().length)}]]`);
         changed = true;
       }
       if (changed) {
