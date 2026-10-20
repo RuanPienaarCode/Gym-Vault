@@ -119,10 +119,10 @@ function sessionInputs(ctx, draft) {
   return { records: [], workouts: ctx.data.workouts };
 }
 
-function awardsFor(ctx, draft, rows, workoutKey, ledgerState, inputs) {
+function awardsFor(ctx, draft, rows, workoutKey, ledgerState, inputs, keySuffix) {
   const inp = inputs || sessionInputs(ctx, draft);
   return R.awardsForSession({
-    workoutKey, date: draft.date, sets: rows, records: inp.records, workouts: inp.workouts,
+    workoutKey, keySuffix, date: draft.date, sets: rows, records: inp.records, workouts: inp.workouts,
     daysOn: ctx.daysOn, exercises: ctx.data.exercises, weekStart: weekStartOf(ctx),
     settings: ctx.settings, ledgerState,
   });
@@ -132,7 +132,10 @@ function awardsFor(ctx, draft, rows, workoutKey, ledgerState, inputs) {
    The complete screen is shown BEFORE the save, so the card is a preview: the awards
    this session WOULD earn, computed with a provisional key (the real key is the saved
    note's path, which does not exist yet). The amounts do not depend on the key. It is
-   cached on the session object so a re-render of the screen does not recompute it. */
+   cached on the session object so a re-render of the screen does not recompute it.
+   The provisional key is unique to this draft, so the preview always prices a full
+   session; awardFinished pays that same full amount even when the saved path was paid
+   before (R.sessionKeySuffix), so the card's promise and the ledger agree. */
 function preview(ctx, draft, sess, rows) {
   if (!enabled(ctx)) return null;
   if (sess.rewardsPreview) return sess.rewardsPreview;
@@ -178,7 +181,7 @@ const retryList = ctx => (ctx && ctx.state && ctx.state.rewardsRetry) || [];
 
 function queueRetry(ctx, job) {
   const st = ctx.state || (ctx.state = {});
-  st.rewardsRetry = retryList(ctx).filter(j => j.path !== job.path).concat([Object.assign({ tried: { today: false, start: false }, busy: false }, job)]);
+  st.rewardsRetry = retryList(ctx).filter(j => j.path !== job.path || j.sessionId !== job.sessionId).concat([Object.assign({ tried: { today: false, start: false }, busy: false }, job)]);
 }
 
 /* A write that did not happen: the vault threw, or the ledger is there but would not
@@ -200,7 +203,8 @@ async function awardFinished(ctx, draft, rows, path) {
   if (!ctx.io || typeof ctx.io.readRewards !== 'function' || typeof ctx.io.appendRewards !== 'function') return null;
   if (!draft || draft.rewardsAwarded) return null;
   draft.rewardsAwarded = true;
-  const job = { path, date: draft.date, rows, records: [] };
+  /* The session's own id (the key suffix, should its path already be paid), fixed here so a retry is the same session. */
+  const job = { path, date: draft.date, rows, records: [], sessionId: draft.startedAt || Date.now() };
   try {
     const inputs = sessionInputs(ctx, draft);
     job.records = (inputs.records || []).slice();
@@ -208,7 +212,8 @@ async function awardFinished(ctx, draft, rows, path) {
     const ledgerState = await ctx.io.readRewards();
     /* Never work awards out against a ledger that would not read: it says nothing about what is paid. */
     if (!ledgerState || ledgerState.unreadable) { queueRetry(ctx, job); invalidate(ctx); return null; }
-    const awards = awardsFor(ctx, draft, rows, path, ledgerState, inputs);
+    job.keySuffix = R.sessionKeySuffix(ledgerState, path, job.sessionId);
+    const awards = awardsFor(ctx, draft, rows, path, ledgerState, inputs, job.keySuffix);
     if (awards.length) {
       const res = await ctx.io.appendRewards(awards);
       if (notWritten(res)) { queueRetry(ctx, job); invalidate(ctx); return null; }
@@ -235,7 +240,9 @@ async function retryOne(ctx, job, when) {
   try {
     const ledgerState = await ctx.io.readRewards();
     if (!ledgerState || ledgerState.unreadable) return;
-    const awards = awardsFor(ctx, { date: job.date }, job.rows, job.path, ledgerState, { records: job.records, workouts: ctx.data.workouts });
+    /* The suffix the first try chose stands; a job that never got that far decides now (nothing of it can be in the ledger). */
+    if (job.keySuffix == null) job.keySuffix = R.sessionKeySuffix(ledgerState, job.path, job.sessionId);
+    const awards = awardsFor(ctx, { date: job.date }, job.rows, job.path, ledgerState, { records: job.records, workouts: ctx.data.workouts }, job.keySuffix);
     let appended = [];
     if (awards.length) {
       const res = await ctx.io.appendRewards(awards);

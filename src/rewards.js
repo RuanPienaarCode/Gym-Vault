@@ -78,15 +78,18 @@
        -> [{date, key, kind, xp, note}]
        Called ONCE when a session finishes. Pure; leaves out any key already in the ledger.
          workoutKey  the saved workout's vault path (io.saveWorkout's return value): stable and unique per session
+         keySuffix   '' (default) or '#<sessionId>' from sessionKeySuffix(): appended to the session/sets/pb keys so a NEW
+                     session saved at a path the ledger has already paid (delete a session, log it again the same day:
+                     saveWorkout reuses the freed path) is paid in full. Existing ledger lines are never re-keyed.
          date        the session's YYYY-MM-DD
          sets        the rows that were saved (page-log.buildRows); sessionSets(sets) is the set count
          records     sess.records ([{key, exercise, kind, val, prev}]) - never a second detection path
          workouts    history WITHOUT this session (sess.workoutsAtStart); a workout whose file.path equals workoutKey is ignored
          ledgerState parseLedger() result (or entries)
        No saved rows -> []. Components, in this order, each its own ledger line:
-         session:<workoutKey>                 +100  'Session finished'
-         sets:<workoutKey>                    +5 x sessionSets(sets)
-         pb:<workoutKey>#<record.key>         +50 each record in `records`
+         session:<workoutKey><keySuffix>      +100  'Session finished'
+         sets:<workoutKey><keySuffix>         +5 x sessionSets(sets)
+         pb:<workoutKey><keySuffix>#<record.key>  +50 each record in `records`
          week-streak:<weekKey>                +20  once a week, when stats.weekStreak (counting this session) >= 2
          quest:<weekKey>                      +120 when THIS session takes the week's quest from incomplete to complete
        Idempotent by key: awarding twice, or from two devices, can never pay twice.
@@ -292,6 +295,18 @@ function questFor(o) {
 
 const KIND_UNIT = { reps: ' reps', weight: ' kg', seconds: 's' };
 
+/* The key suffix a session finishing at `workoutKey` pays under. The ledger is keyed by the
+   saved note's path, and a path is reused once its note is deleted, so a NEW session at a path
+   whose `session:` line is already paid would find every key present and earn nothing. It
+   takes '#<sessionId>' (the draft's startedAt) instead; a path never paid keeps the plain
+   key, so no existing line is ever re-keyed. Decide ONCE per session and keep the answer
+   (a retry of the same session must reuse it, not ask again). */
+function sessionKeySuffix(state, workoutKey, sessionId) {
+  const wkey = String(workoutKey == null ? '' : workoutKey).trim();
+  if (!wkey || sessionId == null || sessionId === '') return '';
+  return ledger.hasKey(state || ledger.parseLedger(''), `session:${wkey}`) ? `#${sessionId}` : '';
+}
+
 function awardsForSession(o) {
   if (!rewardsEnabled(o.settings)) return [];
   const wkey = String(o.workoutKey == null ? '' : o.workoutKey).trim();
@@ -300,18 +315,19 @@ function awardsForSession(o) {
   if (!wkey || !date || !n) return [];
 
   const state = o.ledgerState || ledger.parseLedger('');
+  const sfx = o.keySuffix == null ? '' : String(o.keySuffix);
   const out = [];
   const add = (key, kind, xp, note) => {
     if (ledger.hasKey(state, key) || out.some(a => a.key === key)) return;
     out.push({ date, key, kind, xp, note });
   };
 
-  add(`session:${wkey}`, 'session', XP.session, 'Session finished');
-  add(`sets:${wkey}`, 'sets', XP.set * n, `${n} set${n === 1 ? '' : 's'} logged`);
+  add(`session:${wkey}${sfx}`, 'session', XP.session, 'Session finished');
+  add(`sets:${wkey}${sfx}`, 'sets', XP.set * n, `${n} set${n === 1 ? '' : 's'} logged`);
   for (const rec of o.records || []) {
     if (!rec) continue;
     const id = rec.key || `${rec.exercise}/${rec.kind}`;
-    add(`pb:${wkey}#${id}`, 'pb', XP.pb, `New best: ${rec.exercise} ${rec.val}${KIND_UNIT[rec.kind] || ''}`);
+    add(`pb:${wkey}${sfx}#${id}`, 'pb', XP.pb, `New best: ${rec.exercise} ${rec.val}${KIND_UNIT[rec.kind] || ''}`);
   }
 
   /* THIS session as a workout, so every derived figure below counts it. The
@@ -525,5 +541,5 @@ function newMedals(before, after) {
 
 module.exports = {
   XP, LEVEL, RANKS,
-  rewardsEnabled, xpToReach, levelFor, rankFor, weekKey, weekSchedule, questFor, medals, newMedals, awardsForSession, summarise,
+  rewardsEnabled, xpToReach, levelFor, rankFor, weekKey, weekSchedule, questFor, medals, newMedals, sessionKeySuffix, awardsForSession, summarise,
 };
