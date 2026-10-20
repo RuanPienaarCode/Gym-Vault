@@ -10,7 +10,7 @@
    'weight', 'seconds'. Distance (runs) has no record concept here in v1 —
    callers simply don't call this for a distance entry. */
 
-const { exerciseBests, sameName, num, workoutDate } = require('./stats');
+const { exerciseBests, sameName, num, workoutDate, claimableKinds } = require('./stats');
 
 /* The three dimensions a record can exist in, in the order they are shown.
    Distance is deliberately absent: a run's record is its own thing and
@@ -24,29 +24,9 @@ const KINDS = ['reps', 'weight', 'seconds'];
    claim a distance record. */
 const COLUMN = { reps: 'reps', weight: 'weight_kg', seconds: 'seconds', distance: 'distance_km' };
 
-/* Which record kinds an exercise can legitimately claim, decided by its OWN
-   unit rather than by which columns happen to be filled. page-log.buildRows
-   deliberately writes `seconds` for a REP entry too, on purpose — a timed
-   circuit measures real time on a push-up interval, and throwing that
-   figure away would be worse than keeping it. But that means a filled
-   `seconds` column is not, by itself, evidence of a hold: without this gate
-   the Records page walked every kind for every exercise and invented a
-   "hold" best for Push-ups out of a circuit's clock reading, and an
-   exercise-duration goal pointed at Push-ups read the same 45 as progress
-   toward a hold nobody ever attempted.
-
-   `km` claims nothing here — a run's record is its own thing (see the Running
-   records page) and the strength Records page still does not claim one.
-   `seconds` claims only `seconds` — a held plank's reps/weight columns are
-   never filled, so there's nothing else to claim. `kg`, `reps`, and no unit
-   at all claim `reps` and `weight`: a weighted exercise can set a rep best
-   or a weight best, and an unspecified one is treated the same as reps. */
-function claimableKinds(exercise) {
-  const unit = exercise && exercise.fm ? exercise.fm.unit : null;
-  if (unit === 'km') return [];
-  if (unit === 'seconds') return ['seconds'];
-  return ['reps', 'weight'];
-}
+/* Which record kinds an exercise can legitimately claim - the one gate, kept
+   in stats.js (so stats.goalCurrent can apply it without a require cycle) and
+   re-exported here unchanged. See stats.claimableKinds for the rationale. */
 
 /* The best-so-far for `kind`, computed from `workouts`. Callers MUST pass a
    snapshot taken before the guided session started (or otherwise excluding

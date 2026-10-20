@@ -222,10 +222,56 @@ function ladderWeek(startDate, today, weeks) {
 
 /* ---- goals ----------------------------------------------------------- */
 
+/* Which record kinds an exercise can legitimately claim, decided by its OWN
+   unit rather than by which columns happen to be filled. page-log.buildRows
+   deliberately writes `seconds` for a REP entry too, on purpose - a timed
+   circuit measures real time on a push-up interval, and throwing that
+   figure away would be worse than keeping it. But that means a filled
+   `seconds` column is not, by itself, evidence of a hold: without this gate
+   the Records page walked every kind for every exercise and invented a
+   "hold" best for Push-ups out of a circuit's clock reading, and an
+   exercise-duration goal pointed at Push-ups read the same 45 as progress
+   toward a hold nobody ever attempted.
+
+   `km` claims nothing here - a run's record is its own thing (see the Running
+   records page) and the strength Records page still does not claim one.
+   `seconds` claims only `seconds` - a held plank's reps/weight columns are
+   never filled, so there's nothing else to claim. `kg`, `reps`, and no unit
+   at all claim `reps` and `weight`: a weighted exercise can set a rep best
+   or a weight best, and an unspecified one is treated the same as reps.
+
+   Lives HERE (records.js re-exports it) so goalCurrent can apply the same
+   gate without a stats <-> records require cycle. */
+function claimableKinds(exercise) {
+  const unit = exercise && exercise.fm ? exercise.fm.unit : null;
+  if (unit === 'km') return [];
+  if (unit === 'seconds') return ['seconds'];
+  return ['reps', 'weight'];
+}
+
+/* The record kind a goal metric reads, for the claimableKinds gate.
+   exercise-distance is deliberately ABSENT: claimableKinds([km]) is [] because
+   a distance is not a strength-record kind, so gating it would blank every
+   run goal. */
+const GOAL_KIND = { 'exercise-reps': 'reps', 'exercise-duration': 'seconds', 'exercise-weight': 'weight' };
+
 /* The single source for "where is this goal now". `ctx` carries everything
-   any metric could need so callers can't feed two goals different data. */
+   any metric could need so callers can't feed two goals different data.
+
+   When `ctx.exercises` is given, an exercise goal is gated by the exercise's
+   claimableKinds: a known exercise that cannot claim the metric's kind reads
+   null, exactly as the Records page refuses to show it. (A timed circuit
+   leaves its clock in `seconds` for a REP exercise; without the gate that
+   read as progress toward a hold nobody attempted.) An exercise name that
+   resolves to nothing is goalIssue's problem, not this gate's. Without
+   `ctx.exercises` nothing is gated. */
 function goalCurrent(goal, ctx) {
   const fm = goal.fm || {};
+  const kind = GOAL_KIND[fm.metric];
+  if (kind && ctx.exercises) {
+    const ex = ctx.exercises.find(e => sameName(e.name, fm.exercise));
+    if (ex && !claimableKinds(ex).includes(kind)) return null;
+  }
   switch (fm.metric) {
     case 'exercise-reps':     return exerciseBests(ctx.workouts, fm.exercise).reps;
     case 'exercise-duration': return exerciseBests(ctx.workouts, fm.exercise).seconds;
@@ -302,5 +348,5 @@ function bmi(weightKg, heightCm) {
 module.exports = {
   num, workoutDates, workoutDate, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM, best1RM,
   sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek,
-  goalCurrent, goalIssue, goalProgress, weightSeries, bmi,
+  goalCurrent, goalIssue, goalProgress, weightSeries, bmi, claimableKinds,
 };
