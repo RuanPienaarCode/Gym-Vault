@@ -31,10 +31,17 @@ function pickWorkouts(data, opts) {
      `.slice(0, 10)` here meant the dashboard counted 1 session where the
      export counted 3 for the same files, and made `d >= from` a lexical
      compare on unnormalised strings ('2026-8-6' > '2026-08-01' is true). */
-  return data.workouts.filter(w => {
+  const dated = [], undated = [];
+  for (const w of data.workouts) {
     const d = workoutDate(w);
-    return d && (!from || d >= from);
-  });
+    if (d) { if (!from || d >= from) dated.push(w); }
+    /* "Everything" has no window to place a note against, so a note with no
+       readable date is still a logged session and is included, after the dated
+       ones (History lists it and sessionCount counts it). A DATE WINDOW cannot
+       place it, so it stays out of those. */
+    else if (!from) undated.push(w);
+  }
+  return dated.concat(undated);
 }
 
 /* The profile is a WHITELIST, not a spread.
@@ -166,8 +173,11 @@ function buildSummary(data, options) {
   if (workouts.length) {
     L.push(`## Sessions (${rangeLabel})`);
     L.push('');
-    for (const w of [...workouts].reverse()) {
-      L.push(`### ${fmtShort(w.fm.date)} — ${w.fm.day || 'Freestyle'}${w.fm.plan ? ` (${w.fm.plan})` : ''}`);
+    /* Newest first; notes with no readable date (pickWorkouts puts them last)
+       stay last. */
+    const datedFirst = workouts.filter(w => workoutDate(w)).reverse().concat(workouts.filter(w => !workoutDate(w)));
+    for (const w of datedFirst) {
+      L.push(`### ${w.fm.date ? fmtShort(w.fm.date) : 'Undated'} — ${w.fm.day || 'Freestyle'}${w.fm.plan ? ` (${w.fm.plan})` : ''}`);
       const dur = w.fm.duration_min ? `${w.fm.duration_min} min · ` : '';
       L.push(`${dur}${countLabel(sessionSets(w.rows), 'set')}`);
       const byEx = [];
