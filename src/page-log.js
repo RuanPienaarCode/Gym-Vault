@@ -15,6 +15,7 @@ const { FormModal, ConfirmModal, EndSessionModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
 const { motionPref, setMotionPref } = require('./motion-count');
 const rewardsFlow = require('./rewards-flow');
+const { isOpenEnded } = require('./counter-target');
 
 /* `opts.setsPerEntry` (an array, one count per day item) overrides the plan's
    prescribed set count. A TIMED guided session needs it: the schedule decides
@@ -67,10 +68,13 @@ function makeEntry(ctx, exercise, sets, target) {
      reads. */
   const duration = !distance && (unit === 'seconds' || targetIsDuration(target || ''));
   const weighted = unit === 'kg' || targetWeight(target || '') !== null;
-  const prefReps = duration ? '' : (targetFirstNumber(target || '') ?? '');
+  /* "65% max" is open-ended (counter-target.isOpenEnded): its 65 is a
+     percentage, so nothing is prefilled - not 65 reps, not 65 seconds. */
+  const open = isOpenEnded(target);
+  const prefReps = duration || open ? '' : (targetFirstNumber(target || '') ?? '');
   /* Seconds, honouring a written "min" — the prefill for `30 min easy` used
      to be 30, so a manually logged run banked half a minute. */
-  const prefSecs = duration ? (targetDurationSeconds(target || '') ?? targetFirstNumber(target || '') ?? '') : '';
+  const prefSecs = duration ? (targetDurationSeconds(target || '') ?? (open ? '' : targetFirstNumber(target || '')) ?? '') : '';
   const prefW = targetWeight(target || '') ?? '';
   return {
     exercise, target: target || '', duration, weighted, distance,

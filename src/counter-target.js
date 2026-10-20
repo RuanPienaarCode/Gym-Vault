@@ -34,6 +34,17 @@ function makeTarget(kind, value) {
   return { kind, value: kind === 'reps' ? Math.round(n) : n };
 }
 
+/* AN OPEN-ENDED TARGET - one the plan writes as a percentage of a max
+   ("65% max"). The first number in it is a PERCENTAGE of a best nobody has
+   recorded, not a count of reps or seconds: the seeded starter plan's
+   `Plank | 3 x 65% max` was read as 65 seconds by three callers (the guided
+   target, the manual-log prefill, the timed schedule). The one answer, here;
+   each caller asks it before taking targetFirstNumber. A WRITTEN duration
+   ("80% for 30s") still wins - callers read that before the bare number. */
+function isOpenEnded(target) {
+  return typeof target === 'string' && target.indexOf('%') >= 0;
+}
+
 /* The target a PLAN line already implies, so the guided screen does not have
    to ask a question the plan has already answered.
 
@@ -54,6 +65,7 @@ function targetFromEntry(entry) {
      number, so a two-minute hold showed as complete after two seconds. */
   const written = targetDurationSeconds(raw);
   if (written) return makeTarget('seconds', written);
+  if (isOpenEnded(raw)) return null; // "65% max": nothing to fill towards
   const n = targetFirstNumber(raw);
   if (n === null || n === undefined) return null;
   return makeTarget(entry.duration ? 'seconds' : 'reps', n);
@@ -131,5 +143,5 @@ const QUICK_SECONDS = [20, 30, 45, 60, 90, 120];
 
 module.exports = {
   KINDS, QUICK_REPS, QUICK_SECONDS,
-  makeTarget, targetFromEntry, resumeSeconds, fillFraction, fillStage, describeTarget,
+  makeTarget, isOpenEnded, targetFromEntry, resumeSeconds, fillFraction, fillStage, describeTarget,
 };

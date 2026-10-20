@@ -29,6 +29,7 @@
    doing them. */
 
 const { targetFirstNumber, targetDurationSeconds } = require('./plan-parse');
+const { isOpenEnded } = require('./counter-target');
 
 /* Every duration below is seconds. These are the defaults a fresh install
    uses; the setup screen persists whatever the user picks over them. */
@@ -99,7 +100,7 @@ function workSecondsFor(item, config) {
   if (written) return Math.max(MIN_INTERVAL_S, written);
   /* No unit written, but the note says this exercise is measured in seconds
      — then the bare number is seconds, as it always was. */
-  if (item && item.unit === 'seconds') {
+  if (item && item.unit === 'seconds' && !isOpenEnded(target)) {
     const n = targetFirstNumber(target);
     if (Number.isFinite(n) && n > 0) return Math.max(MIN_INTERVAL_S, Math.round(n));
   }
