@@ -516,19 +516,26 @@ function timeAtDepth(m, depth) {
 }
 
 /* ---------------------------------------------------------------- roles */
+/* A hand-typed `muscles: quads, glutes` is ONE string to the frontmatter reader,
+   so every entry is split on commas the way the Exercises page reads the field
+   (page-exercises parseMuscles) and Obsidian's list form is read alike (C-08). */
 const listOf = v => (Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v])
-  .map(x => String(x).trim().toLowerCase()).filter(Boolean);
+  .reduce((all, x) => all.concat(String(x).split(',')), [])
+  .map(x => x.trim().toLowerCase()).filter(Boolean);
 
 /* Which regions are working and which are holding, for this exercise note.
    prime = the motion's prime movers whose group the note lists, plus the
    ones the motion always counts (a push-up always loads the front delt).
-   A note with no muscles gets the motion's own prime movers. Everything
+   A note with no muscles — or none that match one of the motion's prime
+   movers ("legs", "quadriceps", a typo) — gets the motion's own prime
+   movers, so a map is never left with nothing working. Everything
    else the motion draws is holding — a muscle the note leaves out still
    shows, it just isn't the one doing the work. Unknown groups are ignored. */
 function muscleRoles(m, ex) {
   const named = new Set(listOf(ex && ex.fm ? ex.fm.muscles : []));
-  const prime = named.size
-    ? m.prime.filter(id => named.has(m.regions.find(r => r.id === id).group) || m.alwaysPrime.includes(id))
+  const listed = m.prime.filter(id => named.has(m.regions.find(r => r.id === id).group));
+  const prime = listed.length
+    ? m.prime.filter(id => listed.includes(id) || m.alwaysPrime.includes(id))
     : m.prime.slice();
   const hold = m.regions.map(r => r.id).filter(id => !prime.includes(id) && (m.prime.includes(id) || m.hold.includes(id)));
   return { prime, hold };
