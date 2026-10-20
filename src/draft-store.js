@@ -53,6 +53,9 @@ function plainSet(set) {
   for (const k of SET_FIELDS) if (Object.prototype.hasOwnProperty.call(set, k)) out[k] = scalar(set[k]);
   out.done = set.done === true;
   out.touched = set.touched === true;
+  /* A set skipped in guided mode: re-entry resumes past it (session-flow). Only a
+     real true is kept, and only when set, so an old draft reads exactly as before. */
+  if (set.skipped === true) out.skipped = true;
   return out;
 }
 
