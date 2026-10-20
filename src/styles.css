@@ -19,6 +19,10 @@
        button carries the .gv-app ancestor (0,2,0).
    ============================================================================ */
 
+/* The token source. `.gv-modal` is the plain Obsidian dialogs (form, confirm, end session,
+   plan picker): they are appended to <body>, outside .gv-app, and used to see none of this.
+   Tokens only: the layout below stays on .gv-app. */
+.gv-modal,
 .gv-app {
   --gv-bg: #f5f7ef;
   --gv-surface: #ffffff;
@@ -94,7 +98,9 @@
      they still matter if the face ever fails to parse. */
   --gv-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --gv-display: 'Anton', 'Avenir Next Condensed', Impact, 'Arial Narrow', sans-serif;
+}
 
+.gv-app {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -106,6 +112,7 @@
 }
 
 /* Dark theme: the paper goes near-black, lime stays the only light source. */
+.theme-dark .gv-modal,
 .theme-dark .gv-app {
   --gv-bg: #10140b;
   --gv-surface: #171c10;
@@ -1729,11 +1736,14 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 /* ---------- modals ---------- */
 
 /* A form modal is a plain Obsidian dialog (.gv-modal, NOT .gv-app, which would put the app
-   root's flex column and every token on it), so --gv-danger is not in scope here: the
-   error line carries its own, the same two values as the app root's tokens
-   (tests/f4-modal-danger.test.cjs pins that they match). */
-.gv-modal .gv-modal-err { --gv-danger: #b91c1c; color: var(--gv-danger); font-size: 13px; min-height: 18px; margin: 4px 0; }
-.theme-dark .gv-modal .gv-modal-err { --gv-danger: #f87171; }
+   root's flex column on it); it takes its tokens from the shared token block at the top of
+   this file, so --gv-danger on the error line is the app's own value (tests/f4-modal-danger). */
+.gv-modal .gv-modal-err { color: var(--gv-danger); font-size: 13px; min-height: 18px; margin: 4px 0; }
+
+/* The plan picker is the one dialog that wears the whole app (.gv-app + skin + accent, like the
+   rep counter and the media viewer), so its rows are the app's own cards. The root's flex
+   column and fixed height are for a view, not a stock dialog: off again here. */
+.gv-app.gv-modal { display: block; height: auto; overflow: visible; }
 
 /* ---------- rep counter ----------
    Full-screen tap-to-count takeover (src/rep-counter-modal.js). Obsidian

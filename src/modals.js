@@ -5,6 +5,7 @@
 
 const { Modal, Setting, Notice } = require('obsidian');
 const { el, clickableCard } = require('./dom');
+const { DEFAULT_SETTINGS, skinClasses } = require('./constants');
 
 /* A modal action that fails must SAY so. These all used to land in
    console.error alone, which on a phone is invisible — a delete that threw
@@ -14,6 +15,20 @@ const failed = (what, e) => {
   console.error(`gym-vault ${what}`, e);
   new Notice(`Gym: ${what} failed — ${(e && e.message) || e}`, 8000);
 };
+
+/* Dress a dialog as the app, for the one modal whose content is the app's own cards.
+   Obsidian appends a modal to <body>, outside the view, so none of the --gv-* tokens reach
+   it. The rep counter and media viewer are handed the skin and accent by their caller; the
+   picker is only ever opened FROM the view, so it copies the live root's own skin and accent
+   classes instead (one source, nothing to keep in step), falling back to the defaults when
+   there is no view to read. Never read the settings from the plugin object: that is not API. */
+function wearApp(modalEl) {
+  modalEl.addClass('gv-app');
+  const root = document.querySelector('.view-content.gv-app');
+  const own = root ? String(root.className).split(/\s+/).filter(c => c.indexOf('gv-skin-') === 0 || c.indexOf('gv-accent-') === 0) : [];
+  const cls = own.length ? own : skinClasses(DEFAULT_SETTINGS.skin).concat(`gv-accent-${DEFAULT_SETTINGS.accent}`);
+  for (const c of cls) modalEl.addClass(c);
+}
 
 /* fields: [{key, label, kind: 'text'|'number'|'date'|'dropdown'|'toggle'|'textarea',
              options?, value?, placeholder?, desc?}]
@@ -148,6 +163,7 @@ class PlanPickerModal extends Modal {
   }
   onOpen() {
     this.modalEl.addClass('gv-modal');
+    wearApp(this.modalEl);
     this.titleEl.setText('Switch plan');
     const c = this.contentEl;
     for (const p of this.plans) {
