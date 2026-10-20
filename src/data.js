@@ -184,17 +184,28 @@ function makeIo(plugin) {
     catch (e) { if (!v.getFolderByPath(path)) throw e; } // swallow create races
   }
 
-  async function writeIfAbsent(path, content) {
-    if (v.getFileByPath(path)) return false;
-    /* macOS and iOS are case-INsensitive: `bench press.md` and
-       `Bench Press.md` are one file on disk, but getFileByPath is an exact
-       -key map lookup and misses the clash. Without this, adding an exercise
-       whose name differs only in case from a hand-written note replaced that
-       note's body with a bare stub, and the "already exists" warning never
-       fired. Compare against the folder's children, folded. */
+  /* THE one "is this path taken?" rule. macOS and iOS are case-INsensitive:
+     `bench press.md` and `Bench Press.md` are one file on disk, but
+     getFileByPath is an exact-key map lookup and misses the clash. Vault.create
+     checks the adapter case-insensitively, so a name picked with the exact
+     lookup threw "File already exists." at the user (L2-10/L2-11), and adding
+     an exercise whose name differs only in case from a hand-written note
+     replaced that note's body with a bare stub. Returns the file or folder that
+     holds the path, whatever its case, or null. */
+  function existingAt(path) {
+    const exact = v.getAbstractFileByPath(path);
+    if (exact) return exact;
     const slash = path.lastIndexOf('/');
-    const dir = slash > 0 ? v.getFolderByPath(path.slice(0, slash)) : null;
-    if (dir && (dir.children || []).some(c => (c.path || '').toLowerCase() === path.toLowerCase())) return false;
+    /* The parent folder may itself be there under another case (Attachments/
+       Bench vs Attachments/bench): resolve it by the same rule. */
+    const dir = slash > 0 ? existingAt(path.slice(0, slash)) : null;
+    const lower = path.toLowerCase();
+    return (dir && Array.isArray(dir.children) && dir.children.find(c => (c.path || '').toLowerCase() === lower)) || null;
+  }
+  const taken = path => !!existingAt(path);
+
+  async function writeIfAbsent(path, content) {
+    if (taken(path)) return false;
     await tracked(path, () => v.create(path, content));
     return true;
   }
@@ -268,7 +279,7 @@ function makeIo(plugin) {
          first. Restructuring identity to the full path ripples through every
          page and is deliberately NOT done mid-release — but the clash must
          not stay silent, so record it and let the UI say so. */
-      if (data.exercises.some(e => e.name === f.basename)) data.duplicateExercises.push(f.path);
+      if (data.exercises.some(e => sameName(e.name, f.basename))) data.duplicateExercises.push(f.path);
       rememberLoaded(fm, body);
       data.exercises.push({ name: f.basename, file: f, fm, body });
       data.present = true;
@@ -684,7 +695,7 @@ function makeIo(plugin) {
     const base = safeName(`${session.date}${session.day ? ' ' + session.day : ''}`) || session.date;
     let path = `${paths.workouts()}/${base}.md`;
     // A second session the same day gets a numbered file, not an overwrite.
-    for (let n = 2; v.getFileByPath(path); n++) path = `${paths.workouts()}/${base} ${n}.md`;
+    for (let n = 2; taken(path); n++) path = `${paths.workouts()}/${base} ${n}.md`;
     const fm = { date: session.date, plan: session.plan, day: session.day, duration_min: session.duration_min };
     await tracked(path, () => v.create(path, serializeFrontmatter(fm) + '\n' + buildMdTable(WORKOUT_COLUMNS, session.rows) + '\n'));
     return path;
@@ -700,7 +711,7 @@ function makeIo(plugin) {
     const { todayISO } = require('./dates');
     const base = `${todayISO()} gym ${kind}`;
     let path = `${paths.exports()}/${safeName(base)}.${ext}`;
-    for (let n = 2; v.getFileByPath(path); n++) path = `${paths.exports()}/${safeName(base)} ${n}.${ext}`;
+    for (let n = 2; taken(path); n++) path = `${paths.exports()}/${safeName(base)} ${n}.${ext}`;
     await tracked(path, () => v.create(path, text));
     return path;
   }
@@ -759,7 +770,7 @@ function makeIo(plugin) {
     const out = { plan: null, planSkipped: false, exercisesAdded: 0, exercisesSkipped: 0, failed: [] };
     await ensureFolder(paths.plans());
     const planPath = `${paths.plans()}/${safeName(entry.name)}.md`;
-    if (v.getFileByPath(planPath)) {
+    if (taken(planPath)) {
       out.planSkipped = true;
       out.plan = planPath;
     } else {
@@ -779,7 +790,7 @@ function makeIo(plugin) {
     }
     for (const name of wanted.slice(0, MAX_EXERCISE_FETCHES)) {
       const exPath = `${paths.exercises()}/${safeName(name)}.md`;
-      if (v.getFileByPath(exPath)) { out.exercisesSkipped++; continue; }
+      if (taken(exPath)) { out.exercisesSkipped++; continue; }
       try {
         const res = await requestUrl({ url: `${repoBase()}/exercises/${encodeURIComponent(name)}.md`, throw: true });
         await ensureFolder(paths.exercises());
@@ -902,7 +913,7 @@ function makeIo(plugin) {
     let path = photoPath(root(), pose, dateISO, ext);
     const base = path.replace(/\.[^.]+$/, '');
     const suffix = path.slice(base.length);
-    for (let n = 2; v.getFileByPath(path); n++) path = `${base} ${n}${suffix}`;
+    for (let n = 2; taken(path); n++) path = `${base} ${n}${suffix}`;
     await tracked(path, () => v.createBinary(path, data));
     return path;
   }
@@ -1073,7 +1084,8 @@ function makeIo(plugin) {
            already sitting at that index — so the note was re-pointed at the
            OLD picture and the user's chosen image was discarded. */
         const localPath = `${dir}/${urlKey(u)}.${extOf(u)}`;
-        if (!v.getFileByPath(localPath)) {
+        const have = existingAt(localPath);
+        if (!have) {
           try {
             const res = await requestUrl({ url: u, throw: true });
             await ensureFolder(paths.attachments());
@@ -1087,7 +1099,7 @@ function makeIo(plugin) {
             continue;
           }
         }
-        next.push(localPath);
+        next.push(have && have.path ? have.path : localPath);
         changed = true;
       }
       if (changed) {
