@@ -711,17 +711,45 @@ function makeIo(plugin) {
 
   const repoBase = () => (plugin.settings.planRepo || '').replace(/\/+$/, '');
 
+  /* Most exercise definitions one plan may pull in. The biggest plan in the
+     published library names 26; a feed naming hundreds would otherwise make
+     hundreds of requests from one tap. */
+  const MAX_EXERCISE_FETCHES = 60;
+
+  /* One entry, made safe to draw and install, or null. Browse reads
+     `name`, `file` and `exercises.length` of every entry, so an entry without
+     the first two is unusable and one without a list gets an empty one. */
+  function cleanIndexEntry(e) {
+    if (!e || typeof e !== 'object' || Array.isArray(e)) return null;
+    if (typeof e.name !== 'string' || !e.name.trim()) return null;
+    if (typeof e.file !== 'string' || !e.file.trim()) return null;
+    const exercises = Array.isArray(e.exercises) ? e.exercises.filter(x => typeof x === 'string' && x.trim()) : [];
+    return { ...e, exercises };
+  }
+
   async function fetchPlanIndex() {
     /* An empty base would build "/plans.json", which iOS rejects with the
        unhelpful "unsupported URL". Say what is actually wrong instead. */
     const base = repoBase();
-    if (!/^https?:\/\//i.test(base)) {
+    if (!base) {
       throw new Error('no plan library URL is set — add one in Settings');
+    }
+    if (!/^https:\/\//i.test(base)) {
+      throw new Error('the plan library URL must start with https:// — change it in Settings');
     }
     const res = await requestUrl({ url: `${base}/plans.json`, throw: true });
     const index = JSON.parse(res.text);
     if (!index || !Array.isArray(index.plans)) throw new Error('that URL did not return a plan index');
-    return index;
+    /* One bad entry must not blank the whole library: keep the usable ones,
+       count the rest and say so. */
+    const plans = [];
+    let skipped = 0;
+    for (const e of index.plans) {
+      const ok = cleanIndexEntry(e);
+      if (ok) plans.push(ok); else skipped++;
+    }
+    if (skipped) tell(`${skipped} ${skipped === 1 ? 'entry' : 'entries'} in the plan library could not be read and ${skipped === 1 ? 'was' : 'were'} skipped.`);
+    return { ...index, plans, skipped };
   }
 
   /* Installs the plan note plus any exercise it names that the vault does
@@ -744,7 +772,12 @@ function makeIo(plugin) {
       await tracked(planPath, () => v.create(planPath, serializeFrontmatter(nextFm) + '\n' + body));
       out.plan = planPath;
     }
-    for (const name of entry.exercises || []) {
+    const wanted = entry.exercises || [];
+    if (wanted.length > MAX_EXERCISE_FETCHES) {
+      out.capped = wanted.length - MAX_EXERCISE_FETCHES;
+      tell(`"${entry.name}" lists ${wanted.length} exercises; only the first ${MAX_EXERCISE_FETCHES} were fetched.`);
+    }
+    for (const name of wanted.slice(0, MAX_EXERCISE_FETCHES)) {
       const exPath = `${paths.exercises()}/${safeName(name)}.md`;
       if (v.getFileByPath(exPath)) { out.exercisesSkipped++; continue; }
       try {
