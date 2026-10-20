@@ -384,7 +384,7 @@ function render(ctx, root) {
     page.append(el('div', { class: 'gv-section-title' }, ico('target'), el('span', {}, 'Goals in flight')));
     const ranked = data.goals
       .map(g => {
-        const current = goalCurrent(g, { workouts: data.workouts, body: data.body, weekStart: settings.weekStart, today });
+        const current = goalCurrent(g, { workouts: data.workouts, body: data.body, weekStart: settings.weekStart, today, exercises: data.exercises });
         return { g, current, p: goalProgress(g, current) };
       })
       .filter(x => x.p === null || x.p < 1)

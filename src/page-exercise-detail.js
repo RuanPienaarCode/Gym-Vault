@@ -12,7 +12,7 @@
 
 const { MarkdownRenderer } = require('obsidian');
 const { el, ico, fmt, fmtSeconds, backButton, statTile } = require('./dom');
-const { exerciseBests, best1RM, sameName } = require('./stats');
+const { claimedBests, claimableKinds, best1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
 const { recordHistory, KINDS } = require('./records');
 const { openMediaViewer } = require('./media-viewer');
@@ -95,7 +95,7 @@ function render(ctx, root) {
   }
 
   /* Bests */
-  const bests = exerciseBests(ctx.data.workouts, ex.name);
+  const bests = claimedBests(ctx.data.workouts, ex);
   /* One set's own weight and reps — never the best weight with the best reps,
      which come from different sets (stats.best1RM says why). */
   const orm = best1RM(ctx.data.workouts, ex.name);
@@ -129,7 +129,10 @@ function render(ctx, root) {
      sitting on one screen is exactly where a disagreement would show. */
   if (!isRun) {
     const progress = [];
+    const claim = claimableKinds(ex);
     for (const kind of KINDS) {
+      /* The same gate as the tiles above and the Records page. */
+      if (!claim.includes(kind)) continue;
       const history = recordHistory(ctx.data.workouts, ex.name, kind);
       /* One entry is a baseline, not a progression — there is nothing to
          show a line about. */

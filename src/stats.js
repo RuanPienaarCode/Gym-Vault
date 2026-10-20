@@ -255,6 +255,19 @@ function claimableKinds(exercise) {
    run goal. */
 const GOAL_KIND = { 'exercise-reps': 'reps', 'exercise-duration': 'seconds', 'exercise-weight': 'weight' };
 
+/* exerciseBests with the kinds the exercise cannot claim set to null - THE
+   one reading of "this exercise's best" for a surface that prints a hold, a
+   rep best or a weight best (the exercise page's tiles, the export). Takes the
+   exercise OBJECT, which the name-only exerciseBests cannot. A run (unit km)
+   is not gated: its distance is not a record kind and its `seconds` is the
+   run's own time, which the run pages print. */
+function claimedBests(workouts, exercise) {
+  const b = exerciseBests(workouts, exercise.name);
+  if (exercise.fm && exercise.fm.unit === 'km') return b;
+  const claim = claimableKinds(exercise);
+  return { ...b, reps: claim.includes('reps') ? b.reps : null, weight: claim.includes('weight') ? b.weight : null, seconds: claim.includes('seconds') ? b.seconds : null };
+}
+
 /* The single source for "where is this goal now". `ctx` carries everything
    any metric could need so callers can't feed two goals different data.
 
@@ -348,5 +361,5 @@ function bmi(weightKg, heightCm) {
 module.exports = {
   num, workoutDates, workoutDate, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM, best1RM,
   sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek,
-  goalCurrent, goalIssue, goalProgress, weightSeries, bmi, claimableKinds,
+  goalCurrent, goalIssue, goalProgress, weightSeries, bmi, claimableKinds, claimedBests,
 };

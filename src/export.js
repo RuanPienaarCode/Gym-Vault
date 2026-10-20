@@ -12,7 +12,7 @@ const { BODY_COLUMNS, WORKOUT_COLUMNS, WEEKDAY_LABELS, WEEKDAYS } = require('./c
 const { todayISO, fmtShort, addDays, fromISO } = require('./dates');
 const { isPaused } = require('./plan-parse');
 const {
-  num, exerciseBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, countLabel, sessionCount, workoutDate,
+  num, claimedBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, countLabel, sessionCount, workoutDate,
 } = require('./stats');
 
 /* Columns that are clinical rather than physical. */
@@ -121,7 +121,7 @@ function buildSummary(data, options) {
     L.push('');
     L.push('| Goal | Measured by | Now | Target | Progress |');
     L.push('|---|---|---|---|---|');
-    const sctx = { workouts: data.workouts, body: data.body, weekStart: o.weekStart, today: o.today };
+    const sctx = { workouts: data.workouts, body: data.body, weekStart: o.weekStart, today: o.today, exercises: data.exercises };
     for (const g of data.goals) {
       const cur = goalCurrent(g, sctx);
       const p = goalProgress(g, cur);
@@ -133,7 +133,7 @@ function buildSummary(data, options) {
   /* Personal bests, only for what has actually been logged */
   const bestRows = [];
   for (const ex of data.exercises) {
-    const b = exerciseBests(data.workouts, ex.name);
+    const b = claimedBests(data.workouts, ex);
     if (b.reps === null && b.weight === null && b.seconds === null && b.distance === null) continue;
     const cells = [];
     if (b.reps !== null) cells.push(`${b.reps} reps`);
@@ -248,10 +248,10 @@ function buildJson(data, options) {
       days: p.model.days.map(d => ({ weekday: d.weekday, name: d.name, items: d.items })),
     })),
     goals: data.goals.map(g => {
-      const cur = goalCurrent(g, { workouts: data.workouts, body: data.body, weekStart: o.weekStart, today: o.today });
+      const cur = goalCurrent(g, { workouts: data.workouts, body: data.body, weekStart: o.weekStart, today: o.today, exercises: data.exercises });
       return { name: g.name, ...g.fm, current: cur, progress: goalProgress(g, cur) };
     }),
-    exercises: data.exercises.map(e => ({ name: e.name, ...e.fm, bests: exerciseBests(data.workouts, e.name) })),
+    exercises: data.exercises.map(e => ({ name: e.name, ...e.fm, bests: claimedBests(data.workouts, e) })),
     workouts: pickWorkouts(data, o).map(w => ({ ...w.fm, rows: w.rows })),
   };
   if (o.includeBody) {

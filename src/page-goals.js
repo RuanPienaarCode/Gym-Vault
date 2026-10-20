@@ -3,8 +3,7 @@
 
 const { el, ico, fmt, fmtSeconds, ring, emptyLine } = require('./dom');
 const { GOAL_METRICS } = require('./constants');
-const { goalCurrent, goalIssue, goalProgress, sameName } = require('./stats');
-const { claimableKinds } = require('./records');
+const { goalCurrent, goalIssue, goalProgress } = require('./stats');
 const { todayISO, daysBetween, fmtShort } = require('./dates');
 const { FormModal, ConfirmModal } = require('./modals');
 
@@ -35,20 +34,10 @@ function render(ctx, root) {
   const list = el('div', { class: 'gv-goal-grid' });
   const exerciseNames = data.exercises.map(e => e.name);
   const scored = data.goals.map(g => {
-    let current = goalCurrent(g, ctxStats);
-    /* goalCurrent reads exerciseBests(...).seconds straight off for an
-       exercise-duration goal, and a timed circuit can fill that column for
-       a REP exercise too (page-log.buildRows keeps the clock's figure on
-       purpose — see records.claimableKinds). Without this the Records page
-       already refuses to call that a "hold", but this goal would still
-       report the same 45 as progress toward one — the two pages disagreeing
-       about the same figure. Gated only when the exercise is a known one
-       that plainly isn't measured in seconds; an unresolved exercise name is
-       goalIssue's problem, not this one's. */
-    if (g.fm.metric === 'exercise-duration') {
-      const ex = data.exercises.find(e => sameName(e.name, g.fm.exercise));
-      if (ex && !claimableKinds(ex).includes('seconds')) current = null;
-    }
+    /* stats.goalCurrent applies the claimableKinds gate itself when given the
+       exercises (a circuit's clock on a REP exercise is not a hold) - the one
+       seam Today, the session's goal check and the export read too. */
+    const current = goalCurrent(g, { ...ctxStats, exercises: data.exercises });
     /* "No data yet" and "this goal points at an exercise that doesn't exist"
        rendered identically, so a typo'd exercise name told the user to go log
        a workout — blaming them for the plugin's silence. */
