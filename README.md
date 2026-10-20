@@ -282,7 +282,8 @@ a new window — your music app if it's installed, that service's web player
 otherwise. Nothing about your training is sent with it, no music service is
 contacted unless you tap the button, and the plugin never reads what you are
 playing. The share token Spotify appends to a copied link (`?si=…`) identifies
-whoever shared it and is stripped before the link is saved.
+whoever shared it and is stripped from a link when you add it (a link saved
+by an earlier version keeps it until you remove it and add it again).
 
 **A session in progress.** Until you finish or discard it, the sets you have
 logged are kept in Obsidian's local storage on that device only — not in your
@@ -352,7 +353,7 @@ key, so paying the same one twice does nothing: a double tap on Finish, a retry,
 or the same session finishing on two synced devices cannot pay twice. Lines are
 only ever appended, so two devices merge by adding lines, and a hand-edited or
 broken line is skipped without losing the others. Today shows your level, an
-"up to +N XP" chip and the weekly quest; Session complete an XP card and any
+"From +N XP" chip (bonuses for a PB, a streak week or the quest pay on top) and the weekly quest; Session complete an XP card and any
 medal unlocked; Records the medals; Profile your level and rank ladder. The
 *Rewards* setting (on by default) turns it all off: nothing is awarded, shown
 or written.

@@ -100,7 +100,7 @@ function titleNode(name) {
 
 /* "13 sets" / "~48 min" beside the title. Apex and Lock In show them as slab
    chips and hide the text line they replace; the other skins hide the chips.
-   `xpSlot` is the empty span for "up to +N XP": rewards-ui fills it (rewards on,
+   `xpSlot` is the empty span for "From +N XP": rewards-ui fills it (rewards on,
    ledger read), and it draws nothing while it is empty. */
 function heroChips(setsTotal, minutes, xpSlot) {
   return el('div', { class: 'gv-hero-chips' },

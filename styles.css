@@ -4867,7 +4867,7 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 .gv-app.gv-skin-poster .gv-rw-level-foot { margin-top: 6px; font-size: 12px; }
 .gv-app.gv-skin-poster .gv-rw-level .gv-rw-bar { height: 12px; }
 
-/* "Up to +240 XP": the accent slab under "13 sets · ~48 min". */
+/* "From +240 XP": the accent slab under "13 sets · ~48 min". */
 .gv-app.gv-skin-apex .gv-rw-xpchip {
   --gv-slab: var(--gv-lime);
   position: relative;
@@ -6244,7 +6244,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 .gv-app.gv-skin-lockin .gv-rw-hex.is-sm .gv-rw-hex-num { font-size: 22px; }
 .gv-app.gv-skin-lockin .gv-rw-hex.is-lg .gv-rw-hex-num { font-size: 44px; }
 
-/* "Up to +240 XP": a paper slab under the black "13 sets" / "~48 min" chips, on the accent flood. */
+/* "From +240 XP": a paper slab under the black "13 sets" / "~48 min" chips, on the accent flood. */
 .gv-app.gv-skin-lockin .gv-rw-xpchip {
   --gv-slab: var(--gv-li-paper);
   position: relative;
