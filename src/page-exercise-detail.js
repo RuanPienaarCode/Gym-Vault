@@ -14,6 +14,7 @@ const { MarkdownRenderer } = require('obsidian');
 const { el, ico, fmt, fmtSeconds, backButton, statTile } = require('./dom');
 const { claimedBests, claimableKinds, best1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
+const { equipmentTokens, labelFor } = require('./equipment');
 const { recordHistory, KINDS } = require('./records');
 const { openMediaViewer } = require('./media-viewer');
 const { frameLabel, autoPlayMedia } = require('./media-cycle');
@@ -51,6 +52,18 @@ function vaultFile(ctx, value, sourcePath) {
   return ctx.app.vault.getFileByPath(value);
 }
 
+/* The equipment a note names, one label per item, in the app's own kit
+   wording. A note can hold a list or a comma string, so this must not hand
+   the raw value to el() (it flattens an array into adjacent text nodes:
+   "bardumbbells"). equipmentTokens drops `bodyweight` (it is not kit), but a
+   note that says ONLY that still earns its tag, as it always did. */
+function equipmentTags(value) {
+  const tokens = equipmentTokens(value);
+  if (tokens.length) return tokens.map(labelFor);
+  const raw = Array.isArray(value) ? value : String(value == null ? '' : value).split(',');
+  return raw.map(x => String(x == null ? '' : x).trim()).filter(Boolean).map(labelFor);
+}
+
 function render(ctx, root) {
   const params = ctx.state.params || {};
   const name = params.exercise;
@@ -80,7 +93,7 @@ function render(ctx, root) {
   root.append(el('div', { class: 'gv-chips gv-detail-tags' },
     el('span', { class: 'gv-tag gv-tag-type' }, ex.fm.type || 'strength'),
     ...muscles.map(m => el('span', { class: 'gv-tag' }, m)),
-    ex.fm.equipment ? el('span', { class: 'gv-tag' }, ex.fm.equipment) : '',
+    ...equipmentTags(ex.fm.equipment).map(k => el('span', { class: 'gv-tag' }, k)),
     el('span', { class: 'gv-tag' }, `tracked in ${ex.fm.unit || 'reps'}`)));
 
   /* Media: the Muscle Map for an exercise that has a motion (its photos one
