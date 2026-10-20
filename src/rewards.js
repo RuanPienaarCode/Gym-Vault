@@ -53,8 +53,8 @@
              or 'seconds', the target is not a duration (targetIsDuration), and it names a number > 0
              ("8-12" -> 8, "5 @ 60kg" -> 5; "submax" / "AMRAP" name none).
          anything else (time-based, km, mixed, a rep line with no number) -> {kind:'sets'}: target = sum of itemSets(item)
-       Progress counts what was REALLY logged in the calendar week containing `today`: kind 'reps' = sum of the
-       reps column over every row; kind 'sets' = stats.sessionSets over every row. Workouts whose date cannot be
+       Progress counts what was REALLY logged in the calendar week containing `today`, for the exercises the week's
+       plan names (stats.sameName): kind 'reps' = sum of the reps column over those rows; kind 'sets' = stats.sessionSets over them. Workouts whose date cannot be
        read belong to no week. weekStart changes which Sunday-or-Monday a week begins on, and so which sets count.
        Returns {key:'quest:<weekKey>', kind, target, done, toGo, pct (0..100), complete, xp:120,
                 title, subject, weekStart, weekEnd, paid}
@@ -260,12 +260,17 @@ function questFor(o) {
   const kind = allReps ? 'reps' : 'sets';
   const target = allReps ? repsTarget : setsTarget;
 
+  /* Only what the week's plan asked for counts: a row of an exercise that is not on
+     any planned line (stats.sameName, the one name rule) is not progress on this
+     quest - a week of squats must not complete "Do 100 reps of Push-ups". */
+  const planned = row => items.some(it => stats.sameName(it.exercise, row.exercise));
   let done = 0;
   for (const w of o.workouts || []) {
     const d = stats.workoutDate(w);
     if (!d || d < start || d > end) continue;
-    if (kind === 'sets') done += stats.sessionSets(w.rows);
-    else for (const r of w.rows || []) { const n = num(r.reps); if (n !== null) done += n; }
+    const rows = (w.rows || []).filter(planned);
+    if (kind === 'sets') done += stats.sessionSets(rows);
+    else for (const r of rows) { const n = num(r.reps); if (n !== null) done += n; }
   }
 
   const subject = exNames.size === 1 ? [...exNames.values()][0] : (dayNames.size === 1 ? [...dayNames.values()][0] : null);

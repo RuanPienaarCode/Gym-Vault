@@ -111,9 +111,9 @@ check('Q9 progress is this calendar week\'s real reps / real sets, nothing older
     F.wk('2026-10-07', [F.row('Easy Run', { km: 5, sec: 1800 })]),                 // a run has no reps
   ];
   const reps = q(sched, { workouts: w });
-  assert.strictEqual(reps.done, 12 + 12 + 8, 'reps of every row this week, whatever the exercise');
-  const sets = q({ mon: [F.day('Core', [['Plank', 3, '30s']])] }, { workouts: w });
-  assert.strictEqual(sets.done, 2 + 1 + 1, 'every row this week is a set: 2 push-up sets, 1 bench, 1 run (the 4 Oct row is last week)');
+  assert.strictEqual(reps.done, 12 + 12, 'reps of the PLANNED exercise only (the bench row is not push-ups; f1-quest-matching-rows pins it)');
+  const sets = q({ mon: [F.day('Mixed', [['Push-ups', 2, '30s'], ['Bench Press', 1, '30s'], ['Easy Run', 1, '5 km']])] }, { workouts: w });
+  assert.strictEqual(sets.done, 2 + 1 + 1, 'every row of a planned exercise is a set: 2 push-up sets, 1 bench, 1 run (the 4 Oct row is last week)');
 });
 
 check('Q10 weekStart Sunday vs Monday: boundary, key and schedule', () => {
