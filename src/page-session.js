@@ -31,7 +31,8 @@ const countdown = require('./countdown');
 const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey, motionKey, motionPref, initialMotion, chooseMotion, motionFailureCopy } = require('./motion-count');
 const { resolveExerciseImages } = require('./page-exercise-detail');
-const { buildRows, finishSession, keepDraft, saveMotionPref } = require('./page-log');
+const pageLog = require('./page-log');
+const { buildRows, finishSession, keepDraft, saveMotionPref } = pageLog;
 const { EndSessionModal } = require('./modals');
 const { nextFrameIndex, autoPlayMedia, MEDIA_CYCLE_MS } = require('./media-cycle');
 const { openMediaViewer } = require('./media-viewer');
@@ -1760,8 +1761,13 @@ function checkGoalReached(ctx, sess, draft) {
   if (!ctx.data.goals || !ctx.data.goals.length) return hits;
   const today = todayISO();
   const syntheticWorkout = { fm: { date: draft.date, day: draft.day }, rows: buildRows(draft) };
-  const before = { workouts: sess.workoutsAtStart, body: ctx.data.body, weekStart: ctx.settings.weekStart, today };
-  const after = { workouts: sess.workoutsAtStart.concat([syntheticWorkout]), body: ctx.data.body, weekStart: ctx.settings.weekStart, today };
+  /* `exercises` is the library: stats.goalCurrent uses it to refuse a metric the
+     exercise's unit cannot claim (contract K1), the same gate the Records page and
+     the goals page apply. Without it a live session could "meet" a goal that no
+     other surface would ever show progress on. */
+  const exercises = ctx.data.exercises;
+  const before = { workouts: sess.workoutsAtStart, body: ctx.data.body, weekStart: ctx.settings.weekStart, today, exercises };
+  const after = { workouts: sess.workoutsAtStart.concat([syntheticWorkout]), body: ctx.data.body, weekStart: ctx.settings.weekStart, today, exercises };
   for (const g of ctx.data.goals) {
     if (sess.metGoals.has(g.name)) continue;
     const wasMet = goalProgress(g, goalCurrent(g, before)) === 1;
@@ -2389,11 +2395,21 @@ function pbMoment(r) {
 }
 
 function renderComplete(ctx, root, draft, sess) {
-  /* Floored at 1, same as page-log.finishSession's own duration_min — a
-     session logged in under a minute is 1 minute, not 0. The tile here and
-     the figure the note actually saves must agree, or the screen and the
-     history it just wrote about itself disagree on the way out the door. */
-  const totalMin = Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));
+  /* ONE minutes rule for a finished session (contract K5): page-log's
+     sessionMinutes, the same function finishSession writes duration_min with, so
+     this tile and the note it is about to save cannot disagree. It is looked up on
+     the module at call time and guarded because tests/session-fix-complete-screen
+     stubs page-log without it; the fallback is the rule it replaced (floored at
+     1, same as finishSession's own), and is dead code wherever sessionMinutes
+     exists. Bracket access on purpose: sessionMinutes is lane F3's export, and
+     tests/module-exports.test.cjs (which reads `pageLog.name` statically) would
+     fail this tree until it lands. The typeof guard is what makes an absent
+     export safe at runtime; once page-log exports it, turn this into plain
+     `pageLog.sessionMinutes(draft)` and that guard checks the seam. */
+  const sessionMinutes = pageLog['sessionMinutes'];
+  const totalMin = typeof sessionMinutes === 'function'
+    ? sessionMinutes(draft)
+    : Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));
   let doneSets = 0;
   for (const entry of draft.entries) for (const set of entry.sets) if (setCounts(set)) doneSets++;
   /* page-log.finishSession's own guard: zero saveable rows means Finish has
