@@ -216,6 +216,7 @@ function planCards(ctx, shown, activeNow) {
     const badge = badgeWord(p, activeNow);
     const active = role === 'active';
     const days = p.model.days;
+    const exerciseCount = days.reduce((n, d) => n + d.items.length, 0);
     const c = clickableCard(
       { class: `gv-card gv-plan-card${active ? ' active' : ''}`,
         'aria-label': `Open ${p.name}${badge ? `, ${badge}` : ''}` },
@@ -225,7 +226,7 @@ function planCards(ctx, shown, activeNow) {
           el('span', {}, p.name),
           badge ? el('span', { class: 'gv-badge' }, badge) : ''),
         el('div', { class: 'gv-plan-meta' },
-          `${days.length} day${days.length === 1 ? '' : 's'} / week · ${days.reduce((n, d) => n + d.items.length, 0)} exercises`),
+          `${days.length} day${days.length === 1 ? '' : 's'} / week · ${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'}`),
         /* What the whole plan asks you to own, so you can tell at a glance
            whether it fits the kit you actually have. */
         el('div', { class: 'gv-plan-kit' }, ico('dumbbell'),
