@@ -149,10 +149,18 @@ function parseScalar(val) {
 }
 
 function parseFrontmatter(text) {
-  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  /* A leading byte-order mark (Windows editors add one) sits before the first
+     `---`; left in, the whole note read as body and the first app save wrote a
+     SECOND block on top (C-10). Stripped here, so it is gone from what is saved. */
+  text = String(text).replace(/^\uFEFF/, '');
+  /* `---` straight after the opening line is an EMPTY block (what Obsidian leaves
+     when every property is removed). The alternation tries it first, so a later
+     horizontal rule in the body cannot be mistaken for the closing fence. */
+  const m = text.match(/^---\r?\n(?:---|([\s\S]*?)\r?\n---)/);
+  const inner = m && m[1] !== undefined ? m[1] : '';
   const fm = {};
   if (m) {
-    const lines = m[1].split(/\r?\n/);
+    const lines = inner.split(/\r?\n/);
     const layout = [];
     const raw = line => {
       const last = layout[layout.length - 1];
@@ -196,7 +204,7 @@ function parseFrontmatter(text) {
   /* Strip ALL leading blank lines, not just one: every writer joins with
      `fm + '\n' + body`, so a single-newline strip here would grow the body
      by one blank line per save cycle (verified in the logic audit). */
-  return { fm, raw: m ? m[1] : '', body: m ? text.slice(m[0].length).replace(/^(\r?\n)+/, '') : text };
+  return { fm, raw: inner, body: m ? text.slice(m[0].length).replace(/^(\r?\n)+/, '') : text };
 }
 
 /* Quote a scalar for YAML when it would otherwise change meaning. The
