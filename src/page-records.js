@@ -39,11 +39,14 @@ function render(ctx, root) {
 
   const back = backButton(ctx, 'history');
 
-  const search = el('input', {
+  const rows = allRecords(data.workouts, data.exercises);
+  /* No records, nothing to search: the box used to be drawn anyway and its
+     handler closed over `draw`, which does not exist yet on the empty-state
+     path - typing threw "Cannot access 'draw' before initialization". */
+  const search = !rows.length ? null : el('input', {
     class: 'gv-search', type: 'search', placeholder: 'Search exercises…', value: ui.q, 'aria-label': 'Search records',
     oninput: e => { ui.q = e.target.value; draw(); },
   });
-  const rows = allRecords(data.workouts, data.exercises);
   /* The count under the title is the mockups' "14 BESTS" (Apex and Lock In
      draw it; the other skins hide it). Same rows the list prints. */
   root.append(el('div', { class: 'gv-toolbar gv-toolbar-records' },
@@ -53,7 +56,7 @@ function render(ctx, root) {
        counts only beaten records: a first-ever figure is a baseline, not a record. */
     el('p', { class: 'gv-kicker gv-records-count' }, `${rows.length} ${rows.length === 1 ? 'best' : 'bests'}`,
       recordsKicker(rows, todayISO()).text ? el('span', { class: 'gv-records-new' }, ` \u00b7 ${recordsKicker(rows, todayISO()).text}`) : ''),
-    search));
+    search || ''));
   if (!rows.length) {
     root.append(emptyLine(
       'No records yet — log a set and the first one becomes the number to beat.'));
