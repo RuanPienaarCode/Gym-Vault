@@ -16,13 +16,15 @@
    behaviour, same propagation guard, same dismiss contract. Two different
    sheet idioms over one tap zone would be two different sets of bugs. */
 
-const { el, ico } = require('./dom');
+const { el, ico, focusOpener, restoreFocus } = require('./dom');
 
 /* Appends the sheet to `host` and returns a function that removes it.
    `rows` is [{ label, hint, node }] — `node` is the LIVE control, moved in
    here rather than rebuilt, so its state and listeners ride along. */
 function openCounterSettings(host, rows, opts) {
   const o = opts || {};
+  /* Where focus goes back to on close - read before focus moves into the sheet. */
+  const opener = focusOpener(o.opener);
   const close = el('button', { class: 'gv-icon-btn gv-cs-close', type: 'button', 'aria-label': 'Close' }, ico('x'));
 
   const list = el('div', { class: 'gv-cs-rows' });
@@ -55,9 +57,17 @@ function openCounterSettings(host, rows, opts) {
     if (closed) return;
     closed = true;
     sheet.remove();
+    restoreFocus(sheet, opener);
     if (o.onClose) o.onClose();
   };
   close.addEventListener('click', dismiss);
+  /* Escape closes the sheet. The stopPropagation loop above already keeps the
+     key off the tap zone; this only adds the close. */
+  sheet.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (e.preventDefault) e.preventDefault();
+    dismiss();
+  });
 
   host.append(sheet);
   close.focus();
@@ -80,7 +90,7 @@ function counterSettingsButton(getHost, getRows) {
     if (!host) return;
     if (host.querySelector('.gv-cs')) return; // already open — do not stack sheets
     const rows = typeof getRows === 'function' ? getRows() : getRows;
-    const dismiss = openCounterSettings(host, rows);
+    const dismiss = openCounterSettings(host, rows, { opener: btn });
     /* Controls that open their OWN surface have to take the sheet down with
        them: Type edits the count element underneath this sheet, and the
        explainer would otherwise stack a second dialog on top of it. The

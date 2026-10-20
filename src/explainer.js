@@ -15,7 +15,7 @@
    and animated in CSS so prefers-reduced-motion can stop it without stopping
    the explanation. */
 
-const { el, ico } = require('./dom');
+const { el, ico, focusOpener, restoreFocus } = require('./dom');
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -88,6 +88,8 @@ function card(drawing, title, body) {
    explained should still be there when the explanation closes. */
 function openExplainer(host, opts) {
   const o = opts || {};
+  /* Where focus goes back to on close - read before focus moves into the sheet. */
+  const opener = focusOpener(o.opener);
   const close = el('button', { class: 'gv-icon-btn gv-xp-close', type: 'button', 'aria-label': 'Close' }, ico('x'));
 
   const sheet = el('div', {
@@ -121,9 +123,17 @@ function openExplainer(host, opts) {
     if (closed) return;
     closed = true;
     sheet.remove();
+    restoreFocus(sheet, opener);
     if (o.onClose) o.onClose();
   };
   close.addEventListener('click', dismiss);
+  /* Escape closes the sheet. The stopPropagation loop above already keeps the
+     key off the tap zone; this only adds the close. */
+  sheet.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (e.preventDefault) e.preventDefault();
+    dismiss();
+  });
 
   host.append(sheet);
   close.focus();
@@ -141,7 +151,7 @@ function helpButton(getHost) {
     const host = typeof getHost === 'function' ? getHost() : getHost;
     if (!host) return;
     if (host.querySelector('.gv-xp')) return; // already open — do not stack sheets
-    openExplainer(host);
+    openExplainer(host, { opener: btn });
   });
   return btn;
 }

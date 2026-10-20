@@ -81,6 +81,27 @@ function clickableCard(attrs, onActivate, ...kids) {
   return node;
 }
 
+/* The opener to hand focus back to when a sheet closes: the control that was
+   passed in, else whatever held focus when the sheet opened (never <body>).
+   Call BEFORE moving focus into the sheet. */
+function focusOpener(explicit) {
+  if (explicit) return explicit;
+  const a = document.activeElement;
+  return a && a !== document.body ? a : null;
+}
+
+/* Give focus back to `opener` after `sheet` closed, so a keyboard user
+   resumes where they were instead of at the top of the page. Only when focus
+   is parked (on <body>, or still inside the closed sheet): a control used in
+   the sheet may have deliberately moved focus elsewhere (Type focuses the
+   count it edits) and that must not be stolen back. */
+function restoreFocus(sheet, opener) {
+  if (!opener || typeof opener.focus !== 'function' || opener.isConnected === false) return;
+  const a = document.activeElement;
+  const parked = !a || a === document.body || (sheet && typeof sheet.contains === 'function' && sheet.contains(a));
+  if (parked) opener.focus();
+}
+
 /* A labelled on/off row — the shape both the export options and the guided-
    session setup screen need.
 
@@ -526,5 +547,5 @@ function statTile(icon, big, label, extraClass) {
 const emptyLine = (...kids) => el('div', { class: 'gv-empty-line' }, ...kids);
 
 module.exports = {
-  backButton, numericInput, normaliseNumber, el, ico, clickableCard, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented, statTile, emptyLine
+  backButton, numericInput, normaliseNumber, el, ico, clickableCard, focusOpener, restoreFocus, toggleRow, clear, fmt, fmtSeconds, ring, sparkline, paragraphs, chunks, prose, segmented, statTile, emptyLine
 };
