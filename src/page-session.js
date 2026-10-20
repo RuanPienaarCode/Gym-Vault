@@ -62,6 +62,9 @@ const WEIGHT_STEP_KG = 2.5;
    thing: a second copy of this rule is how the trust seam would drift. */
 const OBSERVED_REPS = Object.freeze({ observed: Object.freeze(['reps']) });
 const OBSERVED_SECONDS = Object.freeze({ observed: Object.freeze(['seconds']) });
+/* A hold that was out of sight while it ran was not WATCHED (see watchAway). */
+const OBSERVED_NOTHING = Object.freeze({ observed: Object.freeze([]) });
+const heldObserved = hold => (hold && hold.away ? OBSERVED_NOTHING : OBSERVED_SECONDS);
 
 function render(ctx, root) {
   const draft = ctx.state.logDraft;
@@ -133,6 +136,7 @@ function render(ctx, root) {
        same value. A running one is not carried: it starts over, as it always
        did. */
     restorePaused(ctx.state.session, draft, tally.paused);
+    watchAway(ctx.state.session, root);
   }
   const sess = ctx.state.session;
   /* The draft's own copy of the tally and any pause, kept in step from here on
@@ -183,6 +187,7 @@ function render(ctx, root) {
     if (sess.stopMuscleMap) { sess.stopMuscleMap(); sess.stopMuscleMap = null; }
     if (sess.stopCountIn) { sess.stopCountIn(); sess.stopCountIn = null; }
     if (sess.stopMotion) { sess.stopMotion(); sess.stopMotion = null; }
+    if (sess.stopAwayWatch) { sess.stopAwayWatch(); sess.stopAwayWatch = null; }
     sound.cancel();
     /* THE TALLY OUTLIVES THE PAGE; THE POSITION DOES NOT (0.11.2 journey
        audit, finding L9). Leaving this page for ANY reason — the review
@@ -263,7 +268,7 @@ function commitLiveSet(ctx, draft) {
     hold.running = false;
     hold.paused = false;
     hold.frozenSeconds = secs;
-    applyCompletion(ctx, draft, sess, set, entry, { seconds: String(secs) }, OBSERVED_SECONDS);
+    applyCompletion(ctx, draft, sess, set, entry, { seconds: String(secs) }, heldObserved(hold));
     return true;
   }
   const counter = sess.counter;
@@ -346,6 +351,26 @@ function syncPlayButton(btn, paused) {
   btn.append(ico(paused ? 'play' : 'pause'));
 }
 
+/* A HOLD THAT WAS OUT OF SIGHT WAS NOT OBSERVED (audit B-hold-away). The
+   stopwatch is wall-clock time, so a plank started and then forgotten while the
+   app sat in the background (the Music button, a call, a locked phone) read an
+   hour on return, and stopping it announced a NEW BEST. The page becoming hidden
+   while a hold is RUNNING flags that hold `away`; its seconds are still saved,
+   but it completes with observed: [] and so claims no record (heldObserved). A
+   hold that was paused when the page was hidden is not flagged: a paused clock
+   cannot run away. One listener per session, removed by pageCleanup. */
+function watchAway(sess, root) {
+  const doc = (root && root.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+  if (!doc || typeof doc.addEventListener !== 'function') return;
+  const onChange = () => {
+    if (doc.visibilityState !== 'hidden') return;
+    const h = sess.hold;
+    if (h && h.running && !h.paused) h.away = true;
+  };
+  doc.addEventListener('visibilitychange', onChange);
+  sess.stopAwayWatch = () => doc.removeEventListener('visibilitychange', onChange);
+}
+
 /* WHAT A PAUSE LEAVES BEHIND WHEN THE USER LEAVES THE SESSION. pageCleanup
    throws the session object away (see its comment), which would turn a paused
    plank back into a fresh count-in — the one moment the pause exists to
@@ -366,7 +391,7 @@ function pausedSnapshot(sess) {
   }
   const h = sess.hold;
   if (sess.phase === 'active' && h && h.running && h.paused && sess.holdFor) {
-    return { kind: 'hold', key: sess.holdFor, bankedSeconds: h.bankedSeconds, targetHit: h.targetHit === true, lastAnnounced: h.lastAnnounced, lastLiveAnnounced: h.lastLiveAnnounced };
+    return { kind: 'hold', key: sess.holdFor, bankedSeconds: h.bankedSeconds, targetHit: h.targetHit === true, away: h.away === true, lastAnnounced: h.lastAnnounced, lastLiveAnnounced: h.lastLiveAnnounced };
   }
   return null;
 }
@@ -459,7 +484,7 @@ function restorePaused(sess, draft, snap) {
     if (!cur || !cur.entry.duration || cur.entry.distance) return;
     sess.hold = Object.assign({
       running: true, frozenSeconds: snap.bankedSeconds,
-      lastAnnounced: snap.lastAnnounced, lastLiveAnnounced: snap.lastLiveAnnounced, targetHit: snap.targetHit,
+      lastAnnounced: snap.lastAnnounced, lastLiveAnnounced: snap.lastLiveAnnounced, targetHit: snap.targetHit, away: snap.away === true,
     }, timerState.frozenClock(snap.bankedSeconds));
     sess.holdFor = key;
     /* It had already begun, so it must not count in again. */
@@ -1478,7 +1503,7 @@ function durationBody(ctx, draft, sess, entry, set) {
     /* OBSERVED_SECONDS — the stopwatch above genuinely ran for this
        many seconds; unlike a timed interval's clock, it was started and
        stopped by the user's own taps, not merely allowed to elapse. */
-    completeSet(ctx, draft, sess, set, entry, { seconds: String(secs) }, OBSERVED_SECONDS);
+    completeSet(ctx, draft, sess, set, entry, { seconds: String(secs) }, heldObserved(hold));
   };
 
   const pauseHold = () => {

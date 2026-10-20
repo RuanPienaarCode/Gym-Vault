@@ -104,7 +104,7 @@ function plainPaused(p) {
     const key = idStr(p.key);
     if (!key) return null;
     return {
-      kind: 'hold', key, bankedSeconds: nonNeg(p.bankedSeconds), targetHit: p.targetHit === true,
+      kind: 'hold', key, bankedSeconds: nonNeg(p.bankedSeconds), targetHit: p.targetHit === true, away: p.away === true,
       lastAnnounced: finite(p.lastAnnounced) ? p.lastAnnounced : -1,
       lastLiveAnnounced: finite(p.lastLiveAnnounced) ? p.lastLiveAnnounced : -1,
     };
