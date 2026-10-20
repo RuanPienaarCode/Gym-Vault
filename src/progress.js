@@ -19,7 +19,8 @@
 const records = require('./records');
 const { num, sameName, sessionsInWeek } = require('./stats');
 const { weekdayKey, addDays, startOfWeek } = require('./dates');
-const { isRestDay, targetIsDuration, targetWeight } = require('./plan-parse');
+const { targetIsDuration, targetWeight } = require('./plan-parse');
+const { weekSchedule } = require('./rewards');
 const { WEEKDAY_LABELS } = require('./constants');
 const { fmtSeconds } = require('./dom');
 
@@ -175,17 +176,12 @@ function reachText(r) {
    scheduled on it (rest days and empty days: null). ONE rule for the week
    strip and for the week's target: the strip used to compute this inline, and
    a target derived by a second copy of it is exactly how "4 planned dots, a
-   target of 3" would happen. */
+   target of 3" would happen. The rule itself is rewards.weekSchedule, which the
+   weekly quest reads too. `counts` is true when the cell is one more session
+   toward the target: an `(any)` day is shown on every free weekday but counts
+   once for the week. */
 function weekPlan(daysOn, today, weekStart) {
-  const start = startOfWeek(today, weekStart);
-  const out = [];
-  for (let i = 0; i < 7; i++) {
-    const iso = addDays(start, i);
-    const wk = weekdayKey(iso);
-    const scheduled = ((daysOn(wk) || [])[0] || {}).day || null;
-    out.push({ iso, wk, planDay: scheduled && !isRestDay(scheduled) ? scheduled : null });
-  }
-  return out;
+  return weekSchedule(daysOn, today, weekStart).days.map(d => ({ iso: d.iso, wk: d.wk, planDay: d.planDay, counts: d.counts }));
 }
 
 /* This week against its target, or null when the week has no target (a
@@ -202,7 +198,7 @@ function weekProgress({ workouts, goals, daysOn, today, weekStart }) {
     const t = Math.round(num(fm.target) || 0);
     if (fm.metric === 'workouts-per-week' && t > 0) { target = t; source = 'goal'; break; }
   }
-  if (!target) target = weekPlan(daysOn, today, weekStart).filter(d => d.planDay).length;
+  if (!target) target = weekPlan(daysOn, today, weekStart).filter(d => d.counts).length;
   if (!target) return null;
   const done = sessionsInWeek(workouts, today, weekStart);
   return {

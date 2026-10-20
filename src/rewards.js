@@ -43,7 +43,7 @@
    weekKey(date, weekStart) -> 'YYYY-MM-DD'    the first day of the week containing `date` (the key for week-scoped awards)
 
    questFor({daysOn, exercises, workouts, today, weekStart, ledger}) -> null | quest
-       THE ONE QUEST RULE. Each calendar week (weekStart 'mon'|'sun') derives ONE quest from what the plans
+       THE ONE QUEST RULE (the week's schedule is weekSchedule, shared with progress.weekPlan: an `(any)` day counts ONCE a week). Each calendar week (weekStart 'mon'|'sun') derives ONE quest from what the plans
        schedule that week. daysOn is ctx.daysOn: weekday key -> [{plan, day}] (active plan + parallel plans
        merged, as Today builds it). Days named rest/recovery (plan-parse.isRestDay) and entries from a
        fallback plan (fm.fallback) are not "planned work". Items are the day's `- exercise | N x target` lines.
@@ -186,17 +186,57 @@ function repsPerSet(item, exercise) {
   return n !== null && n > 0 ? n : null;
 }
 
+/* THE ONE "WHAT IS PLANNED THIS WEEK" RULE, for the weekly quest and for the
+   week ring/strip (progress.weekPlan / weekProgress), so the two cannot count a
+   different week.
+
+   daysOn(weekday) hands the wildcard `(any)` day of a plan to EVERY weekday the
+   plan leaves empty - the same day object up to seven times. It is one session
+   a week the user may do on any of those days, not seven, so a wildcard day is
+   counted ONCE per week. Every other day is on exactly one weekday (a heading
+   names one), so nothing else needs de-duplicating.
+
+   Returns {start, end, days: [{iso, wk, entries, fresh, planDay, counts}] x7}
+     entries  everything daysOn gave that weekday
+     fresh    the entries that are new to the week (a wildcard day already met on an
+              earlier weekday is left out) - the quest reads items from these
+     planDay  the day the strip shows for the weekday, or null
+     counts   true when that planDay is one more session for the week's target */
+function weekSchedule(daysOn, today, weekStart) {
+  const start = startOfWeek(today, weekStart);
+  const seen = new Set();
+  const counted = new Set();
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const iso = addDays(start, i);
+    const wk = weekdayKey(iso);
+    const entries = ((typeof daysOn === 'function' ? daysOn(wk) : []) || []).filter(e => e && e.day);
+    const fresh = entries.filter(e => {
+      if (e.day.weekday !== 'any') return true;
+      if (seen.has(e.day)) return false;
+      seen.add(e.day);
+      return true;
+    });
+    const shown = entries[0] && !isRestDay(entries[0].day) ? entries[0] : null;
+    let counts = !!shown;
+    if (shown && shown.day.weekday === 'any') { counts = !counted.has(shown.day); counted.add(shown.day); }
+    days.push({ iso, wk, entries, fresh, planDay: shown ? shown.day : null, counts });
+  }
+  return { start, end: addDays(start, 6), days };
+}
+
 function questFor(o) {
   const today = o.today || todayISO();
   if (!fromISO(today)) return null;
-  const start = startOfWeek(today, o.weekStart);
-  const end = addDays(start, 6);
+  const sched = weekSchedule(o.daysOn, today, o.weekStart);
+  const start = sched.start;
+  const end = sched.end;
   const items = [];
   const dayNames = new Map();
   const exNames = new Map();
-  for (let i = 0; i < 7; i++) {
-    for (const entry of (typeof o.daysOn === 'function' ? o.daysOn(weekdayKey(addDays(start, i))) : []) || []) {
-      if (!entry || !entry.day || isFallbackPlan(entry.plan) || isRestDay(entry.day)) continue;
+  for (const d of sched.days) {
+    for (const entry of d.fresh) {
+      if (isFallbackPlan(entry.plan) || isRestDay(entry.day)) continue;
       for (const it of entry.day.items || []) {
         items.push(it);
         const nk = String(entry.day.name || '').trim().toLowerCase();
@@ -478,5 +518,5 @@ function newMedals(before, after) {
 
 module.exports = {
   XP, LEVEL, RANKS,
-  rewardsEnabled, xpToReach, levelFor, rankFor, weekKey, questFor, medals, newMedals, awardsForSession, summarise,
+  rewardsEnabled, xpToReach, levelFor, rankFor, weekKey, weekSchedule, questFor, medals, newMedals, awardsForSession, summarise,
 };
