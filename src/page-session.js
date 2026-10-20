@@ -105,7 +105,7 @@ function render(ctx, root) {
          lives in motionChoices (see initialMotion), and each exercise's note
          remembers it across sessions as `motion_counting`. motionHint is the
          soft line shown when a remembered start could not begin. */
-      motionOn: false, motionChoices: {}, motionKey: '', motionHint: '', stopMotion: null,
+      motionOn: false, motionChoices: {}, motionKey: '', motionHint: '', stopMotion: null, motionStart: null,
       hold: null, holdFor: null,
       workoutsAtStart: ctx.data.workouts, // snapshot: never includes THIS session's own rows (they aren't saved until Finish)
       metGoals: tally.metGoals,
@@ -918,12 +918,21 @@ function motionButton(ctx, sess, entry, onRep, hintEl, sensEl, countingIn) {
      preference, or the re-render after a set — is NOT: iOS may refuse
      requestPermission() there for that reason alone, and that must not be
      reported as the user saying no. See motionFailureCopy. */
+  /* ONE START PER EXERCISE, HOWEVER MANY RENDERS PASS WHILE IT IS PENDING
+     (audit L3-10). startMotionCounter's promise stays open while iOS shows its
+     prompt, and sess.stopMotion is only set when it resolves - so a re-render
+     in that window found motion ON with no subscription and started a SECOND
+     one: two permission requests, then two devicemotion listeners, every rep
+     counted twice (one of them into a detached screen). Now a render that finds
+     a start for this same exercise still in flight does not ask again; it takes
+     over the answer (`handlers` is swapped for the newest render's, `via` keeps
+     the fact that the first start was a tap). A start for ANOTHER exercise is
+     left to answer for itself, and a late answer for an exercise that is no
+     longer on screen stops its listener rather than adopting it. */
   const begin = viaGesture => {
-    startMotionCounter({
+    const handlers = {
       onRep,
-      sensitivity,
-      onStatus: status => {
-        if (status === 'listening') return;
+      onStatus: (status, via) => {
         /* A late report from a screen the user has already left must not
            switch off the exercise they are on now. */
         if (sess.motionKey !== myKey) return;
@@ -932,12 +941,39 @@ function motionButton(ctx, sess, entry, onRep, hintEl, sensEl, countingIn) {
            note's preference is untouched, so next time it tries again. */
         chooseMotion(sess, entry.exercise, false);
         stop();
-        const copy = motionFailureCopy(status, viaGesture);
+        const copy = motionFailureCopy(status, via);
         sess.motionHint = copy.hint;
         sync();
         if (copy.notice) new Notice(copy.notice, 6000);
       },
-    }).then(fn => { if (sess.motionOn) sess.stopMotion = fn; else fn(); });
+      /* The sensor answered yes (or its first sample arrived): the line that
+         said "Asking for the motion sensor…" says what is now true (audit L3-13). */
+      settle: () => { if (sess.motionKey === myKey && sess.motionOn) sync(); },
+    };
+    const inFlight = sess.motionStart;
+    if (inFlight && inFlight.key === myKey) {
+      inFlight.handlers = handlers;
+      inFlight.via = inFlight.via || viaGesture;
+      return;
+    }
+    const start = { key: myKey, via: viaGesture, handlers };
+    sess.motionStart = start;
+    startMotionCounter({
+      onRep: () => start.handlers.onRep(),
+      sensitivity,
+      onStatus: status => {
+        if (status === 'listening') { start.handlers.settle(); return; }
+        start.handlers.onStatus(status, start.via);
+      },
+    }).then(fn => {
+      if (sess.motionStart === start) sess.motionStart = null;
+      /* Adopt it only if this is still the live session, still on this
+         exercise, still wanting motion, and nothing else is subscribed. */
+      if (ctx.state.session === sess && sess.motionOn && sess.motionKey === myKey && !sess.stopMotion) {
+        sess.stopMotion = fn;
+        start.handlers.settle();
+      } else fn();
+    });
   };
 
   /* A re-render lands here with motion already ON and no live subscription:
