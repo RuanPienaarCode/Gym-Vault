@@ -27,6 +27,20 @@ function isHandled(set) {
   return !!(set && (set.done || set.touched));
 }
 
+/* A SKIP IS REMEMBERED ON THE SET (`set.skipped`) FOR THE LIFE OF THE DRAFT.
+   Skipping leaves the set untouched and unticked on purpose (it must not look
+   logged), so isHandled can never see it - and leaving guided then re-entering
+   landed back on exercise 1 set 1, as if nothing had been skipped. The mark is
+   plain data on the set itself, so it follows the set if the log page adds or
+   removes others (an index list would not). It is NOT a figure: buildRows and
+   stats.setCounts never read it, so a saved note reads exactly as before.
+   Navigation passes over a set that is handled OR skipped; done/typed still
+   wins if the set is later filled in. */
+function isSkipped(set) {
+  return !!(set && set.skipped === true);
+}
+const isSettled = set => isHandled(set) || isSkipped(set);
+
 function entryCount(draft) { return draft && draft.entries ? draft.entries.length : 0; }
 function setCount(draft, entryIndex) {
   const entry = draft.entries[entryIndex];
@@ -54,7 +68,7 @@ function nextUnhandled(draft, pos) {
   const n = entryCount(draft);
   while (p.entryIndex < n) {
     const set = draft.entries[p.entryIndex].sets[p.setIndex];
-    if (!isHandled(set)) return p;
+    if (!isSettled(set)) return p;
     p = normalize(draft, { entryIndex: p.entryIndex, setIndex: p.setIndex + 1 });
   }
   return p; // isDone position
@@ -65,6 +79,21 @@ function nextUnhandled(draft, pos) {
    switching into guided mode. */
 function initialPosition(draft) {
   return nextUnhandled(draft, { entryIndex: 0, setIndex: 0 });
+}
+
+/* Mark the set at `pos` skipped. Never touches done/touched/figures. */
+function markSkipped(draft, pos) {
+  const cur = currentSet(draft, pos);
+  if (cur && !isHandled(cur.set)) cur.set.skipped = true;
+}
+
+/* Mark the rest of the exercise at `pos` (from this set on) skipped. */
+function markExerciseSkipped(draft, pos) {
+  const cur = currentSet(draft, pos);
+  if (!cur) return;
+  for (let i = cur.setIndex; i < cur.entry.sets.length; i++) {
+    if (!isHandled(cur.entry.sets[i])) cur.entry.sets[i].skipped = true;
+  }
 }
 
 function isDone(draft, pos) {
@@ -110,4 +139,4 @@ function progress(draft) {
   return { done, total };
 }
 
-module.exports = { isHandled, initialPosition, isDone, currentSet, advance, skipSet, skipExercise, progress };
+module.exports = { isHandled, isSkipped, isSettled, markSkipped, markExerciseSkipped, initialPosition, isDone, currentSet, advance, skipSet, skipExercise, progress };

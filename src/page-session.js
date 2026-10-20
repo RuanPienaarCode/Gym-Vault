@@ -128,7 +128,7 @@ function render(ctx, root) {
          banked before the last pause, so a pause is exact rather than
          drifting by however long the tick happened to be. */
       timed: draft.timed ? Object.assign({
-        index: timedPlan.initialIndex(draft.timed, draft, flow.isHandled),
+        index: timedPlan.initialIndex(draft.timed, draft, flow.isSettled),
         spokenAt: null,
         announcedFor: null,
       }, timerState.startClock(Date.now())) : null,
@@ -522,6 +522,8 @@ function renderActive(ctx, root, draft, sess) {
   const skipSetBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-session-skip', type: 'button', 'aria-label': 'Skip this set' },
     ico('skip-forward'), el('span', {}, 'Set'));
   skipSetBtn.addEventListener('click', () => {
+    flow.markSkipped(draft, sess.pos);   // remembered if you leave and come back
+    keepDraft(ctx);
     sess.pos = flow.skipSet(draft, sess.pos);
     resetActiveState(sess);
     ctx.rerender();
@@ -529,6 +531,8 @@ function renderActive(ctx, root, draft, sess) {
   const skipExBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-session-skip', type: 'button', 'aria-label': 'Skip this exercise' },
     ico('chevrons-right'), el('span', {}, 'Exercise'));
   skipExBtn.addEventListener('click', () => {
+    flow.markExerciseSkipped(draft, sess.pos);
+    keepDraft(ctx);
     sess.pos = flow.skipExercise(draft, sess.pos);
     resetActiveState(sess);
     ctx.rerender();
@@ -2119,6 +2123,14 @@ function advanceTimed(ctx, draft, sess, opts) {
      the newest thing on the floor. Cancelling afterwards cut that cue the moment
      it began. */
   sound.cancel();
+
+  /* A skipped work interval is remembered on its set (session-flow's
+     markSkipped), so leaving and re-entering the circuit does not offer it
+     again. It stays untouched and unticked: a skip is not a logged set. */
+  if (iv && iv.kind === 'work' && skip) {
+    flow.markSkipped(draft, { entryIndex: iv.entryIndex, setIndex: iv.setIndex });
+    keepDraft(ctx);
+  }
 
   if (iv && iv.kind === 'work' && !skip) {
     if (!tp.completed) tp.completed = {};
