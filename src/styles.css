@@ -1576,9 +1576,10 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
    typed into or ticked, its boxes hold the day's prescription — they used to
    render exactly like a number you had entered, so a session with two sets
    logged read back as five sets performed. Dimmed, not emptied: ticking a
-   prefilled set is a real action and setCounts honours it. */
-.gv-log-set.prefill .gv-set-input { color: var(--gv-ink-dim); opacity: 0.75; }
-.gv-log-set.prefill .gv-set-unit { opacity: 0.6; }
+   prefilled set is a real action and setCounts honours it. The dimming is the
+   dim ink token at full strength (a fade on top of it, opacity .75 / .6, took
+   values to 3.3:1 and units to 2.5:1 on paper: W4-5, tests/w4-prefill-contrast). */
+.gv-log-set.prefill .gv-set-input { color: var(--gv-ink-dim); }
 /* An exercise with nothing logged says so on its own head. */
 .gv-app .gv-log-card.unlogged { border-style: dashed; }
 /* The head is an accent FLOOD in Floor and Apex, so "nothing logged yet" dims the
@@ -2991,8 +2992,7 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
    is typed into, and full ink read as a result already produced. --gv-ink-dim
    already carries the per-theme value (light/dark both defined at the top of
    this file), so this needs no separate .theme-dark rule of its own. */
-.gv-timed-field.gv-timed-prefill .gv-set-input { color: var(--gv-ink-dim); opacity: 0.75; }
-.gv-timed-field.gv-timed-prefill .gv-set-unit { opacity: 0.6; }
+.gv-timed-field.gv-timed-prefill .gv-set-input { color: var(--gv-ink-dim); opacity: 1; }
 /* width: see THE WIDTHS block (under .gv-set-input). */
 .gv-app .gv-timed-input { text-align: center; }
 .gv-timed-target {
