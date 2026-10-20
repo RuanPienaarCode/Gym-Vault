@@ -19,6 +19,8 @@ const mkNode = tag => {
     addEventListener(ev, fn) { (n.listeners[ev] || (n.listeners[ev] = [])).push(fn); },
     append(...kids) { for (const k of kids) { if (k && k.nodeType === 1) k.parent = n; n.children.push(k); } },
     appendChild(k) { n.append(k); return k; },
+    get firstChild() { return n.children[0] || null; },
+    removeChild(k) { n.children = n.children.filter(c => c !== k); return k; },
     empty() { n.children = []; n._text = undefined; },
     get childNodes() { return n.children; },
     get textContent() {

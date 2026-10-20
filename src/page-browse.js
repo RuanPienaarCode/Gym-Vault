@@ -71,10 +71,8 @@ function seriesCard(ctx, group, have, draw) {
         el('div', { class: 'gv-browse-name' }, seriesTitle(first))),
       installed === group.phases.length
         ? el('span', { class: 'gv-badge' }, 'added')
-        : el('button', {
-            class: 'gv-btn gv-btn-small', type: 'button',
-            onclick: () => installMany(ctx, group.phases, draw),
-          }, ico('plus'), el('span', {}, installed ? 'Add the rest' : 'Add all'))),
+        : addButton(ctx, 'series:' + group.series, 'gv-btn gv-btn-small', installed ? 'Add the rest' : 'Add all',
+            () => installMany(ctx, group.series, group.phases, draw))),
     el('div', { class: 'gv-browse-summary' }, first.summary));
   const phases = el('div', { class: 'gv-browse-phases' });
   for (const p of group.phases) phases.append(phaseRow(ctx, p, have, draw));
@@ -92,8 +90,7 @@ function phaseRow(ctx, p, have, draw) {
     el('span', { class: 'gv-browse-phase-meta' }, `${p.days} days · ${p.exercises.length} exercises`),
     added
       ? el('span', { class: 'gv-tag' }, 'added')
-      : el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => installOne(ctx, p, draw) },
-          ico('plus'), el('span', {}, 'Add')));
+      : addButton(ctx, 'plan:' + p.name, 'gv-btn gv-btn-ghost gv-btn-small', 'Add', () => installOne(ctx, p, draw)));
 }
 
 function planCard(ctx, p, have, draw) {
@@ -105,29 +102,54 @@ function planCard(ctx, p, have, draw) {
         el('div', { class: 'gv-kicker' }, `${p.days} days · ${p.exercises.length} exercises${p.fallback ? ' · fills empty days' : p.parallel ? ' · runs alongside' : ''}`)),
       added
         ? el('span', { class: 'gv-badge' }, 'added')
-        : el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => installOne(ctx, p, draw) },
-            ico('plus'), el('span', {}, 'Add'))),
+        : addButton(ctx, 'plan:' + p.name, 'gv-btn gv-btn-small', 'Add', () => installOne(ctx, p, draw))),
     el('div', { class: 'gv-browse-summary' }, p.summary));
 }
 
-async function installOne(ctx, entry, draw) {
-  try {
-    const r = await ctx.io.installPlan(entry);
-    await ctx.reload();
-    ctx.notice(report(entry.name, [r]));
-    draw();
-  } catch (e) {
-    ctx.notice(`could not add ${entry.name} (${e.message || e})`);
-  }
+/* ONE INSTALL AT A TIME. `ui.busy` names the install in flight (or null). The
+   buttons are disabled and say "Adding..." while it runs, and a second tap that
+   still gets through (a double-tap lands before the redraw) is refused here -
+   the second run used to hit "File already exists." right after a success and
+   report a failure for something that had worked. */
+function addButton(ctx, key, cls, label, onClick) {
+  const busy = ctx.state.browseUi.busy;
+  const b = el('button', { class: cls, type: 'button', onclick: onClick },
+    ico('plus'), el('span', {}, busy === key ? 'Adding\u2026' : label));
+  if (busy) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
+  return b;
 }
 
-async function installMany(ctx, entries, draw) {
+async function installOne(ctx, entry, draw) {
+  const ui = ctx.state.browseUi;
+  if (ui.busy) return;
+  ui.busy = 'plan:' + entry.name; draw();
+  let r;
+  try {
+    r = await ctx.io.installPlan(entry);
+  } catch (e) {
+    ui.busy = null; draw();
+    ctx.notice(`could not add ${entry.name} (${e.message || e})`);
+    return;
+  }
+  /* Released BEFORE the reload: reload re-renders the page, and that render
+     must see a free library (the old draw below belongs to a page it replaces). */
+  ui.busy = null;
+  await ctx.reload();
+  ctx.notice(report(entry.name, [r]));
+  draw();
+}
+
+async function installMany(ctx, series, entries, draw) {
+  const ui = ctx.state.browseUi;
+  if (ui.busy) return;
+  ui.busy = 'series:' + series; draw();
   const results = [];
   try {
     for (const entry of entries) results.push(await ctx.io.installPlan(entry));
   } catch (e) {
     ctx.notice(`stopped partway (${e.message || e}) — what downloaded is already in your vault.`);
   }
+  ui.busy = null;
   await ctx.reload();
   if (results.length) ctx.notice(report(`${results.length} plan${results.length === 1 ? '' : 's'}`, results));
   draw();
