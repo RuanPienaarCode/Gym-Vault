@@ -12,7 +12,7 @@
    text (vault.process), never to the copy loaded at the last reload. */
 
 const { normalizePath, TFile, TFolder, requestUrl, Notice } = require('obsidian');
-const { parseFrontmatter, serializeFrontmatter, tableToObjects, buildMdTable, replaceFirstTable, tableHeaderLabels } = require('./markdown');
+const { parseFrontmatter, serializeFrontmatter, tableToObjects, parseMdTable, unescMd, ROW_EXTRA, buildMdTable, replaceFirstTable, tableHeaderLabels } = require('./markdown');
 const { parsePlanBody, serializePlanBody } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
@@ -32,6 +32,48 @@ const safeName = s => {
   const cleaned = (s || '').toString().replace(/[\\/:*?"<>|#^\[\]]/g, '-').replace(/\s+/g, ' ').trim();
   return cleaned.slice(0, 200).trim() || '-';
 };
+
+/* READ A TABLE BY ITS HEADER (L2-12). markdown.js tableToObjects maps cells to
+   the schema by POSITION, which is right for a table the app wrote and wrong
+   for a hand-made one with the columns in another order or a column of the
+   user's own in the middle (waist values shown as weight). Only the write path
+   used to look at the header. This reads by header name when the header row
+   names the columns:
+
+     - a header that matches the schema position for position (every table the
+       app writes, including older ones that stop early or carry an extra
+       column on the end) goes straight to tableToObjects, so those read
+       exactly as before;
+     - a header that names none of the columns is positional as well;
+     - otherwise each column is taken from the header cell with its label (or
+       key), and a column the header does not name keeps its own position if
+       that slot is not already another column's ("Weight" in the Weight (kg)
+       slot still reads), else it is empty.
+
+   WRITES are untouched: appendBodyRow still reads positionally and refuses a
+   table whose columns are not ours. */
+const normHeader = h => String(h === null || h === undefined ? '' : h).trim().toLowerCase();
+function tableByHeader(text, columns) {
+  const rows = parseMdTable(text);
+  if (!rows.length) return [];
+  const header = rows[0].map(normHeader);
+  if (columns.every((c, i) => i >= header.length || header[i] === normHeader(c.label))) return tableToObjects(text, columns);
+  const at = columns.map(c => {
+    const i = header.indexOf(normHeader(c.label));
+    return i >= 0 ? i : header.indexOf(c.key);
+  });
+  if (at.every(i => i < 0)) return tableToObjects(text, columns);
+  const claimed = new Set(at.filter(i => i >= 0));
+  const slot = columns.map((c, i) => (at[i] >= 0 ? at[i] : (i < header.length && !claimed.has(i) ? i : -1)));
+  const used = new Set(slot.filter(i => i >= 0));
+  return rows.slice(1).map(cells => {
+    const o = {};
+    columns.forEach((col, i) => { o[col.key] = slot[i] >= 0 ? unescMd(cells[slot[i]] ?? '') : ''; });
+    const tail = cells.map((c, i) => (used.has(i) ? null : c)).filter(c => c !== null && c !== undefined);
+    if (tail.length) o[ROW_EXTRA] = tail.map(unescMd);
+    return o;
+  });
+}
 
 /* ---- what the app last knew about a note ---------------------------------
 
@@ -262,7 +304,7 @@ function makeIo(plugin) {
       const text = await read(bodyFile);
       if (text !== null) {
         const { body } = parseFrontmatter(text);
-        data.body = tableToObjects(body, BODY_COLUMNS).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        data.body = tableByHeader(body, BODY_COLUMNS).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
         data.bodyFile = bodyFile;
         data.present = true;
       }
@@ -306,7 +348,7 @@ function makeIo(plugin) {
       const text = await read(f);
       if (text === null) continue;
       const { fm, body } = parseFrontmatter(text);
-      data.workouts.push({ name: f.basename, file: f, fm, rows: tableToObjects(body, WORKOUT_COLUMNS) });
+      data.workouts.push({ name: f.basename, file: f, fm, rows: tableByHeader(body, WORKOUT_COLUMNS) });
       data.present = true;
     }
     /* Sorted by stats.compareWorkouts, the one order for workout notes: by
@@ -1116,4 +1158,4 @@ function makeIo(plugin) {
   };
 }
 
-module.exports = { makeIo, safeName, findMissingExercises };
+module.exports = { makeIo, safeName, findMissingExercises, tableByHeader };
