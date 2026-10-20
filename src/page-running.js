@@ -77,7 +77,12 @@ function render(ctx, root) {
            THE rule for a workout's day. */
         const done = ranOn(data.workouts, s.iso, data.exercises);
         const isLong = /long/i.test(s.day.name);
-        const rx = isLong && target !== null ? `${target} km` : (s.day.items[0] ? s.day.items[0].target : '');
+        /* The rung of THAT DAY's week (stats.ladderWeek - the same rule the hero
+           uses for today), not today's: a ladder that steps up mid-calendar-week
+           gives two long runs in one week two different distances. A day the
+           ladder has not started for has no rung and prints the plan's own text. */
+        const dayWeek = isLong && ladder.length ? ladderWeek(startDate, s.iso, ladder.length) : null;
+        const rx = dayWeek ? `${ladder[dayWeek - 1]} km` : (s.day.items[0] ? s.day.items[0].target : '');
         const row = el('div', { class: `gv-card gv-runday${s.iso === today ? ' today' : ''}${done ? ' done' : ''}` },
           el('div', { class: 'gv-runday-when' },
             el('div', { class: 'gv-runday-day' }, WEEKDAY_LABELS[s.wk].slice(0, 3)),
