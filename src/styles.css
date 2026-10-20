@@ -5179,6 +5179,24 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 .gv-app.gv-skin-poster.gv-shorter .gv-live-sheet { padding-top: 24px; padding-bottom: 8px; }
 .gv-app.gv-skin-poster.gv-shorter .gv-live-tick { min-height: 54px; }
 .gv-app.gv-skin-poster.gv-shorter .gv-live-utility { margin-bottom: 6px; }
+/* THE 5-4-3 COUNT-IN FITS ITS ZONE (W4-3). The count-in stacks the hollow digit, the "Counting you in"
+   label, "Tap to start now" and the exercise's unit ("Reps") in the one zone, and the digit was sized
+   for a bare count: at 393x852 the stack was 5px taller than the zone and at 375x667 it was 16px
+   taller, so "Reps" hung out of the bottom edge under the sheet (and with "Type the count" on, the
+   number box added 20px more). The zone is a centred flex column, so an overfull stack spills both
+   ways. While the digit is a count-in it is sized to leave room for the lines under it (its number
+   box is ~1.25x its type: the "Type the count" input), the label goes at the same tier the hint
+   needs the room, and the unit and the hint are set tighter; the live count after GO keeps its size.
+   In a short pane the zone is the window less ~690px (measured: 101px at a 791px window, 122 at 812,
+   162 at 852) and the stack needs 1.25 x digit + ~38px, so the digit may be (window - 728) / 1.25 =
+   80vh - 582px, capped at 72px; calc(80vh - 585px) leaves a 3px margin. */
+.gv-app.gv-skin-poster.gv-short .gv-live-zone .gv-session-count.gv-rc-countin { font-size: min(30vw, 72px, calc(80vh - 585px)); }
+.gv-app.gv-skin-poster.gv-short .gv-live-zone .gv-rc-countin-label { display: none; }
+.gv-app.gv-skin-poster.gv-short .gv-live-zone .gv-rc-target { font-size: 16px; line-height: 18px; }
+.gv-app.gv-skin-poster.gv-short .gv-live-zone .gv-rc-hint { margin-top: 4px; font-size: 11px; line-height: 14px; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-zone .gv-session-count.gv-rc-countin { font-size: min(20vw, 6vh, 48px); }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-zone .gv-rc-target { font-size: 14px; line-height: 16px; margin-top: 0; }
+.gv-app.gv-skin-poster.gv-shorter .gv-live-zone .gv-rc-hint { margin-top: 2px; }
 @media (prefers-reduced-motion: reduce) {
   .gv-app.gv-skin-poster .gv-live-pip.is-cur { animation: none; }
 }
