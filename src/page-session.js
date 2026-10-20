@@ -1661,20 +1661,36 @@ function distanceBody(ctx, draft, sess, entry, set) {
   const kmInput = numericInput({
     class: 'gv-set-input gv-session-distance', placeholder: 'km', value: set.distance_km ?? '',
     'aria-label': `Distance in kilometres — ${entry.exercise}`,
-  }, v => { set.distance_km = v; set.touched = true; keepDraft(ctx); });
+  }, v => { set.distance_km = v; set.touched = true; keepDraft(ctx); paintLog(); });
   const minInput = numericInput({
     class: 'gv-set-input gv-session-distance', placeholder: 'min', value: set.minutes ?? '',
     'aria-label': `Minutes — ${entry.exercise}`,
-  }, v => { set.minutes = v; set.touched = true; keepDraft(ctx); });
+  }, v => { set.minutes = v; set.touched = true; keepDraft(ctx); paintLog(); });
 
   const row = el('div', { class: 'gv-session-runrow' },
     el('div', { class: 'gv-session-runfield' }, kmInput, el('span', { class: 'gv-set-unit' }, 'km')),
     el('div', { class: 'gv-session-runfield' }, minInput, el('span', { class: 'gv-set-unit' }, 'min')));
 
   const doneBtn = el('button', { class: 'gv-btn gv-session-donebtn', type: 'button' }, ico('check'), el('span', {}, 'Log run'));
-  doneBtn.addEventListener('click', () => completeSet(ctx, draft, sess, set, entry, {}));
+  /* A RUN WITH NOTHING ENTERED IS NOT A RUN (audit L1-04). "Log run" with both
+     boxes empty ticked the set and ended on a "Finish & save" that only showed a
+     notice, because page-log.setWorthSaving refuses a run with neither figure.
+     Either box is enough (that rule's own test), so the button waits for one,
+     and says so in words - a disabled button alone explains nothing. */
+  const hasRun = () => String(set.distance_km ?? '').trim() !== '' || String(set.minutes ?? '').trim() !== '';
+  const runHint = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' });
+  function paintLog() {
+    const ok = hasRun();
+    doneBtn.disabled = !ok;
+    runHint.textContent = ok ? '' : 'Enter km or minutes to log this run';
+  }
+  paintLog();
+  doneBtn.addEventListener('click', () => {
+    if (!hasRun()) return; // assistive tech and stale taps can reach a disabled button's handler
+    completeSet(ctx, draft, sess, set, entry, {});
+  });
 
-  return el('div', { class: 'gv-session-body gv-session-body-plain' }, row, doneBtn);
+  return el('div', { class: 'gv-session-body gv-session-body-plain' }, row, runHint, doneBtn);
 }
 
 /* ---------- completing a set: write, celebrate, transition ---------- */
