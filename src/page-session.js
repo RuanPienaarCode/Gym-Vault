@@ -1254,11 +1254,41 @@ function lastWeightForExercise(ctx, name) {
   return null;
 }
 
-function weightedBody(ctx, draft, sess, entry, set) {
+/* THE WEIGHT A WEIGHTED SET OPENS ON (audit R2-05). In order:
+     1. the user's own figure on this set, if they have typed one — never moved;
+     2. the weight of the nearest EARLIER set of this entry in THIS session that
+        will be saved (stats.setCounts: ticked, or typed with a figure) and has
+        one — set 2 lifted at 22 means set 3 opens on 22, not on the plan's 20
+        again. The log's own rule, so what carries is what the log holds;
+     3. a blank box: the exercise's last weight from history.
+   Whatever this puts in the box is a PREFILL: `touched` is left alone, so the
+   figure is saved with the set but, like a plan-target prefill, never claims a
+   weight record on its own (applyCompletion's trust rule). One function for the
+   set-by-set screen and the timed circuit, so they cannot carry differently. */
+function carriedWeight(entry, set) {
+  const at = entry.sets.indexOf(set);
+  for (let j = at - 1; j >= 0; j--) {
+    const prev = entry.sets[j];
+    if (!prev || !setCounts(prev)) continue;
+    const w = String(prev.weight_kg ?? '').trim();
+    if (w) return w;
+  }
+  return null;
+}
+
+function prefillWeight(ctx, entry, set) {
+  if (!set.touched) {
+    const carried = carriedWeight(entry, set);
+    if (carried !== null) { set.weight_kg = carried; return; }
+  }
   if (String(set.weight_kg ?? '').trim() === '') {
     const last = lastWeightForExercise(ctx, entry.exercise);
     if (last !== null) set.weight_kg = last; // prefill only — not touched, same as a plan-target prefill
   }
+}
+
+function weightedBody(ctx, draft, sess, entry, set) {
+  prefillWeight(ctx, entry, set);
   /* 2.5 kg plates exist, and type="number" refused the decimal. */
   const weightInput = numericInput({
     class: 'gv-set-input gv-session-weight', placeholder: 'kg', value: set.weight_kg ?? '',
@@ -2144,10 +2174,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
 function timedFigures(ctx, entry, set, iv) {
   const row = el('div', { class: 'gv-timed-figures' });
 
-  if (entry.weighted && String(set.weight_kg ?? '').trim() === '') {
-    const last = lastWeightForExercise(ctx, entry.exercise);
-    if (last !== null) set.weight_kg = last; // prefill only — not touched, same as a plan-target prefill
-  }
+  if (entry.weighted) prefillWeight(ctx, entry, set);
 
   /* A PREFILL IS THE PLAN'S SUGGESTION, NOT A RESULT — same rule as the log
      overview's .gv-log-set.prefill (styles.css): until this set is touched
