@@ -1,7 +1,7 @@
 'use strict';
 
 const { PluginSettingTab, Setting, Notice } = require('obsidian');
-const { SKINS, ACCENTS, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
+const { SKINS, WEEK_STARTS, ACCENTS, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
 const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 const sound = require('./sound');
@@ -77,15 +77,16 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Week starts on')
-      .addDropdown(d => d
-        .addOption('mon', 'Monday')
-        .addOption('sun', 'Sunday')
-        .setValue(this.plugin.settings.weekStart)
-        .onChange(async v => {
-          this.plugin.settings.weekStart = v;
-          await this.plugin.saveSettings();
-          this.plugin.refreshViews();
-        }));
+      .addDropdown(d => {
+        for (const [key, label] of WEEK_STARTS) d.addOption(key, label);
+        return d
+          .setValue(this.plugin.settings.weekStart)
+          .onChange(async v => {
+            this.plugin.settings.weekStart = v;
+            await this.plugin.saveSettings();
+            this.plugin.refreshViews();
+          });
+      });
 
     new Setting(c)
       .setName('Style')

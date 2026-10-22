@@ -5,7 +5,7 @@ const VIEW_TYPE = 'gym-vault-view';
 
 const DEFAULT_SETTINGS = {
   gymFolder: 'Gym',
-  weekStart: 'mon',      // 'mon' | 'sun'
+  weekStart: 'mon',      // a WEEK_STARTS key: 'mon' | 'sat' | 'sun'
   openOnStartup: false,
   onboarded: false,
   skin: 'apex',          // keys of SKINS — Apex is the default; a saved choice is never migrated
@@ -155,6 +155,10 @@ const SOUND_MODES = [
 /* Weekday keys in plan headings — `## Pull Priority (mon)`. Order is the
    canonical mon-first order; startOfWeek() in dates.js handles the sun-start
    setting, this array never reorders. */
+/* The days a week may start on, as Settings offers them. dates.startOfWeek
+   accepts any weekday key; this list is the choice, in the order shown. */
+const WEEK_STARTS = [['mon', 'Monday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
+
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const WEEKDAY_LABELS = {
   mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
@@ -220,7 +224,7 @@ const GOAL_METRICS = [
 const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms', 'core', 'glutes', 'quads', 'hamstrings', 'calves', 'full body'];
 
 module.exports = {
-  VIEW_TYPE, DEFAULT_SETTINGS, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, MUSIC_APPS, SOUND_MODES,
+  VIEW_TYPE, DEFAULT_SETTINGS, WEEK_STARTS, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, MUSIC_APPS, SOUND_MODES,
   GUIDE_MODES, GUIDE_MINUTES, GUIDE_REST, PAGE_TITLES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

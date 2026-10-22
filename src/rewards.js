@@ -43,7 +43,7 @@
    weekKey(date, weekStart) -> 'YYYY-MM-DD'    the first day of the week containing `date` (the key for week-scoped awards)
 
    questFor({daysOn, exercises, workouts, today, weekStart, ledger}) -> null | quest
-       THE ONE QUEST RULE (the week's schedule is weekSchedule, shared with progress.weekPlan: an `(any)` day counts ONCE a week). Each calendar week (weekStart 'mon'|'sun') derives ONE quest from what the plans
+       THE ONE QUEST RULE (the week's schedule is weekSchedule, shared with progress.weekPlan: an `(any)` day counts ONCE a week). Each calendar week (weekStart 'mon'|'sat'|'sun') derives ONE quest from what the plans
        schedule that week. daysOn is ctx.daysOn: weekday key -> [{plan, day}] (active plan + parallel plans
        merged, as Today builds it). Days named rest/recovery (plan-parse.isRestDay) and entries from a
        fallback plan (fm.fallback) are not "planned work". Items are the day's `- exercise | N x target` lines.

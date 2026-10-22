@@ -34,10 +34,13 @@ function addDays(iso, n) {
   return toISO(d);
 }
 
-/* ISO date of the first day of the week containing `iso`. */
+/* ISO date of the first day of the week containing `iso`. `weekStart` is a
+   weekday key ('mon' | 'sat' | 'sun' ...); anything else — an old data.json,
+   a hand edit — means Monday, as it always has. */
 function startOfWeek(iso, weekStart) {
   const d = fromISO(iso);
-  const first = weekStart === 'sun' ? 0 : 1;
+  const k = DAY_KEYS.indexOf(weekStart);
+  const first = k < 0 ? 1 : k;
   const back = (d.getDay() - first + 7) % 7;
   d.setDate(d.getDate() - back);
   return toISO(d);
