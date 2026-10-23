@@ -102,6 +102,7 @@ const SKINS = [
   ['lockin', 'Lock In — black + one hot accent, slanted slabs, giant italic type'],
   ['floor', 'Editorial Floor — one lime flood per screen, hard edges where you act'],
   ['editorial', 'Editorial — magazine cover: huge type, hairlines, no floods'],
+  ['calm', 'Calm — soft cards, quiet type, the accent as a gentle tint'],
 ];
 
 /* Apex and Lock In are one poster in two palettes (slabs, giant condensed
@@ -122,6 +123,7 @@ const ACCENTS = [
   ['blaze', 'Blaze (orange)'],
   ['electric', 'Electric (cyan)'],
   ['punch', 'Punch (magenta)'],
+  ['olive', 'Olive (deep green)'],
 ];
 
 /* Music-app shortcut shown in guided sessions. Keys (besides 'none') must

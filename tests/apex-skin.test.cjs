@@ -44,7 +44,7 @@ const rules = cx.load();
 /* ---------- 1 ---------- */
 const { SKINS, DEFAULT_SETTINGS } = require('../src/constants');
 assert.strictEqual(DEFAULT_SETTINGS.skin, 'apex', 'Apex must be the default skin');
-assert.deepStrictEqual(SKINS.map(s => s[0]), ['apex', 'lockin', 'floor', 'editorial'], 'dropdown order is apex, lockin, floor, editorial — none removed (lockin is pinned by lockin-skin.test.cjs)');
+assert.deepStrictEqual(SKINS.map(s => s[0]), ['apex', 'lockin', 'floor', 'editorial', 'calm'], 'dropdown order is apex, lockin, floor, editorial, calm — none removed (lockin is pinned by lockin-skin.test.cjs)');
 /* Floor IS the base stylesheet, so it has no block of its own. */
 for (const [key] of SKINS.filter(s => s[0] !== 'floor')) assert.ok(new RegExp(`gv-skin-${key}\\b`).test(bare), `no CSS for skin ${key}`);
 

@@ -67,8 +67,8 @@ for (const [name, p] of Object.entries(palettes)) {
 
 const rules = cx.load();
 const THEMES = ['dark', 'light'];
-const SKINS = ['floor', 'editorial', 'apex', 'lockin'];
-const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
+const SKINS = ['floor', 'editorial', 'apex', 'lockin', 'calm'];
+const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch', 'olive'];
 
 /* kind 'glyph' = an icon (3:1). Everything else is text, classed by the size
    and weight the cascade gives it. `chain` is the element path under

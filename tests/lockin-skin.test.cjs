@@ -53,11 +53,14 @@ const bannerLine = css.slice(0, banner).split('\n').length;
    wears - its own AND the shared ones - as `.gv-app.gv-skin-lockin ...`: that is `lock`. `region` is only what sits
    under the Lock In banner. Both stop at the cross-skin REVIEW FIXES block (0.14.0) at the end of the file: small
    rules for the keyboard class and the host-tint resets, which name Apex, Lock In and the shared classes by design
-   and are guarded by their own tests (keyboard-nav, host-tints, live-weight-width). */
+   and are guarded by their own tests (keyboard-nav, host-tints, live-weight-width) - or at the next skin's banner
+   (Calm sits between Lock In and that block), whichever comes first. */
 const apexBanner = css.indexOf('SKIN: APEX');
 const apexBannerLine = css.slice(0, apexBanner).split('\n').length;
 const tailAt = css.indexOf('---------- REVIEW FIXES (0.14.0)');
-const endAt = tailAt > banner ? tailAt : css.length;
+const nextSkinAt = css.indexOf('SKIN: ', banner + 1);
+const ends = [tailAt, nextSkinAt].filter(i => i > banner);
+const endAt = ends.length ? Math.min(...ends) : css.length;
 const endLine = css.slice(0, endAt).split('\n').length;
 const lock = rules.filter(r => r.line >= apexBannerLine && r.line < endLine && /gv-skin-lockin/.test(r.selector));
 const region = rules.filter(r => r.line >= bannerLine && r.line < endLine);
@@ -81,7 +84,7 @@ const ruleOf = sel => {
 {
   const { SKINS, DEFAULT_SETTINGS } = require('../src/constants');
   assert.strictEqual(DEFAULT_SETTINGS.skin, 'apex', 'Lock In is NOT the default: Apex stays it');
-  assert.deepStrictEqual(SKINS.map(s => s[0]), ['apex', 'lockin', 'floor', 'editorial'], 'lockin is registered right after apex, nothing removed');
+  assert.deepStrictEqual(SKINS.map(s => s[0]), ['apex', 'lockin', 'floor', 'editorial', 'calm'], 'lockin is registered right after apex, nothing removed');
   assert.strictEqual(SKINS[1][1], 'Lock In — black + one hot accent, slanted slabs, giant italic type');
   /* the skin is a class the shell applies generically: no per-skin branch in the JS */
   const controller = read('src/controller.js');

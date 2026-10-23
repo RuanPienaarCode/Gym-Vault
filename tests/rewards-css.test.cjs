@@ -81,7 +81,7 @@ const ok = (c, m) => { assert.ok(c, m); n++; };
 /* C5 */
 {
   ok(!rw.some(r => /gv-skin-(floor|editorial)/.test(r.selector)), 'Floor and Editorial have no rewards rule of their own: they use the base block');
-  for (const r of rw.filter(r => /gv-skin-/.test(r.selector))) ok(/\.gv-app\.gv-skin-(apex|lockin)\b/.test(r.selector), `${r.selector} is scoped to its skin`);
+  for (const r of rw.filter(r => /gv-skin-/.test(r.selector))) ok(/\.gv-app\.gv-skin-(apex|lockin|calm)\b/.test(r.selector), `${r.selector} is scoped to its skin`);
   ok(rw.filter(r => /gv-skin-apex/.test(r.selector)).length > 40 && rw.filter(r => /gv-skin-lockin/.test(r.selector)).length > 40, 'both skins restyle the rewards');
   ok(rules.some(r => r.selector === '.gv-slot-level:empty, .gv-slot-quest:empty, .gv-slot-xp-chip:empty' || /gv-slot-level:empty/.test(r.selector)), 'an empty slot draws nothing');
 }

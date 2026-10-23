@@ -3291,6 +3291,22 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 }
 .theme-dark .gv-app.gv-accent-punch { --gv-lime-ghost: #2a121e; }
 
+/* Olive, built around #568203. That exact green is the SOLID: Calm fills its
+   buttons, bars and switches with it (white on it is 4.57:1). As small text it
+   is 4.2:1 on the tinted papers, so the text tone (deep) is a hair darker, and
+   it is too dark to carry ink as a flood (3.9:1), so the flood is a lighter
+   leaf of the same hue. --gv-accent-solid is optional: a palette without one
+   lets Calm fill with its deep tone. */
+.gv-app.gv-accent-olive {
+  --gv-accent-solid: #568203;
+  --gv-lime: #9cc25a;
+  --gv-lime-hi: #c3dc96;
+  --gv-lime-deep: #4a7003;
+  --gv-lime-ghost: #f2f7e8;
+  --gv-flood-dim: #2c3d0a;
+}
+.theme-dark .gv-app.gv-accent-olive { --gv-lime-ghost: #1c2610; }
+
 /* ---- Running records (page-run-records.js) ----------------------------
    Reads as a record sheet: the hero and tiles are the four dimensions of a
    run, the band rows are a table with the distance as the row head. */
@@ -6577,6 +6593,270 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   .gv-app.gv-skin-lockin .gv-ticker-band > div { animation: none; min-width: 0; }
     .gv-app.gv-skin-lockin .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
   }
+
+/* ============================================================================
+   SKIN: CALM — settings › Style. The quiet one, asked for as "way more subtle":
+   the Floor/Editorial markup with every loud device turned down — no ink
+   blocks, no floods, no 2px ink borders, no giant condensed capitals. Soft
+   paper, hairlines, rounded corners, sentence-case system type, and the accent
+   used as a tint (ghost background + deep text) or, on the few buttons that
+   start or finish something, as a solid fill in its deep tone. Made for the
+   Olive accent (#568203) but works with every palette, since it only reads
+   the --gv-lime* tokens. Last in the file so its rules win ties.
+
+   Colour goes through the four --gv-calm-* tokens below and nowhere else, so
+   the dark theme only re-points tokens: a light rule here outranks the base
+   .theme-dark twins (same or higher specificity, later), and a hard-coded
+   light colour would leak into dark mode.
+   ============================================================================ */
+.gv-app.gv-skin-calm {
+  --gv-bg: #f6f7f3;
+  --gv-surface: #ffffff;
+  --gv-line: #e6e9e0;
+  --gv-line-2: #d4d9ca;
+  --gv-ink: #262b21;
+  --gv-ink-dim: #5f6756;
+  --gv-display: var(--gv-body);
+  --gv-calm-fill: var(--gv-accent-solid, var(--gv-lime-deep)); /* solid buttons, bar fills, switch on */
+  --gv-calm-fill-ink: #ffffff;              /* text and glyphs on that fill */
+  --gv-calm-tint: var(--gv-lime-ghost);     /* the selected / done background */
+  --gv-calm-tint-ink: var(--gv-lime-deep);  /* text on the tint, accent text on paper */
+  --gv-calm-radius: 12px;
+}
+.theme-dark .gv-app.gv-skin-calm {
+  --gv-bg: #131611;
+  --gv-surface: #1a1e17;
+  --gv-line: #282d24;
+  --gv-line-2: #363d31;
+  --gv-ink: #e8ebe3;
+  --gv-ink-dim: #a0a796;
+  --gv-calm-fill: var(--gv-lime);
+  --gv-calm-fill-ink: var(--gv-ink-fixed);
+  --gv-calm-tint-ink: var(--gv-lime);
+}
+
+/* Type: sentence case, normal tracking, the system face at a real weight. */
+.gv-app.gv-skin-calm *,
+.gv-app.gv-skin-calm *::before,
+.gv-app.gv-skin-calm *::after { text-transform: none; letter-spacing: normal; }
+/* The two base rules that out-rank that reset (three classes each). */
+.gv-app.gv-skin-calm .gv-dial-value.word,
+.gv-app.gv-skin-calm .gv-recrow.gv-rec-new::after { text-transform: none; letter-spacing: normal; font-weight: 600; }
+.gv-app.gv-skin-calm .gv-display,
+.gv-app.gv-skin-calm .gv-logo-text,
+.gv-app.gv-skin-calm .gv-toolbar-title,
+.gv-app.gv-skin-calm .gv-section-title,
+.gv-app.gv-skin-calm .gv-section-title-inline,
+.gv-app.gv-skin-calm .gv-logtop-title,
+.gv-app.gv-skin-calm .gv-log-ex-name,
+.gv-app.gv-skin-calm .gv-log-clock,
+.gv-app.gv-skin-calm .gv-log-elapsed,
+.gv-app.gv-skin-calm .gv-log-tally b,
+.gv-app.gv-skin-calm .gv-set-num,
+.gv-app.gv-skin-calm .gv-set-input,
+.gv-app.gv-skin-calm .gv-btn-go,
+.gv-app.gv-skin-calm .gv-btn-finish,
+.gv-app.gv-skin-calm .gv-day-name,
+.gv-app.gv-skin-calm .gv-day-title,
+.gv-app.gv-skin-calm .gv-day-item-rx,
+.gv-app.gv-skin-calm .gv-rx b,
+.gv-app.gv-skin-calm .gv-tile-big,
+.gv-app.gv-skin-calm .gv-streak-num,
+.gv-app.gv-skin-calm .gv-week-progress-num,
+.gv-app.gv-skin-calm .gv-goal-mini-nums,
+.gv-app.gv-skin-calm .gv-recrow-margin,
+.gv-app.gv-skin-calm .gv-profile-name,
+.gv-app.gv-skin-calm .gv-body-date,
+.gv-app.gv-skin-calm .gv-plan-name,
+.gv-app.gv-skin-calm .gv-ex-idx,
+.gv-app.gv-skin-calm .gv-ex-name,
+.gv-app.gv-skin-calm .gv-ex-best,
+.gv-app.gv-skin-calm .gv-session-date,
+.gv-app.gv-skin-calm .gv-ring-text,
+.gv-app.gv-skin-calm .gv-runday-day,
+.gv-app.gv-skin-calm .gv-rung-km,
+.gv-app.gv-skin-calm .gv-rr-band-km,
+.gv-app.gv-skin-calm .gv-browse-name,
+.gv-app.gv-skin-calm .gv-browse-phase-n,
+.gv-app.gv-skin-calm .gv-rw-hex-num,
+.gv-app.gv-skin-calm .gv-rw-level-title,
+.gv-app.gv-skin-calm .gv-rw-quest-title,
+.gv-app.gv-skin-calm .gv-rw-quest-xp,
+.gv-app.gv-skin-calm .gv-rw-xp-big,
+.gv-app.gv-skin-calm .gv-rw-xp-lv b,
+.gv-app.gv-skin-calm .gv-rw-levelup,
+.gv-app.gv-skin-calm .gv-rw-unlock-name,
+.gv-app.gv-skin-calm .gv-rw-next-text b,
+.gv-app.gv-skin-calm .gv-rw-medal-name,
+.gv-app.gv-skin-calm .gv-rw-profile-level,
+.gv-app.gv-skin-calm .gv-rw-stats b { font-weight: 600; line-height: 1.15; }
+.gv-app.gv-skin-calm .gv-hero-title { font-size: clamp(26px, 7.4vw, 36px); line-height: 1.12; letter-spacing: -0.01em; }
+.gv-app.gv-skin-calm .gv-toolbar-title,
+.gv-app.gv-skin-calm .gv-profile-name { font-size: 22px; }
+.gv-app.gv-skin-calm .gv-logtop-title { font-size: 20px; }
+.gv-app.gv-skin-calm .gv-section-title { font-size: 16px; }
+.gv-app.gv-skin-calm .gv-tile-big,
+.gv-app.gv-skin-calm .gv-week-progress-num { font-size: 28px; }
+.gv-app.gv-skin-calm .gv-streak-num { font-size: 40px; }
+.gv-app.gv-skin-calm .gv-rw-profile-level { font-size: 24px; }
+.gv-app.gv-skin-calm .gv-rw-xp-big { font-size: 34px; }
+.gv-app.gv-skin-calm .gv-day-name { font-size: 15px; }
+.gv-app.gv-skin-calm .gv-mark { background: none; color: var(--gv-calm-tint-ink); }
+
+/* Header and tabs: the selected tab is a soft tint, not an ink block. */
+.gv-app.gv-skin-calm .gv-nav { border-bottom: 1px solid var(--gv-line); padding-bottom: 6px; }
+.gv-app.gv-skin-calm .gv-nav-btn,
+.gv-app.gv-skin-calm .gv-head-btn { border-radius: 10px; font-weight: 600; }
+.gv-app.gv-skin-calm .gv-nav-btn.on,
+.gv-app.gv-skin-calm .gv-head-btn.on { background: var(--gv-calm-tint); color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-logo .gv-ico { background: var(--gv-calm-fill); color: var(--gv-calm-fill-ink); border-radius: 9px; }
+
+/* Buttons: rounded, 1px, sentence case. Solid = the deep accent. */
+.gv-app.gv-skin-calm .gv-btn {
+  border: 1px solid var(--gv-calm-fill);
+  border-radius: 10px;
+  background: var(--gv-calm-fill);
+  color: var(--gv-calm-fill-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.gv-app.gv-skin-calm .gv-btn-ghost,
+.gv-app.gv-skin-calm .gv-btn-danger-ghost,
+.gv-app.gv-skin-calm .gv-btn-hero-ghost { border: 1px solid var(--gv-line-2); border-radius: 10px; background: var(--gv-surface); }
+.gv-app.gv-skin-calm .gv-btn-ghost,
+.gv-app.gv-skin-calm .gv-btn-hero-ghost { color: var(--gv-ink); }
+.gv-app.gv-skin-calm .gv-btn-danger-ghost { color: var(--gv-danger); }
+.gv-app.gv-skin-calm .gv-btn-hero-ghost { min-height: 48px; border-radius: var(--gv-calm-radius); font-size: 14px; font-weight: 600; }
+.gv-app.gv-skin-calm .gv-icon-btn { border: 1px solid var(--gv-line-2); border-radius: 10px; }
+.gv-app.gv-skin-calm .gv-icon-btn-on { background: var(--gv-calm-tint); border-color: var(--gv-calm-tint-ink); color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-chip { border-radius: 999px; font-size: 12px; font-weight: 600; }
+.gv-app.gv-skin-calm .gv-chip.on { background: var(--gv-calm-tint); border-color: var(--gv-calm-tint-ink); color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-search { border: 1px solid var(--gv-line-2); border-radius: 10px; }
+.gv-app.gv-skin-calm .gv-switch.on { background: var(--gv-calm-fill); border-color: var(--gv-calm-fill); }
+.gv-app.gv-skin-calm .gv-switch.on::after { background: var(--gv-calm-fill-ink); }
+@media (hover: hover) {
+  .gv-app.gv-skin-calm .gv-btn:hover { filter: brightness(1.08); }
+}
+
+/* Cards, tags, bars. */
+.gv-app.gv-skin-calm .gv-card { border-radius: var(--gv-calm-radius); }
+.gv-app.gv-skin-calm .gv-card-list { gap: 8px; }
+.gv-app.gv-skin-calm .gv-card.gv-profile-card { border: 1px solid var(--gv-line); }
+.gv-app.gv-skin-calm .gv-card.gv-plan-card,
+.gv-app.gv-skin-calm .gv-card.gv-goal-card,
+.gv-app.gv-skin-calm .gv-card.gv-rec-new { box-shadow: inset 3px 0 0 var(--gv-calm-fill); }
+.gv-app.gv-skin-calm .gv-tag { border-radius: 6px; font-weight: 600; }
+.gv-app.gv-skin-calm .gv-tag-type,
+.gv-app.gv-skin-calm .gv-badge { border-radius: 999px; background: var(--gv-calm-tint); color: var(--gv-calm-tint-ink); font-weight: 600; }
+.gv-app.gv-skin-calm .gv-bar,
+.gv-app.gv-skin-calm .gv-rw-bar { height: 8px; border: 0; border-radius: 999px; background: var(--gv-line); }
+.gv-app.gv-skin-calm .gv-bar-fill,
+.gv-app.gv-skin-calm .gv-rw-bar-fill { background: var(--gv-calm-fill); background-image: none; border-radius: 999px; }
+.gv-app.gv-skin-calm .gv-rw-bar-gain { background-color: var(--gv-lime); border-radius: 999px; }
+.gv-app.gv-skin-calm .gv-ex-best,
+.gv-app.gv-skin-calm .gv-rec-delta,
+.gv-app.gv-skin-calm .gv-pb-delta { background: var(--gv-calm-tint); color: var(--gv-calm-tint-ink); border-radius: 6px; }
+.gv-app.gv-skin-calm .gv-rw-rung i { border-radius: 999px; }
+.gv-app.gv-skin-calm .gv-rw-rung.is-current i { box-shadow: none; background-color: var(--gv-calm-fill); }
+.gv-app.gv-skin-calm .gv-ladder { border-width: 1px; border-radius: var(--gv-calm-radius); overflow: hidden; }
+.gv-app.gv-skin-calm .gv-rung.now,
+.gv-app.gv-skin-calm .gv-browse-phase-n { background: var(--gv-calm-tint); }
+.gv-app.gv-skin-calm .gv-rung.now .gv-rung-km,
+.gv-app.gv-skin-calm .gv-rung.now .gv-rung-wk,
+.gv-app.gv-skin-calm .gv-browse-phase-n { color: var(--gv-calm-tint-ink); }
+
+/* Today: the hero is a soft card, the action sits inside it with no flood. */
+.gv-app.gv-skin-calm .gv-hero { border: 1px solid var(--gv-line); border-radius: 16px; padding: 18px 16px 16px; }
+.gv-app.gv-skin-calm .gv-hero-action {
+  --gv-flood-dim: var(--gv-ink-dim);
+  margin: 16px 0 0;
+  padding: 0;
+  background: transparent;
+  color: var(--gv-ink);
+}
+.gv-app.gv-skin-calm .gv-speed { display: none; }
+.gv-app.gv-skin-calm .gv-btn-go,
+.gv-app.gv-skin-calm .gv-btn-finish {
+  min-height: 50px;
+  border: 0;
+  border-radius: var(--gv-calm-radius);
+  background: var(--gv-calm-fill);
+  color: var(--gv-calm-fill-ink);
+  font-size: 16px;
+}
+@media (hover: hover) {
+  .gv-app.gv-skin-calm .gv-btn-go:hover,
+  .gv-app.gv-skin-calm .gv-btn-finish:hover { background: var(--gv-calm-fill); filter: brightness(1.08); }
+}
+.gv-app.gv-skin-calm .gv-week { border: 1px solid var(--gv-line); border-radius: var(--gv-calm-radius); overflow: hidden; }
+.gv-app.gv-skin-calm .gv-day.today { background: var(--gv-calm-tint); box-shadow: none; }
+.gv-app.gv-skin-calm .gv-day.today .gv-day-name { color: var(--gv-ink); }
+.gv-app.gv-skin-calm .gv-day.today .gv-day-dot,
+.gv-app.gv-skin-calm .gv-day.done .gv-day-name,
+.gv-app.gv-skin-calm .gv-day.done .gv-day-dot { color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-tiles { border-radius: var(--gv-calm-radius); overflow: hidden; }
+
+/* Logging: no ink bar, no flood on the exercise head; done sets go soft green. */
+.gv-app.gv-skin-calm .gv-logtop { background: transparent; color: var(--gv-ink); border-bottom: 1px solid var(--gv-line); }
+.gv-app.gv-skin-calm .gv-logtop .gv-icon-btn,
+.gv-app.gv-skin-calm .gv-logtop .gv-btn-ghost { border-color: var(--gv-line-2); color: var(--gv-ink); background: var(--gv-surface); }
+.gv-app.gv-skin-calm .gv-logtop-sub { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-calm .gv-log-clock { color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-log-ex-head { --gv-flood-dim: var(--gv-ink-dim); background: var(--gv-calm-tint); color: var(--gv-ink); border-radius: 10px; }
+.gv-app.gv-skin-calm .gv-log-ex-target { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-calm .gv-log-ex-head .gv-icon-btn-small { border-color: var(--gv-line-2); color: var(--gv-ink-dim); background: var(--gv-surface); }
+.gv-app.gv-skin-calm .gv-log-set { border: 1px solid var(--gv-line); border-radius: 10px; }
+.gv-app.gv-skin-calm .gv-log-set.done { background: var(--gv-calm-tint); border-color: transparent; color: var(--gv-ink); }
+.gv-app.gv-skin-calm .gv-log-set.done .gv-set-num { color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-log-set.done .gv-set-unit { color: var(--gv-ink-dim); }
+.gv-app.gv-skin-calm .gv-set-input { border: 1px solid var(--gv-line-2); border-radius: 8px; }
+.gv-app.gv-skin-calm .gv-set-input:focus { border-color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-set-done { border: 1px solid var(--gv-line-2); border-radius: 10px; }
+.gv-app.gv-skin-calm .gv-log-set.done .gv-set-done { background: var(--gv-calm-fill); border-color: var(--gv-calm-fill); color: var(--gv-calm-fill-ink); }
+.gv-app.gv-skin-calm .gv-add-line { border: 1px dashed var(--gv-line-2); border-radius: 10px; }
+.gv-app.gv-skin-calm .gv-log-tally { border: 1px solid var(--gv-line); border-radius: 10px; }
+
+/* Everything else the base draws with a 2-3px ink line or an ink block. */
+.gv-app.gv-skin-calm .gv-ex-list,
+.gv-app.gv-skin-calm .gv-ladder,
+.gv-app.gv-skin-calm .gv-profile-card,
+.gv-app.gv-skin-calm .gv-log-tally,
+.gv-app.gv-skin-calm .gv-session-rcbar,
+.gv-app.gv-skin-calm .gv-setup { border-top: 1px solid var(--gv-line); }
+.gv-app.gv-skin-calm .gv-rc-bar { border-bottom: 1px solid var(--gv-line); }
+.gv-app.gv-skin-calm .gv-photo-stage,
+.gv-app.gv-skin-calm .gv-media-frame,
+.gv-app.gv-skin-calm .gv-session-zone,
+.gv-app.gv-skin-calm .gv-pb-target,
+.gv-app.gv-skin-calm .gv-pb-moment { border: 1px solid var(--gv-line); border-radius: var(--gv-calm-radius); overflow: hidden; }
+.gv-skin-calm.gv-mv-modal { border: 1px solid var(--gv-line); border-radius: 16px; }
+.gv-app.gv-skin-calm .gv-pb-target { box-shadow: none; }
+.gv-app.gv-skin-calm .gv-pb-target-bar { height: 8px; border: 0; border-radius: 999px; background: var(--gv-line); overflow: hidden; }
+.gv-app.gv-skin-calm .gv-pb-target-fill { background: var(--gv-calm-fill); }
+.gv-app.gv-skin-calm .gv-pb-target.is-beaten { background: var(--gv-calm-tint); border-color: var(--gv-calm-tint-ink); color: var(--gv-ink); }
+.gv-app.gv-skin-calm .gv-pb-target.is-beaten .gv-pb-target-label,
+.gv-app.gv-skin-calm .gv-pb-target.is-beaten .gv-pb-target-togo { color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-media-frame-tag,
+.gv-app.gv-skin-calm .gv-media-expand { background: var(--gv-surface); color: var(--gv-ink); border-radius: 8px; }
+.gv-app.gv-skin-calm .gv-switch { border: 1px solid var(--gv-line-2); }
+.gv-app.gv-skin-calm .gv-segmented-btn,
+.gv-app.gv-skin-calm .gv-dial-step,
+.gv-app.gv-skin-calm .gv-timed-play { border: 1px solid var(--gv-line-2); border-radius: 10px; }
+.gv-app.gv-skin-calm .gv-segmented-btn.on { background: var(--gv-calm-tint); border-color: var(--gv-calm-tint-ink); color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-voice-rec { border: 1px solid var(--gv-line-2); }
+.gv-app.gv-skin-calm .gv-setup-logo,
+.gv-app.gv-skin-calm .gv-session-complete-ico { background: var(--gv-calm-fill); color: var(--gv-calm-fill-ink); border-radius: 12px; }
+.gv-app.gv-skin-calm .gv-optrow { border-radius: 10px; margin-bottom: 8px; }
+.gv-app.gv-skin-calm .gv-optrow.on,
+.gv-app.gv-skin-calm .gv-guidesetup .gv-optrow.on { background: var(--gv-calm-tint); box-shadow: inset 3px 0 0 var(--gv-calm-fill); }
+.gv-app.gv-skin-calm .gv-guidesetup .gv-switch.on { background: var(--gv-calm-fill); border-color: var(--gv-calm-fill); }
+.gv-app.gv-skin-calm .gv-dial-range::-webkit-slider-thumb { border: 1px solid var(--gv-line-2); }
+.gv-app.gv-skin-calm .gv-guidesetup .gv-dial-range::-webkit-slider-thumb { background: var(--gv-calm-fill); border-color: var(--gv-calm-fill); }
+.gv-app.gv-skin-calm .gv-goal-mini-nums { font-size: 16px; }
+.gv-app.gv-skin-calm .gv-plan-name,
+.gv-app.gv-skin-calm .gv-ex-name { font-size: 19px; }
+.gv-app.gv-skin-calm .gv-set-input { font-size: 18px; }
+
 
 /* ---------- REVIEW FIXES (0.14.0) ---------- */
 
