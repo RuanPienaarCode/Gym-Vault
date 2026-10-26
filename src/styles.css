@@ -951,7 +951,7 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
   padding: 13px 2px;
 }
 @media (hover: hover) {
-  .gv-ex-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+  .gv-ex-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 }
 .gv-ex-idx { font-family: var(--gv-display); font-size: 14px; color: var(--gv-ink-dim); width: 26px; flex: 0 0 auto; }
 .gv-ex-main { flex: 1 1 auto; min-width: 0; }
@@ -1218,9 +1218,9 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 
 .gv-plan-card { display: flex; gap: 12px; align-items: center; cursor: pointer; margin-bottom: -1px; }
 @media (hover: hover) {
-  .gv-plan-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+  .gv-plan-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 }
-.gv-plan-card.active { box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-plan-card.active { box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 .gv-plan-main { flex: 1 1 auto; min-width: 0; }
 .gv-plan-name { display: flex; align-items: center; gap: 10px; font-family: var(--gv-display); font-size: 22px; text-transform: uppercase; line-height: 1; }
 .gv-plan-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin: 6px 0 8px; }
@@ -1353,9 +1353,9 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 .gv-goal-grid { display: flex; flex-direction: column; gap: 10px; }
 .gv-goal-card { display: flex; gap: 14px; align-items: center; cursor: pointer; margin-bottom: -1px; }
 @media (hover: hover) {
-  .gv-goal-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+  .gv-goal-card:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 }
-.gv-goal-card.done { box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-goal-card.done { box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 .gv-goal-ring { flex: 0 0 auto; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; }
 .gv-ring { width: 64px; height: 64px; }
 .gv-ring-track { fill: none; stroke: var(--gv-lime-ghost); stroke-width: 7; }
@@ -1444,7 +1444,7 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 @media (hover: hover) {
   .gv-optrow:hover { background: var(--gv-lime-ghost); }
 }
-.gv-optrow.on { box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-optrow.on { box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 /* Most option rows are divs (clickableCard), but the music row is a real
    <button> — and app.css styles the bare element with BOTH `white-space:
    nowrap` (which every child inherits, so the description cannot wrap and
@@ -1515,7 +1515,7 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 .gv-alsotoday-plan { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gv-ink-dim); margin-top: 4px; }
 
 .gv-runday { display: flex; align-items: center; gap: 12px; margin-bottom: -1px; }
-.gv-runday.today { box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-runday.today { box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 .gv-runday.done { background: var(--gv-lime-ghost); }
 .gv-runday-when { flex: 0 0 auto; width: 54px; text-align: center; }
 .gv-runday-day { font-family: var(--gv-display); font-size: 20px; text-transform: uppercase; line-height: 1; }
@@ -1564,7 +1564,7 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 .gv-session-card { padding: 0; overflow: hidden; margin-bottom: -1px; }
 .gv-session-head { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; }
 @media (hover: hover) {
-  .gv-session-head:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-lime); }
+  .gv-session-head:hover { background: var(--gv-lime-ghost); box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 }
 /* The head is date/day on the left, a one-line summary, then the actions. The
    actions are FIXED (a clipped trash button is a delete you cannot reach) and
@@ -3398,7 +3398,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-voice-error { color: var(--gv-danger); font-size: 13px; margin: 10px 0 0; line-height: 1.45; }
 
 .gv-voice-row { display: flex; align-items: center; gap: 10px; margin-bottom: -1px; }
-.gv-voice-row.have { box-shadow: inset 4px 0 0 var(--gv-lime); }
+.gv-voice-row.have { box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime)); }
 .gv-voice-row-main { flex: 1 1 auto; min-width: 0; }
 .gv-voice-row-name { font-size: 14px; font-weight: 700; }
 .gv-voice-row-meta { font-size: 12px; color: var(--gv-ink-dim); margin-top: 2px; }
@@ -3430,7 +3430,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-rx li.gv-rx-reach {
   padding-left: 10px;
   background-color: var(--gv-lime-ghost);
-  box-shadow: inset 4px 0 0 var(--gv-lime);
+  box-shadow: inset 4px 0 0 var(--gv-accent-line, var(--gv-lime));
 }
 
 /* Today: this week against its target. */
@@ -3984,7 +3984,9 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   --interactive-accent-hover: var(--gv-lime-hi);
   color-scheme: light;
 }
-.theme-dark .gv-app.gv-skin-poster {
+.theme-dark .gv-app.gv-skin-poster,
+.theme-light .gv-app.gv-skin-apex .gv-hero-head,
+.theme-light .gv-app.gv-skin-apex .gv-hero:not(.gv-hero-today) {
   --gv-amber: #f2b53c;
   --gv-ember: #f97316;
   --gv-accent-text: var(--gv-lime);
@@ -4011,8 +4013,10 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   background-image: radial-gradient(90% 260px at 50% -40px, var(--gv-lime-ghost), var(--gv-bg) 70%);
 }
 
-/* graphite (dark) — the mockup's own values */
-.theme-dark .gv-app.gv-skin-apex {
+/* graphite (dark) — the mockup's own values. Light mode's poster heroes take them too (see LIGHT MODE below). */
+.theme-dark .gv-app.gv-skin-apex,
+.theme-light .gv-app.gv-skin-apex .gv-hero-head,
+.theme-light .gv-app.gv-skin-apex .gv-hero:not(.gv-hero-today) {
   --gv-bg: #0a0b0d;
   --gv-surface: #16191d;
   --gv-line: #262b31;
@@ -4033,7 +4037,44 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-skin-apex.gv-accent-lime {
   --gv-lime: #c3f04a;
   --gv-lime-hi: #e4ff8c;
+  --gv-accent-line: #5a8f0e;
 }
+
+/* LIGHT MODE. On paper the poster read as white on near-white: the hero had no
+   ground, and the bright accent, drawn as a hairline, an outline or a ring,
+   all but vanished ("missing colour and bg"). Three moves, none of which
+   touch the dark theme:
+   1. The page gets a tinted ground the white cards stand off (as dark as the
+      deep accent text allows: #4b790e and the amber keep 4.5:1 on it).
+   2. Every poster hero (Today's head, Running, Your voice) stays graphite: the
+      two dark token blocks above name them, so the accent sits on graphite
+      exactly as it does in dark. Tokens derived with var() resolve on .gv-app,
+      so the ones the hero reads are restated here.
+   3. Thin accent marks (tab underline, rings, left rules; the base rules'
+      active/done rules too, with a fallback for the other skins) use
+      --gv-accent-line, a tone that holds 3:1 on paper. Floods (buttons,
+      ticker, chips, bars) keep the bright accent: they carry dark ink. */
+.gv-app.gv-skin-poster { --gv-accent-line: var(--gv-accent-solid, var(--gv-lime-deep)); }
+.theme-dark .gv-app.gv-skin-poster { --gv-accent-line: var(--gv-lime); }
+.theme-light .gv-app.gv-skin-apex {
+  --gv-bg: #eef0ea;
+  /* A soft drop under the white cards (week ring, tiles, quest, unlocks): paper needs depth that graphite gets from its own dark. */
+  --gv-poster-lift: 0 8px 18px -10px rgba(10, 11, 13, 0.22);
+  --gv-poster-track: #c9d0d8;
+}
+.theme-light .gv-app.gv-skin-apex .gv-hero-head,
+.theme-light .gv-app.gv-skin-apex .gv-hero:not(.gv-hero-today) {
+  --gv-lime-ghost: rgba(255, 255, 255, 0.045);
+  --gv-amber-text: var(--gv-amber);
+  --gv-accent-line: var(--gv-lime);
+  --text-normal: var(--gv-ink);
+  --text-muted: var(--gv-ink-dim);
+  --background-primary: var(--gv-bg);
+  --background-modifier-border: var(--gv-line);
+  color: var(--gv-ink);
+}
+/* The plan link's light rule names the deep tone outright; on graphite it is the bright one, as in dark. */
+.theme-light .gv-app.gv-skin-apex .gv-hero-head .gv-planswap { color: var(--gv-lime); border-bottom-color: var(--gv-lime); }
 
 /* ---------- slabs: the one place the parallelogram is drawn ---------- */
 
@@ -4216,7 +4257,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   right: 18%;
   bottom: 0;
   height: 4px;
-  background-color: var(--gv-lime);
+  background-color: var(--gv-accent-line);
   transform: skewX(-24deg);
 }
 
@@ -4297,7 +4338,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-skin-poster .gv-bar { height: 14px; border: 0; background-color: var(--gv-poster-track); transform: skewX(-14deg); }
 .gv-app.gv-skin-poster .gv-bar-fill { transition: width 0.4s ease; }
 .gv-app.gv-skin-poster .gv-ring-track { stroke: var(--gv-poster-track); stroke-width: 8; }
-.gv-app.gv-skin-poster .gv-ring-fill { stroke-width: 8; stroke-linecap: butt; }
+.gv-app.gv-skin-poster .gv-ring-fill { stroke: var(--gv-accent-line); stroke-width: 8; stroke-linecap: butt; }
 
 /* ---------- Today: the poster ---------- */
 
@@ -4534,7 +4575,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 /* Today: the week's target. */
 .gv-app.gv-skin-poster .gv-week-progress {
   --gv-slab: var(--gv-surface);
-  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line), var(--gv-poster-lift, 0 0 0 transparent);
   gap: 16px;
   margin: 12px 0 4px;
   padding: 12px 20px;
@@ -4559,7 +4600,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-skin-poster .gv-tiles { gap: 6px; margin-top: 14px; margin-bottom: 14px; border: 0; background-color: transparent; }
 .gv-app.gv-skin-poster .gv-tile {
   --gv-slab: var(--gv-surface);
-  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line), var(--gv-poster-lift, 0 0 0 transparent);
   --gv-slab-sheen: var(--gv-poster-sheen);
   padding: 14px 18px 15px;
 }
@@ -4954,7 +4995,7 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
   --gv-hx-ir: 38px;
   --gv-hx-iy: 3px;
 }
-.gv-app.gv-skin-apex .gv-rw-hex.is-lime { --gv-rw-ring: var(--gv-lime); --gv-rw-ink: var(--gv-accent-text); }
+.gv-app.gv-skin-apex .gv-rw-hex.is-lime { --gv-rw-ring: var(--gv-accent-line); --gv-rw-ink: var(--gv-accent-text); }
 .gv-app.gv-skin-apex .gv-rw-hex::before,
 .gv-app.gv-skin-apex .gv-rw-hex::after,
 .gv-app.gv-skin-apex .gv-rw-hex-in::before,
@@ -5041,7 +5082,7 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 /* The weekly quest: a leaning slab like the week's progress card. */
 .gv-app.gv-skin-poster .gv-rw-quest {
   --gv-slab: var(--gv-surface);
-  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line), var(--gv-poster-lift, 0 0 0 transparent);
   position: relative;
   isolation: isolate;
   margin: 8px 0 0;
@@ -5080,7 +5121,7 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 
 .gv-app.gv-skin-poster .gv-rw-unlock {
   --gv-slab: var(--gv-surface);
-  --gv-slab-edge: inset 0 0 0 1px var(--gv-line);
+  --gv-slab-edge: inset 0 0 0 1px var(--gv-line), var(--gv-poster-lift, 0 0 0 transparent);
   position: relative;
   isolation: isolate;
   margin: 8px 0 0;
@@ -5113,7 +5154,7 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 .gv-app.gv-skin-poster .gv-rw-tier { font-family: var(--gv-display); font-size: 12px; letter-spacing: 0.12em; }
 
 /* Profile: the level card and the rank ladder. */
-.gv-app.gv-skin-poster .gv-rw-profile { border-top: 3px solid var(--gv-lime); padding: 16px 18px 14px; }
+.gv-app.gv-skin-poster .gv-rw-profile { border-top: 3px solid var(--gv-accent-line); padding: 16px 18px 14px; }
 .gv-app.gv-skin-poster .gv-rw-profile-level { font-size: 38px; font-weight: 900; font-style: italic; line-height: 0.86; }
 .gv-app.gv-skin-poster .gv-rw-profile-togo { color: var(--gv-accent-text); }
 .gv-app.gv-skin-poster .gv-rw-rung i { height: 8px; background-color: var(--gv-poster-track); transform: skewX(-14deg); }
@@ -5397,7 +5438,7 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 .gv-app.gv-skin-poster .gv-logtop {
   background-color: var(--gv-surface);
   color: var(--gv-ink);
-  border-bottom: 3px solid var(--gv-lime);
+  border-bottom: 3px solid var(--gv-accent-line);
 }
 .gv-app.gv-skin-poster .gv-logtop-title { font-size: clamp(24px, 7vw, 30px); font-weight: 900; }
 .gv-app.gv-skin-poster .gv-logtop-sub,
@@ -5414,7 +5455,7 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 .gv-app.gv-skin-poster .gv-log-set.done {
   background-color: var(--gv-lime-ghost);
   color: var(--gv-ink);
-  box-shadow: inset 4px 0 0 var(--gv-lime);
+  box-shadow: inset 4px 0 0 var(--gv-accent-line);
 }
 .gv-app.gv-skin-poster .gv-log-set.done .gv-set-num,
 .theme-dark .gv-app.gv-skin-poster .gv-log-set.done .gv-set-num { color: var(--gv-accent-text); }
@@ -5453,7 +5494,7 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9vw, 40px); }
 .gv-app.gv-skin-poster .gv-session-top { border-bottom-color: var(--gv-line); }
 .gv-app.gv-skin-poster .gv-session-zone { border-color: var(--gv-line-2); }
-.gv-app.gv-skin-poster .gv-session-zone.gv-session-zone-live { border-color: var(--gv-lime); }
+.gv-app.gv-skin-poster .gv-session-zone.gv-session-zone-live { border-color: var(--gv-accent-line); }
 .gv-app.gv-skin-poster .gv-rc-zone {
   background-image: repeating-linear-gradient(100deg, var(--gv-lime-ghost) 0, var(--gv-lime-ghost) 2px, transparent 2px, transparent 26px);
 }
@@ -5486,7 +5527,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
    smudge. */
 .gv-app.gv-skin-poster .gv-pb-target {
   --gv-slab: var(--gv-surface);
-  --gv-slab-edge: inset 4px 0 0 var(--gv-lime), inset 0 0 0 1px var(--gv-line);
+  --gv-slab-edge: inset 4px 0 0 var(--gv-accent-line), inset 0 0 0 1px var(--gv-line);
   --gv-slab-sheen: var(--gv-poster-sheen);
   margin: 10px 0 12px;
   padding: 10px 22px 12px;
@@ -5628,7 +5669,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 .gv-app.gv-skin-poster .gv-session-records .gv-recrow-margin { color: var(--gv-accent-text); }
 .gv-app.gv-skin-apex .gv-recrow.gv-rec-new {
   --gv-slab: var(--gv-lime-ghost);
-  --gv-slab-edge: inset 4px 0 0 var(--gv-lime);
+  --gv-slab-edge: inset 4px 0 0 var(--gv-accent-line);
   margin: 4px -6px 8px;
   padding: 26px 24px 12px 26px;
   box-shadow: none;

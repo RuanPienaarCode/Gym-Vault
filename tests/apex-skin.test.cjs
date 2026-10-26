@@ -72,7 +72,12 @@ assert.ok(lockLine > bannerLine, 'the Lock In section must come after the Apex s
    per skin, so the Apex rules are everything in the section that does not name Lock In: the shared ones count as Apex's. */
 const apex = rules.filter(r => r.line >= bannerLine && r.line < lockLine && !/gv-skin-lockin/.test(r.selector));
 assert.ok(apex.length > 80, 'the Apex section parsed to almost nothing');
-const TOKEN_SEL = new Set(['.gv-app.gv-skin-apex', '.theme-dark .gv-app.gv-skin-apex', '.gv-app.gv-skin-apex.gv-accent-lime']);
+/* Light mode's tinted ground and its graphite poster heroes are token blocks too (they share the dark block's values). */
+const TOKEN_SEL = new Set([
+  '.gv-app.gv-skin-apex', '.theme-dark .gv-app.gv-skin-apex', '.gv-app.gv-skin-apex.gv-accent-lime',
+  '.theme-light .gv-app.gv-skin-apex',
+  '.theme-light .gv-app.gv-skin-apex .gv-hero-head', '.theme-light .gv-app.gv-skin-apex .gv-hero:not(.gv-hero-today)',
+]);
 
 /* ---------- 3 ---------- */
 {
