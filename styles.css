@@ -4121,6 +4121,44 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 /* The plan link's light rule names the deep tone outright; on graphite it is the bright one, as in dark. */
 .theme-light .gv-app.gv-skin-apex .gv-hero-head .gv-planswap { color: var(--gv-lime); border-bottom-color: var(--gv-lime); }
 
+/* FOREST — light mode with the lime accent (the default), chosen by Ruan on
+   27 Oct 2026 from four light palettes. Graphite becomes deep forest green, the
+   grey paper becomes soft sage and every neutral leans green, so the lime reads
+   as part of one palette instead of a highlighter on grey. Scoped to the lime
+   accent: the other accents keep the graphite hero on tinted paper above. */
+.theme-light .gv-app.gv-skin-apex.gv-accent-lime {
+  --gv-bg: #eef3e6;
+  --gv-surface: #fbfdf7;
+  --gv-line: #d3dcc6;
+  --gv-line-2: #7f8f72;
+  --gv-ink: #132010;
+  --gv-ink-dim: #46553d;
+  --gv-poster-chip: #dfe8d2;
+  --gv-poster-cell: #e4ecd9;
+  --gv-poster-track: #cfdabf;
+  --gv-accent-text: #2f5a0a;
+  --gv-accent-line: #3d7a0c;
+  --gv-poster-lift: 0 10px 22px -12px rgba(19, 32, 16, 0.3);
+  background-image: radial-gradient(90% 260px at 50% -40px, #dcebc4, var(--gv-bg) 70%);
+}
+.theme-light .gv-app.gv-skin-apex.gv-accent-lime .gv-hero-head,
+.theme-light .gv-app.gv-skin-apex.gv-accent-lime .gv-hero:not(.gv-hero-today) {
+  --gv-bg: #0d1a09;
+  --gv-surface: #16280f;
+  --gv-line: #2a4220;
+  --gv-line-2: #3e5a31;
+  --gv-ink: #f3f8ec;
+  --gv-ink-dim: #b9c9ab;
+  --gv-poster-chip: #223a18;
+  --gv-poster-cell: #1a2e12;
+  --gv-poster-track: #223a18;
+  --gv-apex-hero-hi: #1f3a14;
+  --gv-apex-hero-lo: #0c1908;
+  --gv-lime-ghost: rgba(195, 240, 74, 0.06);
+  --gv-accent-text: var(--gv-lime);
+  --gv-accent-line: var(--gv-lime);
+}
+
 /* ---------- slabs: the one place the parallelogram is drawn ---------- */
 
 .gv-app.gv-skin-poster .gv-btn::before,

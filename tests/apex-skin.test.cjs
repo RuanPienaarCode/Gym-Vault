@@ -77,6 +77,9 @@ const TOKEN_SEL = new Set([
   '.gv-app.gv-skin-apex', '.theme-dark .gv-app.gv-skin-apex', '.gv-app.gv-skin-apex.gv-accent-lime',
   '.theme-light .gv-app.gv-skin-apex',
   '.theme-light .gv-app.gv-skin-apex .gv-hero-head', '.theme-light .gv-app.gv-skin-apex .gv-hero:not(.gv-hero-today)',
+  /* Forest: light mode's lime palette (ground, then its green hero). */
+  '.theme-light .gv-app.gv-skin-apex.gv-accent-lime',
+  '.theme-light .gv-app.gv-skin-apex.gv-accent-lime .gv-hero-head', '.theme-light .gv-app.gv-skin-apex.gv-accent-lime .gv-hero:not(.gv-hero-today)',
 ]);
 
 /* ---------- 3 ---------- */
