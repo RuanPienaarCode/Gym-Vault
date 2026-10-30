@@ -100,6 +100,8 @@ want to be guided:
   the same screen, and it tells you up front how many rounds you'll get.
   It runs for the time you asked for: the last set is cut short when the
   clock runs out, and skipping an interval puts its time back into the circuit.
+  A run written as `1 x` on a day with other exercises is your warm-up: it
+  plays in the first round only.
 
 On a phone, the **movement** button (the activity icon, under *Counter
 settings* in a guided session) lets the sensor count reps for you, with taps

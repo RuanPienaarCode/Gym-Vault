@@ -85,6 +85,14 @@ function shuffledIndices(n, next) {
   return idx;
 }
 
+/* A RUN WRITTEN AS ONE SET IS NOT A STATION. `Easy Run | 1 x 5 min easy` on a
+   circuit day is the warm-up: it plays in the first round and the laps fill the
+   rest of the clock. The draft already holds a run as one entry (page-log's
+   makeEntry), so a repeat had nowhere to log anyway. `6 x 3 min hard` is the
+   session itself and comes back every round, and so does a run on a day with
+   nothing else to play. */
+const isOneOffRun = item => item.unit === 'km' && item.sets === 1;
+
 /* How long one interval of this exercise runs. A duration prescription wins
    over the generic default — `Plank | 1 x 90s` means 90 seconds, and quietly
    replacing that with 45 would be the app overruling the plan.
@@ -124,9 +132,9 @@ function blockIntervals(names, totalSeconds, kind) {
   }));
 }
 
-/* items: [{exercise, target, unit}] — plan items enriched with the unit from
-   the vault's own exercise note (the caller resolves that; this module never
-   touches ctx.data).
+/* items: [{exercise, target, unit, sets}] — plan items enriched with the unit
+   from the vault's own exercise note (the caller resolves that; this module
+   never touches ctx.data).
    Returns {intervals, rounds, setsPerEntry, totalSeconds, workTotalSeconds}. */
 function buildSchedule(items, config) {
   const cfg = { ...TIMED_DEFAULTS, ...(config || {}) };
@@ -139,7 +147,7 @@ function buildSchedule(items, config) {
   }
 
   const budget = Math.max(MIN_INTERVAL_S, Math.round(cfg.minutes * 60) + Math.round(cfg.extraSeconds));
-  const warm =cfg.warmup ? blockIntervals(cfg.warmupItems, cfg.warmupSeconds, 'warmup') : [];
+  const warm = cfg.warmup ?blockIntervals(cfg.warmupItems, cfg.warmupSeconds, 'warmup') : [];
   const cool = cfg.cooldown ? blockIntervals(cfg.cooldownItems, cfg.cooldownSeconds, 'cooldown') : [];
   const spent = arr => arr.reduce((n, i) => n + i.seconds, 0);
 
@@ -158,9 +166,13 @@ function buildSchedule(items, config) {
      set you up for the wrong movement. The loop below always places
      order[0] first (see "Always place the FIRST work interval"), so this is
      the same exercise the schedule actually starts with. */
-  const orderFor = r => (cfg.shuffle
-    ? shuffledIndices(list.length, rng((Number(cfg.seed) || 1) + r))
-    : list.map((_, i) => i));
+  const hasLaps = list.some(it => !isOneOffRun(it));
+  const orderFor = r => {
+    const order = cfg.shuffle
+      ? shuffledIndices(list.length, rng((Number(cfg.seed) || 1) + r))
+      : list.map((_, i) => i);
+    return r > 0 && hasLaps ? order.filter(i => !isOneOffRun(list[i])) : order;
+  };
 
   if (leadIn > 0) {
     intervals.push({

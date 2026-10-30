@@ -127,6 +127,44 @@ for (const minutes of [5, 10, 20, 30, 45]) {
   for (const v of [0, -5, NaN, undefined]) assert.strictEqual(tp.giveTimeBack(s, v), s);
 }
 
+/* ---------- a one-off run ---------- */
+
+const run = (name, target, sets) => ({ exercise: name, target, unit: 'km', sets });
+const STRENGTH = [item('Jump Squat', '8'), item('Pull-ups', '3'), item('Plank', '30s', 'seconds')];
+
+/* T10. `1 x 5 min easy` on a mixed day is a warm-up, not a station: once, and
+   the laps fill the rest of the clock. */
+{
+  const s = tp.buildSchedule([run('Easy Run', '5 min easy', 1), ...STRENGTH], { minutes: 30 });
+  assert.strictEqual(works(s).filter(w => w.exercise === 'Easy Run').length, 1, 'the run plays once');
+  assert.strictEqual(works(s)[0].exercise, 'Easy Run', 'in the first round');
+  assert.strictEqual(s.setsPerEntry[0], 1);
+  assert.strictEqual(s.totalSeconds, 30 * 60, 'the laps fill the time it left');
+  assert.ok(s.rounds > 3);
+}
+
+/* T11. Written as repeats, a run is the session: it comes back every round. */
+{
+  const s = tp.buildSchedule([run('Interval Repeats', '3 min hard', 6), item('Strides', '20s')], { minutes: 30 });
+  assert.ok(works(s).filter(w => w.exercise === 'Interval Repeats').length > 1);
+}
+
+/* T12. A day of nothing but a run still has something to play. */
+{
+  const s = tp.buildSchedule([run('Easy Run', '5 min easy', 1)], { minutes: 20 });
+  assert.ok(works(s).length > 1, 'nothing else to fill the clock with');
+  assert.strictEqual(s.totalSeconds, 20 * 60);
+}
+
+/* T13. Shuffled, it is still once, and the lead-in still names the first move. */
+for (const seed of [1, 2, 3, 4, 5]) {
+  const s = tp.buildSchedule([run('Easy Run', '5 min easy', 1), ...STRENGTH], { minutes: 20, shuffle: true, seed });
+  const once = works(s).filter(w => w.exercise === 'Easy Run');
+  assert.strictEqual(once.length, 1);
+  assert.strictEqual(once[0].round, 0);
+  assert.strictEqual(s.intervals[0].exercise, works(s)[0].exercise);
+}
+
 /* ---------- the real screen ---------- */
 
 const results = [];
@@ -171,9 +209,9 @@ function playOut(b, shouldSkip) {
 }
 
 (async () => {
-  await check('L1. skipping the repeat runs no longer ends a 30-minute circuit at 19 minutes', async () => {
+  await check('L1. skipping the run and a station no longer ends a 30-minute circuit early', async () => {
     const b = await circuit(CIRCUIT_PLAN, 30);
-    const ran = playOut(b, iv => iv.kind === 'work' && iv.exercise === 'Warm-up Run' && iv.round > 0);
+    const ran = playOut(b, iv => iv.kind === 'work' && /Warm-up Run|Jump Squat/.test(iv.exercise));
     assert.ok(ran > 29 * 60, `the clock ran ${(ran / 60).toFixed(1)} min of 30`);
     assert.ok(ran <= 30 * 60 + 1, `and stopped on time, not after (${(ran / 60).toFixed(1)} min)`);
   });
@@ -215,10 +253,11 @@ function playOut(b, shouldSkip) {
     assert.ok(draft.entries[0].sets[draft.entries[0].sets.length - 1].done, 'the last one was played and ticked');
   });
 
-  await check('L5. a run stays one entry however many times the circuit comes back to it', async () => {
+  await check('L5. a `1 x` run is played and logged once, even when a skip adds time', async () => {
     const b = await circuit(CIRCUIT_PLAN, 15);
     H.advance(10000);
     H.click(skipBtn(b));
+    assert.strictEqual(ivs(b).filter(i => i.kind === 'work' && i.exercise === 'Warm-up Run').length, 1);
     assert.strictEqual(b.ctx.state.logDraft.entries[0].sets.length, 1);
   });
 

@@ -183,7 +183,7 @@ function splitPool(pool) {
 
 function scheduleFor(ctx, day, ui) {
   const items = ((day && day.items) || []).map(it => ({
-    exercise: it.exercise, target: it.target, unit: unitOf(ctx, it.exercise),
+    exercise: it.exercise, target: it.target, unit: unitOf(ctx, it.exercise), sets: itemSets(it),
   }));
   const blocks = splitPool(mobilityPool(ctx));
   return buildSchedule(items, {
