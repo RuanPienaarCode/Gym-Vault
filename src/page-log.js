@@ -47,6 +47,18 @@ function startDraft(ctx, plan, day, opts) {
   try { rewardsFlow.retryPending(ctx, 'start'); } catch (e) { /* never in the way of a session */ }
 }
 
+/* A timed circuit that gained time mid-session (timed-plan.giveTimeBack) has
+   sets its draft does not hold yet. Fresh from the plan, so they are prefills
+   like every other untouched set. A run stays one entry, as makeEntry has it:
+   its later intervals already have no set to write to. */
+function growToSchedule(ctx, draft, setsPerEntry) {
+  draft.entries.forEach((entry, i) => {
+    const missing = (setsPerEntry[i] || 0) - entry.sets.length;
+    if (entry.distance || missing <= 0) return;
+    entry.sets.push(...makeEntry(ctx, entry.exercise, missing, entry.target).sets);
+  });
+}
+
 /* A figure typed into the draft changes it in place and must NOT re-render
    (the input would lose focus), so it cannot rely on ctx.rerender to write the
    device-local copy; it asks directly. A no-op under a ctx that has no
@@ -475,4 +487,4 @@ async function finishSession(ctx, draft) {
   ctx.reload();
 }
 
-module.exports = { render, startDraft, buildRows, finishSession, sessionMinutes, keepDraft, saveMotionPref };
+module.exports = { render, startDraft, growToSchedule, buildRows, finishSession, sessionMinutes, keepDraft, saveMotionPref };

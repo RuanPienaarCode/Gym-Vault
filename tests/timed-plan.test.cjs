@@ -178,15 +178,6 @@ const works = s => s.intervals.filter(i => i.kind === 'work');
   assert.ok(!kinds(s).includes('cooldown'));
 }
 
-/* Nothing is ever clipped to use up the last few seconds: half a 90-second
-   plank is a different exercise. */
-{
-  const items = [item('Plank', '90s', 'seconds')];
-  const s = tp.buildSchedule(items, { minutes: 4, leadInSeconds: 0, transitions: false, seed: 1 });
-  for (const w of works(s)) assert.strictEqual(w.seconds, 90, 'every interval is whole');
-  assert.strictEqual(works(s).length, 2, 'two whole planks fit in four minutes; the third would not');
-}
-
 /* A session too short for even one interval still IS a session. */
 {
   const items = [item('Plank', '120s', 'seconds')];

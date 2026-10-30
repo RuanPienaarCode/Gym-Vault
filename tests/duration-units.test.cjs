@@ -96,7 +96,7 @@ Module._load = origLoad;
      rounded to a tenth — so a 30-second interval banked "0.5". */
   const items = [{ exercise: 'Easy Run', target: '30 min easy', sets: 1, unit: null }];
   const schedule = buildSchedule(items, {
-    minutes: 40, workSeconds: 40, restSeconds: 20,
+    minutes: 30, workSeconds: 40, restSeconds: 20,
     transitions: false, warmup: [], cooldown: [], shuffle: false, seed: 1,
   });
   const work = workIntervals(schedule);

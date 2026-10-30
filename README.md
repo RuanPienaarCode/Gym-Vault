@@ -98,6 +98,8 @@ want to be guided:
   fit it, looping the day's exercises and counting each one down. Warm-up,
   cool-down, shuffled order and between-exercise transitions are switches on
   the same screen, and it tells you up front how many rounds you'll get.
+  It runs for the time you asked for: the last set is cut short when the
+  clock runs out, and skipping an interval puts its time back into the circuit.
 
 On a phone, the **movement** button (the activity icon, under *Counter
 settings* in a guided session) lets the sensor count reps for you, with taps

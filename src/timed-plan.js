@@ -44,12 +44,17 @@ const TIMED_DEFAULTS = {
   leadInSeconds: 5,      // always present — starting cold on rep one is hostile
   warmupSeconds: 180,
   cooldownSeconds: 120,
+  extraSeconds: 0,       // handed back by skips during the session (giveTimeBack)
 };
 
 /* No interval is ever shorter than this. Guards against a hand-written
    `| 1 x 2s` (and against a config someone edited to zero) turning the
    session into a strobe. */
 const MIN_INTERVAL_S = 5;
+/* The last set may be cut to fit the clock, but not to less than this: below
+   it the leftover goes on the set before instead of starting a new exercise
+   for a few seconds. */
+const MIN_CUT_SET_S = 15;
 /* Backstop only — a 60-minute session of 5-second intervals is ~720. Nothing
    legitimate approaches this; it exists so a bad `workSeconds` can never spin
    the loop forever. */
@@ -133,8 +138,8 @@ function buildSchedule(items, config) {
     return { intervals, rounds: 0, setsPerEntry, totalSeconds: 0, workTotalSeconds: 0 };
   }
 
-  const budget = Math.max(MIN_INTERVAL_S, Math.round(cfg.minutes * 60));
-  const warm = cfg.warmup ? blockIntervals(cfg.warmupItems, cfg.warmupSeconds, 'warmup') : [];
+  const budget = Math.max(MIN_INTERVAL_S, Math.round(cfg.minutes * 60) + Math.round(cfg.extraSeconds));
+  const warm =cfg.warmup ? blockIntervals(cfg.warmupItems, cfg.warmupSeconds, 'warmup') : [];
   const cool = cfg.cooldown ? blockIntervals(cfg.cooldownItems, cfg.cooldownSeconds, 'cooldown') : [];
   const spent = arr => arr.reduce((n, i) => n + i.seconds, 0);
 
@@ -166,10 +171,10 @@ function buildSchedule(items, config) {
 
   let round = 0;
   let placedWork = 0;
-  /* Grow the session one interval at a time until the next one would not
-     fit. Nothing is ever truncated to fill the last few seconds — half a
-     90-second plank is a different exercise, and a session that ends 40
-     seconds early is honest where a clipped hold is not. */
+  /* Grow the session one interval at a time until the clock is used up. The
+     dial is the promise, so the last set is cut to the time left rather than
+     dropped: a circuit stops because the time ran out, never because the next
+     set was longer than what remained. */
   outer:
   while (intervals.length < MAX_INTERVALS) {
     const order = orderFor(round);
@@ -178,10 +183,18 @@ function buildSchedule(items, config) {
       const item = list[entryIndex];
       const work = workSecondsFor(item, cfg);
       const gap = (cfg.transitions && placedWork > 0) ? Math.max(0, Math.round(cfg.transitionSeconds)) : 0;
+      let seconds = work;
 
       /* Always place the FIRST work interval, whatever the budget says: a
          one-minute session still has to be a session, not an empty screen. */
-      if (placedWork > 0 && work + gap > remaining) break outer;
+      if (placedWork > 0) {
+        const room = remaining - gap;
+        if (room < Math.min(work, MIN_CUT_SET_S)) {
+          if (remaining > 0) intervals.filter(i => i.kind === 'work').pop().seconds += remaining;
+          break outer;
+        }
+        seconds = Math.min(work, room);
+      }
 
       if (gap > 0) {
         intervals.push({
@@ -190,13 +203,13 @@ function buildSchedule(items, config) {
         });
       }
       intervals.push({
-        kind: 'work', exercise: item.exercise, seconds: work,
+        kind: 'work', exercise: item.exercise, seconds,
         entryIndex, setIndex: setsPerEntry[entryIndex], round,
         target: item.target || '', unit: item.unit || null,
       });
       setsPerEntry[entryIndex]++;
       placedWork++;
-      remaining -= work + gap;
+      remaining -= seconds + gap;
     }
     round++;
   }
@@ -215,7 +228,29 @@ function buildSchedule(items, config) {
     setsPerEntry,
     totalSeconds: spent(intervals),
     workTotalSeconds: spent(intervals.filter(i => i.kind === 'work')),
+    source: { items: list, config: cfg },
   };
+}
+
+/* A SKIP HANDS ITS TIME BACK. The schedule is worked out before the session
+   starts, so without this a skipped interval is simply time lost: skip the
+   run in two rounds of a 30-minute circuit and it is over at 19. The same
+   inputs with a bigger budget rebuild the same list and carry on past the old
+   end, so every position already played stays valid (only the old last set
+   can change, when it was cut or stretched to fit).
+
+   `index` is the interval being skipped. When that IS the last set, the
+   rebuild puts it back to full length, and without `refit` the freed seconds
+   would go on the very set you just left instead of after it. */
+function giveTimeBack(schedule, seconds, index) {
+  const freed = Math.round(seconds);
+  if (!schedule || !schedule.source || !(freed > 0)) return schedule;
+  const { items, config } = schedule.source;
+  const iv = schedule.intervals[index];
+  const refit = iv && iv === workIntervals(schedule).pop()
+    ? workSecondsFor(items[iv.entryIndex], config) - iv.seconds
+    : 0;
+  return buildSchedule(items, { ...config, extraSeconds: config.extraSeconds + freed + refit });
 }
 
 /* Only work intervals index the draft, and only they should be counted as
@@ -316,5 +351,5 @@ function timedSetValues(entry, set, seconds) {
 
 module.exports = {
   timedSetValues, minutesText,
-  TIMED_DEFAULTS, MIN_INTERVAL_S, buildSchedule, workSecondsFor, workIntervals, initialIndex,
+  TIMED_DEFAULTS, MIN_INTERVAL_S, buildSchedule, giveTimeBack, workSecondsFor, workIntervals, initialIndex,
 };

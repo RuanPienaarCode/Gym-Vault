@@ -32,7 +32,7 @@ const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey, motionKey, motionPref, initialMotion, chooseMotion, motionFailureCopy } = require('./motion-count');
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const pageLog = require('./page-log');
-const { buildRows, finishSession, keepDraft, saveMotionPref } = pageLog;
+const { buildRows, finishSession, growToSchedule, keepDraft, saveMotionPref } = pageLog;
 const { EndSessionModal } = require('./modals');
 const { nextFrameIndex, autoPlayMedia, MEDIA_CYCLE_MS } = require('./media-cycle');
 const { openMediaViewer } = require('./media-viewer');
@@ -2165,6 +2165,15 @@ function advanceTimed(ctx, draft, sess, opts) {
      again. It stays untouched and unticked: a skip is not a logged set. */
   if (iv && iv.kind === 'work' && skip) {
     flow.markSkipped(draft, { entryIndex: iv.entryIndex, setIndex: iv.setIndex });
+    keepDraft(ctx);
+  }
+
+  /* What a skip did not use goes back on the clock, so the circuit still runs
+     for the time asked for. Skipping the cool-down is the exception: it is the
+     end of the session, and there is nothing after it to play. */
+  if (iv && skip && iv.kind !== 'cooldown') {
+    draft.timed = timedPlan.giveTimeBack(draft.timed, iv.seconds - timedElapsed(tp), tp.index);
+    growToSchedule(ctx, draft, draft.timed.setsPerEntry);
     keepDraft(ctx);
   }
 
