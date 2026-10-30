@@ -708,19 +708,24 @@ function makeIo(plugin) {
      Written through applyToFile, so the path is stamped in _ownWrites and the
      vault watcher does not bounce it. Resolves true when the note now says
      what was asked, false when it was deleted outside the app. */
-  async function setPaused(plan, paused) {
+  async function setPaused(plan, paused) { return setPlanFlag(plan, 'paused', paused); }
+
+  /* Star or unstar a plan. Same write as setPaused, under its own key. */
+  async function setFavourite(plan, on) { return setPlanFlag(plan, 'favourite', on); }
+
+  async function setPlanFlag(plan, key, on) {
     const path = plan.file && plan.file.path;
     return exclusive(path, async () => {
       const res = await applyToFile(path, current => {
         const { fm, body } = parseFrontmatter(current);
-        const is = String(fm.paused) === 'true';
-        if (paused === is && (paused || !('paused' in fm))) return null;
-        if (paused) fm.paused = true; else delete fm.paused;
+        const is = String(fm[key]) === 'true';
+        if (on === is && (on || !(key in fm))) return null;
+        if (on) fm[key] = true; else delete fm[key];
         return serializeFrontmatter(fm) + '\n' + body;
       });
       if (res.gone) { tell(`"${plan.name}" was deleted or moved outside the app — nothing was saved.`); return false; }
       if (res.text !== null) {
-        if (paused) plan.fm.paused = true; else delete plan.fm.paused;
+        if (on) plan.fm[key] = true; else delete plan.fm[key];
         rememberLoaded(plan.fm, undefined, res.text);
       }
       return true;
@@ -1158,7 +1163,7 @@ function makeIo(plugin) {
     paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveExport, saveProfile, appendBodyRow, readRewards, appendRewards,
     fetchPlanIndex, installPlan,
     createExercise, saveExercise, createGoal, saveGoal,
-    createPlan, savePlan, setActivePlan, setPaused, saveWorkout, trash, safeName,
+    createPlan, savePlan, setActivePlan, setPaused, setFavourite, saveWorkout, trash, safeName,
     listPhotos, savePhoto, photoSrc,
     listVoiceClips, saveVoiceClip, readVoiceClip,
   };

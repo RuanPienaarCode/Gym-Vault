@@ -255,6 +255,26 @@ check('setPaused on a hand-written note with NO blank line after the frontmatter
   await io.setPaused(rec, true);
   assert.strictEqual(v._disk.get(PATH).replace('paused: true\n', ''), RUN_NOTE);
 });
+check('setFavourite(true): the note gains ONE frontmatter line and the record says so', async () => {
+  const { v, io, rec } = await rig();
+  assert.strictEqual(await io.setFavourite(rec, true), true);
+  assert.strictEqual(v._disk.get(PATH).replace('favourite: true\n', ''), RUN_NOTE);
+  assert.strictEqual(planParse.isFavourite(rec), true);
+});
+check('setFavourite(false): the key is REMOVED, restoring the note byte for byte', async () => {
+  const { v, io, rec } = await rig();
+  await io.setFavourite(rec, true);
+  assert.strictEqual(await io.setFavourite(rec, false), true);
+  assert.strictEqual(v._disk.get(PATH), RUN_NOTE);
+  assert.strictEqual(planParse.isFavourite(rec), false);
+});
+check('favourite and paused are separate keys', async () => {
+  const { v, io, rec } = await rig();
+  await io.setFavourite(rec, true);
+  await io.setPaused(rec, true);
+  await io.setFavourite(rec, false);
+  assert.strictEqual(v._disk.get(PATH).replace('paused: true\n', ''), RUN_NOTE);
+});
 check('setPaused registers the path in _ownWrites so the watcher does not bounce it', async () => {
   const { pl, io, rec } = await rig();
   assert.ok(!pl._ownWrites || !pl._ownWrites.has(PATH));

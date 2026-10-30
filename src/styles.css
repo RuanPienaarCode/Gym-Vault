@@ -656,6 +656,13 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
 .gv-card-list { display: flex; flex-direction: column; gap: 0; }
 .gv-card-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
 
+/* The plan star: quiet until it is on, a 44px target on a touch screen. */
+.gv-app .gv-plan-fav { flex: 0 0 auto; border-color: transparent; background: transparent; color: var(--text-muted); }
+.theme-dark .gv-app .gv-plan-fav { border-color: transparent; }
+.gv-app .gv-plan-fav.on { color: var(--gv-amber-text); }
+.gv-app .gv-plan-fav.on svg { fill: currentColor; }
+.is-mobile .gv-app .gv-plan-fav { width: 44px; height: 44px; }
+
 .gv-tag {
   display: inline-block;
   padding: 2px 8px;

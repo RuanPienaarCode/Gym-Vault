@@ -324,8 +324,14 @@ function isPaused(plan) {
   return String(fm.paused) === 'true' && (String(fm.parallel) === 'true' || String(fm.fallback) === 'true');
 }
 
+/* A plan you have starred (`favourite: true` on the note). It only moves the
+   plan up the Plans list; Today does not look at it. */
+function isFavourite(plan) {
+  return String(((plan && plan.fm) || {}).favourite) === 'true';
+}
+
 module.exports = {
-  isPaused,
+  isPaused, isFavourite,
   parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, moveItem, updateItem, itemSets, isRestDay,
   targetWeight, targetFirstNumber, targetIsDuration, targetDurationSeconds,
 };

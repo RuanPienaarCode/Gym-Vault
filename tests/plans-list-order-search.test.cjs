@@ -158,6 +158,51 @@ const badgeOf = (root, name) => {
   eq(byTag(root, 'input').find(i => hasClass(i, 'gv-search')).value, 'grease', 'render: the box shows the saved query');
 }
 
+/* ---- favourites ----------------------------------------------------------
+   `favourite: true` on the note. A favourite leads the plans not in use; a plan
+   in use keeps its place in the in-use group whether starred or not. */
+{
+  const favB = makePlan('Get Over The Bar', { favourite: true }, [makeDay('Pull Priority', 'mon')]);
+  const favC = makePlan('Run · 5km', { favourite: 'true' }, [makeDay('Easy Run', 'tue')]);
+  const favGtg = makePlan('Pull-up · Grease the Groove', { parallel: true, favourite: true }, [makeDay('Grease the Groove', 'tue')]);
+  const list = [A, favB, LUNCH, favGtg, REST, favC, TRAIL];
+  eq(orderPlans(list, LUNCH).map(p => p.name), [
+    'Midday Circuit',
+    'Pull-up · Grease the Groove', 'Run Base · 10km',
+    'Rest & Recovery',
+    'Get Over The Bar', 'Run · 5km',
+    '9 Foundations',
+  ], 'orderPlans: favourites lead the unused plans, in-use groups are untouched');
+
+  const calls = [];
+  let opened = 0, rerenders = 0;
+  const ctx = makeCtx(list, LUNCH);
+  ctx.io.setFavourite = async (plan, on) => { calls.push([plan.name, on]); return true; };
+  ctx.nav = () => { opened++; };
+  ctx.rerender = () => { rerenders++; };
+  const root = global.document.createElement('div');
+  render(ctx, root);
+
+  const star = name => byTag(root, 'button').find(b => b.attrs['aria-label'] === `Favourite ${name}`);
+  ok(star('9 Foundations'), 'render: every card has a labelled star');
+  eq(star('9 Foundations').attrs['aria-pressed'], 'false', 'render: an unstarred plan reads as not pressed');
+  eq(star('Run · 5km').attrs['aria-pressed'], 'true', 'render: a starred plan reads as pressed');
+  ok(hasClass(star('Run · 5km'), 'on'), 'render: a starred plan is drawn filled');
+
+  fire(star('9 Foundations'), 'click', { stopPropagation() {} });
+  eq(calls, [['9 Foundations', true]], 'star: tapping saves the favourite');
+  eq(opened, 0, 'star: tapping does not open the plan');
+  fire(star('Run · 5km'), 'click', { stopPropagation() {} });
+  eq(calls[1], ['Run · 5km', false], 'star: tapping a starred plan removes it');
+  setImmediate(() => eq(rerenders, 2, 'star: the list redraws in its new order once saved'));
+
+  const detail = global.document.createElement('div');
+  const dctx = makeCtx(list, LUNCH);
+  dctx.state.params = { plan: '9 Foundations' };
+  render(dctx, detail);
+  ok(byTag(detail, 'button').find(b => b.attrs['aria-label'] === 'Favourite 9 Foundations'), 'detail: the plan page has the star too');
+}
+
 /* ---- paused plans (0.13.1; tests/plan-paused.test.cjs has the full set) ---
    A plan with `paused: true` is in use by nothing: role '' (so it sorts with the
    ordinary plans), but the card still says "paused". */

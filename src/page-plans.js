@@ -6,7 +6,7 @@
 
 const { el, ico, prose, clickableCard, backButton, toggleRow, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
-const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused } = require('./plan-parse');
+const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
 const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
@@ -108,7 +108,8 @@ function planRole(p, activePlan) {
   if (String(p.fm.parallel) === 'true') return isPaused(p) ? '' : 'alongside';
   return activePlan && p === activePlan ? 'active' : '';
 }
-const ROLE_RANK = { active: 0, alongside: 1, 'fills-gaps': 2, '': 3 };
+const ROLE_RANK = { active: 0, alongside: 1, 'fills-gaps': 2, '': 4 };
+const FAVOURITE_RANK = 3;
 const ROLE_BADGE = { active: 'active', alongside: 'alongside', 'fills-gaps': 'fills gaps' };
 /* The badge words for a plan: its role, or "paused". */
 function badgeWord(p, activePlan) {
@@ -117,10 +118,14 @@ function badgeWord(p, activePlan) {
 }
 
 /* Plans in use lead the list (active, then the ones running alongside it,
-   then the gap-filler); everything else keeps the order it had. */
+   then the gap-filler), then your favourites; everything else keeps the order
+   it had. */
 function orderPlans(plans, activePlan) {
   return plans
-    .map((p, i) => ({ p, i, r: ROLE_RANK[planRole(p, activePlan)] }))
+    .map((p, i) => {
+      const role = planRole(p, activePlan);
+      return { p, i, r: !role && isFavourite(p) ? FAVOURITE_RANK : ROLE_RANK[role] };
+    })
     .sort((a, b) => a.r - b.r || a.i - b.i)
     .map(x => x.p);
 }
@@ -240,10 +245,25 @@ function planCards(ctx, shown, activeNow) {
           el('span', {}, equipmentSummary(data.exercises, planExerciseNames(p)))),
         el('div', { class: 'gv-plan-days' },
           ...days.map(d => el('span', { class: 'gv-tag' }, `${d.weekday} · ${d.name}`)))),
-      el('div', { class: 'gv-card-actions' }, ico('chevron-right', 'gv-dim')));
+      el('div', { class: 'gv-card-actions' }, favouriteButton(ctx, p), ico('chevron-right', 'gv-dim')));
     list.append(c);
   }
   return list;
+}
+
+/* The star, on a list card and on the plan's own page. */
+function favouriteButton(ctx, plan) {
+  const on = isFavourite(plan);
+  const b = el('button', {
+    class: `gv-icon-btn gv-plan-fav${on ? ' on' : ''}`, type: 'button',
+    'aria-label': `Favourite ${plan.name}`, 'aria-pressed': on ? 'true' : 'false',
+  }, ico('star'));
+  b.addEventListener('click', async e => {
+    e.stopPropagation();
+    await ctx.io.setFavourite(plan, !on);
+    ctx.rerender();
+  });
+  return b;
 }
 
 /* Every muscle group a plan's exercises name, from the exercise notes —
@@ -295,7 +315,7 @@ function renderDetail(ctx, root, plan) {
      fallback is what lands you back on the list. */
   const back = backButton(ctx, 'plans');
   bar.append(back, el('h2', { class: 'gv-toolbar-title' }, plan.name));
-  const actions = el('div', { class: 'gv-toolbar-actions' });
+  const actions = el('div', { class: 'gv-toolbar-actions' }, favouriteButton(ctx, plan));
   /* A parallel or fallback plan is never a switch TARGET. ctx.activePlan()
      (controller.js) filters both kinds out of `main` before picking who
      drives the dashboard, so a "Make active" button here that flipped

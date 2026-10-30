@@ -29,7 +29,8 @@ desktop and mobile.
   below.
 - **Plans** — weekly training plans as readable notes (`## Day (mon)` +
   `- Exercise | 4 x 8-12 @ 20kg`); one plan is *active* and drives the
-  dashboard. The full format is under *Plan format* below.
+  dashboard. Star the ones you like and they move up the Plans list. The full
+  format is under *Plan format* below.
 - **Goals** — targets measured from real logged data (best reps, best hold,
   heaviest weight, body weight, workouts per week).
 - **History** — activity heatmap and every logged session, plus a Records
@@ -214,6 +215,8 @@ Keep the elbows tucked on this one.
   active* in the app clears the flag on your other plans). `paused: true`
   takes a plan that runs alongside, or fills gaps, off Today without deleting
   it; on any other plan it means nothing.
+  `favourite: true` is the star on the Plans list; it only moves the plan up
+  the list.
 
 **A running plan** is an ordinary plan with three differences. It sets
 `parallel: true`, so its days are added to Today alongside your active plan
