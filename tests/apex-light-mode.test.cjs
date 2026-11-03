@@ -5,8 +5,9 @@
    L2 light mode tints the page ground, so white cards stand off it
    L3 thin accent marks read --gv-accent-line, never the bright accent itself
    L4 the lime line tone holds 3:1 on white and on the ground; dark keeps the bright accent
-   L5 FOREST (27 Oct 2026, the lime accent's light palette): a green hero whose ink reads,
-      sage paper whose green text and lines read, scoped to lime only */
+   L5 CHALK (3 Nov 2026, the lime accent's light palette; replaced Forest): a warm charcoal
+      hero whose ink and lime read, warm limestone paper whose green text and lines read,
+      scoped to lime only */
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -65,26 +66,33 @@ ok('L4 the lime line tone holds 3:1 on paper and the ground; dark keeps the brig
   for (const h of HEROES) assert.strictEqual(withSel(h).map(b => decl(b, '--gv-accent-line')).find(Boolean), 'var(--gv-lime)', `${h} draws its lines in the bright accent`);
 });
 
-const FOREST = '.theme-light .gv-app.gv-skin-apex.gv-accent-lime';
-ok('L5 Forest: green hero, readable ink and green text on sage, lime accent only', () => {
+const CHALK = '.theme-light .gv-app.gv-skin-apex.gv-accent-lime';
+ok('L5 Chalk: charcoal hero, readable ink and green text on limestone, lime accent only', () => {
   const tok = (sel, prop) => withSel(sel).map(b => decl(b, prop)).find(Boolean);
-  const green = h => { const n = parseInt(h.slice(1), 16); return ((n >> 8) & 255) > (n >> 16) && ((n >> 8) & 255) > (n & 255); };
-  const ground = tok(FOREST, '--gv-bg'), surface = tok(FOREST, '--gv-surface');
-  assert.ok(ground && green(ground), `Forest ground must lean green (${ground})`);
-  for (const bg of [ground, surface, tok(FOREST, '--gv-poster-chip'), tok(FOREST, '--gv-poster-cell')]) {
-    assert.ok(ratio(tok(FOREST, '--gv-ink'), bg) >= 7, `ink on ${bg}`);
-    assert.ok(ratio(tok(FOREST, '--gv-ink-dim'), bg) >= 4.5, `dim ink on ${bg}`);
-    assert.ok(ratio(tok(FOREST, '--gv-accent-text'), bg) >= 4.5, `green text on ${bg} is ${ratio(tok(FOREST, '--gv-accent-text'), bg).toFixed(2)}:1`);
+  const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  /* warm = red channel leads blue, green sits between: limestone and charcoal, never grey or green */
+  const warm = h => { const [r, g, b] = rgb(h); return r > b && r >= g && g >= b; };
+  const ground = tok(CHALK, '--gv-bg'), surface = tok(CHALK, '--gv-surface');
+  assert.ok(ground && warm(ground), `Chalk ground must lean warm (${ground})`);
+  for (const bg of [ground, surface, tok(CHALK, '--gv-poster-chip'), tok(CHALK, '--gv-poster-cell')]) {
+    assert.ok(ratio(tok(CHALK, '--gv-ink'), bg) >= 7, `ink on ${bg}`);
+    assert.ok(ratio(tok(CHALK, '--gv-ink-dim'), bg) >= 4.5, `dim ink on ${bg}`);
+    assert.ok(ratio(tok(CHALK, '--gv-accent-text'), bg) >= 4.5, `green text on ${bg} is ${ratio(tok(CHALK, '--gv-accent-text'), bg).toFixed(2)}:1`);
   }
-  for (const bg of [ground, surface]) assert.ok(ratio(tok(FOREST, '--gv-accent-line'), bg) >= 3, `green line on ${bg}`);
-  const hero = FOREST + ' .gv-hero-head';
-  for (const k of ['--gv-apex-hero-hi', '--gv-apex-hero-lo', '--gv-surface']) assert.ok(green(tok(hero, k)), `hero ${k} must be forest green (${tok(hero, k)})`);
+  for (const bg of [ground, surface]) assert.ok(ratio(tok(CHALK, '--gv-accent-line'), bg) >= 3, `green line on ${bg}`);
+  const hero = CHALK + ' .gv-hero-head';
+  const lime = withSel('.gv-app.gv-skin-apex.gv-accent-lime').map(b => decl(b, '--gv-lime')).find(Boolean);
+  for (const k of ['--gv-apex-hero-hi', '--gv-apex-hero-lo', '--gv-surface']) {
+    const v = tok(hero, k);
+    assert.ok(warm(v) && lum(v) < 0.03, `hero ${k} must be warm charcoal (${v})`);
+  }
   for (const k of ['--gv-apex-hero-hi', '--gv-apex-hero-lo']) {
     assert.ok(ratio(tok(hero, '--gv-ink'), tok(hero, k)) >= 7, `hero ink on ${k}`);
     assert.ok(ratio(tok(hero, '--gv-ink-dim'), tok(hero, k)) >= 4.5, `hero dim ink on ${k}`);
+    assert.ok(ratio(lime, tok(hero, k)) >= 7, `lime on hero ${k}`);
   }
-  assert.ok(withSel(FOREST + ' .gv-hero:not(.gv-hero-today)').length, 'Running and Your voice heroes must go Forest too');
-  assert.ok(!blocks.some(b => b.sels.some(x => x.startsWith('.theme-light .gv-app.gv-skin-apex.gv-accent-') && !x.startsWith(FOREST))), 'Forest belongs to the lime accent alone');
+  assert.ok(withSel(CHALK + ' .gv-hero:not(.gv-hero-today)').length, 'Running and Your voice heroes must go Chalk too');
+  assert.ok(!blocks.some(b => b.sels.some(x => x.startsWith('.theme-light .gv-app.gv-skin-apex.gv-accent-') && !x.startsWith(CHALK))), 'Chalk belongs to the lime accent alone');
 });
 
 console.log(`apex light mode OK (${n} checks)`);
