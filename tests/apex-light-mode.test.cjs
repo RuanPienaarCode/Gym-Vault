@@ -5,9 +5,10 @@
    L2 light mode tints the page ground, so white cards stand off it
    L3 thin accent marks read --gv-accent-line, never the bright accent itself
    L4 the lime line tone holds 3:1 on white and on the ground; dark keeps the bright accent
-   L5 CHALK (3 Nov 2026, the lime accent's light palette; replaced Forest): a warm charcoal
-      hero whose ink and lime read, warm limestone paper whose green text and lines read,
-      scoped to lime only */
+   L5 CHALK (3 Nov 2026, the lime accent's light palette; replaced Forest; white page since
+      4 Nov 2026): a warm charcoal hero whose ink and lime read, a pure white page and white
+      cards held apart by a warm hairline and a drop, warm chips and cells, green text and
+      lines that read, scoped to lime only */
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -67,13 +68,19 @@ ok('L4 the lime line tone holds 3:1 on paper and the ground; dark keeps the brig
 });
 
 const CHALK = '.theme-light .gv-app.gv-skin-apex.gv-accent-lime';
-ok('L5 Chalk: charcoal hero, readable ink and green text on limestone, lime accent only', () => {
+ok('L5 Chalk: charcoal hero, white page with lifted cards, readable ink and green text, lime accent only', () => {
   const tok = (sel, prop) => withSel(sel).map(b => decl(b, prop)).find(Boolean);
   const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
   /* warm = red channel leads blue, green sits between: limestone and charcoal, never grey or green */
   const warm = h => { const [r, g, b] = rgb(h); return r > b && r >= g && g >= b; };
   const ground = tok(CHALK, '--gv-bg'), surface = tok(CHALK, '--gv-surface');
-  assert.ok(ground && warm(ground), `Chalk ground must lean warm (${ground})`);
+  assert.strictEqual(ground, '#ffffff', `Chalk's page is pure white (${ground})`);
+  assert.strictEqual(surface, '#ffffff', `Chalk's cards are white too (${surface})`);
+  /* white on white needs an edge and a drop, or the cards melt into the page */
+  const lift = tok(CHALK, '--gv-poster-lift');
+  assert.ok(lift && lift !== 'none' && lift.includes(tok(CHALK, '--gv-line')) && /rgba\(/.test(lift), `cards need a hairline and a drop (${lift})`);
+  assert.strictEqual(tok(CHALK, 'background-image'), 'none', 'no wash on the white page');
+  for (const k of ['--gv-line', '--gv-poster-chip', '--gv-poster-cell', '--gv-poster-track']) assert.ok(warm(tok(CHALK, k)) && tok(CHALK, k) !== '#ffffff', `${k} stays a warm chalk tone (${tok(CHALK, k)})`);
   for (const bg of [ground, surface, tok(CHALK, '--gv-poster-chip'), tok(CHALK, '--gv-poster-cell')]) {
     assert.ok(ratio(tok(CHALK, '--gv-ink'), bg) >= 7, `ink on ${bg}`);
     assert.ok(ratio(tok(CHALK, '--gv-ink-dim'), bg) >= 4.5, `dim ink on ${bg}`);

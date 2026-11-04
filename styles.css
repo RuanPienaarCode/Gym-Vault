@@ -4130,24 +4130,27 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 
 /* CHALK — light mode with the lime accent (the default), chosen by Ruan on
    3 Nov 2026 from five light palettes (it replaced Forest, 27 Oct 2026). The
-   paper is warm limestone, the poster heroes warm charcoal, and every neutral
-   leans warm, so the page reads like a chalked gym floor and the lime is the
-   only colour on it. Scoped to the lime accent: the other accents keep the
-   graphite hero on tinted paper above. */
+   poster heroes are warm charcoal and every neutral leans warm, so the lime is
+   the only colour on the page. Since 4 Nov 2026 ("lifted", Ruan's pick of three
+   white variants) the page and the cards are both pure white: a card stands off
+   the page by its warm hairline and a soft drop, never by a tinted ground.
+   Scoped to the lime accent: the other accents keep the graphite hero on tinted
+   paper above. */
 .theme-light .gv-app.gv-skin-apex.gv-accent-lime {
-  --gv-bg: #f3f1ea;
-  --gv-surface: #fdfcf8;
-  --gv-line: #e0dcd0;
+  --gv-bg: #ffffff;
+  --gv-surface: #ffffff;
+  --gv-line: #e6e2d8;
   --gv-line-2: #8e887a;
   --gv-ink: #17150f;
   --gv-ink-dim: #57524a;
-  --gv-poster-chip: #e8e4d9;
-  --gv-poster-cell: #ece8de;
-  --gv-poster-track: #d9d4c6;
+  --gv-poster-chip: #f1efe9;
+  --gv-poster-cell: #f4f2ec;
+  --gv-poster-track: #e3dfd4;
   --gv-accent-text: #3a6309;
   --gv-accent-line: #4b7d0e;
-  --gv-poster-lift: 0 10px 22px -12px rgba(23, 21, 15, 0.28);
-  background-image: radial-gradient(90% 260px at 50% -40px, #e9e8d6, var(--gv-bg) 70%);
+  /* White on white: the hairline under the card is its edge, the drop its depth. */
+  --gv-poster-lift: 0 1px 0 #e6e2d8, 0 10px 24px -12px rgba(23, 21, 15, 0.22);
+  background-image: none;
 }
 .theme-light .gv-app.gv-skin-apex.gv-accent-lime .gv-hero-head,
 .theme-light .gv-app.gv-skin-apex.gv-accent-lime .gv-hero:not(.gv-hero-today) {
