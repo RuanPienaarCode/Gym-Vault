@@ -111,3 +111,18 @@ const makePlugin = v => ({
     console.log('delete flow OK (waits for the children array; missing note throws)');
   })().catch(e => { cleanup(); console.error(e); process.exit(1); });
 }
+
+/* --- Obsidian 1.15: trashFile resolves to false when it could not trash --- */
+{
+  const { v, cleanup } = makeVault(0);
+  const io = makeIo({ ...makePlugin(v), app: { vault: v, fileManager: { trashFile: async () => false } } });
+  (async function run() {
+    const victim = v.getFileByPath('Gym/Plans/Test Plan.md');
+    const t0 = Date.now();
+    await assert.rejects(io.trash(victim), /Could not move "Gym\/Plans\/Test Plan\.md" to the trash, so nothing was deleted/);
+    assert.ok(Date.now() - t0 < 500, 'said at once, not after waiting out the vault');
+    assert.ok(v.getFileByPath('Gym/Plans/Test Plan.md'), 'the note is still there');
+    cleanup();
+    console.log('delete flow OK (a refused trash says so at once)');
+  })().catch(e => { cleanup(); console.error(e); process.exit(1); });
+}

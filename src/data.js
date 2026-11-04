@@ -881,7 +881,9 @@ function makeIo(plugin) {
        and this is the array loadAll() actually reads. */
     const parent = target.parent;
     if (app.fileManager && typeof app.fileManager.trashFile === 'function') {
-      await app.fileManager.trashFile(target);
+      /* Obsidian 1.15+: false = it could not be moved to the trash. Say so
+         now, rather than wait out gone()'s timeout and blame the vault. */
+      if (await app.fileManager.trashFile(target) === false) throw new Error(`Could not move "${path}" to the trash, so nothing was deleted.`);
     } else {
       await v.trash(target, true);
     }
