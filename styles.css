@@ -1991,7 +1991,8 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   .gv-rc-label { flex: 1 1 calc(100% - 56px); }
   .gv-rc-controls { display: contents; }
   .gv-rc-controls > * { order: 2; }
-  .gv-rc-controls > .gv-icon-btn[aria-label="Cancel"] { order: 1; }
+  .gv-rc-controls > .gv-icon-btn[aria-label="Cancel"],
+  .gv-rc-controls > .gv-rc-close { order: 1; }
 }
 .gv-rc-controls .gv-btn-small { padding: 8px 10px; }
 .gv-rc-controls .gv-btn[disabled],
@@ -2527,11 +2528,28 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 .gv-challenge-pick,
 .gv-challenge-summary {
   flex: 1 1 auto;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; padding: 20px; text-align: center;
+  /* SCROLLS, because a phone lying flat may be in landscape (~340px tall)
+     and the modal clips with overflow:hidden — Save and "Not now" were
+     unreachable there. Centred with auto margins on the first and last
+     child rather than justify-content:center, which would push the top out
+     of reach once the content is taller than the box (and iOS 15 has no
+     `safe center`). */
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 12px; padding: 20px max(20px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  text-align: center;
 }
+.gv-challenge-pick > :first-child,
+.gv-challenge-summary > :first-child { margin-top: auto; }
+.gv-challenge-pick > :last-child,
+.gv-challenge-summary > :last-child { margin-bottom: auto; }
+/* No margin-top here: the first child's auto top margin is what centres
+   the screen (above), and `margin: 0` at the same specificity, later in the
+   file, silently pinned everything to the top. */
 .gv-challenge-pick .gv-kicker,
-.gv-challenge-summary .gv-kicker { margin: 0; color: var(--gv-ink-dim); }
+.gv-challenge-summary .gv-kicker { margin-left: 0; margin-right: 0; margin-bottom: 0; color: var(--gv-ink-dim); }
 .gv-challenge-headline { font-family: var(--gv-display); font-size: clamp(34px, 11vw, 56px); line-height: 1; color: var(--gv-ink); }
 .gv-challenge-sub { margin: 0; color: var(--gv-ink-dim); font-size: 14px; max-width: 32em; }
 .gv-challenge-verdict { margin: 4px 0 0; font-size: 16px; font-weight: 700; color: var(--gv-ink); max-width: 30em; }
@@ -2550,6 +2568,29 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 .gv-app .gv-challenge-mode:disabled { opacity: 0.5; cursor: default; }
 .gv-challenge-mode-name { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; }
 .gv-challenge-mode-desc { font-size: 13px; color: var(--gv-ink-dim); }
+/* "Beat it here" / "Training": which mode moves the score, said on the button. */
+.gv-challenge-tag {
+  margin-left: auto; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--gv-line-2);
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gv-ink-dim);
+}
+.gv-challenge-tag.on { background: var(--gv-lime); border-color: var(--gv-lime); color: var(--gv-ink-fixed); }
+.gv-challenge-mode-name { width: 100%; }
+.gv-challenge-how {
+  display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 0; max-width: 420px;
+  font-size: 13px; color: var(--gv-ink-dim); text-align: left;
+}
+.gv-challenge-how .svg-icon { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px; }
+
+/* THE REST CLOCK IS NOT A COUNT — hollow, like the count-in, so it can never
+   read as reps. Same stroke rule as .gv-rc-count.gv-rc-countin. */
+.gv-rc-count.gv-challenge-resting {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--gv-ink-dim);
+  opacity: 0.85;
+}
+.theme-dark .gv-app .gv-rc-count.gv-challenge-resting { -webkit-text-stroke-color: var(--gv-line-2); }
 .gv-challenge-actions { display: flex; gap: 10px; margin-top: 8px; }
 
 /* The ladder of sets: done ones solid, the open one outlined, the ones to
@@ -2570,6 +2611,11 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 .gv-challenge-chip.short { background: var(--gv-surface); color: var(--gv-ink); }
 .gv-challenge-chip.now { border-color: var(--gv-ink); color: var(--gv-ink); }
 .gv-challenge-chip.next { opacity: 0.6; }
+/* On the full accent flood (target met) the chips follow the zone's text to
+   the fixed dark ink: light ink on lime was unreadable in dark mode, and a
+   lime "hit" chip vanished into the lime behind it. */
+.gv-rc-zone[data-fill="done"] .gv-challenge-chip { border-color: var(--gv-ink-fixed); color: var(--gv-ink-fixed); background: transparent; opacity: 1; }
+.gv-rc-zone[data-fill="done"] .gv-challenge-chip.hit { background: var(--gv-ink-fixed); color: var(--gv-lime); }
 
 /* The goal card's "this week" line. */
 .gv-goal-challenge {
@@ -2578,6 +2624,9 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 }
 .gv-goal-challenge .svg-icon { width: 14px; height: 14px; color: var(--gv-ink-dim); }
 .gv-goal-challenge.beaten .svg-icon { color: var(--gv-lime-deep); }
+/* Start lives in the card's text column, not the icon row: in the row it
+   squeezed the goal's name into a one-word column on a phone. */
+.gv-app .gv-goal-start { margin-top: 10px; }
 .theme-dark .gv-app .gv-goal-challenge.beaten .svg-icon { color: var(--gv-lime); }
 
 /* Reduced motion: the fill still fills and still changes colour by stage —

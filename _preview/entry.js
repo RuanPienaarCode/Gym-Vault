@@ -122,3 +122,4 @@ window.__musclemap = { map: require('../src/muscle-map'), lib: require('../src/m
    weekly challenge counter: timers, tap zone and the rest rule end to end. */
 window.__challenge = require('../src/challenge');
 window.__ChallengeModal = require('../src/challenge-modal').ChallengeModal;
+window.__pageGoals = require('../src/page-goals');
