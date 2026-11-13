@@ -29,7 +29,38 @@ export function setIcon(node, name) {
   node.append(svg);
 }
 export class Notice {}
-export class Modal {}
+/* A minimal working Modal for _preview/challenge.html: a full-screen box on
+   the page, contentEl/modalEl/scope, open() → onOpen(), close() → onClose().
+   Obsidian's own HTMLElement helpers (addClass, empty) are added only to the
+   two nodes the modal hands out. Escape goes through scope like the real one. */
+const helpers = n => { n.addClass = c => n.classList.add(c); n.empty = () => { n.textContent = ''; }; return n; };
+export class Modal {
+  constructor(app) {
+    this.app = app;
+    this.modalEl = helpers(document.createElement('div'));
+    this.modalEl.className = 'modal';
+    this.contentEl = helpers(document.createElement('div'));
+    this.contentEl.className = 'modal-content';
+    this.modalEl.append(this.contentEl);
+    const keys = [];
+    this.scope = { register: (mods, key, fn) => keys.push({ key, fn }) };
+    this._onKey = e => {
+      const hit = keys.find(k => k.key === e.key);
+      if (hit && hit.fn(e) === false) return;
+      if (e.key === 'Escape') this.close();
+    };
+  }
+  open() {
+    (window.__modalHost || document.body).append(this.modalEl);
+    document.addEventListener('keydown', this._onKey);
+    this.onOpen && this.onOpen();
+  }
+  close() {
+    document.removeEventListener('keydown', this._onKey);
+    this.onClose && this.onClose();
+    this.modalEl.remove();
+  }
+}
 export class Plugin {}
 export class ItemView {}
 export class PluginSettingTab {}

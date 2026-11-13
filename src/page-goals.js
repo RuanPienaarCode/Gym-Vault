@@ -6,6 +6,8 @@ const { GOAL_METRICS } = require('./constants');
 const { goalCurrent, goalIssue, goalProgress, countLabel } = require('./stats');
 const { todayISO, daysBetween, fmtShort } = require('./dates');
 const { FormModal, ConfirmModal } = require('./modals');
+const ch = require('./challenge');
+const { openChallenge, openNewChallenge, statusFor } = require('./challenge-flow');
 
 const METRIC_LABELS = {
   'exercise-reps': 'Best reps in a set',
@@ -22,7 +24,9 @@ function render(ctx, root) {
 
   const bar = el('div', { class: 'gv-toolbar' },
     el('h2', { class: 'gv-toolbar-title' }, 'Goals'),
-    el('button', { class: 'gv-btn', type: 'button', onclick: () => openAdd(ctx) }, ico('plus'), el('span', {}, 'Goal')));
+    el('div', { class: 'gv-toolbar-actions' },
+      el('button', { class: 'gv-btn gv-btn-ghost', type: 'button', onclick: () => openNewChallenge(ctx) }, ico('flame'), el('span', {}, 'Challenge')),
+      el('button', { class: 'gv-btn', type: 'button', onclick: () => openAdd(ctx) }, ico('plus'), el('span', {}, 'Goal'))));
   root.append(bar);
 
   if (!data.goals.length) {
@@ -67,10 +71,12 @@ function render(ctx, root) {
         el('div', { class: 'gv-goal-nums' },
           el('b', {}, cur), ` of ${tgt}`,
           p === null ? el('span', { class: 'gv-dim' }, issue ? ` — ${issue}` : ' — log a workout to start tracking') : ''),
+        ch.isChallenge(g) ? challengeLine(ctx, g) : '',
         dl ? el('div', { class: `gv-goal-deadline${dLeft !== null && dLeft < 0 && !done ? ' over' : ''}` },
           done ? `done · target was ${fmtShort(dl)}`
                : dLeft === null ? '' : dLeft >= 0 ? `${countLabel(dLeft, 'day')} left · ${fmtShort(dl)}` : `${countLabel(-dLeft, 'day')} past ${fmtShort(dl)}`) : ''),
       el('div', { class: 'gv-card-actions' },
+        ch.isChallenge(g) ? startBtn(ctx, g) : '',
         iconBtn('pencil', 'Edit', () => openEdit(ctx, g)),
         iconBtn('trash-2', 'Delete', () => new ConfirmModal(ctx.app, {
           title: 'Delete goal?', message: `"${g.name}" will be deleted, following your Obsidian "Deleted files" setting.`,
@@ -87,6 +93,27 @@ function iconBtn(name, label, onClick) {
   return b;
 }
 
+/* Where a weekly challenge stands, in one line under the goal's numbers. */
+function challengeLine(ctx, g) {
+  const s = statusFor(ctx, g);
+  const sc = n => ch.fmtScore(n, s.kind);
+  const wk = s.weekNo ? `Week ${s.weekNo} · ` : '';
+  let text;
+  if (s.done) text = `${wk}goal reached — keep beating it`;
+  else if (s.testWeek) text = s.thisWeek
+    ? `${wk}baseline ${sc(s.thisWeek.best)} — next week beat ${sc(ch.nextTarget(s.thisWeek.best, s.goal))}`
+    : `${wk}test week: ${s.kind === 'seconds' ? 'one long hold' : 'one big set'}`;
+  else if (s.beaten) text = `${wk}beaten this week — ${sc(s.thisWeek.best)} of ${sc(s.target)}`;
+  else text = `${wk}this week beat ${sc(s.target)}${s.thisWeek ? ` · ${sc(s.toGo)} to go` : ''}`;
+  return el('div', { class: `gv-goal-challenge${s.beaten || s.done ? ' beaten' : ''}` }, ico(s.beaten || s.done ? 'check' : 'flame'), el('span', {}, text));
+}
+
+function startBtn(ctx, g) {
+  const b = el('button', { class: 'gv-btn gv-btn-small', type: 'button', 'aria-label': `Start ${g.name}` }, ico('play'), el('span', {}, 'Start'));
+  b.addEventListener('click', e => { e.stopPropagation(); openChallenge(ctx, g); });
+  return b;
+}
+
 function goalFields(ctx, g) {
   const fm = (g && g.fm) || {};
   const exOptions = ctx.data.exercises.map(e => [e.name, e.name]);
@@ -100,6 +127,8 @@ function goalFields(ctx, g) {
     { key: 'start_value', label: 'Starting from (optional)', kind: 'number', value: fm.start_value ?? '' },
     { key: 'direction', label: 'Direction', kind: 'dropdown', options: [['increase', 'Increase'], ['decrease', 'Decrease']], value: fm.direction || 'increase' },
     { key: 'deadline', label: 'Deadline (optional)', kind: 'date', value: fm.deadline || '' },
+    { key: 'challenge', label: 'Weekly challenge', kind: 'toggle', value: fm.challenge === 'weekly',
+      desc: 'Beat your best unbroken set (or hold) every week until you reach the target. Best reps or best hold only.' },
   ];
 }
 
@@ -108,17 +137,33 @@ const validateGoal = v => {
   const t = parseFloat(v.target);
   if (!Number.isFinite(t) || t <= 0) return 'Set a target above zero.';
   if (v.metric.startsWith('exercise-') && !String(v.exercise).trim()) return 'Pick the exercise this goal measures.';
+  if (v.challenge && v.metric !== 'exercise-reps' && v.metric !== 'exercise-duration') return 'A weekly challenge is measured by best reps in a set or best hold.';
   return null;
 };
 
-const goalFm = v => ({
-  metric: v.metric,
-  exercise: v.metric.startsWith('exercise-') ? String(v.exercise).trim() : '',
-  target: parseFloat(v.target),
-  start_value: String(v.start_value).trim() === '' ? '' : parseFloat(v.start_value),
-  direction: v.direction,
-  deadline: v.deadline || '',
-});
+/* `prev` is the goal's frontmatter before the edit ({} for a new goal). The
+   challenge keys are only written when the switch is on, or to clear them
+   when it is turned off - a plain goal never grows empty challenge keys.
+   `started` is kept from the first time it was switched on: turning the
+   switch off and on again must not quietly restart the weeks. */
+const goalFm = (v, prev) => {
+  const p = prev || {};
+  const fm = {
+    metric: v.metric,
+    exercise: v.metric.startsWith('exercise-') ? String(v.exercise).trim() : '',
+    target: parseFloat(v.target),
+    start_value: String(v.start_value).trim() === '' ? '' : parseFloat(v.start_value),
+    direction: v.direction,
+    deadline: v.deadline || '',
+  };
+  if (v.challenge) {
+    fm.challenge = 'weekly';
+    fm.started = p.started || todayISO();
+  } else if (p.challenge) {
+    fm.challenge = '';
+  }
+  return fm;
+};
 
 function openAdd(ctx) {
   new FormModal(ctx.app, {
@@ -127,7 +172,7 @@ function openAdd(ctx) {
     submitLabel: 'Add',
     validate: validateGoal,
     onSubmit: async v => {
-      const created = await ctx.io.createGoal({ name: v.name.trim(), fm: goalFm(v) });
+      const created = await ctx.io.createGoal({ name: v.name.trim(), fm: goalFm(v, {}) });
       if (!created) ctx.notice('A goal with that name already exists.');
       ctx.reload();
     },
@@ -140,7 +185,7 @@ function openEdit(ctx, g) {
     fields: goalFields(ctx, g),
     validate: validateGoal,
     onSubmit: async v => {
-      g.fm = { ...g.fm, ...goalFm(v) };
+      g.fm = { ...g.fm, ...goalFm(v, g.fm) };
       await ctx.io.saveGoal(g);
       ctx.reload();
     },

@@ -117,3 +117,8 @@ window.__constants = require('../src/constants');
    animated mannequin. The guard suite proves the geometry and the teardown;
    only a real browser shows that it looks like a person doing a push-up. */
 window.__musclemap = { map: require('../src/muscle-map'), lib: require('../src/motion-library') };
+
+/* challenge.js + challenge-modal.js, for _preview/challenge.html — the
+   weekly challenge counter: timers, tap zone and the rest rule end to end. */
+window.__challenge = require('../src/challenge');
+window.__ChallengeModal = require('../src/challenge-modal').ChallengeModal;

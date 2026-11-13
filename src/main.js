@@ -15,6 +15,8 @@ const { GymView } = require('./view');
 const { GymSettingTab } = require('./settings-tab');
 const { RepCounterModal } = require('./rep-counter-modal');
 const { weekdayKey, todayISO } = require('./dates');
+const { isChallenge } = require('./challenge');
+const { openChallenge, openNewChallenge } = require('./challenge-flow');
 
 class GymPlugin extends Plugin {
   async onload() {
@@ -49,6 +51,26 @@ class GymPlugin extends Plugin {
           settings: this.settings,
           onDone: count => new Notice(`Gym: counted ${count} rep${count === 1 ? '' : 's'}.`, 5000),
         }).open();
+      },
+    });
+    /* One challenge: straight into it. Several: the Goals page, where they
+       are listed. None: the Goals page with the new-challenge picker open.
+       Before the first load there is nothing to read, so just the Goals page. */
+    this.addCommand({
+      id: 'start-weekly-challenge',
+      name: 'Start weekly challenge',
+      callback: async () => {
+        await this.activateView();
+        let handled = false;
+        this.forEachView(ctl => {
+          if (handled) return;
+          handled = true;
+          const ctx = ctl.ctx;
+          const list = ctx.data ? ctx.data.goals.filter(isChallenge) : null;
+          if (list && list.length === 1) { openChallenge(ctx, list[0]); return; }
+          ctx.nav('goals');
+          if (list && !list.length) openNewChallenge(ctx);
+        });
       },
     });
     this.addCommand({

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Challenge harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .frame{position:relative;border:1px solid #bbb;background:#fff;overflow:hidden;width:390px;height:760px}
+  .frame .modal{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--gv-bg,#fff)}
+  .frame .modal-content{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  button.go{font:inherit;padding:7px 12px;margin:0 6px 6px 0;cursor:pointer}
+  pre{width:390px;background:#fff;border:1px solid #ccc;padding:8px;font-size:12px;white-space:pre-wrap;max-height:300px;overflow:auto}
+</style></head>
+<body>
+<script src="bundle.js"></script>
+<script>
+  /* The weekly challenge counter, real src/ modules, muted (harnesses never
+     make a noise). Open a scenario, then tap the white zone. ?still=1 is not
+     needed: nothing here animates on its own except the count-in. */
+  const ch = window.__challenge;
+  const controls = document.createElement('div'); controls.style.width = '390px';
+  const frame = document.createElement('div'); frame.className = 'frame';
+  const log = document.createElement('pre'); log.id = 'log'; log.textContent = 'ready';
+  document.body.append(controls, frame, log);
+  window.__modalHost = frame;
+  const line = m => { log.textContent += '\n' + m; };
+
+  const row = (exercise, reps, seconds) => ({ exercise, set: '1', reps: reps == null ? '' : String(reps), weight_kg: '', seconds: seconds == null ? '' : String(seconds), note: '', distance_km: '' });
+  const today = '2026-11-13';
+  const pushGoal = { name: '50 Push-ups challenge', fm: { challenge: 'weekly', metric: 'exercise-reps', exercise: 'Push-ups', target: 50, started: '2026-11-02' } };
+  const plankGoal = { name: '3-minute Plank challenge', fm: { challenge: 'weekly', metric: 'exercise-duration', exercise: 'Plank', target: 180, started: '2026-11-02' } };
+  const history = [{ fm: { date: '2026-11-04' }, rows: [row('Push-ups', 15), row('Plank', null, 52)] }];
+
+  const scenarios = {
+    'Push-ups · week 2': () => [pushGoal, ch.challengeStatus(pushGoal, history, { weekStart: 'mon', today })],
+    'Push-ups · test week': () => [pushGoal, ch.challengeStatus(pushGoal, [], { weekStart: 'mon', today })],
+    'Plank · week 2': () => [plankGoal, ch.challengeStatus(plankGoal, history, { weekStart: 'mon', today })],
+  };
+  window.__open = (key, restSeconds) => {
+    const [goal, status] = scenarios[key]();
+    window.__saved = null;
+    const m = new window.__ChallengeModal({}, {
+      title: goal.name, exercise: goal.fm.exercise, status,
+      shape: ch.DEFAULT_SHAPE, restSeconds: restSeconds || 5,
+      skin: 'apex', accent: 'lime', settings: { soundMode: 'silent' },
+      onSave: async (sets, mode) => { window.__saved = { sets, mode, rows: ch.challengeRows(goal.fm.exercise, sets, mode, ch.kindOf(goal)) }; line('saved ' + JSON.stringify(window.__saved.rows.map(r => [r.set, r.reps, r.seconds]))); return true; },
+    });
+    window.__modal = m;
+    m.open();
+    line('opened ' + key + ' target=' + status.target);
+  };
+  for (const key of Object.keys(scenarios)) {
+    const b = document.createElement('button'); b.className = 'go'; b.textContent = key;
+    b.onclick = () => { if (window.__modal) window.__modal.close(); window.__open(key); };
+    controls.append(b);
+  }
+</script>
+</body></html>
