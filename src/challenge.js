@@ -71,6 +71,36 @@ function popularChallenges(exercises) {
   return out;
 }
 
+/* The new-challenge picker's whole list: the popular ones first, then every
+   other rep or hold exercise A to Z — but only bodyweight ones. A loaded
+   lift is not a max-reps challenge (the count depends on the weight). An
+   exercise whose `equipment` names bodyweight (alone or beside a mat), says
+   none, or says nothing counts as bodyweight. */
+function isBodyweight(exercise) {
+  const eq = exercise && exercise.fm ? exercise.fm.equipment : null;
+  const parts = (Array.isArray(eq) ? eq : String(eq == null ? '' : eq).split(','))
+    .map(x => String(x == null ? '' : x).trim().toLowerCase()).filter(Boolean);
+  return !parts.length || parts.includes('bodyweight') || parts.includes('none');
+}
+
+function challengeChoices(exercises) {
+  const usable = (exercises || []).filter(e => isBodyweight(e) && metricFor(e));
+  const picks = popularChallenges(usable);
+  const rest = usable
+    .filter(e => !picks.some(p => sameName(p.name, e.name)))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(e => ({ name: e.name, metric: metricFor(e), kind: KIND_OF_METRIC[metricFor(e)] }));
+  return [...picks, ...rest];
+}
+
+/* A hold has no reps to punch: the timer lands a beat every ten seconds and
+   a bigger one on each whole minute — the cadence a rep count gets from
+   every fifth rep (rep-counter-shared.punch). */
+function holdBeat(secs) {
+  if (!(secs > 0) || secs % 10 !== 0) return null;
+  return secs % 60 === 0 ? 'big' : 'beat';
+}
+
 /* Score formatting for both kinds: "18" reps, "45s" or "3:00" held. */
 function fmtScore(n, kind) {
   if (kind !== 'seconds') return String(n);
@@ -256,6 +286,6 @@ function challengeRows(exercise, sets, mode, kind) {
 
 module.exports = {
   DEFAULT_SHAPE, DEFAULT_REST_S,
-  isChallenge, kindOf, metricFor, popularChallenges, fmtScore, challengeName, parseShape, restSeconds, splitSets, nextTarget, weeklyBests, challengeStatus,
+  isChallenge, kindOf, metricFor, popularChallenges, challengeChoices, holdBeat, fmtScore, challengeName, parseShape, restSeconds, splitSets, nextTarget, weeklyBests, challengeStatus,
   createRun, addRep, closeIfRested, undoRep, runSets, restingFor, bestSet, challengeRows,
 };

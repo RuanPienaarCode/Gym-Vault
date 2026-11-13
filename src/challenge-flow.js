@@ -67,19 +67,16 @@ async function saveRun(ctx, goal, sets, mode, startedAt) {
    and the goal note is written with the challenge switched on. The full goal
    form (Edit) still holds every other field. */
 function openNewChallenge(ctx) {
-  const picks = ch.popularChallenges(ctx.data.exercises);
-  /* Every other rep or hold exercise, after the popular ones. */
-  const rest = ctx.data.exercises
-    .filter(e => ch.metricFor(e) && !picks.some(p => p.name === e.name))
-    .map(e => ({ name: e.name, metric: ch.metricFor(e), kind: ch.metricFor(e) === 'exercise-duration' ? 'seconds' : 'reps' }));
-  const all = [...picks, ...rest];
+  /* Popular bodyweight moves first, then every other bodyweight rep or hold
+     exercise — a loaded lift is not a max-reps challenge. */
+  const all = ch.challengeChoices(ctx.data.exercises);
   if (!all.length) { ctx.notice('add an exercise first — a challenge needs something to count.'); return; }
   const byName = new Map(all.map(p => [p.name, p]));
   new FormModal(ctx.app, {
     title: 'New weekly challenge',
     fields: [
       { key: 'exercise', label: 'Exercise', kind: 'dropdown', options: all.map(p => [p.name, p.kind === 'seconds' ? `${p.name} (hold)` : p.name]), value: all[0].name },
-      { key: 'target', label: 'Goal', kind: 'number', value: '', desc: 'Reps in one unbroken set — or seconds in one hold for a plank or wall sit.' },
+      { key: 'target', label: 'Goal', kind: 'number', value: '', desc: 'Where you want to end up: reps in one unbroken set, or seconds in one hold (marked "hold"). Week one is a test, so start anywhere.' },
     ],
     submitLabel: 'Start challenge',
     validate: v => {
@@ -92,8 +89,11 @@ function openNewChallenge(ctx) {
       const name = ch.challengeName(p.name, target, p.kind);
       const fm = { metric: p.metric, exercise: p.name, target, direction: 'increase', challenge: 'weekly', started: todayISO() };
       const created = await ctx.io.createGoal({ name, fm, note: 'Beat your best every week until you reach the goal.' });
-      if (!created) ctx.notice('a challenge with that name already exists.');
+      if (!created) { ctx.notice('a challenge with that name already exists.'); return; }
       ctx.reload();
+      /* The button says "Start challenge", so it starts it: straight into
+         the test week rather than back to a list. */
+      openChallenge(ctx, { name, fm });
     },
   }).open();
 }

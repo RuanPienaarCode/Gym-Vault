@@ -42,14 +42,18 @@ export class Modal {
     this.contentEl = helpers(document.createElement('div'));
     this.contentEl.className = 'modal-content';
     this.modalEl.append(this.contentEl);
+    /* Same order as Obsidian: the Modal's own Escape is registered FIRST and
+       Scope stops at the first match, so a plugin's scope.register('Escape')
+       never runs — override onEscapeKey instead. */
     const keys = [];
     this.scope = { register: (mods, key, fn) => keys.push({ key, fn }) };
+    this.scope.register([], 'Escape', e => this.onEscapeKey(e));
     this._onKey = e => {
       const hit = keys.find(k => k.key === e.key);
-      if (hit && hit.fn(e) === false) return;
-      if (e.key === 'Escape') this.close();
+      if (hit) hit.fn(e);
     };
   }
+  onEscapeKey(e) { if (!e.defaultPrevented) { e.preventDefault(); this.close(); } }
   open() {
     (window.__modalHost || document.body).append(this.modalEl);
     document.addEventListener('keydown', this._onKey);

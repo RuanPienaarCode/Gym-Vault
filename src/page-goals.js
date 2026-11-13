@@ -72,11 +72,11 @@ function render(ctx, root) {
           el('b', {}, cur), ` of ${tgt}`,
           p === null ? el('span', { class: 'gv-dim' }, issue ? ` — ${issue}` : ' — log a workout to start tracking') : ''),
         ch.isChallenge(g) ? challengeLine(ctx, g) : '',
+        ch.isChallenge(g) ? startBtn(ctx, g) : '',
         dl ? el('div', { class: `gv-goal-deadline${dLeft !== null && dLeft < 0 && !done ? ' over' : ''}` },
           done ? `done · target was ${fmtShort(dl)}`
                : dLeft === null ? '' : dLeft >= 0 ? `${countLabel(dLeft, 'day')} left · ${fmtShort(dl)}` : `${countLabel(-dLeft, 'day')} past ${fmtShort(dl)}`) : ''),
       el('div', { class: 'gv-card-actions' },
-        ch.isChallenge(g) ? startBtn(ctx, g) : '',
         iconBtn('pencil', 'Edit', () => openEdit(ctx, g)),
         iconBtn('trash-2', 'Delete', () => new ConfirmModal(ctx.app, {
           title: 'Delete goal?', message: `"${g.name}" will be deleted, following your Obsidian "Deleted files" setting.`,
@@ -109,7 +109,7 @@ function challengeLine(ctx, g) {
 }
 
 function startBtn(ctx, g) {
-  const b = el('button', { class: 'gv-btn gv-btn-small', type: 'button', 'aria-label': `Start ${g.name}` }, ico('play'), el('span', {}, 'Start'));
+  const b = el('button', { class: 'gv-btn gv-btn-small gv-goal-start', type: 'button', 'aria-label': `Start ${g.name}` }, ico('play'), el('span', {}, 'Start'));
   b.addEventListener('click', e => { e.stopPropagation(); openChallenge(ctx, g); });
   return b;
 }

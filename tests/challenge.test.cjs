@@ -224,6 +224,33 @@ assert.strictEqual(c.metricFor({ fm: { unit: 'seconds' } }), 'exercise-duration'
 assert.strictEqual(c.metricFor({ fm: { unit: 'km' } }), null, 'a run is not a set challenge');
 assert.strictEqual(c.metricFor({ fm: {} }), 'exercise-reps');
 
+/* challengeChoices: the picker's whole list — the popular ones first, then
+   every other BODYWEIGHT rep or hold exercise. A weighted lift is not a
+   max-reps challenge (the reps depend on the load), and a run is not a set. */
+const lib = [
+  { name: 'Bench Press', fm: { equipment: 'barbell' } },
+  { name: 'Pike Push-ups', fm: { equipment: 'bodyweight' } },
+  { name: 'Push-ups', fm: { equipment: 'bodyweight' } },
+  { name: 'Side Plank', fm: { equipment: 'bodyweight', unit: 'seconds' } },
+  { name: 'Hollow Hold', fm: { equipment: ['bodyweight', 'mat'], unit: 'seconds' } },
+  { name: '5km Run', fm: { equipment: 'bodyweight', unit: 'km' } },
+  { name: 'Goblet Squat', fm: { equipment: 'kettlebell' } },
+];
+assert.deepStrictEqual(c.challengeChoices(lib).map(p => [p.name, p.kind]), [
+  ['Push-ups', 'reps'], ['Side Plank', 'seconds'],      // popular, in the popular order
+  ['Hollow Hold', 'seconds'], ['Pike Push-ups', 'reps'], // the rest, A to Z
+]);
+
+/* holdBeat: a hold has no reps to punch, so the timer lands a beat every ten
+   seconds and a bigger one on each whole minute — the cadence the rep count
+   gets from every fifth rep. */
+assert.strictEqual(c.holdBeat(0), null, 'no beat at the start');
+assert.strictEqual(c.holdBeat(7), null);
+assert.strictEqual(c.holdBeat(10), 'beat');
+assert.strictEqual(c.holdBeat(50), 'beat');
+assert.strictEqual(c.holdBeat(60), 'big');
+assert.strictEqual(c.holdBeat(120), 'big');
+
 assert.strictEqual(c.challengeName('Push-ups', 50, 'reps'), '50 Push-ups challenge');
 assert.strictEqual(c.challengeName('Plank', 180, 'seconds'), '3-minute Plank challenge', 'it becomes a file name: no colon');
 assert.strictEqual(c.challengeName('Plank', 90, 'seconds'), '90s Plank challenge');

@@ -102,14 +102,21 @@ class ChallengeModal extends Modal {
        make the first sound. Same reason as the rep counter. */
     sound.unlock();
     this._wakeLock = holdWakeLock();
-    /* Escape mid-count goes to the summary, where Discard is one tap away.
-       A long set lost to a stray key is the worst thing this screen could
-       do. Returning false stops Obsidian closing the modal. */
-    this.scope.register([], 'Escape', () => {
-      if (this.phase === 'count' && this.setsNow().length) { this.finish(); return false; }
-      return undefined;
-    });
     this.renderPick();
+  }
+
+  /* Escape mid-count goes to the summary, where Discard is one tap away: a
+     long set lost to a stray key is the worst thing this screen could do.
+     An OVERRIDE, not this.scope.register — Obsidian's Modal registers its own
+     Escape (→ onEscapeKey → close) in its constructor, and Scope stops at the
+     first matching key, so a second registration never runs. */
+  onEscapeKey(e) {
+    if (this.phase === 'count' && this.setsNow().length) {
+      if (e && e.preventDefault) e.preventDefault();
+      this.finish();
+      return;
+    }
+    super.onEscapeKey(e);
   }
 
   onClose() {
@@ -127,12 +134,18 @@ class ChallengeModal extends Modal {
     const s = this.status;
     const goal = s.goal;
     const one = this.holding ? 'one unbroken hold' : 'one unbroken set';
-    const headline = s.done ? `Goal reached — keep ${this.score(goal)}`
+    const headline = s.done ? 'Goal reached'
       : s.testWeek ? 'Test week'
       : `Beat ${this.score(this.target)}`;
-    const sub = s.testWeek
+    const sub = s.done ? `Keep it: ${this.score(goal)} in ${one}.`
+      : s.testWeek
       ? `${this.holding ? 'As long as you can' : 'As many as you can'} in ${one}. That sets next week's target.`
       : `${this.exercise} in ${one} this week.`;
+    /* HOW, said once, before the first rep — nothing on the counting screen
+       explains the nose tap, and the phone is on the floor by then. */
+    const how = this.holding
+      ? 'Prop the phone where you can see it. The timer starts on "Begin"; tap the screen when you stop.'
+      : 'Phone flat on the floor under your face. Touch it with your nose at the bottom of each rep.';
     const facts = [];
     if (s.weekNo) facts.push(`Week ${s.weekNo}`);
     if (s.lastWeek) facts.push(`Last week ${this.score(s.lastWeek.best)}`);
@@ -143,15 +156,19 @@ class ChallengeModal extends Modal {
     const plan = ch.splitSets(this.splitOf, this.shape);
     const rest = Math.round(this.restMs / 1000);
 
+    /* Which one moves the score is the decision here, so it is said on the
+       button, not left to be worked out from the rules. */
     const maxBtn = el('button', { class: 'gv-challenge-mode', type: 'button' },
-      el('span', { class: 'gv-challenge-mode-name' }, ico('flame'), el('span', {}, 'Max')),
+      el('span', { class: 'gv-challenge-mode-name' }, ico('flame'), el('span', {}, 'Max'),
+        el('span', { class: 'gv-challenge-tag on' }, s.testWeek ? 'The test' : 'Beat it here')),
       el('span', { class: 'gv-challenge-mode-desc' }, this.holding
         ? 'One long hold. Tap the screen when you stop.'
         : `One big set. Rest more than ${rest} s and the set ends.`));
     maxBtn.addEventListener('click', () => this.begin('max', []));
 
     const setsBtn = el('button', { class: 'gv-challenge-mode', type: 'button' },
-      el('span', { class: 'gv-challenge-mode-name' }, ico('layers'), el('span', {}, 'Sets')),
+      el('span', { class: 'gv-challenge-mode-name' }, ico('layers'), el('span', {}, 'Sets'),
+        el('span', { class: 'gv-challenge-tag' }, 'Training')),
       el('span', { class: 'gv-challenge-mode-desc' },
         plan.length
           ? `${plan.map(n => this.score(n)).join(' · ')} — rest between ${this.holding ? 'holds' : 'sets'}. Your best still counts.`
@@ -168,6 +185,7 @@ class ChallengeModal extends Modal {
       el('p', { class: 'gv-challenge-sub' }, sub),
       facts.length ? el('div', { class: 'gv-challenge-facts' }, facts.join(' · ')) : '',
       el('div', { class: 'gv-challenge-modes' }, maxBtn, setsBtn),
+      el('p', { class: 'gv-challenge-how' }, ico(this.holding ? 'timer' : 'smartphone'), el('span', {}, how)),
       cancel));
   }
 
@@ -192,7 +210,7 @@ class ChallengeModal extends Modal {
       this.muteBtn.setAttribute('aria-label', this.muted ? 'Unmute count-back' : 'Mute count-back');
     });
 
-    this.undoBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': 'Undo last rep' }, ico('minus'), el('span', {}, 'Undo'));
+    this.undoBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': this.holding ? 'Undo last hold' : 'Undo last rep' }, ico('minus'), el('span', {}, 'Undo'));
     this.undoBtn.addEventListener('click', () => {
       /* A hold's undo drops the open hold, or else the last finished one. */
       if (this.holding) { if (this.holdStart !== null) this.holdStart = null; else this.holds.pop(); }
@@ -206,18 +224,25 @@ class ChallengeModal extends Modal {
 
     /* X with reps on the board goes to the summary, same as Escape; with
        none it simply closes. */
-    const cancelBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Stop' }, ico('x'));
+    /* gv-rc-close: the phone bar keeps THIS on the top row beside the title,
+       where a thumb looks for the X (styles.css, "SEVEN CONTROLS"). */
+    const cancelBtn = el('button', { class: 'gv-icon-btn gv-rc-close', type: 'button', 'aria-label': 'Stop' }, ico('x'));
     cancelBtn.addEventListener('click', () => (this.setsNow().length ? this.finish() : this.close()));
 
     const label = el('div', { class: 'gv-rc-label' }, `${this.exercise} · ${mode === 'max' ? 'Max' : 'Sets'}`);
     c.append(el('div', { class: 'gv-rc-bar' }, label, el('div', { class: 'gv-rc-controls' }, this.muteBtn, this.undoBtn, finishBtn, cancelBtn)));
 
-    this.countEl = el('div', { class: 'gv-rc-count', 'aria-live': 'polite', 'aria-atomic': 'true' }, '0');
-    this.hintEl = el('div', { class: 'gv-rc-hint', 'aria-live': 'polite' }, '');
+    /* SCREEN READERS. The rep count is live (one announcement per rep, rate-
+       limited by the human). A hold's timer is NOT — it changes every second
+       — and neither is the hint, which ticks during a rest; events ("set 1
+       done, 12") go to srEl instead, once each. */
+    this.countEl = el('div', { class: 'gv-rc-count', 'aria-live': this.holding ? 'off' : 'polite', 'aria-atomic': 'true' }, '0');
+    this.hintEl = el('div', { class: 'gv-rc-hint' }, '');
+    this.srEl = el('div', { class: 'gv-sr-only', 'aria-live': 'polite', 'aria-atomic': 'true' });
     this.goalEl = el('div', { class: 'gv-rc-target' }, '');
-    this.ladderEl = el('div', { class: 'gv-challenge-ladder', 'aria-label': 'Sets so far' });
+    this.ladderEl = el('div', { class: 'gv-challenge-ladder', 'aria-hidden': 'true' });
     this.zone = el('div', { class: 'gv-rc-zone', role: 'button', tabindex: '0', 'aria-label': this.holding ? 'Tap to start or stop a hold' : 'Tap to count a rep' },
-      this.countEl, this.hintEl, this.goalEl, this.ladderEl);
+      this.countEl, this.hintEl, this.goalEl, this.ladderEl, this.srEl);
 
     /* Max mode fills toward this week's target; a test week has none, and a
        bar with no destination would be a lie (see attachFillMeter). Sets
@@ -227,6 +252,9 @@ class ChallengeModal extends Modal {
       this._meter = attachFillMeter(this.zone, counterTarget.makeTarget(this.kind, this.target));
       this._powerup = attachPowerUp(this.zone, 'Beaten');
     }
+    /* Sets mode fills toward THIS set's target and starts again for the next
+       (meterFor), so every set charges and lands like the rep counter's. */
+    if (mode === 'sets') this.meterFor(0);
     this._detachTapZone = attachTapZone(this.zone, () => this.registerTap());
     c.append(this.zone);
     this.zone.focus();
@@ -246,6 +274,19 @@ class ChallengeModal extends Modal {
     });
     this._tick = window.setInterval(() => this.tick(), TICK_MS);
   }
+
+  meterFor(i) {
+    const want = this.plan[i];
+    this._meterIndex = i;
+    this._meter = want ? attachFillMeter(this.zone, counterTarget.makeTarget(this.kind, want)) : null;
+    if (!want) { this.zone.removeAttribute('data-fill'); this.zone.style.removeProperty('--gv-fill'); }
+  }
+
+  /* Say an event once, to a screen reader. */
+  say(text) { if (this.srEl) this.srEl.textContent = text; }
+
+  /* Writes only when the text differs: the tick runs four times a second. */
+  setText(node, text) { if (node && node.textContent !== text) node.textContent = text; }
 
   registerTap() {
     if (this.phase !== 'count') return;
@@ -270,14 +311,17 @@ class ChallengeModal extends Modal {
     if (this.holdStart === null) {
       this.holdStart = now;
       this._holdCued = false;
-      if (this._meter) this._meter.set(0);
+      if (this.mode === 'sets') this.meterFor(this.holds.length);
+      else if (this._meter) this._meter.set(0);
       if (!this.muted) sound.cue('begin', 'begin', this.settings);
+      this.say(`Hold ${this.holds.length + 1} started`);
     } else {
       const secs = Math.floor((now - this.holdStart) / 1000);
       this.holdStart = null;
       if (secs >= 1) this.holds.push(secs);
       this.restFrom = now;
       if (!this.muted) sound.cue('begin', 'rest', this.settings);
+      this.say(`Hold ${this.holds.length}: ${secs} seconds. Rest.`);
     }
     this.flash();
     this.render(now);
@@ -301,13 +345,17 @@ class ChallengeModal extends Modal {
     }
     if (this.mode === 'sets') {
       const i = run.sets.length;
+      if (this._meterIndex !== i) this.meterFor(i);
+      if (this._meter) this._meter.set(n);
       const want = this.plan[i];
       if (want && n === want && !this._setHit.has(i)) {
         this._setHit.add(i);
         if (!this.muted) sound.cue('go', 'target', this.settings, { hold: true });
+        this.say(`Set ${i + 1} target reached`);
         cued = true;
       }
     }
+    if (this.mode === 'max' && this._beatFired && cued) this.say(`Target ${this.target} beaten`);
     if (!this.muted && !cued) sound.announce(n, this.settings);
     this.render(now);
   }
@@ -321,8 +369,10 @@ class ChallengeModal extends Modal {
     const { run, closed } = ch.closeIfRested(this.run, now);
     if (closed !== null) {
       this.run = run;
-      if (this._meter) this._meter.set(0);
+      if (this.mode === 'sets') this.meterFor(run.sets.length);
+      else if (this._meter) this._meter.set(0);
       if (!this.muted) sound.cue('begin', 'rest', this.settings);
+      this.say(`Set ${run.sets.length} done: ${closed} reps. Rest.`);
     }
     this.render(now);
   }
@@ -336,9 +386,15 @@ class ChallengeModal extends Modal {
         this._holdCued = true;
         if (this.mode === 'max' && !this._beatFired) { this._beatFired = true; if (this._powerup) this._powerup.fire(); }
         if (!this.muted) sound.cue('go', 'target', this.settings, { hold: true });
-      } else if (secs !== this._lastSpoken && secs > 0 && secs % 10 === 0 && !this.muted) {
+      } else if (secs !== this._lastSpoken && ch.holdBeat(secs)) {
         /* Every ten seconds, said aloud: eyes are on the floor in a plank. */
-        sound.announce(secs, this.settings);
+        if (!this.muted) sound.announce(secs, this.settings);
+      }
+      /* The beat lands on the numeral too — the cadence a rep count gets
+         from every fifth rep; bigger on each whole minute. */
+      if (secs !== this._lastSpoken && ch.holdBeat(secs)) {
+        punch(this.countEl, ch.holdBeat(secs) === 'big' ? 5 : 1);
+        if (secs % 30 === 0) this.say(`${secs} seconds`);
       }
       this._lastSpoken = secs;
     }
@@ -351,41 +407,45 @@ class ChallengeModal extends Modal {
     const t = now || Date.now();
     const run = this.run;
     const armed = !this._countIn || this._countIn.armed();
-    if (armed) this.countEl.textContent = String(run.current);
     const sets = ch.runSets(run);
     const best = ch.bestSet(sets);
+    const resting = ch.restingFor(run, t);
+    /* RESTING IS NOT A COUNT. After a set closes the numeral shows the rest
+       clock, HOLLOW — the count-in's "the app is waiting" treatment — rather
+       than a solid 0, which read as the set you just did being wiped. The
+       next rep punches it back to a solid 1. */
+    const isResting = armed && run.current === 0 && run.sets.length > 0;
+    this.countEl.classList.toggle('gv-challenge-resting', isResting);
+    if (armed) this.setText(this.countEl, isResting ? fmtClock(resting || 0) : String(run.current));
 
     /* The line under the number. */
-    let hint = '';
     if (armed) {
-      const resting = ch.restingFor(run, t);
+      let hint = '';
       if (run.current > 0 && resting !== null && resting > WARN_AFTER_MS) {
         hint = `Set ends in ${Math.max(1, Math.ceil((this.restMs - resting) / 1000))}…`;
-      } else if (run.current === 0 && run.sets.length) {
-        const last = run.sets[run.sets.length - 1];
-        hint = `Set ${run.sets.length}: ${last}. Resting ${fmtClock(resting || 0)} — next rep starts set ${run.sets.length + 1}`;
+      } else if (isResting) {
+        hint = `Resting · set ${run.sets.length} was ${run.sets[run.sets.length - 1]} · next rep starts set ${run.sets.length + 1}`;
       } else if (run.current === 0) {
         hint = 'Nose to the screen at the bottom of each rep';
       }
-      this.hintEl.textContent = hint;
+      this.setText(this.hintEl, hint);
     }
 
     /* The target line. */
     if (this.mode === 'max') {
-      this.goalEl.textContent = this.target
+      this.setText(this.goalEl, this.target
         ? (best >= this.target ? `Beaten — best set ${best} (target ${this.target})` : `Beat ${this.target} in one set`)
-        : (best ? `Best set ${best} — keep going` : 'Test week: one big set');
+        : (best ? `Best set ${best} — keep going` : 'Test week: one big set'));
     } else {
       const i = run.sets.length; // the open set, or the next one after a rest
       const want = this.plan[i];
-      this.goalEl.textContent = want
+      this.setText(this.goalEl, want
         ? `Set ${i + 1} of ${this.plan.length} · ${want} reps`
-        : `Plan done — extra sets still count · best ${best}`;
+        : `Plan done — extra sets still count · best ${best}`);
     }
 
     /* The ladder: Sets mode shows every planned set (done, current, to
        come); Max shows the sets the rests have split off so far. */
-    clear(this.ladderEl);
     const chips = [];
     if (this.mode === 'sets') {
       const len = Math.max(this.plan.length, sets.length);
@@ -402,6 +462,16 @@ class ChallengeModal extends Modal {
         chips.push(el('span', { class: `gv-challenge-chip ${open ? 'now' : n === best ? 'hit' : 'short'}` }, String(n)));
       });
     }
+    this.setLadder(chips);
+  }
+
+  /* Rebuilt only when it changes — the tick runs four times a second, and
+     rebuilding identical chips every 250ms is DOM churn for nothing. */
+  setLadder(chips) {
+    const key = chips.map(c => `${c.className}:${c.textContent}`).join('|');
+    if (key === this._ladderKey) return;
+    this._ladderKey = key;
+    clear(this.ladderEl);
     this.ladderEl.append(...chips);
   }
 
@@ -412,21 +482,24 @@ class ChallengeModal extends Modal {
     const best = ch.bestSet(sets);
     const open = this.holdStart !== null;
     const i = this.holds.length;
+    const isResting = armed && !open && this.holds.length > 0;
+    this.countEl.classList.toggle('gv-challenge-resting', isResting);
     if (armed) {
-      this.countEl.textContent = open ? this.score(Math.floor((t - this.holdStart) / 1000)) : this.score(0);
-      this.hintEl.textContent = open ? 'Holding — tap the screen when you stop'
-        : this.holds.length ? `Hold ${i}: ${this.score(this.holds[i - 1])}. Resting ${fmtClock(t - (this.restFrom || t))} — tap to start hold ${i + 1}`
-        : 'Tap to start';
+      this.setText(this.countEl, open ? this.score(Math.floor((t - this.holdStart) / 1000))
+        : isResting ? fmtClock(t - (this.restFrom || t)) : this.score(0));
+      this.setText(this.hintEl, open ? 'Holding — tap the screen when you stop'
+        : isResting ? `Resting · hold ${i} was ${this.score(this.holds[i - 1])} · tap to start hold ${i + 1}`
+        : 'Tap to start');
     }
     if (this.mode === 'max') {
-      this.goalEl.textContent = this.target
+      this.setText(this.goalEl, this.target
         ? (best >= this.target ? `Beaten — best hold ${this.score(best)}` : `Beat ${this.score(this.target)} in one hold`)
-        : (best ? `Best hold ${this.score(best)}` : 'Test week: one long hold');
+        : (best ? `Best hold ${this.score(best)}` : 'Test week: one long hold'));
     } else {
       const want = this.plan[i];
-      this.goalEl.textContent = want ? `Hold ${i + 1} of ${this.plan.length} · ${this.score(want)}` : `Plan done — extra holds still count · best ${this.score(best)}`;
+      this.setText(this.goalEl, want ? `Hold ${i + 1} of ${this.plan.length} · ${this.score(want)}` : `Plan done — extra holds still count · best ${this.score(best)}`);
     }
-    clear(this.ladderEl);
+    const chips = [];
     const len = this.mode === 'sets' ? Math.max(this.plan.length, sets.length) : sets.length;
     for (let k = 0; k < len; k++) {
       const done = k < this.holds.length;
@@ -434,8 +507,9 @@ class ChallengeModal extends Modal {
       const state = this.mode === 'sets'
         ? (done ? (sets[k] >= (this.plan[k] || 0) ? 'hit' : 'short') : isOpen ? 'now' : 'next')
         : (isOpen ? 'now' : sets[k] === best ? 'hit' : 'short');
-      this.ladderEl.append(el('span', { class: `gv-challenge-chip ${state}` }, this.score(done || isOpen ? sets[k] : this.plan[k])));
+      chips.push(el('span', { class: `gv-challenge-chip ${state}` }, this.score(done || isOpen ? sets[k] : this.plan[k])));
     }
+    this.setLadder(chips);
   }
 
   flash() {
