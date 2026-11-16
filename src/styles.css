@@ -24,10 +24,11 @@
    Tokens only: the layout below stays on .gv-app. */
 .gv-modal,
 .gv-app {
-  --gv-bg: #f5f7ef;
-  --gv-surface: #ffffff;
-  --gv-line: #e2e8d8;
-  --gv-line-2: #cfd9be;
+  /* Never white (16 Nov 2026): a lime-sage page with paler sage cards. tests/light-paper.test.cjs */
+  --gv-bg: #e6ecd8;
+  --gv-surface: #eff3e5;
+  --gv-line: #d5dcc6;
+  --gv-line-2: #c0caad;
   --gv-ink: #141a0e;
   --gv-ink-dim: #5b6551;
   --gv-lime: #84cc16;
@@ -35,7 +36,7 @@
   /* Small accent text on white AND, in dark mode, on the near-white block
      --gv-ink flips to (#eef3e6): #4d7c0f was 4.42:1 there, 0.08 short of AA
      for 10-14px text (0.12.1, L5-02). contrast.test.cjs measures both. */
-  --gv-lime-deep: #4b790e;
+  --gv-lime-deep: #426b0b;
   --gv-lime-ghost: #f4fbe8;
   --gv-danger: #b91c1c;
   /* Fire, for the counter's flames and the streak flame. NOT an accent: the
@@ -3382,7 +3383,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-accent-blaze {
   --gv-lime: #f97316;
   --gv-lime-hi: #fb923c;
-  --gv-lime-deep: #c2410c;
+  --gv-lime-deep: #ad3a0b;
   --gv-lime-ghost: #fff7ed;
   --gv-flood-dim: #451f08;
 }
@@ -3391,7 +3392,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-accent-electric {
   --gv-lime: #06b6d4;
   --gv-lime-hi: #22d3ee;
-  --gv-lime-deep: #0e7490;
+  --gv-lime-deep: #0d6a84;
   --gv-lime-ghost: #ecfeff;
   --gv-flood-dim: #093c49;
 }
@@ -4080,7 +4081,10 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-skin-poster {
   --gv-amber: #a15c07;
   --gv-ember: #c2410c;
-  --gv-amber-text: var(--gv-amber);
+  /* Amber TEXT a shade darker than the amber fill since the papers went tinted
+     (16 Nov 2026); the fill stays, so the counter's hot stage reads apart from
+     Blaze. The dark block below points it back at the bright amber. */
+  --gv-amber-text: #8f5206;
   /* Small accent text on paper: the accent's deep tone. */
   --gv-accent-text: var(--gv-lime-deep);
   /* Barlow Condensed is embedded (src/font.css); Anton and the system
@@ -4103,15 +4107,17 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .theme-light .gv-app.gv-skin-apex .gv-hero-head,
 .theme-light .gv-app.gv-skin-apex .gv-hero:not(.gv-hero-today) {
   --gv-amber: #f2b53c;
+  --gv-amber-text: var(--gv-amber);
   --gv-ember: #f97316;
   --gv-accent-text: var(--gv-lime);
   color-scheme: dark;
 }
 
 .gv-app.gv-skin-apex {
-  /* paper (light) */
-  --gv-bg: #f2f3f5;
-  --gv-surface: #ffffff;
+  /* paper (light): soft green-stone, never white. Not blue (the counter's
+     cool warm-up stage would vanish on it), not warm (amber vs Blaze). */
+  --gv-bg: #e5e8e0;
+  --gv-surface: #eff2ea;
   --gv-line: #d9dde2;
   --gv-line-2: #8b95a0;
   --gv-ink: #0a0b0d;
@@ -4172,8 +4178,8 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-skin-poster { --gv-accent-line: var(--gv-accent-solid, var(--gv-lime-deep)); }
 .theme-dark .gv-app.gv-skin-poster { --gv-accent-line: var(--gv-lime); }
 .theme-light .gv-app.gv-skin-apex {
-  --gv-bg: #eef0ea;
-  /* A soft drop under the white cards (week ring, tiles, quest, unlocks): paper needs depth that graphite gets from its own dark. */
+  --gv-bg: #e5e8e0;
+  /* A soft drop under the cards (week ring, tiles, quest, unlocks): paper needs depth that graphite gets from its own dark. */
   --gv-poster-lift: 0 8px 18px -10px rgba(10, 11, 13, 0.22);
   --gv-poster-track: #c9d0d8;
 }
@@ -4195,24 +4201,25 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
    3 Nov 2026 from five light palettes (it replaced Forest, 27 Oct 2026). The
    poster heroes are warm charcoal and every neutral leans warm, so the lime is
    the only colour on the page. Since 4 Nov 2026 ("lifted", Ruan's pick of three
-   white variants) the page and the cards are both pure white: a card stands off
-   the page by its warm hairline and a soft drop, never by a tinted ground.
+   white variants) the page and the cards were pure white; since 16 Nov 2026
+   ("never use white bg") the page is warm limestone and the cards a paler
+   limestone, still lifted by the warm hairline and the soft drop.
    Scoped to the lime accent: the other accents keep the graphite hero on tinted
    paper above. */
 .theme-light .gv-app.gv-skin-apex.gv-accent-lime {
-  --gv-bg: #ffffff;
-  --gv-surface: #ffffff;
-  --gv-line: #e6e2d8;
+  --gv-bg: #ebe6da;
+  --gv-surface: #f5f2ea;
+  --gv-line: #ddd7c9;
   --gv-line-2: #8e887a;
   --gv-ink: #17150f;
   --gv-ink-dim: #57524a;
-  --gv-poster-chip: #f1efe9;
-  --gv-poster-cell: #f4f2ec;
-  --gv-poster-track: #e3dfd4;
+  --gv-poster-chip: #e9e4d8;
+  --gv-poster-cell: #ede9df;
+  --gv-poster-track: #ddd7c9;
   --gv-accent-text: #3a6309;
   --gv-accent-line: #4b7d0e;
   /* White on white: the hairline under the card is its edge, the drop its depth. */
-  --gv-poster-lift: 0 1px 0 #e6e2d8, 0 10px 24px -12px rgba(23, 21, 15, 0.22);
+  --gv-poster-lift: 0 1px 0 #ddd7c9, 0 10px 24px -12px rgba(23, 21, 15, 0.22);
   background-image: none;
 }
 .theme-light .gv-app.gv-skin-apex.gv-accent-lime .gv-hero-head,
@@ -5922,10 +5929,10 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
    ============================================================================ */
 
 .gv-app.gv-skin-lockin {
-  /* paper (light) */
-  --gv-bg: #ffffff;
-  --gv-surface: #f1f1f1;
-  --gv-line: #d6d6d6;
+  /* paper (light): warm sand, never white */
+  --gv-bg: #ece3d6;
+  --gv-surface: #f6efe5;
+  --gv-line: #d9cfc1;
   --gv-line-2: #7d7d7d;
   --gv-ink: #0a0a0a;
   --gv-ink-dim: #4a4a4a;
@@ -6807,13 +6814,16 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
    .theme-dark twins (same or higher specificity, later), and a hard-coded
    light colour would leak into dark mode.
    ============================================================================ */
+/* Light paper is SAGE, not white (16 Nov 2026: "a white background, too
+   bright and not calm"). Cards are a paler sage, never #fff; every accent's
+   deep text tone still holds 4.5:1 on both (calm-skin.test.cjs C5). */
 .gv-app.gv-skin-calm {
-  --gv-bg: #f6f7f3;
-  --gv-surface: #ffffff;
-  --gv-line: #e6e9e0;
-  --gv-line-2: #d4d9ca;
-  --gv-ink: #262b21;
-  --gv-ink-dim: #5f6756;
+  --gv-bg: #e0e8d4;
+  --gv-surface: #ecf1e4;
+  --gv-line: #d2dbc4;
+  --gv-line-2: #bcc7ab;
+  --gv-ink: #243020;
+  --gv-ink-dim: #4b5741;
   --gv-display: var(--gv-body);
   --gv-calm-fill: var(--gv-accent-solid, var(--gv-lime-deep)); /* solid buttons, bar fills, switch on */
   --gv-calm-fill-ink: #ffffff;              /* text and glyphs on that fill */

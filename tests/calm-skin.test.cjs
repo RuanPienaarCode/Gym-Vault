@@ -10,7 +10,7 @@
      C3  CALM FILLS WITH THE SOLID: its fill token reads --gv-accent-solid first and falls back
          to the deep tone, so every other palette still works.
      C4  TOKENS ONLY: every colour literal in the Calm section sits in its two token blocks
-         (light and .theme-dark). A literal in a rule would outrank the base .theme-dark twins
+         (light and .theme-dark), plus light Calm's per-accent deep-tone lines. A literal in a rule would outrank the base .theme-dark twins
          and paint a light colour into dark mode.
    GV_STYLES_CSS points the CSS half at a deliberately broken copy (mutation testing). */
 const assert = require('node:assert');
@@ -60,9 +60,35 @@ check('C4 the Calm section has colour literals only in its two token blocks', ()
   const section = css.slice(start, end > start ? end : css.length).replace(/\/\*[\s\S]*?\*\//g, '');
   const stripped = section
     .replace(/\.theme-dark \.gv-app\.gv-skin-calm \{[^}]*\}/, '')
+    .replace(/\.theme-light \.gv-app\.gv-skin-calm\.gv-accent-[a-z]+ \{[^}]*\}/g, '')
     .replace(/\.gv-app\.gv-skin-calm \{[^}]*\}/, '');
   const leaks = stripped.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g);
   assert.ok(!leaks, `colour literal(s) in a Calm rule: ${leaks && leaks.join(', ')}`);
+});
+
+/* C5 (16 Nov 2026): the light paper is COLOURED, not white ("too bright and not calm"):
+   page and cards are tinted (channels differ) and not near-white, and dim text plus every
+   accent's deep text tone still holds 4.5:1 on both. */
+check('C5 light Calm paper is a colour, not white, and text still reads on it', () => {
+  const light = block('.gv-app.gv-skin-calm');
+  const tok = name => { const m = light.match(new RegExp(`--gv-${name}:\\s*(#[0-9a-fA-F]{6})`)); assert.ok(m, `--gv-${name} missing`); return m[1]; };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  for (const n of ['bg', 'surface']) {
+    const hex = tok(n);
+    const ch = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    assert.ok(lum(hex) < 0.88, `--gv-${n} ${hex} is near-white`);
+    assert.ok(Math.max(...ch) - Math.min(...ch) >= 8, `--gv-${n} ${hex} is grey, not a colour`);
+    assert.ok(ratio(tok('ink-dim'), hex) >= 4.5, `dim text on --gv-${n} under 4.5:1`);
+    /* Each accent's deep tone as light Calm resolves it: the Calm override if one exists. */
+    const deeps = ACCENTS.map(([key]) => {
+      const own = css.match(new RegExp(`\\.theme-light \\.gv-app\\.gv-skin-calm\\.gv-accent-${key} \\{[^}]*--gv-lime-deep:\\s*(#[0-9a-fA-F]{6})`))
+        || css.match(new RegExp(`\\.gv-app\\.gv-accent-${key} \\{[^}]*--gv-lime-deep:\\s*(#[0-9a-fA-F]{6})`))
+        || (key === 'lime' && css.match(/\.gv-app \{[^}]*--gv-lime-deep:\s*(#[0-9a-fA-F]{6})/));
+      assert.ok(own, `deep tone for ${key} not found`);
+      return own[1];
+    });
+    for (const d of deeps) assert.ok(ratio(d, hex) >= 4.5, `accent text ${d} on --gv-${n} ${hex} is ${ratio(d, hex).toFixed(2)}:1`);
+  }
 });
 
 if (failed) { console.error(`calm-skin: ${failed} guard(s) FAILED`); process.exit(1); }
