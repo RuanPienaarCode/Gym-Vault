@@ -14,7 +14,7 @@
      P4  palettes are Calm-only: no rule names one without .gv-skin-calm
      P5  nothing in src/ puts the raw accent on a root (accentFor is the door)
      P6  Lagoon carries all ten supplied colours
-     P7  Settings offers the list and saves through setLook (so per device)
+     P7  each palette is its own entry in the Style dropdown (per device)
    Readability and "never white" for each palette live in contrast.test.cjs,
    light-paper.test.cjs and rc-zone-stages.test.cjs, which iterate them. */
 const assert = require('node:assert');
@@ -79,10 +79,31 @@ check('P6 Lagoon carries all ten supplied colours', () => {
   for (const hex of ['#d9ed92', '#b5e48c', '#99d98c', '#76c893', '#52b69a', '#34a0a4', '#168aad', '#1a759f', '#1e6091', '#184e77']) assert.ok(both.toLowerCase().includes(hex), `${hex} is not in Lagoon`);
 });
 
-check('P7 Settings offers the list, per device', () => {
+check('P7 every palette is its own entry in the Style dropdown, per device', () => {
+  /* 16 Nov 2026: a separate "Calm colours" row was missed ("I only see one calm theme"). */
+  const { styleChoices, styleValue, parseStyle, SKINS } = require('../src/constants');
+  const choices = styleChoices();
+  const values = choices.map(c => c[0]);
+  assert.deepStrictEqual(values.filter(v => !/^calm/.test(v)), SKINS.map(s => s[0]).filter(k => k !== 'calm'), 'the other styles are listed once each, in order');
+  assert.deepStrictEqual(values.filter(v => /^calm/.test(v)), ['calm', 'calm:oat', 'calm:sea', 'calm:blush', 'calm:lavender', 'calm:honey', 'calm:sky', 'calm:lagoon']);
+  for (const [v, label] of choices) if (/^calm/.test(v)) assert.ok(/^Calm · /.test(label), `${v} must read as a Calm theme: ${label}`);
+  assert.strictEqual(new Set(choices.map(c => c[1])).size, choices.length, 'no two entries share a label');
+  /* value <-> settings, both ways */
+  assert.deepStrictEqual(parseStyle('apex'), { skin: 'apex' }, 'another style leaves the Calm palette alone');
+  assert.deepStrictEqual(parseStyle('calm'), { skin: 'calm', calmPalette: 'accent' });
+  assert.deepStrictEqual(parseStyle('calm:lagoon'), { skin: 'calm', calmPalette: 'lagoon' });
+  assert.deepStrictEqual(parseStyle('calm:neon'), { skin: 'calm', calmPalette: 'accent' }, 'an unknown palette is plain Calm');
+  assert.strictEqual(styleValue({ skin: 'calm', calmPalette: 'lagoon' }), 'calm:lagoon');
+  assert.strictEqual(styleValue({ skin: 'calm', calmPalette: 'accent' }), 'calm');
+  assert.strictEqual(styleValue({ skin: 'calm' }), 'calm');
+  assert.strictEqual(styleValue({ skin: 'apex', calmPalette: 'lagoon' }), 'apex');
+  assert.strictEqual(styleValue({}), 'apex');
+  for (const v of values) assert.strictEqual(styleValue(Object.assign({ accent: 'lime' }, parseStyle(v))), v, `${v} round-trips`);
+  /* the tab builds Style from it and saves both fields in one go */
   const tab = fs.readFileSync(path.join(SRC, 'settings-tab.js'), 'utf8');
-  assert.match(tab, /CALM_PALETTES/);
-  assert.match(tab, /setLook\('calmPalette'/);
+  assert.match(tab, /styleChoices\(\)/);
+  assert.match(tab, /setLooks\(parseStyle\(/);
+  assert.ok(!/setName\('Calm colours'\)/.test(tab), 'the separate Calm colours row is gone: one place to pick');
   assert.ok(LOOK_FIELDS.includes('calmPalette'));
   assert.deepStrictEqual(cleanLook({ calmPalette: 'sea' }), { calmPalette: 'sea' });
   assert.strictEqual(cleanLook({ calmPalette: 'neon' }), null);

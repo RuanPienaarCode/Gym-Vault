@@ -145,13 +145,17 @@ class GymPlugin extends Plugin {
 
   /* Style, Accent, Rewards or Calm motion picked in Settings: this device's choice when one is on,
      otherwise the shared one every device follows. */
-  async setLook(field, value) {
-    this.settings[field] = value;
+  async setLook(field, value) { return this.setLooks({ [field]: value }); }
+
+  /* Several at once (a Style entry is a style AND its Calm palette): one
+     write, one refresh. */
+  async setLooks(values) {
+    Object.assign(this.settings, values);
     if (this.deviceLook) {
-      this.deviceLook = Object.assign({}, this.deviceLook, { [field]: value });
+      this.deviceLook = Object.assign({}, this.deviceLook, values);
       this._lookStore.write(this.deviceLook);
     } else {
-      this._sharedLook[field] = value;
+      Object.assign(this._sharedLook, values);
       await this.saveSettings();
     }
     this.refreshViews();
