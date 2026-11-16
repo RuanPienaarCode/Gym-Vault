@@ -6,9 +6,9 @@
 const { el, ico, fmt, fmtSeconds, clickableCard, statTile, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, ISO_DATE } = require('./dates');
-const { workoutDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets, countLabel, countNoun } = require('./stats');
+const { workoutDates, sessionDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets, countLabel, countNoun } = require('./stats');
 const { streakFlame } = require('./streak-flame');
-const { itemSets, isRestDay, targetDurationSeconds } = require('./plan-parse');
+const { itemSets, isRestDay, targetDurationSeconds, rxLabel } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
 const { PlanPickerModal } = require('./modals');
 const { pbInReach, reachText, weekPlan, weekProgress, weekWords, streakRisk, streakRiskText } = require('./progress');
@@ -153,6 +153,10 @@ function render(ctx, root) {
   const simple = simpleToday(settings);
   const today = todayISO();
   const dates = workoutDates(data.workouts);
+  /* The days a SESSION happened (a weekly-challenge go is not one): "Logged for
+     today" and the strip's done marks. The streak below keeps `dates`, because a
+     week with only a go is still a week you trained. */
+  const sessionDays = sessionDates(data.workouts);
   /* Everything Today draws sits in ONE wrapper. It carries no styling in Floor
      or Editorial (a plain block) and gives Apex and Lock In one column to order
      the sticky Start button inside. */
@@ -171,7 +175,7 @@ function render(ctx, root) {
   /* Strength AND running: daysOn merges the active plan with every
      parallel one, so a run day shows up beside the lifting. */
   const todays = ctx.daysOn(todayKeyName);
-  const doneToday = dates.includes(today);
+  const doneToday = sessionDays.includes(today);
   const last = data.workouts.length ? data.workouts[data.workouts.length - 1] : null;
   /* The day, via the one rule — a note whose date this app cannot read shows
      no date rather than the string it was typed as. */
@@ -275,7 +279,7 @@ function render(ctx, root) {
       for (const it of day.items) {
         list.append(el('li', {},
           el('span', {}, it.exercise),
-          el('b', {}, it.sets != null ? `${it.sets} × ${it.target}` : it.target || '')));
+          el('b', {}, rxLabel(it))));
       }
       if (!simple) afterHead.push(list);
     }
@@ -311,7 +315,7 @@ function render(ctx, root) {
       const hit = reach && reach.index === i ? reach : null;
       rx.append(el('li', { class: hit ? 'gv-rx-reach' : '' },
         el('span', {}, it.exercise, hit ? el('span', { class: 'gv-pb-reach' }, reachText(hit)) : ''),
-        el('b', {}, it.sets != null ? `${it.sets} × ${it.target}` : it.target || '')));
+        el('b', {}, rxLabel(it))));
     });
     const kit = kitChips(ctx, day);
     if (!simple) { afterHead.push(rx); if (kit) afterHead.push(kit); }
@@ -386,7 +390,7 @@ function render(ctx, root) {
      week's target counts with, so the dots and the "x/4" cannot disagree. */
   const strip = el('div', { class: 'gv-week', role: 'group', 'aria-label': 'This week' });
   for (const { iso, wk, planDay } of weekPlan(ctx.daysOn, today, settings.weekStart)) {
-    const done = dates.includes(iso);
+    const done = sessionDays.includes(iso);
     const cls = ['gv-day', done ? 'done' : planDay ? 'planned' : 'rest', iso === today ? 'today' : ''].join(' ');
     const tag = el('div', { class: 'gv-day-dot' });
     if (done) { if (planDay) tag.append(dayShort(planDay), ' '); tag.append(ico('check')); }
@@ -448,7 +452,7 @@ function render(ctx, root) {
     const ranked = data.goals
       .map(g => {
         const current = goalCurrent(g, { workouts: data.workouts, body: data.body, weekStart: settings.weekStart, today, exercises: data.exercises });
-        return { g, current, p: goalProgress(g, current) };
+        return { g, current, p: goalProgress(g, current, { body: data.body }) };
       })
       .filter(x => x.p === null || x.p < 1)
       .sort((a, b) => (b.p ?? -1) - (a.p ?? -1))

@@ -115,6 +115,10 @@ function medalsFor(ctx, workouts) {
    straight to the log page with no session or carry, so that copy is the last
    source. */
 function sessionInputs(ctx, draft) {
+  /* A weekly-challenge go names its own record (challenge-flow.saveRun works out
+     whether it beat the all-time best): there is no guided session behind it to
+     read one from. */
+  if (draft && draft.kind === 'challenge') return { records: Array.isArray(draft.records) ? draft.records : [], workouts: ctx.data.workouts };
   const sess = ctx.state && ctx.state.session;
   const carry = ctx.state && ctx.state.sessionCarry;
   if (sess) return { records: sess.records || [], workouts: sess.workoutsAtStart || ctx.data.workouts };
@@ -126,7 +130,7 @@ function sessionInputs(ctx, draft) {
 function awardsFor(ctx, draft, rows, workoutKey, ledgerState, inputs, keySuffix) {
   const inp = inputs || sessionInputs(ctx, draft);
   return R.awardsForSession({
-    workoutKey, keySuffix, date: draft.date, sets: rows, records: inp.records, workouts: inp.workouts,
+    workoutKey, keySuffix, date: draft.date, sets: rows, records: inp.records, workouts: inp.workouts, kind: draft.kind,
     daysOn: ctx.daysOn, exercises: ctx.data.exercises, weekStart: weekStartOf(ctx),
     settings: ctx.settings, ledgerState,
   });
@@ -208,7 +212,7 @@ async function awardFinished(ctx, draft, rows, path) {
   if (!draft || draft.rewardsAwarded) return null;
   draft.rewardsAwarded = true;
   /* The session's own id (the key suffix, should its path already be paid), fixed here so a retry is the same session. */
-  const job = { path, date: draft.date, rows, records: [], sessionId: draft.startedAt || Date.now() };
+  const job = { path, date: draft.date, rows, records: [], kind: draft.kind, sessionId: draft.startedAt || Date.now() };
   try {
     const inputs = sessionInputs(ctx, draft);
     job.records = (inputs.records || []).slice();
@@ -246,7 +250,7 @@ async function retryOne(ctx, job, when) {
     if (!ledgerState || ledgerState.unreadable) return;
     /* The suffix the first try chose stands; a job that never got that far decides now (nothing of it can be in the ledger). */
     if (job.keySuffix == null) job.keySuffix = R.sessionKeySuffix(ledgerState, job.path, job.sessionId);
-    const awards = awardsFor(ctx, { date: job.date }, job.rows, job.path, ledgerState, { records: job.records, workouts: ctx.data.workouts }, job.keySuffix);
+    const awards = awardsFor(ctx, { date: job.date, kind: job.kind }, job.rows, job.path, ledgerState, { records: job.records, workouts: ctx.data.workouts }, job.keySuffix);
     let appended = [];
     if (awards.length) {
       const res = await ctx.io.appendRewards(awards);

@@ -9,9 +9,42 @@
 const { el, ico, fmt, fmtSeconds, statTile, emptyLine } = require('./dom');
 const { WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, startOfWeek, addDays } = require('./dates');
-const { distanceInWeek, ladderWeek, num, ranOn } = require('./stats');
+const { distanceInWeek, ladderWeek, num, ranOn, workoutDate } = require('./stats');
 const { runRows, longestRun, paceOf, fmtPace } = require('./run-records');
 const { isPaused } = require('./plan-parse');
+
+/* THE ONE RULE FOR "WHICH LONG RUN IS THIS WEEK'S". The plan's days that fall in
+   the calendar week containing `today`, the week drawn the way Settings draws it,
+   each with `dayWeek`: the ladder rung of THAT DAY's own date (stats.ladderWeek)
+   when it is a long run, else null. The "This week" list prints a row per entry
+   and the headline names the first long run's rung, so the two cannot disagree.
+   The headline used to ask ladderWeek about TODAY, which counts whole 7-day
+   blocks from start_date (Mondays) and knew nothing of "Week starts on": with a
+   Saturday week, Mon 16 Nov said "6 km, Week 3" over a list whose long run was
+   Sat 14 Nov, 5 km. */
+function weekRuns(plan, today, weekStartSetting, ladder, startDate) {
+  const first = startOfWeek(today, weekStartSetting);
+  const out = [];
+  for (let i = 0; i < 7; i++) {
+    const iso = addDays(first, i);
+    const wk = weekdayKey(iso);
+    for (const day of plan.model.days) {
+      if (day.weekday !== wk) continue;
+      const isLong = /long/i.test(day.name);
+      out.push({ iso, wk, day, isLong, dayWeek: isLong && ladder.length ? ladderWeek(startDate, iso, ladder.length) : null });
+    }
+  }
+  return out;
+}
+
+/* The ladder week the headline (and the strip's "now" rung) shows: the week's
+   long run's rung. A week with no long run in it, or one that falls before the
+   ladder starts, has none, and then today's own rung stands as it always did. */
+function headlineWeek(runs, today, ladder, startDate) {
+  const long = runs.find(r => r.dayWeek);
+  if (long) return long.dayWeek;
+  return ladder.length ? ladderWeek(startDate, today, ladder.length) : null;
+}
 
 function render(ctx, root) {
   const { data, settings } = ctx;
@@ -31,7 +64,10 @@ function render(ctx, root) {
   /* ---- the ladder: which week, what's the target ---- */
   const ladder = (plan && Array.isArray(plan.fm.ladder) ? plan.fm.ladder : []).map(num).filter(v => v !== null);
   const startDate = plan ? (plan.fm.start_date || '') : '';
-  const week = ladder.length ? ladderWeek(startDate, today, ladder.length) : null;
+  /* The same week the list below draws (weekRuns), so the headline names the rung
+     of the long run that list shows. */
+  const planned = plan ? weekRuns(plan, today, settings.weekStart, ladder, startDate) : [];
+  const week = ladder.length ? headlineWeek(planned, today, ladder, startDate) : null;
   const target = week ? ladder[week - 1] : null;
 
   const hero = el('div', { class: 'gv-hero' });
@@ -60,13 +96,7 @@ function render(ctx, root) {
 
   /* ---- this week's runs, straight from the plan ---- */
   if (plan) {
-    const weekStart = startOfWeek(today, settings.weekStart);
-    const scheduled = [];
-    for (let i = 0; i < 7; i++) {
-      const iso = addDays(weekStart, i);
-      const wk = weekdayKey(iso);
-      for (const d of plan.model.days) if (d.weekday === wk) scheduled.push({ iso, wk, day: d });
-    }
+    const scheduled = planned;
     if (scheduled.length) {
       root.append(el('div', { class: 'gv-section-title' }, ico('calendar-days'), el('span', {}, 'This week')));
       const list = el('div', { class: 'gv-card-list' });
@@ -76,12 +106,11 @@ function render(ctx, root) {
            run as minutes with no km). It reads the day through workoutDate,
            THE rule for a workout's day. */
         const done = ranOn(data.workouts, s.iso, data.exercises);
-        const isLong = /long/i.test(s.day.name);
-        /* The rung of THAT DAY's week (stats.ladderWeek - the same rule the hero
-           uses for today), not today's: a ladder that steps up mid-calendar-week
+        /* The rung of THAT DAY's week (weekRuns -> stats.ladderWeek, the rule the
+           headline reads too), not today's: a ladder that steps up mid-calendar-week
            gives two long runs in one week two different distances. A day the
            ladder has not started for has no rung and prints the plan's own text. */
-        const dayWeek = isLong && ladder.length ? ladderWeek(startDate, s.iso, ladder.length) : null;
+        const { dayWeek } = s;
         const rx = dayWeek ? `${ladder[dayWeek - 1]} km` : (s.day.items[0] ? s.day.items[0].target : '');
         const row = el('div', { class: `gv-card gv-runday${s.iso === today ? ' today' : ''}${done ? ' done' : ''}` },
           el('div', { class: 'gv-runday-when' },
@@ -164,7 +193,7 @@ function render(ctx, root) {
       .filter(r => r.km > 0 && r.seconds > 0)
       .sort((a, b) => b.km - a.km)[0] || null;
     recent.push({
-      date: w.fm.date, name: rows[0].exercise, km, secs, file: w.file,
+      date: workoutDate(w), name: rows[0].exercise, km, secs, file: w.file,
       pace: paced ? fmtPace(paceOf(paced)) : '',
       /* One row, or several? A session pace shown against a multi-row
          session has to say which run it belongs to. */
@@ -190,4 +219,4 @@ function render(ctx, root) {
   }
 }
 
-module.exports = { render };
+module.exports = { render, weekRuns, headlineWeek };

@@ -5,9 +5,15 @@
 
    A challenge is NOT a new kind of note. It is a goal measured by "best reps
    in a set" with `challenge: weekly` in its frontmatter, so the Goals page,
-   Records and History all keep reading the same rows, and the challenge's
-   all-time best can never disagree with the goal card beside it (both go
-   through stats.exerciseBests' row walk and stats.sameName).
+   Records and History all keep reading the same rows. Its figure is the best
+   set logged SINCE `started` (challengeStatus().best), not the all-time best,
+   and the goal card cannot disagree with its own challenge line because
+   stats.goalCurrent - the one seam the card, Today's goals, the session's goal
+   check and Export all call - reads that same best for a challenge goal (an
+   ordinary goal keeps stats.exerciseBests). The rows still go through
+   stats.sameName, so a go is also a Records / exercise-best entry like any set.
+   A go is NOT a session (stats.isChallengeRun): it counts toward no session
+   figure, but it keeps the week streak alive.
 
    THE SCORE IS THE BEST UNBROKEN SET. Never a session total: a Sets day of
    30/20/20/10/10/10 is good training and scores 30. Totals are kept for the
@@ -22,8 +28,22 @@
      split: 30,20,20,10,10,10   — the Sets-mode shape, as parts of the target
      rest_limit_s: 5            — a pause longer than this ends the set */
 
-const { startOfWeek, daysBetween } = require('./dates');
+const { startOfWeek, daysBetween, fromISO, toISO } = require('./dates');
 const { num, sameName, workoutDate } = require('./stats');
+
+/* The day a challenge started, as YYYY-MM-DD, or null when the note does not
+   hold one the app can read. `started` is a plain frontmatter value a person can
+   edit: Obsidian's date-time property writes 2026-11-13T09:00, and a hand edit
+   can write anything ("yesterday", 13 Nov 2026, 2026-11-1). A leading
+   YYYY-MM-DD is that day (so a date-time reads as its date and the first day's
+   sets still count); anything else means no start date. dates.fromISO returns
+   null for a non-date, and startOfWeek on that threw inside the Goals page. */
+function startedDay(value) {
+  const m = String(value === null || value === undefined ? '' : value).trim().match(/^(\d{4}-\d{2}-\d{2})(?:$|[^0-9])/);
+  if (!m) return null;
+  const d = fromISO(m[1]);
+  return d && toISO(d) === m[1] ? m[1] : null;
+}
 
 const DEFAULT_SHAPE = Object.freeze([30, 20, 20, 10, 10, 10]);
 const DEFAULT_REST_S = 5;
@@ -80,11 +100,21 @@ function isBodyweight(exercise) {
   const eq = exercise && exercise.fm ? exercise.fm.equipment : null;
   const parts = (Array.isArray(eq) ? eq : String(eq == null ? '' : eq).split(','))
     .map(x => String(x == null ? '' : x).trim().toLowerCase()).filter(Boolean);
-  return !parts.length || parts.includes('bodyweight') || parts.includes('none');
+  /* `bar` is the library's value for a PULL-UP bar (equipment.js labels it so):
+     something you hang from, not a loaded lift, so Pull-ups and Dead Hang - both
+     on POPULAR - count. Only when nothing else is named beside it: `bar,
+     dumbbells` is a weighted pull and `barbell` is a different word entirely. */
+  return !parts.length || parts.includes('bodyweight') || parts.includes('none') || parts.every(p => p === 'bar');
 }
 
+/* A stretch or mobility drill is not a max-rep or max-hold feat: nobody trains
+   to hold Child's Pose longer every week. The exercise note's own `type` says so
+   (the seed marks them `mobility`); an exercise with no type is offered, since
+   nothing says it is one. */
+const isMobility = exercise => String(exercise && exercise.fm && exercise.fm.type ? exercise.fm.type : '').trim().toLowerCase() === 'mobility';
+
 function challengeChoices(exercises) {
-  const usable = (exercises || []).filter(e => isBodyweight(e) && metricFor(e));
+  const usable = (exercises || []).filter(e => isBodyweight(e) && !isMobility(e) && metricFor(e));
   const picks = popularChallenges(usable);
   const rest = usable
     .filter(e => !picks.some(p => sameName(p.name, e.name)))
@@ -158,12 +188,23 @@ function nextTarget(lastBest, goal) {
   return g !== null ? Math.min(g, grown) : grown;
 }
 
+/* The target a finished go leads to: next week's, worked out the way the status
+   will work it out once this go is saved - from the week's BEST, which may be an
+   earlier, bigger go (30 then 20 is 30 -> 33, not 20 -> 22). The summary quotes
+   this, so it can never promise a figure the Goals page then contradicts. */
+function nextAfterGo(status, best) {
+  const s = status || {};
+  const weekBest = s.thisWeek && s.thisWeek.best > 0 ? s.thisWeek.best : 0;
+  return nextTarget(Math.max(best, weekBest), s.goal);
+}
+
 /* One entry per week that has at least one logged set of `exercise`, oldest
    first: { week (its first day), best (biggest single set), total, sets }.
    Undated workouts have no week and are skipped; with `since`, so is
    anything before it. */
 function weeklyBests(workouts, exercise, opts) {
-  const { weekStart, since } = opts || {};
+  const { weekStart } = opts || {};
+  const since = startedDay(opts && opts.since);
   /* Reps OR seconds, never either: a timed circuit leaves its clock in
      `seconds` on a rep exercise, and that is not a hold. */
   const field = opts && opts.kind === 'seconds' ? 'seconds' : 'reps';
@@ -191,7 +232,8 @@ function challengeStatus(goal, workouts, opts) {
   const fm = (goal && goal.fm) || {};
   const { weekStart, today } = opts || {};
   const kind = kindOf(goal) || 'reps';
-  const weeks = weeklyBests(workouts, fm.exercise, { weekStart, since: fm.started || null, kind });
+  const startedOn = startedDay(fm.started);
+  const weeks = weeklyBests(workouts, fm.exercise, { weekStart, since: startedOn, kind });
   const current = startOfWeek(today, weekStart);
   const thisWeek = weeks.find(x => x.week === current) || null;
   const before = weeks.filter(x => x.week < current);
@@ -200,7 +242,7 @@ function challengeStatus(goal, workouts, opts) {
   const target = nextTarget(lastWeek ? lastWeek.best : null, goalN);
   const best = weeks.reduce((m, x) => Math.max(m, x.best), 0) || null;
   const weekBest = thisWeek ? thisWeek.best : 0;
-  const started = fm.started ? startOfWeek(fm.started, weekStart) : null;
+  const started = startedOn ? startOfWeek(startedOn, weekStart) : null;
   return {
     weekNo: started ? Math.floor(daysBetween(started, current) / 7) + 1 : null,
     exercise: fm.exercise,
@@ -286,6 +328,6 @@ function challengeRows(exercise, sets, mode, kind) {
 
 module.exports = {
   DEFAULT_SHAPE, DEFAULT_REST_S,
-  isChallenge, kindOf, metricFor, popularChallenges, challengeChoices, holdBeat, fmtScore, challengeName, parseShape, restSeconds, splitSets, nextTarget, weeklyBests, challengeStatus,
+  isChallenge, kindOf, metricFor, popularChallenges, challengeChoices, holdBeat, fmtScore, challengeName, parseShape, restSeconds, splitSets, nextTarget, nextAfterGo, weeklyBests, challengeStatus,
   createRun, addRep, closeIfRested, undoRep, runSets, restingFor, bestSet, challengeRows,
 };

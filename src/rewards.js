@@ -87,11 +87,18 @@
          workouts    history WITHOUT this session (sess.workoutsAtStart); a workout whose file.path equals workoutKey is ignored
          ledgerState parseLedger() result (or entries)
        No saved rows -> []. Components, in this order, each its own ledger line:
-         session:<workoutKey><keySuffix>      +100  'Session finished'
+         session:<workoutKey><keySuffix>      +100  'Session finished' (NOT for a weekly-challenge go: `kind: 'challenge'`
+                                              or stats.isChallengeRun(the note) - a go is not a session, decision D1)
          sets:<workoutKey><keySuffix>         +5 x sessionSets(sets)
          pb:<workoutKey><keySuffix>#<record.key>  +50 each record in `records`
          week-streak:<weekKey>                +20  once a week, when stats.weekStreak (counting this session) >= 2
          quest:<weekKey>                      +120 when THIS session takes the week's quest from incomplete to complete
+       ONCE A WEEK means once per calendar week as the setting draws it NOW: before a week-scoped award is paid, the
+       ledger is asked for a line of that kind dated inside the current week (paidInWeek), because the key is built from
+       the week's first day and "Week starts on" moves that day (Monday's line is week-streak:2026-11-16, the same
+       calendar days under a Saturday week are week-streak:2026-11-14). Old lines are never re-keyed.
+       A weekly-challenge go counts toward the week streak (it is a week you trained) and earns the sets line and any PB
+       line, but never the session line and never the weekly quest.
        Idempotent by key: awarding twice, or from two devices, can never pay twice.
 
    summarise(ledgerState, now, {weekStart}) -> {totalXp, level (levelFor), sessions, pbs, started,
@@ -171,6 +178,19 @@ function levelFor(xpRaw) {
 /* ---- weeks ---- */
 
 const weekKey = (date, weekStart) => (fromISO(date) ? startOfWeek(date, weekStart) : null);
+
+/* Does the ledger already hold a line of `kind` ('streak' | 'quest') dated inside
+   the week containing `date`, under the CURRENT week start? The week-scoped keys
+   are named after the week's first day, so changing "Week starts on" mid-week
+   gives the same calendar days a new key and the key check alone pays the award
+   a second time. This is the check that does not depend on how the week was
+   drawn when the line was written. */
+function paidInWeek(state, kind, date, weekStart) {
+  const start = weekKey(date, weekStart);
+  if (!start) return false;
+  const end = addDays(start, 6);
+  return ledger.entriesOf(state).some(e => e.kind === kind && e.date >= start && e.date <= end);
+}
 
 /* ---- the weekly quest ---- */
 
@@ -268,7 +288,10 @@ function questFor(o) {
      quest - a week of squats must not complete "Do 100 reps of Push-ups". */
   const planned = row => items.some(it => stats.sameName(it.exercise, row.exercise));
   let done = 0;
-  for (const w of o.workouts || []) {
+  /* A weekly-challenge go is not a session (stats.sessionsOf), so its reps are
+     not progress on the week's quest: 30 push-ups in a go would otherwise
+     complete "Do 10 reps of Push-ups". */
+  for (const w of stats.sessionsOf(o.workouts)) {
     const d = stats.workoutDate(w);
     if (!d || d < start || d > end) continue;
     const rows = (w.rows || []).filter(planned);
@@ -287,7 +310,9 @@ function questFor(o) {
     pct: Math.min(100, Math.floor((done / target) * 100)),
     complete: done >= target,
     xp: XP.quest, title, subject, weekStart: start, weekEnd: end,
-    paid: o.ledger ? ledger.hasKey(o.ledger, key) : false,
+    /* The key, or a quest line already dated inside this week under another
+       week start (paidInWeek) - the same two questions awardsForSession asks. */
+    paid: o.ledger ? ledger.hasKey(o.ledger, key) || paidInWeek(o.ledger, 'quest', today, o.weekStart) : false,
   };
 }
 
@@ -304,7 +329,11 @@ const KIND_UNIT = { reps: ' reps', weight: ' kg', seconds: 's' };
 function sessionKeySuffix(state, workoutKey, sessionId) {
   const wkey = String(workoutKey == null ? '' : workoutKey).trim();
   if (!wkey || sessionId == null || sessionId === '') return '';
-  return ledger.hasKey(state || ledger.parseLedger(''), `session:${wkey}`) ? `#${sessionId}` : '';
+  /* The `sets:` line too: a weekly-challenge go never writes a `session:` line, and
+     a path it was paid at must read as paid when the note is deleted and the path
+     reused. Every paid session has both lines, so this changes nothing for them. */
+  const st = state || ledger.parseLedger('');
+  return ledger.hasKey(st, `session:${wkey}`) || ledger.hasKey(st, `sets:${wkey}`) ? `#${sessionId}` : '';
 }
 
 function awardsForSession(o) {
@@ -322,7 +351,16 @@ function awardsForSession(o) {
     out.push({ date, key, kind, xp, note });
   };
 
-  add(`session:${wkey}${sfx}`, 'session', XP.session, 'Session finished');
+  /* THIS session as a workout, so every derived figure below counts it. The
+     caller's history excludes it; if it was already saved and reloaded, drop it
+     by path rather than count it twice. `kind` is how a weekly-challenge go
+     says what it is (the saved note carries it too). */
+  const history = (o.workouts || []).filter(w => !(w && w.file && w.file.path === wkey));
+  const mine = { name: wkey, fm: { date, kind: o.kind }, rows: o.sets, file: { path: wkey } };
+  const isRun = stats.isChallengeRun(mine);
+
+  /* A go is not a session: no +100. Its sets and PBs are paid like any other. */
+  if (!isRun) add(`session:${wkey}${sfx}`, 'session', XP.session, 'Session finished');
   add(`sets:${wkey}${sfx}`, 'sets', XP.set * n, `${n} set${n === 1 ? '' : 's'} logged`);
   for (const rec of o.records || []) {
     if (!rec) continue;
@@ -330,19 +368,15 @@ function awardsForSession(o) {
     add(`pb:${wkey}${sfx}#${id}`, 'pb', XP.pb, `New best: ${rec.exercise} ${rec.val}${KIND_UNIT[rec.kind] || ''}`);
   }
 
-  /* THIS session as a workout, so every derived figure below counts it. The
-     caller's history excludes it; if it was already saved and reloaded, drop it
-     by path rather than count it twice. */
-  const history = (o.workouts || []).filter(w => !(w && w.file && w.file.path === wkey));
-  const mine = { name: wkey, fm: { date }, rows: o.sets, file: { path: wkey } };
   const wk = weekKey(date, o.weekStart);
 
+  /* workoutDates, not sessionDates: a week with only a go is still a week you trained. */
   const streak = stats.weekStreak(stats.workoutDates(history.concat([mine])), o.weekStart, date);
-  if (streak >= 2) add(`week-streak:${wk}`, 'streak', XP.streak, `${streak}-week streak kept`);
+  if (streak >= 2 && !paidInWeek(state, 'streak', date, o.weekStart)) add(`week-streak:${wk}`, 'streak', XP.streak, `${streak}-week streak kept`);
 
   const common = { daysOn: o.daysOn, exercises: o.exercises, today: date, weekStart: o.weekStart };
   const after = questFor({ ...common, workouts: history.concat([mine]) });
-  if (after && after.complete) {
+  if (after && after.complete && !paidInWeek(state, 'quest', date, o.weekStart)) {
     const before = questFor({ ...common, workouts: history });
     if (before && !before.complete) add(after.key, 'quest', XP.quest, `Weekly quest done: ${after.title}`);
   }
@@ -486,27 +520,33 @@ function seriesPersonalBests(steps, ctx) {
   return events.map((e, i) => ({ date: e.date, value: i + 1 }));
 }
 
+/* `sessions: true` marks the medals that count SESSIONS (Iron Week, Century,
+   Consistency): they walk stats.sessionsOf, so a weekly-challenge go is no session
+   toward them. Every other medal walks every note: the week streak (a week with
+   only a go is still a week you trained), volume, reps and distance (real figures
+   from real sets) and the PB medals (a go's best set is a Records entry). */
 const MEDALS = [
   { key: 'first-pb', name: 'First PB', unit: 'PBs', at: [1], desc: 'Beat a personal best for the first time.', series: seriesPersonalBests },
-  { key: 'iron-week', name: 'Iron Week', unit: 'sessions', at: [3, 4, 5], desc: 'Sessions logged in a single week.', series: seriesBestWeek },
+  { key: 'iron-week', name: 'Iron Week', unit: 'sessions', at: [3, 4, 5], desc: 'Sessions logged in a single week.', sessions: true, series: seriesBestWeek },
   { key: 'week-streak', name: 'Week Streak', unit: 'weeks', at: [3, 5, 10], desc: 'Weeks in a row with a session.', series: seriesBestStreak },
   { key: '10k-club', name: '10K Club', unit: 'kg', at: [10000, 50000, 100000], desc: 'Total weight lifted, reps x kg.',
     series: runningTotal(w => stats.sessionVolume(w.rows)) },
-  { key: 'century', name: 'Century', unit: 'sessions', at: [25, 100, 250], desc: 'Sessions logged.',
+  { key: 'century', name: 'Century', unit: 'sessions', at: [25, 100, 250], desc: 'Sessions logged.', sessions: true,
     series: steps => steps.map(({ date }, i) => ({ date, value: i + 1 })) },
   { key: 'rep-machine', name: 'Rep Machine', unit: 'reps', at: [1000, 5000, 10000], desc: 'Total reps logged.',
     series: runningTotal(w => (w.rows || []).reduce((n, r) => n + (stats.num(r.reps) || 0), 0)) },
   { key: 'distance-club', name: 'Distance Club', unit: 'km', at: [50, 250, 1000], desc: 'Total distance logged.',
     series: runningTotal(w => (w.rows || []).reduce((n, r) => n + (stats.num(r.distance_km) || 0), 0), round1) },
-  { key: 'consistency', name: 'Consistency', unit: 'weeks', at: [4, 8, 12], desc: 'Weeks in a row with 3 or more sessions.', series: seriesSteadyWeeks },
+  { key: 'consistency', name: 'Consistency', unit: 'weeks', at: [4, 8, 12], desc: 'Weeks in a row with 3 or more sessions.', sessions: true, series: seriesSteadyWeeks },
   { key: 'pb-hunter', name: 'Personal Best Hunter', unit: 'PBs', at: [5, 25, 100], desc: 'Personal bests broken.', series: seriesPersonalBests },
 ];
 
 function medals(o) {
   const ctx = { workouts: (o.workouts || []).filter(Boolean), exercises: o.exercises || [], weekStart: o.weekStart };
   const steps = walkOrder(ctx.workouts);
+  const sessionSteps = steps.filter(({ w }) => !stats.isChallengeRun(w));
   return MEDALS.map(def => {
-    const events = def.series(steps, ctx);
+    const events = def.series(def.sessions ? sessionSteps : steps, ctx);
     const value = events.length ? events[events.length - 1].value : 0;
     const tiers = def.at.map((at, i) => ({ tier: TIER_NAMES[i], at }));
     const earned = { bronze: null, silver: null, gold: null };

@@ -84,13 +84,39 @@ function workoutDates(workouts) {
    exercise as performed exactly to target. Used by BOTH the live tally and
    finishSession — two copies of this rule is how they drift apart. */
 function setCounts(set) {
-  const hasFigure = !!(String(set.reps ?? '').trim() ||
-    String(set.weight_kg ?? '').trim() ||
-    String(set.seconds ?? '').trim() ||
-    String(set.distance_km ?? '').trim() ||
-    String(set.minutes ?? '').trim());
+  /* A figure has a digit in it. A lone `.` (a decimal point typed and left)
+     used to count, and was saved as a set of "." reps. */
+  const fig = v => /\d/.test(String(v ?? ''));
+  const hasFigure = fig(set.reps) || fig(set.weight_kg) || fig(set.seconds) || fig(set.distance_km) || fig(set.minutes);
   return !!(set.done || (set.touched && hasFigure));
 }
+
+/* THE ONE RULE FOR "THIS NOTE WAS A WEEKLY-CHALLENGE GO, NOT A SESSION".
+
+   challenge-flow saves a go as an ordinary workout note (one row per unbroken
+   set) so Records, the goal's best and History read it with every other note.
+   That also made every "how many sessions" figure count it: four one-rep goes
+   read "4 of 4 done - Week done", completed a "4 Workouts a Week" goal and paid
+   +100 XP each. Decision D1: a go is not a session. It still feeds Records, the
+   exercise bests, the goal's own best, the week streak, per-set XP and the PB
+   bonus - everything that reads the ROWS or the DAY - and counts toward nothing
+   that asks "how many sessions".
+
+   New notes carry `kind: challenge` (data.saveWorkout writes it from the
+   session). A note saved before that carries no kind, but it has no plan and its
+   day is the goal's name ("50 Push-ups challenge" - challenge-flow.challengeDay),
+   so an empty plan with "challenge" in the day name is read the same way. A real
+   session always names its plan day, so this cannot catch one. */
+function isChallengeRun(w) {
+  const fm = (w && w.fm) || {};
+  if (fm.kind === 'challenge') return true;
+  return !String(fm.plan == null ? '' : fm.plan).trim() && /challenge/i.test(String(fm.day == null ? '' : fm.day));
+}
+
+/* The workouts that are SESSIONS: every list a session figure is derived from
+   starts here (sessionCount, sessionsInWeek, sessionDates, the rewards medals and
+   the weekly quest), so no caller has its own idea of what to leave out. */
+const sessionsOf = workouts => (workouts || []).filter(w => !isChallengeRun(w));
 
 /* HOW MANY SESSIONS — the one rule, for every surface that prints the word.
 
@@ -100,14 +126,25 @@ function setCounts(set) {
    this app treats as first-class, "Log another session" is a button — and
    Today said 1 while History listed 2.
 
-   A session is a logged workout note. Two on one day are two. An undated
+   A session is a logged workout note that is not a weekly-challenge go
+   (isChallengeRun). Two on one day are two. An undated
    note is still one — it is a session someone recorded and History already
    shows it on screen; leaving it out of the count made the number disagree
    with the cards underneath it. Undated notes stay out of the STREAK and the
    heatmap, which genuinely need a date, and workoutDates() still answers
-   that separate question. */
+   that separate question. History still LISTS a challenge go (it is a note
+   with rows), so its count is the one place a go is on the screen and not in
+   the number. */
 function sessionCount(workouts) {
-  return (workouts || []).length;
+  return sessionsOf(workouts).length;
+}
+
+/* Unique session days, ascending: workoutDates over the sessions only. The day
+   strip's "done" marks and "Logged for today" read this; the week STREAK and
+   the heat grid read workoutDates, because a week with only a challenge go is
+   still a week you trained. */
+function sessionDates(workouts) {
+  return workoutDates(sessionsOf(workouts));
 }
 
 /* The same rule, inside one week. Undated notes belong to no week, so they
@@ -115,7 +152,7 @@ function sessionCount(workouts) {
 function sessionsInWeek(workouts, refIso, weekStart) {
   const start = startOfWeek(refIso, weekStart);
   const end = addDays(start, 7);
-  return (workouts || []).filter(w => {
+  return sessionsOf(workouts).filter(w => {
     const d = workoutDate(w);
     return d && d >= start && d < end;
   }).length;
@@ -336,6 +373,18 @@ function goalCurrent(goal, ctx) {
     const ex = ctx.exercises.find(e => sameName(e.name, fm.exercise));
     if (ex && !claimableKinds(ex).includes(kind)) return null;
   }
+  /* A WEEKLY CHALLENGE reads its OWN best: the biggest unbroken set (or hold)
+     logged on or after `started`, which is the figure its challenge line, the
+     pop-up's "Best" and next week's target are built from
+     (challenge.challengeStatus). The all-time exerciseBests below counts sets
+     from before the challenge began and undated notes, so with 52 push-ups on
+     1 Oct and a "50 Push-ups" challenge started on 13 Nov the card showed a
+     trophy and "52 of 50" beside a line that said "baseline 20". Required here
+     rather than at the top because challenge.js requires this file. */
+  const challenge = require('./challenge');
+  if (challenge.isChallenge(goal)) {
+    return challenge.challengeStatus(goal, ctx.workouts, { weekStart: ctx.weekStart, today: ctx.today || todayISO() }).best;
+  }
   switch (fm.metric) {
     case 'exercise-reps':     return exerciseBests(ctx.workouts, fm.exercise).reps;
     case 'exercise-duration': return exerciseBests(ctx.workouts, fm.exercise).seconds;
@@ -371,17 +420,76 @@ function goalIssue(goal, ctx) {
     const names = (ctx && ctx.exerciseNames) || null;
     if (names && !names.some(n => sameName(n, fm.exercise))) return `no exercise named "${fm.exercise}"`;
   }
+  /* Last, so the metric and the exercise are named first: a goal with no
+     target has nothing to measure against, and "log a workout to start
+     tracking" would send the user to fix the wrong thing. */
+  if (num(fm.target) === null) return 'this goal has no target set';
   return null;
+}
+
+/* When was this goal note created, as YYYY-MM-DD, or null when the file does not
+   say (a goal built in memory, a sync that dropped the stat). */
+function goalCreatedISO(goal) {
+  const t = goal && goal.file && goal.file.stat ? goal.file.stat.ctime : null;
+  return typeof t === 'number' && Number.isFinite(t) ? toISO(new Date(t)) : null;
+}
+
+/* The baseline a body-weight goal with no `start_value` measures from: the
+   earliest weight logged on or after the day the goal was created. A decrease
+   goal with no baseline can only be done-or-not, so 82.4 kg -> 80.5 kg toward
+   78 read 0% until it was met. Null when the data offers none (no creation
+   date, no weight logged since), which leaves the old behaviour untouched. */
+function bodyBaseline(goal, body) {
+  const created = goalCreatedISO(goal);
+  if (!created) return null;
+  let first = null;
+  for (const r of body || []) {
+    const d = r && r.date ? fromISO(r.date) : null, w = r ? num(r.weight_kg) : null;
+    if (!d || w === null) continue;
+    const iso = toISO(d);
+    if (iso >= created && (!first || iso < first.iso)) first = { iso, w };
+  }
+  return first ? first.w : null;
+}
+
+/* The two things a NEW goal is given when the user did not choose them
+   (page-goals calls this when a goal is created):
+
+   direction - "auto" (the form's default) or nothing means: a body-weight goal
+   whose target is below the current weight is a Decrease, anything else an
+   Increase. Defaulting every goal to Increase made a cut from 90 kg to 80 kg
+   "done", with a trophy, the moment it was saved. An explicit "increase" or
+   "decrease" is never touched.
+
+   start_value - a body-weight goal left blank starts from the current body-log
+   weight, so a decrease has a baseline from day one. Only body-weight, only when
+   blank and only when a weight is logged; every other goal keeps what it typed. */
+function newGoalDefaults(v, body) {
+  const metric = v && v.metric;
+  const typed = v && v.direction;
+  let direction = typed === 'increase' || typed === 'decrease' ? typed : 'increase';
+  let start = v && v.start_value !== undefined && v.start_value !== null ? v.start_value : '';
+  if (metric === 'body-weight') {
+    const current = goalCurrent({ fm: { metric } }, { body });
+    const target = num(v.target);
+    if (typed !== 'increase' && typed !== 'decrease' && current !== null && target !== null && target < current) direction = 'decrease';
+    if (String(start).trim() === '' && current !== null) start = current;
+  }
+  return { direction, start_value: start };
 }
 
 /* 0..1 progress. Uses start_value as the baseline when present (so a cut
    from 90kg toward 80kg shows honest movement); without one, an increase
-   goal measures from zero and a decrease goal can only be done-or-not. */
-function goalProgress(goal, current) {
+   goal measures from zero and a decrease goal can only be done-or-not.
+   `ctx.body` (the body log) is optional: a body-weight goal with no start_value
+   then falls back to bodyBaseline. Callers that pass it agree with each other;
+   a caller that does not gets the old figure. */
+function goalProgress(goal, current, ctx) {
   const fm = goal.fm || {};
   const target = num(fm.target);
   if (target === null || current === null) return null;
-  const start = num(fm.start_value);
+  let start = num(fm.start_value);
+  if (start === null && fm.metric === 'body-weight' && ctx && ctx.body) start = bodyBaseline(goal, ctx.body);
   const decrease = fm.direction === 'decrease';
   if (decrease) {
     if (start === null || start <= target) return current <= target ? 1 : 0;
@@ -398,7 +506,11 @@ const clamp01 = x => Math.max(0, Math.min(1, x));
 /* [{date, value}] ascending, for the weight sparkline. */
 function weightSeries(bodyRows) {
   return (bodyRows || [])
-    .map(r => ({ date: r.date, value: num(r.weight_kg) }))
+    /* workoutDate, not the raw text: as strings a hand-typed `2026-8-6` sorts
+       after `2026-11-01`, and the trend ended on an old weight while the tile
+       (data.compareBodyRows, the same rule) showed the right one. A row whose
+       date cannot be read is left out of the trend. */
+    .map(r => ({ date: workoutDate({ fm: { date: r && r.date } }) || '', value: num(r && r.weight_kg) }))
     .filter(p => p.date && p.value !== null)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
@@ -410,7 +522,7 @@ function bmi(weightKg, heightCm) {
 }
 
 module.exports = {
-  num, workoutDates, workoutDate, workoutTime, compareWorkouts, sameName, countInWeek, sessionCount, sessionsInWeek, weekStreak, exerciseBests, epley1RM, best1RM,
+  num, workoutDates, workoutDate, workoutTime, compareWorkouts, sameName, countInWeek, sessionCount, sessionsInWeek, sessionsOf, sessionDates, isChallengeRun, weekStreak, exerciseBests, epley1RM, best1RM,
   sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek, ranOn,
-  goalCurrent, goalIssue, goalProgress, weightSeries, bmi, claimableKinds, claimedBests,
+  goalCurrent, goalIssue, goalProgress, newGoalDefaults, weightSeries, bmi, claimableKinds, claimedBests,
 };

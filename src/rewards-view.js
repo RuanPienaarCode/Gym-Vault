@@ -119,11 +119,17 @@ const MEDAL_ICONS = {
 const TIER_LABEL = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', locked: 'Locked' };
 const iconFor = key => MEDAL_ICONS[key] || 'award';
 
+/* The medal units whose noun changes at one ("1 PB to go", not "1 PBs to go").
+   Units are the engine's (rewards.MEDALS); kg and km are the same word either
+   way, and a unit not listed is left as it came. */
+const SINGULAR_UNIT = { PBs: 'PB', sessions: 'session', weeks: 'week', reps: 'rep' };
+
 function toGoDetail(m) {
   const p = m.progress || {};
   if (p.next === null || p.next === undefined) return '';
   const left = Math.max(0, round1(p.next - p.value));
-  return `${groupDigits(left)} ${m.unit || 'to go'}${m.unit ? ' to go' : ''}`;
+  const unit = left === 1 && SINGULAR_UNIT[m.unit] ? SINGULAR_UNIT[m.unit] : m.unit;
+  return `${groupDigits(left)} ${unit || 'to go'}${unit ? ' to go' : ''}`;
 }
 
 function medalTile(m) {
