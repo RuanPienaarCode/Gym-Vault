@@ -97,11 +97,19 @@ check('one rule: activePlanOf agrees with controller.ctx.activePlan / isImplicit
   try { controller = require('../src/controller'); plansPage = require('../src/page-plans'); } finally { Module._load = orig; }
   assert.strictEqual(plansPage.planRole, P.planRole, 'page-plans must hand out plan-parse.planRole');
   const sets = [IMPLICIT(), [mk('A', {}), mk('B', { active: true })], [mk('Solo Par', { parallel: true })], [mk('G', { fallback: true }), mk('H', {})], []];
+  /* ONE implementation, not two that agree: controller.js imports these from
+     plan-parse.js. (This check used to hold a hand-copied model of the
+     controller's rule, and went on passing while the controller's own rule
+     moved on to exclude fallback plans.) */
+  assert.strictEqual(controller.activePlanOf, P.activePlanOf, 'controller.js must use plan-parse.activePlanOf itself');
+  assert.strictEqual(controller.mainPlansOf, P.mainPlansOf, 'controller.js must use plan-parse.mainPlansOf itself');
+  const [g, h] = sets[3];
+  assert.strictEqual(P.activePlanOf(sets[3]), h, 'a fallback plan that sorts first is not the plan Today runs');
+  assert.strictEqual(P.planRole(h, P.activePlanOf(sets[3])), 'active', 'the main plan is the one badged active in the export');
+  assert.strictEqual(P.planRole(g, P.activePlanOf(sets[3])), 'fills-gaps');
   for (const plans of sets) {
-    const main = plans.filter(p => String(p.fm.parallel) !== 'true');
-    const viaCtx = main.find(p => String(p.fm.active) === 'true') || main[0] || null;   // controller.js ctx.activePlan, verbatim
-    assert.strictEqual(P.activePlanOf(plans), viaCtx, `activePlanOf differs from ctx.activePlan for ${JSON.stringify(plans.map(p => p.name))}`);
-    const implicit = !!P.activePlanOf(plans) && !plans.filter(p => String(p.fm.parallel) !== 'true').some(p => String(p.fm.active) === 'true');
+    const main = P.mainPlansOf(plans);
+    const implicit = !!P.activePlanOf(plans) && !main.some(p => String(p.fm.active) === 'true');
     assert.strictEqual(controller.isImplicitActive(main), implicit, 'the implicit-active reading disagrees with controller.isImplicitActive');
   }
 });

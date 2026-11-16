@@ -6,7 +6,7 @@ const { Notice, normalizePath } = require('obsidian');
 const { el, ico, clear, emptyLine } = require('./dom');
 const { makeIo } = require('./data');
 const { ConfirmModal } = require('./modals');
-const { isPaused } = require('./plan-parse');
+const { isPaused, mainPlansOf, activePlanOf } = require('./plan-parse');
 const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
@@ -164,14 +164,11 @@ function isImplicitActive(mainPlans) {
    and the plan Today runs can never disagree. activePlan used to exclude
    parallel plans only: with no plan flagged active, a hand-made
    `fallback: true` plan that sorted first was treated as the main plan and
-   Today ran its rest days as the week. */
-const mainPlansOf = plans => (plans || []).filter(p => !isParallelPlan(p) && !isFallbackPlan(p));
+   Today ran its rest days as the week.
 
-/* The plan Today runs: the one flagged active, else the first main plan. */
-function activePlanOf(plans) {
-  const main = mainPlansOf(plans);
-  return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
-}
+   The two functions themselves live in plan-parse.js (mainPlansOf, activePlanOf)
+   so export.js, which cannot load this file, reads the very same rule; they are
+   imported at the top and re-exported below. */
 
 /* WHAT A RE-DRAW DOES WITH THE PAGE'S SCROLL AND FOCUS (audit 16 Nov 2026,
    #11), pure and exported so the guard suite executes shipping code.
@@ -180,13 +177,14 @@ function activePlanOf(plans) {
    reload and History expand re-draws it, so resetting scrollTop after every
    render threw the reader back to the top each time. The rule:
 
-     keep     a re-draw of the SAME page (ctx.rerender, a vault-watcher
-              reload, a ctx.nav to the page you are already on with other
-              params): the scroll stays, clamped to the new content height
+     keep     a re-draw of the SAME view (ctx.rerender, a vault-watcher
+              reload, a ctx.nav that only opens something in place - see
+              viewKey): the scroll stays, clamped to the new content height
      restore  Back: the scroll the page had when you left it, which ctx.nav
               stored on the back-stack entry
-     reset    a change of page, and any nav-tab tap (the tab you are already
-              on included): the top
+     reset    a change of page OR of view on the same page (Plans list ->
+              one plan), and any nav-tab tap (the tab you are already on
+              included): the top
 
    prev = { page: the page last DRAWN, scrollTop: its scroll right now }
    next = { page: the page being drawn, cause: 'rerender' | 'nav' | 'tab' |
@@ -196,6 +194,20 @@ function activePlanOf(plans) {
    user gets no other signal) or a tab was tapped, and never on a same-page
    re-draw, which would steal focus mid-interaction. The very first draw moves
    nothing. */
+/* THE VIEW a route shows: the page plus the params that pick a DIFFERENT screen
+   on it. Plans is a list and, with `plan`, one plan's detail - two screens under
+   one page id - so opening a plan from far down the list must start at the top
+   like any other change of screen (it kept the list's offset for a few hours).
+   A param listed here only opens something IN PLACE and is not part of the view:
+   History's `session` expands a card where it stands. */
+const IN_PLACE_PARAMS = { history: ['session'] };
+function viewKey(page, params) {
+  const p = params || {};
+  const skip = IN_PLACE_PARAMS[page] || [];
+  const keys = Object.keys(p).filter(k => skip.indexOf(k) < 0 && p[k] !== undefined && p[k] !== null && p[k] !== '').sort();
+  return `${page}?${keys.map(k => `${k}=${String(p[k])}`).join('&')}`;
+}
+
 function scrollDecision(prev, next) {
   const from = prev || {};
   const to = next || {};
@@ -206,7 +218,10 @@ function scrollDecision(prev, next) {
   if (cause === 'back') {
     return { mode: 'restore', top: Number.isFinite(to.savedTop) ? Math.max(0, to.savedTop) : 0, focus: !samePage };
   }
-  if (samePage) return { mode: 'keep', top, focus: false };
+  /* `view` is optional: a caller that names only the page is asking about the
+     page as a whole. A plain rerender never changes the view. */
+  const sameView = samePage && (cause !== 'nav' || from.view == null || to.view == null || from.view === to.view);
+  if (sameView) return { mode: 'keep', top, focus: false };
   return { mode: 'reset', top: 0, focus: cause === 'nav' };
 }
 
@@ -295,6 +310,7 @@ function mountApp(view) {
   let pendingRoute = null;
   /* The page last drawn and the ISO date it was drawn on (shouldRedrawForNewDay). */
   let drawnPage = null;
+  let drawnView = null;
   let drawnISO = null;
 
   /* THE SESSION IN PROGRESS IS KEPT ON THIS DEVICE (0.12.1, audit L3-01). It
@@ -578,8 +594,8 @@ function mountApp(view) {
     /* The scroll is read BEFORE the page is emptied: clearing it shrinks the
        container and the browser clamps the offset away. */
     const scroll = scrollDecision(
-      { page: drawnPage, scrollTop: pageEl.scrollTop },
-      { page: ctx.state.page, cause: route ? route.cause : 'rerender', savedTop: route ? route.savedTop : undefined });
+      { page: drawnPage, view: drawnView, scrollTop: pageEl.scrollTop },
+      { page: ctx.state.page, view: viewKey(ctx.state.page, ctx.state.params), cause: route ? route.cause : 'rerender', savedTop: route ? route.savedTop : undefined });
     clear(pageEl);
     /* Focus mode is OPT-IN PER RENDER: cleared here, re-added by the counting
        screens in page-session.js. A sticky class would hide the nav on a page
@@ -615,6 +631,7 @@ function mountApp(view) {
       }
     }
     drawnPage = ctx.state.page;
+    drawnView = viewKey(ctx.state.page, ctx.state.params);
     drawnISO = todayISO();
     pageEl.scrollTop = clampScroll(scroll.top, pageEl.scrollHeight, pageEl.clientHeight);
     if (scroll.focus) focusPageHeading();
@@ -946,5 +963,5 @@ function renderSetup(ctx, root) {
 module.exports = {
   mountApp, NAV, paneHeightTier, SHORT_PANE_PX, SHORTER_PANE_PX, resolveDaysOn, isImplicitActive, describeDraft,
   isPaused, parallelPlansOf, fallbackPlansOf, runPlanOf,
-  mainPlansOf, activePlanOf, scrollDecision, clampScroll, shouldRedrawForNewDay, discardLiveSession,
+  mainPlansOf, activePlanOf, scrollDecision, viewKey, clampScroll, shouldRedrawForNewDay, discardLiveSession,
 };

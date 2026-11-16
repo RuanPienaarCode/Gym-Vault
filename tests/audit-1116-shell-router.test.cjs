@@ -58,6 +58,34 @@ const planOf = (name, fm, days) => {
     const d = controller.scrollDecision({ page: 'history', scrollTop: 1200 }, { page: 'history', cause: 'nav' });
     assert.deepStrictEqual([d.mode, d.top, d.focus], ['keep', 1200, false]);
   });
+  await check('11b2 scrollDecision: a nav to ANOTHER VIEW of the same page (Plans list -> one plan) starts at the top', () => {
+    const list = controller.viewKey('plans', {}), detail = controller.viewKey('plans', { plan: 'Trail Base' });
+    assert.notStrictEqual(list, detail, 'the list and a plan are two views');
+    const open = controller.scrollDecision({ page: 'plans', view: list, scrollTop: 1759 }, { page: 'plans', view: detail, cause: 'nav' });
+    assert.deepStrictEqual(open, { mode: 'reset', top: 0, focus: true });
+    const other = controller.scrollDecision({ page: 'plans', view: detail, scrollTop: 300 }, { page: 'plans', view: controller.viewKey('plans', { plan: 'Other' }), cause: 'nav' });
+    assert.strictEqual(other.mode, 'reset');
+    /* History's session only opens a card in place: same view, scroll kept */
+    assert.strictEqual(controller.viewKey('history', { session: '2026-01-01' }), controller.viewKey('history', {}));
+    const expand = controller.scrollDecision({ page: 'history', view: controller.viewKey('history', {}), scrollTop: 1200 }, { page: 'history', view: controller.viewKey('history', { session: 'x' }), cause: 'nav' });
+    assert.deepStrictEqual(expand, { mode: 'keep', top: 1200, focus: false });
+    /* a re-draw inside a plan (an edit, a star) keeps its place */
+    const edit = controller.scrollDecision({ page: 'plans', view: detail, scrollTop: 1881 }, { page: 'plans', view: detail, cause: 'rerender' });
+    assert.strictEqual(edit.mode, 'keep');
+  });
+  await check('11b3 opening a plan from far down the Plans list starts the plan at the top; Back restores the list', async () => {
+    const { ctx } = await H.boot();
+    assert.ok(ctx.data.plans.length, 'fixture: the harness has a plan');
+    ctx.nav('plans', null, { reset: true });
+    pageNode(ctx).scrollTop = 1759;
+    ctx.nav('plans', { plan: ctx.data.plans[0].name });
+    assert.strictEqual(pageNode(ctx).scrollTop, 0, 'the plan opened at the list\'s scroll offset');
+    pageNode(ctx).scrollTop = 420;
+    ctx.rerender();
+    assert.strictEqual(pageNode(ctx).scrollTop, 420, 'a re-draw inside the plan keeps its place');
+    ctx.nav('plans');
+    assert.strictEqual(pageNode(ctx).scrollTop, 0, 'back on the list by a plain nav starts at the top');
+  });
   await check('11c scrollDecision: a change of page starts at the top and moves focus', () => {
     const d = controller.scrollDecision({ page: 'plans', scrollTop: 900 }, { page: 'exercises', cause: 'nav' });
     assert.deepStrictEqual([d.mode, d.top, d.focus], ['reset', 0, true]);

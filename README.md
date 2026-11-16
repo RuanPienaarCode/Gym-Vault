@@ -201,7 +201,7 @@ pairs with the Olive accent, are also there).
 - **Calm motion** — no confetti, no pulsing, flickering or scrolling, and
   exercise images held still. Sounds and counting are unchanged.
 - **Look and feel on this device only** — for a vault shared between devices
-  or people. With it on, *Style*, *Accent color*, *Calm colours*, *Rewards* and
+  or people. With it on, *Style* (the Calm colours included), *Accent color*, *Rewards* and
   *Calm motion* are kept on that phone or computer only, in Obsidian's local
   storage, and are not written to the synced `data.json`, so the other devices
   keep their own. With it off they follow one shared choice.

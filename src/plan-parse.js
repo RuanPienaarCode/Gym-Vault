@@ -369,11 +369,16 @@ function isFavourite(plan) {
    Plans badges it "fills gaps". They sit here, pure, so the page and the export
    read ONE rule.
 
-   activePlanOf is ctx.activePlan's rule: the first plan flagged `active` among
-   those that are not `parallel`, else the first of them (the "implicit" active
-   plan controller.isImplicitActive describes). */
+   A MAIN plan is neither parallel (it runs ALONGSIDE the active one) nor
+   fallback (it only fills a day nothing else claims). activePlanOf is the plan
+   Today runs: the first main plan flagged `active`, else the first main plan
+   (the "implicit" active plan controller.isImplicitActive describes).
+   controller.js imports BOTH from here (ctx.mainPlans, ctx.activePlan), so the
+   export can never label a different plan than Today follows. For an afternoon
+   there were two copies, and this one still let a fallback plan lead. */
+const mainPlansOf = plans => (plans || []).filter(p => String(p.fm.parallel) !== 'true' && String(p.fm.fallback) !== 'true');
 function activePlanOf(plans) {
-  const main = (plans || []).filter(p => String(p.fm.parallel) !== 'true');
+  const main = mainPlansOf(plans);
   return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
 }
 
@@ -396,7 +401,7 @@ function planRole(p, activePlan) {
 }
 
 module.exports = {
-  isPaused, isFavourite, activePlanOf, alongsideKind, planRole, rxLabel,
+  isPaused, isFavourite, mainPlansOf, activePlanOf, alongsideKind, planRole, rxLabel,
   parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, moveItem, updateItem, itemSets, isRestDay,
   targetWeight, targetFirstNumber, targetIsDuration, targetDurationSeconds,
 };
