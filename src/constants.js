@@ -46,6 +46,8 @@ const DEFAULT_SETTINGS = {
   planRepo: 'https://raw.githubusercontent.com/RuanPienaarCode/gym_plans/main',
   /* XP, levels, the weekly quest and medals (rewards.js). Off means nothing is awarded and the ledger is never read. */
   rewards: true,
+  /* Calm motion (quiet-motion.js): no confetti, no looping pulses, still exercise images. */
+  quietMotion: false,
   /* Instruction images play their start/finish frames as an animation (the live
      set's thumbnail and the full-screen viewer; media-cycle.js autoPlayMedia
      is the one rule, and a missing key means ON). The Muscle Map obeys the same

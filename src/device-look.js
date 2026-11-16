@@ -3,9 +3,10 @@
 
    Settings live in data.json inside the vault, and the vault syncs, so two
    people sharing one vault share one Style and one Accent: whoever picks last
-   repaints the other phone. A device look is a { skin, accent } pair kept in
+   repaints the other phone. A device look ({ skin, accent, rewards,
+   quietMotion }, any subset) is kept in
    Obsidian's per-vault LOCAL storage (never synced). When one is set it wins
-   on this device, and saving still writes the SHARED pair to data.json, so the
+   on this device, and saving still writes the SHARED values to data.json, so the
    other devices never see it.
 
    Pure helpers + a tiny store; the plugin (main.js) owns the state. */
@@ -13,8 +14,11 @@
 const { SKINS, ACCENTS } = require('./constants');
 
 const LOOK_KEY = 'gym-app-device-look';
-const FIELDS = ['skin', 'accent'];
-const VALID = { skin: SKINS.map(s => s[0]), accent: ACCENTS.map(a => a[0]) };
+/* What a device may choose for itself: how it looks (Style, Accent) and how
+   loud it is (Rewards, Calm motion). Everything else stays shared. */
+const FIELDS = ['skin', 'accent', 'rewards', 'quietMotion'];
+const BOOL = [true, false];
+const VALID = { skin: SKINS.map(s => s[0]), accent: ACCENTS.map(a => a[0]), rewards: BOOL, quietMotion: BOOL };
 
 /* Only known keys survive, field by field; nothing valid = null (no look). */
 function cleanLook(raw) {
@@ -67,4 +71,4 @@ function makeLookStore(app) {
   };
 }
 
-module.exports = { LOOK_KEY, cleanLook, applyLook, sharedForSave, makeLookStore };
+module.exports = { LOOK_KEY, LOOK_FIELDS: FIELDS, cleanLook, applyLook, sharedForSave, makeLookStore };

@@ -101,4 +101,18 @@ check('D6 inputs are not mutated', () => {
   assert.deepStrictEqual(input, shared);
 });
 
+/* D7 (16 Nov 2026): the device choice also covers Rewards and Calm motion, so one phone can
+   go quiet without switching the other's XP or celebrations off. Booleans only. */
+check('D7 rewards and calm motion are device choices too', () => {
+  const look = cleanLook({ skin: 'calm', rewards: false, quietMotion: true });
+  assert.deepStrictEqual(look, { skin: 'calm', rewards: false, quietMotion: true });
+  const s = applyLook({ skin: 'apex', accent: 'lime', rewards: true, quietMotion: false }, look);
+  assert.strictEqual(s.rewards, false);
+  assert.strictEqual(s.quietMotion, true);
+  const out = sharedForSave(s, { skin: 'apex', accent: 'lime', rewards: true, quietMotion: false }, look);
+  assert.strictEqual(out.rewards, true, 'device rewards leaked into data.json');
+  assert.strictEqual(out.quietMotion, false, 'device calm motion leaked into data.json');
+  assert.deepStrictEqual(cleanLook({ rewards: 'no', quietMotion: 1 }), null, 'non-booleans must be dropped');
+});
+
 if (failed) { console.error(`device-look: ${failed} failed`); process.exit(1); }

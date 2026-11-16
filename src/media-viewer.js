@@ -1,4 +1,5 @@
 'use strict';
+const { QUIET_CLASS, quietMotionOn } = require('./quiet-motion');
 /* The full-screen look at an exercise's frames.
 
    Why it exists: on the live set the exercise media is a 72px thumbnail (Apex,
@@ -83,6 +84,7 @@ class MediaViewerModal extends Modal {
     modalEl.addClass('gv-mv-modal');
     for (const cls of skinClasses(this.skin)) modalEl.addClass(cls);
     modalEl.addClass(`gv-accent-${this.accent}`);
+    if (quietMotionOn(this.settings)) modalEl.addClass(QUIET_CLASS);
     modalEl.setAttribute('role', 'dialog');
     modalEl.setAttribute('aria-modal', 'true');
     modalEl.setAttribute('aria-label', this.name || 'Exercise images');

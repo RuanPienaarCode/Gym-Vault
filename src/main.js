@@ -17,7 +17,7 @@ const { RepCounterModal } = require('./rep-counter-modal');
 const { weekdayKey, todayISO } = require('./dates');
 const { isChallenge } = require('./challenge');
 const { openChallenge, openNewChallenge } = require('./challenge-flow');
-const { applyLook, sharedForSave, makeLookStore } = require('./device-look');
+const { applyLook, sharedForSave, makeLookStore, LOOK_FIELDS } = require('./device-look');
 
 class GymPlugin extends Plugin {
   async onload() {
@@ -134,7 +134,8 @@ class GymPlugin extends Plugin {
      data.json holds, this.deviceLook the local override (or null). */
   async loadSettings() {
     const stored = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    this._sharedLook = { skin: stored.skin, accent: stored.accent };
+    this._sharedLook = {};
+    for (const f of LOOK_FIELDS) this._sharedLook[f] = stored[f];
     this._lookStore = makeLookStore(this.app);
     this.deviceLook = this._lookStore.read();
     this.settings = applyLook(stored, this.deviceLook);
@@ -142,7 +143,7 @@ class GymPlugin extends Plugin {
 
   async saveSettings() { await this.saveData(sharedForSave(this.settings, this._sharedLook, this.deviceLook)); }
 
-  /* Style or Accent picked in Settings: this device's look when one is on,
+  /* Style, Accent, Rewards or Calm motion picked in Settings: this device's choice when one is on,
      otherwise the shared one every device follows. */
   async setLook(field, value) {
     this.settings[field] = value;
@@ -160,7 +161,8 @@ class GymPlugin extends Plugin {
      Off: back to the shared look. */
   setDeviceLook(on) {
     if (on) {
-      this.deviceLook = { skin: this.settings.skin, accent: this.settings.accent };
+      this.deviceLook = {};
+      for (const f of LOOK_FIELDS) if (this.settings[f] !== undefined) this.deviceLook[f] = this.settings[f];
       this._lookStore.write(this.deviceLook);
     } else {
       this.deviceLook = null;

@@ -1192,6 +1192,8 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
 @media (prefers-reduced-motion: reduce) {
   .gv-mv-img { transition: none; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-mv-img { transition: none; }
 .gv-mv-missing {
   position: absolute;
   top: 0; left: 0;
@@ -1370,6 +1372,8 @@ body.is-phone .gv-app .gv-mv-map .gv-mm-detailed .gv-mm-svg { max-height: 48vh; 
 .gv-chunk .gv-chunk-body { display: none; }
 .gv-chunk.open .gv-chunk-body { display: block; }
 @media (prefers-reduced-motion: reduce) { .gv-chunk-caret { transition: none; } }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-chunk-caret { transition: none; }
 
 @media (hover: hover) {
   .theme-dark .gv-app .gv-chunk-head:hover .gv-chunk-label { color: var(--gv-lime); }
@@ -2129,6 +2133,9 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   .gv-rc-count.gv-punch, .gv-rc-count.gv-punch-big { animation-duration: 1ms; }
   .gv-rc-count.gv-punch::after, .gv-rc-count.gv-punch-big::after { animation: none; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-rc-count.gv-punch, .gv-quiet-motion .gv-rc-count.gv-punch-big { animation-duration: 1ms; }
+.gv-quiet-motion .gv-rc-count.gv-punch::after, .gv-quiet-motion .gv-rc-count.gv-punch-big::after { animation: none; }
 
 /* ---------- 08 REST/INTERVAL TIMER — urgency in the colour ----------
    The timed circuit's clock, carrying how much is left in something you can
@@ -2156,6 +2163,8 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 @media (prefers-reduced-motion: reduce) {
   .gv-timed-dial[data-urgency="urgent"] .gv-timed-count { animation: none; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-timed-dial[data-urgency="urgent"] .gv-timed-count { animation: none; }
 
 /* ---------- 10 STREAK FLAME — intensity carries the number ----------
    Scale and flicker rate both come from the count (streak-flame.js), so the
@@ -2192,6 +2201,8 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 @media (prefers-reduced-motion: reduce) {
   .gv-streak-svg.lit { animation: none; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-streak-svg.lit { animation: none; }
 
 /* ---------- the fill meter (rep-counter-shared.js attachFillMeter) ----------
    The zone charging up towards a target: a flood rising from the bottom,
@@ -2508,6 +2519,9 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   .gv-xp-hand, .gv-xp-ripple, .gv-xp-tilt { animation: none; }
   .gv-xp-ripple { opacity: 1; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-xp-hand, .gv-quiet-motion .gv-xp-ripple, .gv-quiet-motion .gv-xp-tilt { animation: none; }
+.gv-quiet-motion .gv-xp-ripple { opacity: 1; }
 
 /* ---------- "how many?" — the freestyle counter's first step ----------
    One question, one tap. "Just count" sits last but is the escape hatch for
@@ -2645,6 +2659,10 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   .gv-rc-pu-burst, .gv-rc-pu-wave { display: none; }
   .gv-rc-pu-label.go { animation: gv-pu-fade 1400ms linear; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-rc-zone[data-fill]::before { transition: none; animation: none; }
+.gv-quiet-motion .gv-rc-pu-burst, .gv-quiet-motion .gv-rc-pu-wave { display: none; }
+.gv-quiet-motion .gv-rc-pu-label.go { animation: gv-pu-fade 1400ms linear; }
 @keyframes gv-pu-fade {
   0%   { opacity: 0; }
   15%  { opacity: 1; }
@@ -2859,6 +2877,8 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
 @media (prefers-reduced-motion: reduce) {
   .gv-session-cycle-img { transition: none; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-session-cycle-img { transition: none; }
 
 .gv-session-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .gv-session-body-plain { flex: 0 0 auto; margin-top: 4px; }
@@ -3255,6 +3275,8 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
   transition: stroke-dasharray 0.2s linear;
 }
 @media (prefers-reduced-motion: reduce) { .gv-count-ring-fill { transition: none; } }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-count-ring-fill { transition: none; }
 
 
 .gv-timed-count {
@@ -3553,6 +3575,8 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   50% { opacity: 0; transform: scale(1.206); }
 }
 @media (prefers-reduced-motion: reduce) { .gv-app .gv-voice-rec.live::after { animation: none; } }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-app.gv-quiet-motion .gv-voice-rec.live::after { animation: none; }
 
 .gv-voice-level { height: 8px; max-width: 260px; margin: 14px auto 0; background: var(--gv-line); overflow: hidden; }
 .gv-voice-level-fill {
@@ -3976,6 +4000,8 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 @media (prefers-reduced-motion: reduce) {
   .gv-rw-bar-gain { animation: none; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-quiet-motion .gv-rw-bar-gain { animation: none; }
 
 /* The level hex. Here a ring; Apex draws a hexagon and Lock In a starburst from the same two elements. */
 .gv-rw-hex {
@@ -5635,6 +5661,8 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 @media (prefers-reduced-motion: reduce) {
   .gv-app.gv-skin-poster .gv-live-pip.is-cur { animation: none; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-app.gv-skin-poster.gv-quiet-motion .gv-live-pip.is-cur { animation: none; }
 
 /* ---------- lists ---------- */
 
@@ -5936,6 +5964,13 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   .gv-app.gv-skin-poster .gv-bar-fill,
   .gv-app.gv-skin-poster .gv-pb-target-fill { transition: none; }
 }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-app.gv-skin-apex.gv-quiet-motion .gv-ticker-band > div { animation: none; min-width: 0; }
+.gv-app.gv-skin-poster.gv-quiet-motion .gv-ticker span { flex: 0 0 auto; padding-left: 16px; }
+.gv-app.gv-skin-apex.gv-quiet-motion .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
+.theme-dark .gv-app.gv-skin-apex.gv-quiet-motion .gv-pb-target.is-beaten::after { animation: none; }
+.theme-dark .gv-app.gv-skin-apex.gv-quiet-motion .gv-pb-new::after { animation: none; }
+.gv-app.gv-skin-poster.gv-quiet-motion .gv-bar-fill, .gv-app.gv-skin-poster.gv-quiet-motion .gv-pb-target-fill { transition: none; }
 
 /* ============================================================================
    SKIN: LOCK IN — settings › Style. Design 07 "Lock In" (design/07-just-do-it.html):
@@ -6848,6 +6883,9 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   .gv-app.gv-skin-lockin .gv-ticker-band > div { animation: none; min-width: 0; }
     .gv-app.gv-skin-lockin .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
   }
+/* Calm motion twin (Settings › Calm motion, src/quiet-motion.js; tests/quiet-motion.test.cjs Q4). */
+.gv-app.gv-skin-lockin.gv-quiet-motion .gv-ticker-band > div { animation: none; min-width: 0; }
+.gv-app.gv-skin-lockin.gv-quiet-motion .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
 
 /* ============================================================================
    SKIN: CALM — settings › Style. The quiet one, asked for as "way more subtle":
