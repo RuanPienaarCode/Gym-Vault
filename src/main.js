@@ -17,6 +17,7 @@ const { RepCounterModal } = require('./rep-counter-modal');
 const { weekdayKey, todayISO } = require('./dates');
 const { isChallenge } = require('./challenge');
 const { openChallenge, openNewChallenge } = require('./challenge-flow');
+const { applyLook, sharedForSave, makeLookStore } = require('./device-look');
 
 class GymPlugin extends Plugin {
   async onload() {
@@ -128,11 +129,46 @@ class GymPlugin extends Plugin {
     this.app.workspace.revealLeaf(leaf);
   }
 
+  /* Style + Accent may be chosen for THIS DEVICE ONLY (src/device-look.js):
+     this.settings holds what this device shows, this._sharedLook what
+     data.json holds, this.deviceLook the local override (or null). */
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const stored = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this._sharedLook = { skin: stored.skin, accent: stored.accent };
+    this._lookStore = makeLookStore(this.app);
+    this.deviceLook = this._lookStore.read();
+    this.settings = applyLook(stored, this.deviceLook);
   }
 
-  async saveSettings() { await this.saveData(this.settings); }
+  async saveSettings() { await this.saveData(sharedForSave(this.settings, this._sharedLook, this.deviceLook)); }
+
+  /* Style or Accent picked in Settings: this device's look when one is on,
+     otherwise the shared one every device follows. */
+  async setLook(field, value) {
+    this.settings[field] = value;
+    if (this.deviceLook) {
+      this.deviceLook = Object.assign({}, this.deviceLook, { [field]: value });
+      this._lookStore.write(this.deviceLook);
+    } else {
+      this._sharedLook[field] = value;
+      await this.saveSettings();
+    }
+    this.refreshViews();
+  }
+
+  /* On: this device keeps what it shows now and stops following data.json.
+     Off: back to the shared look. */
+  setDeviceLook(on) {
+    if (on) {
+      this.deviceLook = { skin: this.settings.skin, accent: this.settings.accent };
+      this._lookStore.write(this.deviceLook);
+    } else {
+      this.deviceLook = null;
+      this._lookStore.write(null);
+      Object.assign(this.settings, this._sharedLook);
+    }
+    this.refreshViews();
+  }
 }
 
 /* WHAT "Log today's workout" OPENS. The first entry of ctx.daysOn for today -

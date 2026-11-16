@@ -89,16 +89,22 @@ class GymSettingTab extends PluginSettingTab {
       });
 
     new Setting(c)
+      .setName('Style on this device only')
+      .setDesc('For a shared vault: on means Style and Accent below change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
+      .addToggle(t => t
+        .setValue(!!this.plugin.deviceLook)
+        .onChange(v => {
+          this.plugin.setDeviceLook(v);
+          this.display();
+        }));
+
+    new Setting(c)
       .setName('Style')
-      .setDesc('How the gym looks. Every style uses the same data. Lock In is designed around the Blaze (orange) accent; it never changes your accent for you.')
+      .setDesc(`How the gym looks. Every style uses the same data. Calm is the quiet one: soft cards, plain type, no shouting. Lock In is designed around the Blaze (orange) accent; it never changes your accent for you.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
       .addDropdown(d => {
         for (const [key, label] of SKINS) d.addOption(key, label);
         d.setValue(this.plugin.settings.skin || 'apex')
-          .onChange(async v => {
-            this.plugin.settings.skin = v;
-            await this.plugin.saveSettings();
-            this.plugin.refreshViews();
-          });
+          .onChange(v => this.plugin.setLook('skin', v));
       });
 
     new Setting(c)
@@ -155,15 +161,11 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Accent color')
-      .setDesc('The highlight color threading through the whole app.')
+      .setDesc(`The highlight color threading through the whole app. Olive is the softest, made for Calm.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
       .addDropdown(d => {
         for (const [key, label] of ACCENTS) d.addOption(key, label);
         d.setValue(this.plugin.settings.accent || 'lime')
-          .onChange(async v => {
-            this.plugin.settings.accent = v;
-            await this.plugin.saveSettings();
-            this.plugin.refreshViews();
-          });
+          .onChange(v => this.plugin.setLook('accent', v));
       });
 
     this.renderSound(c);
