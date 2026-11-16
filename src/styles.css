@@ -7026,6 +7026,39 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   color: var(--gv-ink);
 }
 .gv-app.gv-skin-calm .gv-speed { display: none; }
+
+/* Calm's short home (page-dashboard.simpleToday): the day's name, one summary
+   line and Start. The detail folds into .gv-today-more under the buttons, and
+   what repeats the week ring or the flame is not drawn here at all.
+   tests/simple-today.test.cjs S7. */
+.gv-app.gv-skin-calm .gv-today .gv-tiles,
+.gv-app.gv-skin-calm .gv-today .gv-streak-risk,
+.gv-app.gv-skin-calm .gv-today .gv-microcopy,
+.gv-app.gv-skin-calm .gv-today .gv-hero-action-line,
+.gv-app.gv-skin-calm .gv-today .gv-rw-level-foot { display: none; }
+.gv-app.gv-skin-calm .gv-today .gv-hero-sub { font-size: 15px; }
+/* The second way in is a quiet line of text, not a second box. */
+.gv-app.gv-skin-calm .gv-today .gv-hero-manual {
+  min-height: 44px; margin-top: 4px; border: 0; background: transparent;
+  color: var(--gv-ink-dim); font-size: 14px; font-weight: 500;
+}
+.gv-app.gv-skin-calm .gv-today-more { margin: 8px 0 0; border-top: 1px solid var(--gv-line); }
+.gv-app.gv-skin-calm .gv-today-more-label {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; margin-bottom: -6px;
+  list-style: none; cursor: pointer;
+  font-size: 14px; font-weight: 500; color: var(--gv-ink-dim);
+}
+.gv-app.gv-skin-calm .gv-today-more-label::-webkit-details-marker { display: none; }
+/* iOS 15.0-15.3 drop a whole rule that names :focus-visible, so it lives in @supports (see w4-focus-ring). */
+@supports selector(:focus-visible) {
+  .gv-app.gv-skin-calm .gv-today-more-label:focus-visible { outline: 2px solid var(--gv-calm-tint-ink); outline-offset: -2px; border-radius: 8px; }
+}
+.gv-app.gv-skin-calm .gv-today-more-label .gv-ico svg { width: 16px; height: 16px; }
+.gv-app.gv-skin-calm .gv-today-more[open] .gv-today-more-label .gv-ico { transform: rotate(180deg); }
+.gv-app.gv-skin-calm .gv-today-more[open] .gv-today-more-label { margin-bottom: 0; }
+.gv-app.gv-skin-calm .gv-today-notes { margin: 2px 0 0; font-size: 14px; line-height: 1.5; color: var(--gv-ink-dim); }
+.gv-app.gv-skin-calm .gv-today-more .gv-rx { margin-top: 12px; }
 .gv-app.gv-skin-calm .gv-btn-go,
 .gv-app.gv-skin-calm .gv-btn-finish {
   min-height: 50px;
