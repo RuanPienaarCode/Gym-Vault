@@ -13,12 +13,12 @@
 
 const { normalizePath, TFile, TFolder, requestUrl, Notice } = require('obsidian');
 const { parseFrontmatter, serializeFrontmatter, tableToObjects, parseMdTable, unescMd, ROW_EXTRA, buildMdTable, replaceFirstTable, tableHeaderLabels } = require('./markdown');
-const { parsePlanBody, serializePlanBody } = require('./plan-parse');
+const { parsePlanBody, serializePlanBody, isPaused } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
 const { clipFileName, keyFromFileName } = require('./voice-pack');
-const { sameName, compareWorkouts } = require('./stats');
+const { sameName, compareWorkouts, workoutDate } = require('./stats');
 const rewardsLedger = require('./rewards-ledger');
 const { rewardsEnabled } = require('./rewards');
 
@@ -127,7 +127,9 @@ function findMissingExercises(data) {
   const found = [];
   const note = (raw, kind, owner) => {
     const name = String(raw === null || raw === undefined ? '' : raw).trim();
-    if (!name || data.exercises.some(e => sameName(e.name, name))) return;
+    /* safeName too: a library line "90/90 Hip Switch" is saved as the note
+       "90-90 Hip Switch", and was reported missing beside its own note. */
+    if (!name || data.exercises.some(e => sameName(e.name, name) || sameName(e.name, safeName(name)))) return;
     let entry = found.find(m => sameName(m.name, name));
     if (!entry) { entry = { name, plans: [], goals: [] }; found.push(entry); }
     if (entry[kind].indexOf(owner) < 0) entry[kind].push(owner);
@@ -137,6 +139,22 @@ function findMissingExercises(data) {
      leftover `exercise:` on a workouts-per-week goal is read by nothing. */
   for (const g of data.goals) if (/^exercise-/.test(g.fm.metric || '')) note(g.fm.exercise, 'goals', g.name);
   return found;
+}
+
+/* THE order of Body Log rows, oldest first — and so what "latest" means: every
+   reader (the Profile tiles, the export) takes the LAST row. By the parsed date,
+   the one rule for "the date of this note" (stats.workoutDate: dates.fromISO ->
+   toISO), never the raw text: as strings a hand-typed `2026-8-6` sorts after
+   `2026-11-01` ('8' > '1') and an old figure was shown as the current one. A row
+   whose date cannot be read sorts FIRST, where compareWorkouts puts an
+   unreadable workout, so it is never the latest (the Profile list is newest
+   first, so it falls to the bottom there). Equal days keep file order — the sort
+   is stable. Used for the load AND for the rows appendBodyRow writes back, so the
+   file and the screen agree. */
+const bodyDate = r => workoutDate({ fm: { date: r && r.date } }) || '';
+function compareBodyRows(a, b) {
+  const x = bodyDate(a), y = bodyDate(b);
+  return x < y ? -1 : x > y ? 1 : 0;
 }
 
 function makeIo(plugin) {
@@ -304,7 +322,7 @@ function makeIo(plugin) {
       const text = await read(bodyFile);
       if (text !== null) {
         const { body } = parseFrontmatter(text);
-        data.body = tableByHeader(body, BODY_COLUMNS).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        data.body = tableByHeader(body, BODY_COLUMNS).sort(compareBodyRows);
         data.bodyFile = bodyFile;
         data.present = true;
       }
@@ -434,7 +452,7 @@ function makeIo(plugin) {
     const i = rows.findIndex(r => r.date === row.date);
     if (i >= 0) rows[i] = { ...rows[i], ...row };
     else rows.push(row);
-    rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    rows.sort(compareBodyRows);
 
     const table = buildMdTable(BODY_COLUMNS, rows, extraLabels);
     const next = replaceFirstTable(text, table);
@@ -738,7 +756,13 @@ function makeIo(plugin) {
     let path = `${paths.workouts()}/${base}.md`;
     // A second session the same day gets a numbered file, not an overwrite.
     for (let n = 2; taken(path); n++) path = `${paths.workouts()}/${base} ${n}.md`;
-    const fm = { date: session.date, plan: session.plan, day: session.day, duration_min: session.duration_min };
+    const fm = { date: session.date, plan: session.plan, day: session.day };
+    /* `kind` is how a weekly-challenge go is told from a session when the note
+       is read back (stats.isChallengeRun reads fm.kind). Written only when the
+       caller names one, so every ordinary session note keeps exactly the four
+       lines it always had. Sits after `day` and before `duration_min`. */
+    if (typeof session.kind === 'string' && session.kind.trim() !== '') fm.kind = session.kind.trim();
+    fm.duration_min = session.duration_min;
     await tracked(path, () => v.create(path, serializeFrontmatter(fm) + '\n' + buildMdTable(WORKOUT_COLUMNS, session.rows) + '\n'));
     return path;
   }
@@ -818,9 +842,18 @@ function makeIo(plugin) {
     } else {
       const res = await requestUrl({ url: `${repoBase()}/${entry.file}`, throw: true });
       /* A downloaded plan never arrives active — it would silently take over
-         the dashboard from whatever the user is actually running. */
+         the dashboard from whatever the user is actually running.
+         `active` only governs an ordinary plan, though. A plan that runs
+         ALONGSIDE the active one (`parallel`) or fills its empty days
+         (`fallback`) ignores `active`, and only `paused: true` keeps it off
+         Today (plan-parse.isPaused) — so those arrive paused too, or they would
+         be live the moment they landed while Browse says "arrives switched off".
+         Whether a plan is alongside is asked of isPaused itself (asked of a
+         copy that says `paused: true`), so this uses the one rule for
+         parallel/fallback rather than a second reading of the same flags. */
       const { fm, body } = parseFrontmatter(res.text);
       const nextFm = { ...fm, active: false };
+      if (isPaused({ fm: { ...fm, paused: true } })) nextFm.paused = true;
       delete nextFm.name;                       // the filename carries the name
       await tracked(planPath, () => v.create(planPath, serializeFrontmatter(nextFm) + '\n' + body));
       out.plan = planPath;
@@ -1171,4 +1204,4 @@ function makeIo(plugin) {
   };
 }
 
-module.exports = { makeIo, safeName, findMissingExercises, tableByHeader };
+module.exports = { makeIo, safeName, findMissingExercises, tableByHeader, compareBodyRows };
