@@ -6,7 +6,8 @@
    light theme and reads the colour actually painted behind text on the page
    and inside a card. Each must be:
      P1  not near-white (relative luminance under 0.90; #fff is 1.0), and
-     P2  a colour, not a grey (RGB channels at least 8 apart).
+     P2  a colour, not a grey (RGB channels at least 8 apart), and
+     P3  Obsidian's --background-primary resolves to the same paper (see below).
    Readability on the new papers is contrast.test.cjs's job; it probes the same
    cascade. GV_STYLES_CSS points at a broken copy for mutation testing. */
 const assert = require('node:assert');
@@ -30,6 +31,31 @@ for (const skin of SKINS) for (const accent of ACCENTS) for (const [spot, chain]
   const l = lum(c);
   if (l >= 0.90) bad.push(`P1 ${skin}/${accent} ${spot} ${cx.hex(c)} is near-white (lum ${l.toFixed(3)})`);
   else if (spread < 8) bad.push(`P2 ${skin}/${accent} ${spot} ${cx.hex(c)} is grey, not a colour`);
+}
+
+/* P3 OBSIDIAN'S OWN PAPER. The view container (.view-content, which IS the
+   .gv-app root) is painted by Obsidian with var(--background-primary), white
+   in light mode. Each style must point that variable at its own paper, or the
+   page shows white around the tinted cards (16 Nov 2026: Calm did exactly
+   that on a real phone while P1/P2 passed). */
+for (const skin of SKINS) for (const accent of ACCENTS) {
+  const chain = cx.appChain({ theme: 'light', skin, accent }, 'p.gv-kicker');
+  const host = cx.computed(chain, '--background-primary', rules);
+  const ours = cx.computed(chain, '--gv-bg', rules);
+  const val = host && cx.resolveVars(chain, host.value, rules);
+  const want = ours && cx.resolveVars(chain, ours.value, rules);
+  if (!host || String(val).trim() !== String(want).trim()) bad.push(`P3 ${skin}/${accent} --background-primary is ${host ? val : 'unset (Obsidian white)'}, not the page ${want}`);
+}
+
+/* P4 HIGHLIGHTS ARE TINTS TOO. --gv-lime-ghost backs the active tab, a PB-in-reach row, a
+   done day. Near-white, it reads as a white patch on the tinted paper (it did, on Calm's Today
+   tab and Pull-ups row). Checked where it is painted: the PB-in-reach row on Today. */
+for (const skin of SKINS) for (const accent of ACCENTS) {
+  const chain = cx.appChain({ theme: 'light', skin, accent }, 'p.gv-kicker');
+  const g = cx.computed(chain, '--gv-lime-ghost', rules);
+  const v = g && cx.resolveVars(chain, g.value, rules);
+  const c = v && cx.parseColor(String(v));
+  if (c && c.a >= 0.5 && lum(c) >= 0.9) bad.push(`P4 ${skin}/${accent} highlight tint ${v} is near-white`);
 }
 
 if (bad.length) {

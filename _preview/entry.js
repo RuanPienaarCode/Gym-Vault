@@ -123,3 +123,4 @@ window.__musclemap = { map: require('../src/muscle-map'), lib: require('../src/m
 window.__challenge = require('../src/challenge');
 window.__ChallengeModal = require('../src/challenge-modal').ChallengeModal;
 window.__pageGoals = require('../src/page-goals');
+window.__paintLeaf = require('../src/leaf-paper').paintLeaf;

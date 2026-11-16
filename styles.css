@@ -82,7 +82,7 @@
      --gv-ink flips to (#eef3e6): #4d7c0f was 4.42:1 there, 0.08 short of AA
      for 10-14px text (0.12.1, L5-02). contrast.test.cjs measures both. */
   --gv-lime-deep: #426b0b;
-  --gv-lime-ghost: #f4fbe8;
+  --gv-lime-ghost: #d9e9bd; /* a real tint, never near-white (16 Nov 2026) */
   --gv-danger: #b91c1c;
   /* Fire, for the counter's flames and the streak flame. NOT an accent: the
      accent palettes below re-point every --gv-lime* token, and a counter
@@ -153,6 +153,11 @@
   padding: 0;
   overflow: hidden;
   background: var(--gv-bg);
+  /* .gv-app IS Obsidian's .view-content, which Obsidian paints with
+     --background-primary (white in light mode). Point it at our paper, or
+     every style but Apex/Lock In shows white around its cards.
+     tests/light-paper.test.cjs P3. */
+  --background-primary: var(--gv-bg);
   color: var(--gv-ink);
   font-family: var(--gv-body);
 }
@@ -3420,7 +3425,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   --gv-lime: #facc15;
   --gv-lime-hi: #fde047;
   --gv-lime-deep: #854d0e;
-  --gv-lime-ghost: #fefce8;
+  --gv-lime-ghost: #f1e3b3;
   --gv-flood-dim: #4a3d08;
 }
 .theme-dark .gv-app.gv-accent-volt { --gv-lime-ghost: #2a2410; }
@@ -3429,7 +3434,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   --gv-lime: #f97316;
   --gv-lime-hi: #fb923c;
   --gv-lime-deep: #ad3a0b;
-  --gv-lime-ghost: #fff7ed;
+  --gv-lime-ghost: #f6dcc8;
   --gv-flood-dim: #451f08;
 }
 .theme-dark .gv-app.gv-accent-blaze { --gv-lime-ghost: #2b190e; }
@@ -3438,7 +3443,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   --gv-lime: #06b6d4;
   --gv-lime-hi: #22d3ee;
   --gv-lime-deep: #0d6a84;
-  --gv-lime-ghost: #ecfeff;
+  --gv-lime-ghost: #cfe6ec;
   --gv-flood-dim: #093c49;
 }
 .theme-dark .gv-app.gv-accent-electric { --gv-lime-ghost: #0d2126; }
@@ -3447,7 +3452,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   --gv-lime: #ec4899;
   --gv-lime-hi: #f472b6;
   --gv-lime-deep: #be185d;
-  --gv-lime-ghost: #fdf2f8;
+  --gv-lime-ghost: #f6dde8;
   --gv-flood-dim: #380b23;
 }
 .theme-dark .gv-app.gv-accent-punch { --gv-lime-ghost: #2a121e; }
@@ -3463,7 +3468,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   --gv-lime: #9cc25a;
   --gv-lime-hi: #c3dc96;
   --gv-lime-deep: #4a7003;
-  --gv-lime-ghost: #f2f7e8;
+  --gv-lime-ghost: #dde9c7;
   --gv-flood-dim: #2c3d0a;
 }
 .theme-dark .gv-app.gv-accent-olive { --gv-lime-ghost: #1c2610; }
