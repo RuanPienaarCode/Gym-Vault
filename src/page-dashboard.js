@@ -121,8 +121,36 @@ function streakBadge(streak) {
     el('span', { class: 'gv-badge-label' }, 'wk streak'));
 }
 
+/* CALM'S HOME IS THE SHORT ONE. On the Calm style Today shows the day's name,
+   one summary line and the Start button; the prose, the exercise list and the
+   kit fold into a closed disclosure under the buttons (todayMore below), and
+   styles.css drops the tiles, the streak nag and the microcopy. Asked for as
+   "home is too busy, too much text". tests/simple-today.test.cjs */
+function simpleToday(settings) {
+  return !!settings && settings.skin === 'calm';
+}
+
+function todaySummary(exerciseCount, minutes) {
+  return `${countLabel(exerciseCount, 'exercise')} · about ${minutes} min`;
+}
+
+/* The folded detail. Closed unless this view has opened it (ctx.state, so a
+   reload from a vault event does not snap it shut under the reader's thumb). */
+function todayMore(ctx, parts) {
+  const kids = parts.filter(Boolean);
+  if (!kids.length) return null;
+  const attrs = { class: 'gv-today-more' };
+  if (ctx.state && ctx.state.todayMoreOpen) attrs.open = '';
+  const more = el('details', attrs,
+    el('summary', { class: 'gv-today-more-label' }, el('span', {}, 'See the workout'), ico('chevron-down')),
+    ...kids);
+  more.addEventListener('toggle', () => { if (ctx.state) ctx.state.todayMoreOpen = !!more.open; });
+  return more;
+}
+
 function render(ctx, root) {
   const { data, settings } = ctx;
+  const simple = simpleToday(settings);
   const today = todayISO();
   const dates = workoutDates(data.workouts);
   /* Everything Today draws sits in ONE wrapper. It carries no styling in Floor
@@ -241,14 +269,15 @@ function render(ctx, root) {
     addTitle(day.name);
     const prose = (day.notes || []).join(' ').trim();
     sub.append(prose || 'Rest is where the adaptation happens.');
+    let list = null;
     if (day.items.length) {
-      const list = el('ul', { class: 'gv-rx gv-rx-rest' });
+      list = el('ul', { class: 'gv-rx gv-rx-rest' });
       for (const it of day.items) {
         list.append(el('li', {},
           el('span', {}, it.exercise),
           el('b', {}, it.sets != null ? `${it.sets} × ${it.target}` : it.target || '')));
       }
-      afterHead.push(list);
+      if (!simple) afterHead.push(list);
     }
     /* No lime flood and no "Get after it" — the whole point of the day is
        that there is nothing to attack. Logging it stays possible. */
@@ -256,6 +285,7 @@ function render(ctx, root) {
       class: 'gv-btn-hero-ghost', type: 'button',
       onclick: () => ctx.startLog(dayPlan, day),
     }, ico('circle-check'), el('span', {}, 'Log recovery')));
+    if (simple) { const more = todayMore(ctx, [list]); if (more) afterHead.push(more); }
   } else if (todays.length) {
     const { plan: dayPlan, day } = todays[0];
     const setsTotal = day.items.reduce((n, it) => n + itemSets(it), 0);
@@ -265,9 +295,11 @@ function render(ctx, root) {
     trainingDay = day;
     stage.classList.add('has-chips');
     const prose = (day.notes || []).join(' ').trim();
-    sub.append(doneToday ? 'Logged for today — nice work.' : prose || `${countLabel(day.items.length, 'exercise')} on the plan.`);
+    sub.append(doneToday ? 'Logged for today — nice work.'
+      : simple ? todaySummary(day.items.length, minutes)
+        : prose || `${countLabel(day.items.length, 'exercise')} on the plan.`);
 
-    afterHead.push(ticker());
+    if (!simple) afterHead.push(ticker());
 
     /* ONE exercise carries the PB-in-reach line (progress.pbInReach owns which,
        and why: the first item whose session kind has a prior best). The line
@@ -281,9 +313,8 @@ function render(ctx, root) {
         el('span', {}, it.exercise, hit ? el('span', { class: 'gv-pb-reach' }, reachText(hit)) : ''),
         el('b', {}, it.sets != null ? `${it.sets} × ${it.target}` : it.target || '')));
     });
-    afterHead.push(rx);
     const kit = kitChips(ctx, day);
-    if (kit) afterHead.push(kit);
+    if (!simple) { afterHead.push(rx); if (kit) afterHead.push(kit); }
 
     const slab = el('div', { class: 'gv-hero-action' });
     const speed = el('div', { class: 'gv-speed', 'aria-hidden': 'true' },
@@ -307,6 +338,8 @@ function render(ctx, root) {
       class: 'gv-btn-hero-ghost gv-hero-manual', type: 'button',
       onclick: () => ctx.startLog(dayPlan, day),
     }, el('span', {}, 'Log manually')));
+    /* Calm: the detail goes UNDER the buttons, so opening it never moves Start. */
+    if (simple) afterHead.push(todayMore(ctx, [prose ? el('p', { class: 'gv-today-notes' }, prose) : null, rx, kit]));
   } else if (!plan) {
     /* No active plan at all is not a rest day: "Rest day" on every weekday
        told a new user nothing was wrong while nothing was set up. */
@@ -527,4 +560,4 @@ function nextPlannedDay(ctx, todayKeyName) {
   return null;
 }
 
-module.exports = { render, startCopy, splitTitle, estMinutes };
+module.exports = { render, startCopy, splitTitle, estMinutes, simpleToday, todaySummary };
