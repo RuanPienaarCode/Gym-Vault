@@ -11,7 +11,8 @@ const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
 const { skinClasses, accentFor } = require('./constants');
-const { paintLeaf } = require('./leaf-paper');
+const { paintLeaf, clearLeaf } = require('./leaf-paper');
+const { todayISO } = require('./dates');
 const { QUIET_CLASS, quietMotionOn } = require('./quiet-motion');
 const pages = {
   dashboard: require('./page-dashboard'),
@@ -155,6 +156,104 @@ function isImplicitActive(mainPlans) {
   return main.length > 0 && !main.some(p => String(p.fm.active) === 'true');
 }
 
+/* THE MAIN PLAN RULE, one function (audit 16 Nov 2026, #45).
+
+   A "main" plan is neither parallel (it runs ALONGSIDE the active one) nor
+   fallback (it only fills a day nothing else claims). ctx.mainPlans, ctx.
+   activePlan and ctx.activePlanIsImplicit all read this, so the plan switcher
+   and the plan Today runs can never disagree. activePlan used to exclude
+   parallel plans only: with no plan flagged active, a hand-made
+   `fallback: true` plan that sorted first was treated as the main plan and
+   Today ran its rest days as the week. */
+const mainPlansOf = plans => (plans || []).filter(p => !isParallelPlan(p) && !isFallbackPlan(p));
+
+/* The plan Today runs: the one flagged active, else the first main plan. */
+function activePlanOf(plans) {
+  const main = mainPlansOf(plans);
+  return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
+}
+
+/* WHAT A RE-DRAW DOES WITH THE PAGE'S SCROLL AND FOCUS (audit 16 Nov 2026,
+   #11), pure and exported so the guard suite executes shipping code.
+
+   `.gv-page` is the scroll container and every tick, star, toggle, vault
+   reload and History expand re-draws it, so resetting scrollTop after every
+   render threw the reader back to the top each time. The rule:
+
+     keep     a re-draw of the SAME page (ctx.rerender, a vault-watcher
+              reload, a ctx.nav to the page you are already on with other
+              params): the scroll stays, clamped to the new content height
+     restore  Back: the scroll the page had when you left it, which ctx.nav
+              stored on the back-stack entry
+     reset    a change of page, and any nav-tab tap (the tab you are already
+              on included): the top
+
+   prev = { page: the page last DRAWN, scrollTop: its scroll right now }
+   next = { page: the page being drawn, cause: 'rerender' | 'nav' | 'tab' |
+            'back', savedTop: the back-stack entry's scroll }
+
+   Focus moves to the new page's heading when the page changed (a screen-reader
+   user gets no other signal) or a tab was tapped, and never on a same-page
+   re-draw, which would steal focus mid-interaction. The very first draw moves
+   nothing. */
+function scrollDecision(prev, next) {
+  const from = prev || {};
+  const to = next || {};
+  const cause = to.cause || 'rerender';
+  const samePage = from.page != null && from.page === to.page;
+  const top = Number.isFinite(from.scrollTop) ? Math.max(0, from.scrollTop) : 0;
+  if (cause === 'tab') return { mode: 'reset', top: 0, focus: true };
+  if (cause === 'back') {
+    return { mode: 'restore', top: Number.isFinite(to.savedTop) ? Math.max(0, to.savedTop) : 0, focus: !samePage };
+  }
+  if (samePage) return { mode: 'keep', top, focus: false };
+  return { mode: 'reset', top: 0, focus: cause === 'nav' };
+}
+
+/* A scroll offset the content can actually hold. Browsers clamp an assigned
+   scrollTop themselves; this makes the rule explicit and testable, and leaves
+   the offset alone when there is nothing to measure (a hidden pane). */
+function clampScroll(top, scrollHeight, clientHeight) {
+  const t = Number.isFinite(top) ? Math.max(0, top) : 0;
+  if (!Number.isFinite(scrollHeight) || !Number.isFinite(clientHeight)) return t;
+  return Math.min(t, Math.max(0, scrollHeight - clientHeight));
+}
+
+/* THE DAY CHANGED UNDER AN OPEN VIEW (audit 16 Nov 2026, #12).
+
+   Today computes its date, plan day and week at render time, and nothing
+   re-rendered when midnight passed: a tab left open overnight showed
+   yesterday, and Start launched yesterday's plan day. The controller records
+   the ISO date of its last draw and asks this when the view becomes visible
+   again or the window regains focus. Never for the routes of a live workout
+   (log, session, setup): a re-draw out from under a set being counted is worse
+   than a stale date, and they pick the new day up the next time Today is
+   drawn. */
+const LIVE_WORKOUT_PAGES = ['session', 'setup', 'log'];
+function shouldRedrawForNewDay(lastISO, nowISO, page) {
+  if (!lastISO || !nowISO) return false;
+  if (lastISO === nowISO) return false;
+  return LIVE_WORKOUT_PAGES.indexOf(page) < 0;
+}
+
+/* A CONFIRMED DISCARD LEAVES NOTHING BEHIND (audit 16 Nov 2026, #6).
+
+   "Discard and start" used to create the new draft FIRST; the old session
+   page's cleanup then ran on the route change, saw the NEW draft on
+   ctx.state.logDraft, and stashed the discarded session's records and met
+   goals against it. Rewards paid them out to a session that was thrown away.
+   Run the leaving page's cleanup now, while the old draft is still the
+   current one, then drop the session and the carry, so nothing from the
+   discarded session can attach to what is created next. */
+function discardLiveSession(state) {
+  if (state.pageCleanup) {
+    try { state.pageCleanup(); } catch (e) { console.error('gym-vault page cleanup', e); }
+    state.pageCleanup = null;
+  }
+  state.session = null;
+  state.sessionCarry = null;
+}
+
 /* How an in-progress draft names itself on the Today screen. */
 function describeDraft(draft) {
   if (!draft) return '';
@@ -188,12 +287,15 @@ function mountApp(view) {
        read once per render cycle (rewards-flow.js readLedger). */
     state: { page: 'dashboard', params: {}, session: null, setup: null, setupUi: null, pageCleanup: null, sessionCarry: null, rewardsCache: null },
     _interval: null,
-    /* Set by ctx.nav() only (never by a plain ctx.rerender() from local UI
-       state — ticking a set, toggling a switch — which must NOT steal focus
-       mid-interaction). Consumed once by the focus-move at the bottom of
-       ctx.rerender(). */
-    _focusPageOnRender: false,
   };
+  /* How the NEXT draw was asked for — set by applyNav only, consumed once by
+     ctx.rerender. A plain ctx.rerender() from local UI state (ticking a set,
+     toggling a switch) or a vault reload has none, so it keeps the scroll and
+     must NOT steal focus mid-interaction (see scrollDecision). */
+  let pendingRoute = null;
+  /* The page last drawn and the ISO date it was drawn on (shouldRedrawForNewDay). */
+  let drawnPage = null;
+  let drawnISO = null;
 
   /* THE SESSION IN PROGRESS IS KEPT ON THIS DEVICE (0.12.1, audit L3-01). It
      used to live only in memory, so an iOS kill after the Music button, a
@@ -255,21 +357,15 @@ function mountApp(view) {
   /* A plan marked `parallel` is not an ALTERNATIVE to the active plan — it
      runs alongside it (running beside strength), so the dashboard merges
      days from the active plan and every parallel one. */
-  const isParallel = p => String(p.fm.parallel) === 'true';
-  ctx.activePlan = () => {
-    if (!ctx.data) return null;
-    const main = ctx.data.plans.filter(p => !isParallel(p));
-    return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
-  };
-  ctx.activePlanIsImplicit = () =>
-    (ctx.data ? isImplicitActive(ctx.data.plans.filter(p => !isParallel(p))) : false);
-  const isFallback = p => String(p.fm.fallback) === 'true';
+  ctx.activePlan = () => (ctx.data ? activePlanOf(ctx.data.plans) : null);
+  ctx.activePlanIsImplicit = () => (ctx.data ? isImplicitActive(mainPlansOf(ctx.data.plans)) : false);
   /* Paused plans are skipped (parallelPlansOf / fallbackPlansOf): Today, the
      week strip and the plan switcher all read these two. */
   ctx.parallelPlans = () => (ctx.data ? parallelPlansOf(ctx.data.plans) : []);
   ctx.fallbackPlans = () => (ctx.data ? fallbackPlansOf(ctx.data.plans) : []);
-  /* Every non-parallel plan, for the switcher. */
-  ctx.mainPlans = () => (ctx.data ? ctx.data.plans.filter(p => !isParallel(p) && !isFallback(p)) : []);
+  /* Every main plan (neither parallel nor fallback), for the switcher — the
+     same rule ctx.activePlan reads (mainPlansOf). */
+  ctx.mainPlans = () => (ctx.data ? mainPlansOf(ctx.data.plans) : []);
   const isRunExercise = name => !!ctx.data && ctx.data.exercises.some(e =>
     e.name.toLowerCase() === (name || '').toLowerCase() && (e.fm.unit || '') === 'km');
   /* From the UNFILTERED parallel plans: a paused running plan still owns the
@@ -300,7 +396,7 @@ function mountApp(view) {
   /* The route change itself, with no stack bookkeeping — ctx.back() uses this
      directly so that returning somewhere cannot push the page you just left,
      which would make Back a toggle between two screens. */
-  const applyNav = (page, params) => {
+  const applyNav = (page, params, how) => {
     /* Leaving a page that registered cleanup (guided mode's wake lock and
        any in-flight confetti burst) tears it down exactly once — even when
        the user bails via the persistent nav bar rather than guided mode's
@@ -312,9 +408,11 @@ function mountApp(view) {
     }
     ctx.state.page = page;
     ctx.state.params = params || {};
-    /* A route change is exactly what SHOULD move focus — plain rerenders
-       from local UI state (a tick, a toggle) must not. */
-    ctx._focusPageOnRender = true;
+    /* Say HOW this draw was asked for, so ctx.rerender can decide scroll and
+       focus (scrollDecision): a route change may move focus and reset the
+       scroll, a plain rerender from local UI state (a tick, a toggle) must do
+       neither. */
+    pendingRoute = how || { cause: 'nav' };
     ctx.rerender();
   };
 
@@ -322,11 +420,12 @@ function mountApp(view) {
     if (opts && opts.reset) ctx._backStack.length = 0;
     else if (page !== ctx.state.page) {
       /* A re-nav to the same page is a refresh, not a step — pushing it
-         would make Back land where you already are. */
-      ctx._backStack.push({ page: ctx.state.page, params: ctx.state.params || {} });
+         would make Back land where you already are. The entry remembers the
+         page's scroll so Back puts the reader back where they were. */
+      ctx._backStack.push({ page: ctx.state.page, params: ctx.state.params || {}, scrollTop: pageEl ? pageEl.scrollTop || 0 : 0 });
       if (ctx._backStack.length > MAX_BACK) ctx._backStack.shift();
     }
-    applyNav(page, params);
+    applyNav(page, params, { cause: opts && opts.reset ? 'tab' : 'nav' });
   };
 
   /* Where Back would go, or the fallback when nothing is remembered — the
@@ -339,8 +438,8 @@ function mountApp(view) {
 
   ctx.back = fallback => {
     const prev = ctx._backStack.pop();
-    if (prev) applyNav(prev.page, prev.params);
-    else applyNav(fallback, null);
+    if (prev) applyNav(prev.page, prev.params, { cause: 'back', savedTop: prev.scrollTop });
+    else applyNav(fallback, null, { cause: 'back' });
   };
 
   /* A DRAFT IS NOT DISPOSABLE. startDraft and beginSession both replace
@@ -366,7 +465,9 @@ function mountApp(view) {
       title: 'A session is already open',
       message: `${ctx.describeDraft()} is still in progress. Starting a new one discards everything logged in it.`,
       confirmLabel: 'Discard and start',
-      onConfirm: () => { ctx.state.logDraft = null; onProceed(); },
+      /* The discarded session's page is torn down and its tally dropped
+         BEFORE the new draft exists (discardLiveSession). */
+      onConfirm: () => { discardLiveSession(ctx.state); ctx.state.logDraft = null; onProceed(); },
     }).open();
   };
 
@@ -446,10 +547,9 @@ function mountApp(view) {
      announces "you're on a new screen now". Moving focus to the new page's
      own heading is the same pattern any SPA route change needs; tabindex=-1
      makes an otherwise non-interactive heading a valid focus target without
-     adding it to the normal Tab order. */
+     adding it to the normal Tab order. Called only when scrollDecision says
+     the page changed (or a tab was tapped), never for a same-page re-draw. */
   function focusPageHeading() {
-    if (!ctx._focusPageOnRender) return;
-    ctx._focusPageOnRender = false;
     if (!pageEl) return;
     const heading = pageEl.querySelector('h1, h2, h3, h4, h5, h6');
     if (!heading) return;
@@ -472,7 +572,14 @@ function mountApp(view) {
        every nav (applyNav ends here) — the one place all of them pass. */
     keepDraft();
     if (ctx._interval) { window.clearInterval(ctx._interval); ctx._interval = null; }
+    const route = pendingRoute;
+    pendingRoute = null;
     if (!pageEl) return;
+    /* The scroll is read BEFORE the page is emptied: clearing it shrinks the
+       container and the browser clamps the offset away. */
+    const scroll = scrollDecision(
+      { page: drawnPage, scrollTop: pageEl.scrollTop },
+      { page: ctx.state.page, cause: route ? route.cause : 'rerender', savedTop: route ? route.savedTop : undefined });
     clear(pageEl);
     /* Focus mode is OPT-IN PER RENDER: cleared here, re-added by the counting
        screens in page-session.js. A sticky class would hide the nav on a page
@@ -507,8 +614,10 @@ function mountApp(view) {
         pageEl.append(emptyLine(`Something went wrong rendering this page (${e.message}).`));
       }
     }
-    pageEl.scrollTop = 0;
-    focusPageHeading();
+    drawnPage = ctx.state.page;
+    drawnISO = todayISO();
+    pageEl.scrollTop = clampScroll(scroll.top, pageEl.scrollHeight, pageEl.clientHeight);
+    if (scroll.focus) focusPageHeading();
   };
 
   ctx.reload = async () => {
@@ -685,7 +794,17 @@ function mountApp(view) {
      removed in stop(). */
   const hostDoc = rootEl.ownerDocument || (typeof document !== 'undefined' ? document : null);
   const hostWin = (hostDoc && hostDoc.defaultView) || (typeof window !== 'undefined' ? window : null);
-  const onVisibility = () => { if (hostDoc && hostDoc.visibilityState === 'hidden') keepDraft(); };
+  /* Coming back to a view that was left open past midnight re-draws it
+     (shouldRedrawForNewDay; never a live workout). */
+  const redrawIfNewDay = () => {
+    if (shouldRedrawForNewDay(drawnISO, todayISO(), ctx.state.page)) ctx.rerender();
+  };
+  const onVisibility = () => {
+    if (!hostDoc) return;
+    if (hostDoc.visibilityState === 'hidden') keepDraft();
+    else if (hostDoc.visibilityState === 'visible') redrawIfNewDay();
+  };
+  const onWindowFocus = () => { redrawIfNewDay(); };
   const onPageHide = () => { keepDraft(); };
 
   /* Another open Gym view already holding a live draft owns it. Restoring the
@@ -717,6 +836,7 @@ function mountApp(view) {
       watchWidth();
       if (hostDoc) hostDoc.addEventListener('visibilitychange', onVisibility);
       if (hostWin) hostWin.addEventListener('pagehide', onPageHide);
+      if (hostWin) hostWin.addEventListener('focus', onWindowFocus);
       for (const evt of ['modify', 'create', 'delete', 'rename']) {
         view.registerEvent(app.vault.on(evt, onVaultEvent));
       }
@@ -744,9 +864,12 @@ function mountApp(view) {
       keepDraft();
       if (hostDoc) hostDoc.removeEventListener('visibilitychange', onVisibility);
       if (hostWin) hostWin.removeEventListener('pagehide', onPageHide);
+      if (hostWin) hostWin.removeEventListener('focus', onWindowFocus);
       if (resizeObs) resizeObs.disconnect();
       if (ctx._interval) window.clearInterval(ctx._interval);
       if (debounceTimer) window.clearTimeout(debounceTimer);
+      /* The gym's paper comes off Obsidian's title bar with the view. */
+      clearLeaf(view.containerEl);
       /* View closing mid-guided-session: release the wake lock / stop any
          confetti burst the same way navigating away would. */
       if (ctx.state.pageCleanup) {
@@ -823,4 +946,5 @@ function renderSetup(ctx, root) {
 module.exports = {
   mountApp, NAV, paneHeightTier, SHORT_PANE_PX, SHORTER_PANE_PX, resolveDaysOn, isImplicitActive, describeDraft,
   isPaused, parallelPlansOf, fallbackPlansOf, runPlanOf,
+  mainPlansOf, activePlanOf, scrollDecision, clampScroll, shouldRedrawForNewDay, discardLiveSession,
 };
