@@ -10,7 +10,7 @@ const { isPaused } = require('./plan-parse');
 const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
-const { skinClasses } = require('./constants');
+const { skinClasses, accentFor } = require('./constants');
 const { paintLeaf } = require('./leaf-paper');
 const { QUIET_CLASS, quietMotionOn } = require('./quiet-motion');
 const pages = {
@@ -241,7 +241,7 @@ function mountApp(view) {
     for (const cls of [...rootEl.classList]) {
       if (cls.indexOf('gv-skin-') === 0 || cls.indexOf('gv-accent-') === 0) rootEl.classList.remove(cls);
     }
-    rootEl.classList.add(...skinClasses(plugin.settings.skin || 'apex'), `gv-accent-${plugin.settings.accent || 'lime'}`);
+    rootEl.classList.add(...skinClasses(plugin.settings.skin || 'apex'), `gv-accent-${accentFor(plugin.settings)}`);
     rootEl.classList.toggle(QUIET_CLASS, quietMotionOn(plugin.settings));
     /* Obsidian's own title bar above the gym takes the style's paper too. */
     paintLeaf(rootEl, view.containerEl, rootEl.ownerDocument && rootEl.ownerDocument.defaultView);

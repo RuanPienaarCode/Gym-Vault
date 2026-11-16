@@ -1,4 +1,5 @@
 'use strict';
+const { accentFor } = require('./constants');
 /* Exercise detail — the library page for one exercise: media (image or
    video), how-to (the note body, rendered as real markdown so embeds and
    lists work), your bests, and recent sets.
@@ -266,7 +267,7 @@ function mediaBlock(ctx, ex) {
          that frame. */
       const openViewer = () => openMediaViewer(ctx.app, {
         name: ex.name, frames: liveFrames, startIndex: liveFrames.indexOf(entry),
-        skin: st.skin || 'apex', accent: st.accent || 'lime', settings: st, returnFocus: frame,
+        skin: st.skin || 'apex', accent: accentFor(st), settings: st, returnFocus: frame,
       });
       frame.addEventListener('click', openViewer);
       frame.addEventListener('keydown', e => {
@@ -308,7 +309,7 @@ function motionBlock(ctx, ex, motion) {
   const steps = noteSteps(ex.body);
   const onDetail = d => rememberDetail(ctx, d);
   const openViewer = (start, returnFocus) => openMediaViewer(ctx.app, {
-    name: ex.name, frames: images, startIndex: 0, skin: st.skin || 'apex', accent: st.accent || 'lime', settings: st,
+    name: ex.name, frames: images, startIndex: 0, skin: st.skin || 'apex', accent: accentFor(st), settings: st,
     returnFocus: returnFocus || null, start, muscleMap: { ex, motion, steps, onDetail },
   });
   try {

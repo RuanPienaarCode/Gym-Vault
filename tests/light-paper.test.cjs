@@ -18,13 +18,15 @@ const rules = cx.load(process.env.GV_STYLES_CSS);
 const lum = c => cx.ratio(c, { r: 0, g: 0, b: 0, a: 1 }) * 0.05 - 0.05;
 const SKINS = ['floor', 'editorial', 'apex', 'lockin', 'calm'];
 const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch', 'olive'];
+/* Calm colours: each palette is a Calm-only accent class, checked like one. */
+const COMBOS = SKINS.flatMap(skin => ACCENTS.map(accent => [skin, accent])).concat(['oat', 'sea', 'blush', 'lavender', 'honey', 'sky', 'lagoon'].map(p => ['calm', p]));
 const SPOTS = {
   page: ['p.gv-kicker'],
   card: ['div.gv-card', 'div.gv-tile-label'],
 };
 
 const bad = [];
-for (const skin of SKINS) for (const accent of ACCENTS) for (const [spot, chain] of Object.entries(SPOTS)) {
+for (const [skin, accent] of COMBOS) for (const [spot, chain] of Object.entries(SPOTS)) {
   const t = cx.textColor(cx.appChain({ theme: 'light', skin, accent }, ...chain), rules);
   const c = t.bg;
   const spread = Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b);
@@ -38,7 +40,7 @@ for (const skin of SKINS) for (const accent of ACCENTS) for (const [spot, chain]
    in light mode. Each style must point that variable at its own paper, or the
    page shows white around the tinted cards (16 Nov 2026: Calm did exactly
    that on a real phone while P1/P2 passed). */
-for (const skin of SKINS) for (const accent of ACCENTS) {
+for (const [skin, accent] of COMBOS) {
   const chain = cx.appChain({ theme: 'light', skin, accent }, 'p.gv-kicker');
   const host = cx.computed(chain, '--background-primary', rules);
   const ours = cx.computed(chain, '--gv-bg', rules);
@@ -50,7 +52,7 @@ for (const skin of SKINS) for (const accent of ACCENTS) {
 /* P4 HIGHLIGHTS ARE TINTS TOO. --gv-lime-ghost backs the active tab, a PB-in-reach row, a
    done day. Near-white, it reads as a white patch on the tinted paper (it did, on Calm's Today
    tab and Pull-ups row). Checked where it is painted: the PB-in-reach row on Today. */
-for (const skin of SKINS) for (const accent of ACCENTS) {
+for (const [skin, accent] of COMBOS) {
   const chain = cx.appChain({ theme: 'light', skin, accent }, 'p.gv-kicker');
   const g = cx.computed(chain, '--gv-lime-ghost', rules);
   const v = g && cx.resolveVars(chain, g.value, rules);
@@ -62,5 +64,5 @@ if (bad.length) {
   console.error(`light-paper: ${bad.length} failed\n  ` + bad.join('\n  '));
   process.exit(1);
 }
-console.log(`light-paper OK (${SKINS.length * ACCENTS.length * 2} spots)`);
+console.log(`light-paper OK (${COMBOS.length * 2} spots)`);
 assert.ok(true);

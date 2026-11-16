@@ -1,4 +1,5 @@
 'use strict';
+const { accentFor } = require('./constants');
 /* Workout logging — the live session screen. The draft lives on
    ctx.state.logDraft and nothing touches the VAULT until Finish, so backing
    out never leaves a half-written session note. It is not memory-only any
@@ -313,7 +314,7 @@ function counterBtn(ctx, entry, set) {
     new RepCounterModal(ctx.app, {
       exerciseName: entry.exercise,
       skin: ctx.settings.skin,
-      accent: ctx.settings.accent,
+      accent: accentFor(ctx.settings),
       settings: ctx.settings,
       sensitivity: ex && ex.fm ? ex.fm.motion_sensitivity : null,
       onSensitivity: value => {

@@ -48,6 +48,8 @@ const DEFAULT_SETTINGS = {
   rewards: true,
   /* Calm motion (quiet-motion.js): no confetti, no looping pulses, still exercise images. */
   quietMotion: false,
+  /* Calm colours (CALM_PALETTES): 'accent' = sage paper with the Accent color. */
+  calmPalette: 'accent',
   /* Instruction images play their start/finish frames as an animation (the live
      set's thumbnail and the full-screen viewer; media-cycle.js autoPlayMedia
      is the one rule, and a missing key means ON). The Muscle Map obeys the same
@@ -127,6 +129,33 @@ const ACCENTS = [
   ['punch', 'Punch (magenta)'],
   ['olive', 'Olive (deep green)'],
 ];
+
+/* Calm colours — Settings › Calm colours. Eight complete palettes for the Calm
+   style: a paper AND its own accent, light and dark. 'accent' (the default) is
+   what Calm always was: sage paper and the Accent color above. The others are
+   Calm-only accent classes (.gv-app.gv-skin-calm.gv-accent-<key> in styles.css);
+   accentFor() below is the one place that decides which class a root wears.
+   Lagoon is built from the ten colours Ruan supplied on 16 Nov 2026.
+   tests/calm-palettes.test.cjs */
+const CALM_PALETTES = [
+  ['accent', 'Sage, with your accent color'],
+  ['oat', 'Oat — warm paper, olive green'],
+  ['sea', 'Sea glass — pale aqua, deep teal'],
+  ['blush', 'Blush — soft rose, berry'],
+  ['lavender', 'Lavender — misty lilac, plum'],
+  ['honey', 'Honey — warm cream, amber'],
+  ['sky', 'Sky — pale blue, denim'],
+  ['lagoon', 'Lagoon — mint, lime and ocean blues'],
+];
+
+/* The accent class an app root (or a gym modal) wears: the Calm palette while
+   the style is Calm and one is chosen, otherwise the user's accent. */
+function accentFor(settings) {
+  const s = settings || {};
+  const pal = s.calmPalette;
+  if (s.skin === 'calm' && pal && pal !== 'accent' && CALM_PALETTES.some(p => p[0] === pal)) return pal;
+  return s.accent || 'lime';
+}
 
 /* Music-app shortcut shown in guided sessions. Keys (besides 'none') must
    match src/music-link.js's MUSIC_LINKS — that module owns the actual
@@ -228,7 +257,7 @@ const GOAL_METRICS = [
 const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms', 'core', 'glutes', 'quads', 'hamstrings', 'calves', 'full body'];
 
 module.exports = {
-  VIEW_TYPE, DEFAULT_SETTINGS, WEEK_STARTS, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, MUSIC_APPS, SOUND_MODES,
+  VIEW_TYPE, DEFAULT_SETTINGS, WEEK_STARTS, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, CALM_PALETTES, accentFor, MUSIC_APPS, SOUND_MODES,
   GUIDE_MODES, GUIDE_MINUTES, GUIDE_REST, PAGE_TITLES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

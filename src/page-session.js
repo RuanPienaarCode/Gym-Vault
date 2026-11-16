@@ -16,7 +16,7 @@
 const { Notice } = require('obsidian');
 const { el, ico, clear, fmtSeconds, segmented, numericInput, statTile } = require('./dom');
 const { todayISO } = require('./dates');
-const { DEFAULT_SETTINGS, GUIDE_REST } = require('./constants');
+const { DEFAULT_SETTINGS, GUIDE_REST, accentFor } = require('./constants');
 const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
 const flow = require('./session-flow');
 const records = require('./records');
@@ -654,7 +654,7 @@ function sessionMuscleMap(ctx, sess, ex, motion, frames) {
    the user's skin and accent, so it wears them like the rep counter does. */
 function viewerOpts(ctx) {
   const st = ctx.settings || {};
-  return { app: ctx.app, skin: st.skin || 'apex', accent: st.accent || 'lime', settings: st };
+  return { app: ctx.app, skin: st.skin || 'apex', accent: accentFor(st), settings: st };
 }
 
 /* ---------- the poster chrome (live-chrome.js) ---------- */
