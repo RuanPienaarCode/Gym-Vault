@@ -108,8 +108,19 @@ async function saveThenReload(ctx, plan) {
    `mutate` returns false when it changed nothing (a Move at the end of the list),
    and then nothing is written. */
 const structuralBusy = new WeakSet();   // plan record -> a structural edit is saving
+/* ...and for a moment after the tap, whatever the save did. On a fast vault the
+   save and the re-draw can finish inside a double tap: the hold above is already
+   released, the page holds NEW plan records, and the second tap lands on the row
+   that slid under the finger. So a second structural tap on the same plan within
+   DOUBLE_TAP_MS of the last one taken is not taken either. Keyed by plan name,
+   because the reload replaces the records. */
+const DOUBLE_TAP_MS = 300;
+const structuralTapAt = new Map();      // plan name -> when its last structural tap was taken
 async function structuralEdit(ctx, plan, mutate) {
-  if (structuralBusy.has(plan)) return;
+  const tapAt = Date.now();
+  const last = structuralTapAt.get(plan.name);
+  if (structuralBusy.has(plan) || (last !== undefined && tapAt - last < DOUBLE_TAP_MS)) return;
+  structuralTapAt.set(plan.name, tapAt);
   structuralBusy.add(plan);
   try {
     if (mutate() === false) return;

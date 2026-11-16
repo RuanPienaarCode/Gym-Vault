@@ -3359,7 +3359,9 @@ body.is-phone .gv-app .gv-mm-svg { max-height: 220px; }
 body.is-phone .gv-app .gv-mm-detailed .gv-mm-svg { max-height: 300px; }
 .gv-mm-headl { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .gv-app .gv-mm-enlarge { flex: 0 0 auto; }
-.gv-mm-photos { align-self: flex-start; margin-top: 2px; }
+/* margin-right: Photos and Video are two buttons in one line when an exercise
+   has both, and touched. (No sibling selector: tests/css-cascade.js cannot read one.) */
+.gv-mm-photos { align-self: flex-start; margin-top: 2px; margin-right: 8px; }
 
 /* the miniature: the live set's frame is the control, the figure fills it */
 .gv-mm-mini { position: absolute; top: 0; left: 0; right: 0; bottom: 0; gap: 0; }

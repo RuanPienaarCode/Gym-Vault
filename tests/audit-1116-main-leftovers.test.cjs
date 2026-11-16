@@ -137,4 +137,31 @@ check('a restored draft still knows which figures were typed (so a kill cannot r
   assert.deepStrictEqual(flow.typedKinds(c), ['reps', 'weight', 'seconds'], 'a set with no record (an older draft) keeps the old answer');
 });
 
+check('a session left idle past the limit and THEN closed does not bank the gap on restore', () => {
+  const ds = require('../src/draft-store');
+  const t0 = Date.parse('2026-11-16T10:00:00');
+  const draft = { date: '2026-11-16', plan: 'P', day: 'A', startedAt: t0, entries: [{ exercise: 'Squat', target: '8', sets: [{ reps: '8', done: true, touched: true }] }] };
+  ds.noteActivity(draft, t0 + 5 * 60000);                    // last tick, five minutes in
+  const closeAt = t0 + 15 * 3600000;                         // the view is closed 15 hours later
+  const back = ds.restoreDraft(JSON.parse(JSON.stringify(ds.snapshotDraft(draft, closeAt))), closeAt + 60000);
+  assert.ok(back, 'fixture: the draft restores');
+  const mins = Math.round(ds.countedElapsedMs(back, closeAt + 120000) / 60000);
+  assert.ok(mins < 30, `restored session counts ${mins} min`);
+  /* and the live copy is not charged twice when it carries on instead */
+  ds.noteActivity(draft, closeAt + 60000);
+  const live = Math.round(ds.countedElapsedMs(draft, closeAt + 120000) / 60000);
+  assert.ok(live >= 5 && live < 30, `live session counts ${live} min`);
+});
+
+check('control: a short break before closing is still part of the workout', () => {
+  const ds = require('../src/draft-store');
+  const t0 = Date.parse('2026-11-16T10:00:00');
+  const draft = { date: '2026-11-16', plan: 'P', day: 'A', startedAt: t0, entries: [{ exercise: 'Squat', target: '8', sets: [{ reps: '8', done: true, touched: true }] }] };
+  ds.noteActivity(draft, t0 + 5 * 60000);
+  const closeAt = t0 + 45 * 60000;
+  const back = ds.restoreDraft(JSON.parse(JSON.stringify(ds.snapshotDraft(draft, closeAt))), closeAt + 60000);
+  const mins = Math.round(ds.countedElapsedMs(back, closeAt + 60000) / 60000);
+  assert.ok(mins >= 45, `a 45-minute session reads ${mins} min`);
+});
+
 run("audit-1116-main-leftovers");

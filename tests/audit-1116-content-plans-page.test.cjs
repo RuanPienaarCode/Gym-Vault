@@ -93,10 +93,22 @@ check('#7 Move is held the same way: two taps on Move down move the line once', 
     `disk order is ${JSON.stringify(exercisesOnDisk(v))}`);
 });
 
+check('#7 on a vault that saves at once, a double tap 80 ms apart still removes ONE exercise', async () => {
+  /* The save and the re-draw finish before the second tap, so the saving hold is
+     already gone and the tap lands on the row that slid under it (Push-ups). */
+  const { v, page } = await mount(THREE, 0);
+  click(removeBtns(page)[0]);                   // Pull-ups
+  await sleep(80);
+  assert.ok(page.draws >= 2, 'fixture: the page was already re-drawn before the second tap');
+  click(removeBtns(page)[0]);                   // the row now under the finger
+  await sleep(300);
+  assert.deepStrictEqual(exercisesOnDisk(v), ['Push-ups', 'Dips'], `disk lists ${JSON.stringify(exercisesOnDisk(v))}`);
+});
+
 check('#7 once the page has been re-drawn the controls work again (the hold is released)', async () => {
   const { v, page } = await mount(THREE, 40);
   click(removeBtns(page)[0]);                   // Pull-ups
-  await sleep(300);
+  await sleep(450);                             // past the save AND the double-tap window
   assert.ok(page.draws >= 2, 'the page was re-drawn after the save');
   click(removeBtns(page)[0]);                   // Push-ups, on the fresh page
   await sleep(300);
@@ -109,7 +121,7 @@ check('#7 a reload that keeps the same plan objects (a failed refresh) still rel
   let kept = true;
   ctx.reload = async () => { page.reloads++; if (kept) { kept = false; ctx.rerender(); return; } return realReload(); };
   click(removeBtns(page)[0]);
-  await sleep(200);
+  await sleep(450);                             // past the double-tap window
   const b = removeBtns(page)[0];                // the page was re-drawn from the SAME model
   assert.ok(b, 'a Remove button is on the re-drawn page');
   click(b);

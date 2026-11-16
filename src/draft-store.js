@@ -199,9 +199,17 @@ function snapshotDraft(draft, now) {
   const out = { date: str(draft.date), plan: str(draft.plan), day: str(draft.day), startedAt: finite(draft.startedAt) ? draft.startedAt : Date.now(), entries };
   /* The stale gaps already left out of the live clock (noteActivity). Only when there
      are some, so an ordinary draft reads exactly as before. */
-  if (finite(draft.idleMs) && draft.idleMs > 0) out.idleMs = draft.idleMs;
+  /* ...plus a stale gap since the last activity that nobody has acted on yet. The
+     snapshot written when the view is hidden or closed stamps savedAt = now, so a
+     session left untouched for 15 hours and THEN closed came back with that gap
+     hidden behind a fresh savedAt, and restoreDraft (which measures from savedAt)
+     counted all of it. Folded into the stored copy only: the live draft still
+     folds it in itself on its next activity, so it is never left out twice. */
+  const at = finite(now) ? now : Date.now();
+  const idle = (finite(draft.idleMs) ? draft.idleMs : 0) + (finite(draft.activeAt) ? staleGapMs(draft.activeAt, at) : 0);
+  if (idle > 0) out.idleMs = idle;
   if (live) out.live = live;
-  return { v: STORE_VERSION, savedAt: finite(now) ? now : Date.now(), draft: out };
+  return { v: STORE_VERSION, savedAt: at, draft: out };
 }
 
 /* A stored value back into a draft the log page can render, or null when it is
