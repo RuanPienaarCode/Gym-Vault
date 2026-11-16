@@ -22,7 +22,7 @@ const flow = require('./session-flow');
 const records = require('./records');
 const confetti = require('./confetti');
 const { createCounter, tap, undo, DEBOUNCE_MS } = require('./rep-counter');
-const { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton, commitOpenTypeIn } = require('./rep-counter-shared');
 const counterTarget = require('./counter-target');
 const { helpButton } = require('./explainer');
 const { counterSettingsButton } = require('./counter-settings');
@@ -32,6 +32,7 @@ const { motionAvailable, startMotionCounter } = require('./motion-source');
 const { sensitivityKey, motionKey, motionPref, initialMotion, chooseMotion, motionFailureCopy } = require('./motion-count');
 const { resolveExerciseImages } = require('./page-exercise-detail');
 const pageLog = require('./page-log');
+const { noteActivity } = require('./draft-store');
 const { buildRows, finishSession, growToSchedule, keepDraft, saveMotionPref } = pageLog;
 const { EndSessionModal } = require('./modals');
 const { nextFrameIndex, autoPlayMedia, MEDIA_CYCLE_MS } = require('./media-cycle');
@@ -63,9 +64,13 @@ const WEIGHT_STEP_KG = 2.5;
    thing: a second copy of this rule is how the trust seam would drift. */
 const OBSERVED_REPS = Object.freeze({ observed: Object.freeze(['reps']) });
 const OBSERVED_SECONDS = Object.freeze({ observed: Object.freeze(['seconds']) });
-/* A hold that was out of sight while it ran was not WATCHED (see watchAway). */
+/* A hold that was out of sight while it ran was not WATCHED (see watchAway). It
+   claims no record (observed: []) and fires no goal (noGoal: applyCompletion) -
+   decision D2, audit 16 Nov 2026. A timed interval also passes observed: [] but
+   its goals still fire, which is why the goal gate is its own flag. */
 const OBSERVED_NOTHING = Object.freeze({ observed: Object.freeze([]) });
-const heldObserved = hold => (hold && hold.away ? OBSERVED_NOTHING : OBSERVED_SECONDS);
+const OBSERVED_AWAY = Object.freeze({ observed: Object.freeze([]), noGoal: true });
+const heldObserved = hold => (hold && hold.away ? OBSERVED_AWAY : OBSERVED_SECONDS);
 
 function render(ctx, root) {
   const draft = ctx.state.logDraft;
@@ -254,6 +259,10 @@ function progressBar(draft) {
    when its clock does — none of those commit anything. Returns whether it
    committed. */
 function commitLiveSet(ctx, draft) {
+  /* A number typed into the count box and not yet committed is part of "what is on
+     screen": X is a button, and on iOS tapping a button does not blur the box
+     (audit 16 Nov 2026, #24). Commit it first so the counter below holds it. */
+  commitOpenTypeIn();
   const sess = ctx.state.session;
   if (!sess || sess.phase !== 'active' || (draft.timed && sess.timed)) return false;
   const cur = flow.currentSet(draft, sess.pos);
@@ -273,9 +282,35 @@ function commitLiveSet(ctx, draft) {
     return true;
   }
   const counter = sess.counter;
-  if (!counter || sess.counterFor !== key || !(counter.count > 0)) return false;
+  if (!counter || sess.counterFor !== key || !(counter.count > 0)) {
+    /* NOTHING WAS COUNTED, SO THE WEIGHT BOX ALONE DID NOT LOG A SET (audit 16 Nov
+       2026, #2). Nudging the weight sets `touched`, which makes the plan's
+       prefilled reps ("8") worth saving: Bank it wrote an `8 x 62.5` the user
+       never lifted. If that weight write is the only reason the set is touched,
+       give the set back to the plan (the figure stays in the box). A set the user
+       typed or ticked themselves is not in this case and is left alone. */
+    releaseWeightOnlyTouch(sess, set);
+    return false;
+  }
   applyCompletion(ctx, draft, sess, set, entry, { reps: String(counter.count) }, OBSERVED_REPS);
   return true;
+}
+
+/* The weight boxes of the set-by-set screen write `touched` (a typed weight is the
+   user's word, and it is what lets a weight record be claimed). Remember WHICH set
+   that write flipped from untouched, so commitLiveSet can tell "touched only by a
+   weight nudge" from "the user typed reps". Held on the session, never the draft:
+   it means nothing after the screen is left. */
+function noteWeightWrite(sess, set) {
+  if (!set.touched) sess.weightOnlyFor = set;
+  set.touched = true;
+  flow.markTyped(set, 'weight_kg');
+}
+
+function releaseWeightOnlyTouch(sess, set) {
+  if (sess.weightOnlyFor !== set) return;
+  sess.weightOnlyFor = null;
+  if (!set.done) { set.touched = false; delete set.typed; }
 }
 
 /* The one sheet both ways out of a session go through. X used to nav
@@ -352,17 +387,24 @@ function syncPlayButton(btn, paused) {
   btn.append(ico(paused ? 'play' : 'pause'));
 }
 
-/* A HOLD THAT WAS OUT OF SIGHT WAS NOT OBSERVED (audit B-hold-away). The
-   stopwatch is wall-clock time, so a plank started and then forgotten while the
-   app sat in the background (the Music button, a call, a locked phone) read an
-   hour on return, and stopping it announced a NEW BEST. A RUNNING hold that is
-   out of sight for longer than AWAY_GRACE_MS is flagged `away`; its seconds are
-   still saved, but it completes with observed: [] and so claims no record
-   (heldObserved). The grace is for the glance: skipping a song in the music app
-   mid-plank is still a plank the user was watching, and costing a PB for it
-   would punish the Music button this screen offers. A hold that was paused when
-   the page was hidden is not flagged: a paused clock cannot run away. One
-   listener per session, removed by pageCleanup. */
+/* A HOLD THAT WAS OUT OF SIGHT WAS NOT OBSERVED (audit B-hold-away, decision D2
+   of the 16 Nov 2026 audit). The stopwatch is wall-clock time, so a plank started
+   and then forgotten while the app sat in the background (the Music button, a
+   call, a locked phone) read an hour on return, and stopping it announced a NEW
+   BEST. A RUNNING hold that is out of sight for longer than AWAY_GRACE_MS is
+   flagged `away`, and the seconds the clock showed AT THE MOMENT THE PAGE WAS
+   HIDDEN are remembered as `awaySeconds`: that is all the user can be said to
+   have held, so it is what the set saves (heldSeconds caps the clock at it, for
+   the numeral and every save path alike), and the set completes with
+   OBSERVED_AWAY - no record, no goal. (Until the 16 Nov audit the full wall-clock
+   figure was saved and only the record was withheld; that was written down as a
+   choice, but it let a plank "held" for 312 s on a 120 s goal fire GOAL HIT and
+   become the best in the note.) The first hide that trips the guard fixes
+   awaySeconds; later ones do not move it. The grace is for the glance: skipping a
+   song in the music app mid-plank is still a plank the user was watching, and
+   costing a PB for it would punish the Music button this screen offers. A hold
+   that was paused when the page was hidden is not flagged: a paused clock cannot
+   run away. One listener per session, removed by pageCleanup. */
 const AWAY_GRACE_MS = 15000;
 function watchAway(sess, root) {
   const doc = (root && root.ownerDocument) || (typeof document !== 'undefined' ? document : null);
@@ -371,10 +413,16 @@ function watchAway(sess, root) {
     const h = sess.hold;
     if (!h) return;
     if (doc.visibilityState === 'hidden') {
-      if (h.running && !h.paused) h.hiddenAt = Date.now();
+      if (h.running && !h.paused) {
+        h.hiddenAt = Date.now();
+        h.hiddenSeconds = timerState.elapsedSeconds(h, h.hiddenAt);
+      }
       return;
     }
-    if (h.hiddenAt != null && Date.now() - h.hiddenAt > AWAY_GRACE_MS) h.away = true;
+    if (h.hiddenAt != null && Date.now() - h.hiddenAt > AWAY_GRACE_MS && !h.away) {
+      h.away = true;
+      h.awaySeconds = h.hiddenSeconds;
+    }
     h.hiddenAt = null;
   };
   doc.addEventListener('visibilitychange', onChange);
@@ -401,7 +449,9 @@ function pausedSnapshot(sess) {
   }
   const h = sess.hold;
   if (sess.phase === 'active' && h && h.running && h.paused && sess.holdFor) {
-    return { kind: 'hold', key: sess.holdFor, bankedSeconds: h.bankedSeconds, targetHit: h.targetHit === true, away: h.away === true, lastAnnounced: h.lastAnnounced, lastLiveAnnounced: h.lastLiveAnnounced };
+    const snap = { kind: 'hold', key: sess.holdFor, bankedSeconds: h.bankedSeconds, targetHit: h.targetHit === true, away: h.away === true, lastAnnounced: h.lastAnnounced, lastLiveAnnounced: h.lastLiveAnnounced };
+    if (h.away === true && Number.isFinite(h.awaySeconds)) snap.awaySeconds = h.awaySeconds;
+    return snap;
   }
   return null;
 }
@@ -495,7 +545,7 @@ function restorePaused(sess, draft, snap) {
     sess.hold = Object.assign({
       running: true, frozenSeconds: snap.bankedSeconds,
       lastAnnounced: snap.lastAnnounced, lastLiveAnnounced: snap.lastLiveAnnounced, targetHit: snap.targetHit, away: snap.away === true,
-    }, timerState.frozenClock(snap.bankedSeconds));
+    }, timerState.frozenClock(snap.bankedSeconds), snap.away === true && Number.isFinite(snap.awaySeconds) ? { awaySeconds: snap.awaySeconds } : null);
     sess.holdFor = key;
     /* It had already begun, so it must not count in again. */
     sess.countedIn = key;
@@ -1153,6 +1203,10 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      gesture that dismisses the countdown lands as the first rep and every
      set starts one ahead. */
   const registerTap = () => {
+    /* A TAP WHILE THE TYPE-IN BOX IS OPEN COMMITS THE NUMBER AND IS NOT A REP
+       (audit 16 Nov 2026, #24). The zone preventDefault()s touchstart, so on iOS
+       the box never blurs and the typed count was lost behind the +1. */
+    if (commitOpenTypeIn()) return;
     if (countIn && !countIn.armed()) {
       countIn.skip();
       /* AND IT LEAVES A DEBOUNCE BEHIND (audit L3-04). Skipping arms the counter
@@ -1279,6 +1333,10 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
      claiming a false record). */
   doneBtn.addEventListener('click', () => {
     sound.unlock(); // audit M-04: Tick is a gesture too, and the rest that follows speaks
+    /* THE OPEN TYPE-IN BOX IS COMMITTED BEFORE THE COUNT IS READ (audit 16 Nov
+       2026, #24): iOS keeps the box focused when this button is tapped and its
+       numeric pad has no Enter, so nothing else would have committed it. */
+    commitOpenTypeIn();
     /* A TICK ON A COUNT-IN IS NOT A SET (audit R2-14). Inside the five seconds
        nothing has been counted, and "Tick set" saved a 0-rep set that counted
        for XP and the quest. With nothing on the counter it is the same gesture
@@ -1398,7 +1456,7 @@ function weightedBody(ctx, draft, sess, entry, set) {
   const weightInput = numericInput({
     class: 'gv-set-input gv-session-weight', placeholder: 'kg', value: set.weight_kg ?? '',
     'aria-label': `Weight in kilograms — ${entry.exercise}`,
-  }, v => { set.weight_kg = v; set.touched = true; keepDraft(ctx); });
+  }, v => { set.weight_kg = v; noteWeightWrite(sess, set); keepDraft(ctx); });
   const weightRow = el('div', { class: 'gv-session-weightrow' }, weightInput, el('span', { class: 'gv-set-unit' }, 'kg'));
   if (posterSkin(ctx)) {
     /* POSTER: the weight as a stepper, minus and plus either side of the same
@@ -1409,7 +1467,7 @@ function weightedBody(ctx, draft, sess, entry, set) {
       const next = Math.max(0, Math.round(((Number.isFinite(cur) ? cur : 0) + dir * WEIGHT_STEP_KG) * 100) / 100);
       weightInput.value = String(next);
       set.weight_kg = String(next);
-      set.touched = true;
+      noteWeightWrite(sess, set);
       keepDraft(ctx);
     };
     const stepBtn = (dir, icon, label) => {
@@ -1431,7 +1489,14 @@ function weightedBody(ctx, draft, sess, entry, set) {
    frozen figure otherwise. The stop path, the paused Done and commitLiveSet
    all read it here, so a hold finished from a pause records what was held. */
 function heldSeconds(hold) {
-  return hold.running ? timerState.elapsedSeconds(hold, Date.now()) : hold.frozenSeconds;
+  const full = hold.running ? timerState.elapsedSeconds(hold, Date.now()) : hold.frozenSeconds;
+  /* A hold that left the screen counts only up to the moment it did (watchAway,
+     decision D2): the numeral, the live target and every save path read this one
+     function, so what is shown is what is saved. An `away` hold from an older
+     draft has no awaySeconds to cap at and keeps the full figure (it still claims
+     nothing - heldObserved). */
+  if (hold.away && Number.isFinite(hold.awaySeconds)) return Math.min(full, hold.awaySeconds);
+  return full;
 }
 
 /* Duration/holds: tap to start, tap to stop — stop IS the completion action
@@ -1864,10 +1929,25 @@ function celebrate(ctx, sess, cueKind, words) {
    themselves (typedByUser, read BEFORE this call touches set.touched, since
    afterwards every completed set reads as touched and the distinction is
    gone). A typed figure is always the user's own word for what happened,
-   whichever screen it was typed on. */
+   whichever screen it was typed on.
+
+   `opts.typed` is the same knowledge PER FIGURE: the record kinds the user typed
+   (session-flow.typedKinds). The timed circuit passes it, because there `touched`
+   is one flag for the whole set and typing the reps of `3 x 8 @ 60kg` must not make
+   the untouched 60 claim a weight record (audit 16 Nov 2026, #5). Without it the
+   old per-set answer stands, which is what the set-by-set screen has always used. */
 function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
   const observed = (opts && opts.observed) || [];
+  /* A completed set is activity: the live draft's clock leaves a stale gap before it
+     out of the workout's length (page-log.keepDraft / draft-store.noteActivity). */
+  noteActivity(draft, Date.now());
+  /* noGoal: a set whose figure was not watched at all (a hold that left the screen,
+     OBSERVED_AWAY) fires no goal of its own. Its saved seconds are in the draft, so
+     a LATER, trusted set still sees them when it checks - the goal is announced
+     by a set the user actually did, never by this one. */
+  const noGoal = !!(opts && opts.noGoal);
   const typedByUser = !!set.touched;
+  const typedKinds = opts && Array.isArray(opts.typed) ? opts.typed : null;
 
   Object.assign(set, values);
   set.done = true;
@@ -1884,7 +1964,8 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
   const callouts = [];
   try {
     const kind = classifyKind(entry);
-    const trustworthy = observed.indexOf(kind) !== -1 || typedByUser;
+    const trustworthy = observed.indexOf(kind) !== -1
+      || (typedKinds ? typedKinds.indexOf(kind) !== -1 : typedByUser);
     /* THE SAME GATE EVERY OTHER SURFACE USES (audit L1-03). Records, Today and
        the live target all ask records.claimableKinds; this was the one place
        that did not, so a kg-unit exercise with a "2 x 40s" line got a live NEW
@@ -1930,7 +2011,7 @@ function applyCompletion(ctx, draft, sess, set, entry, values, opts) {
   } catch (e) { console.error('gym-vault records', e); }
 
   try {
-    for (const g of checkGoalReached(ctx, sess, draft)) {
+    for (const g of (noGoal ? [] : checkGoalReached(ctx, sess, draft))) {
       sess.goalCount++;
       callouts.push(`GOAL HIT · ${g.name}`);
       celebrate(ctx, sess, 'goal', 'goal met');
@@ -2153,6 +2234,14 @@ function advanceTimed(ctx, draft, sess, opts) {
   const tp = sess.timed;
   const iv = draft.timed.intervals[tp.index];
   const skip = !!(opts && opts.skip);
+  if (!tp.completed) tp.completed = {};
+  if (!tp.given) tp.given = {};
+  /* An interval the session has already been through: played to its end (any kind -
+     a transition counts, not only a work interval), or skipped with its time handed
+     back. Stepping Back puts the clock at 0 on it again, but the time it took is
+     spent (or already given back), so nothing about it may be paid out twice. */
+  const played = !!tp.completed[tp.index];
+  const handedBack = !!tp.given[tp.index];
 
   /* BEFORE applyCompletion, not after (audit L3-06): the old interval's leftover
      "3, 2, 1" is cut here, and then a record cue that applyCompletion starts is
@@ -2162,27 +2251,37 @@ function advanceTimed(ctx, draft, sess, opts) {
 
   /* A skipped work interval is remembered on its set (session-flow's
      markSkipped), so leaving and re-entering the circuit does not offer it
-     again. It stays untouched and unticked: a skip is not a logged set. */
+     again. It stays untouched and unticked: a skip is not a logged set. The set
+     is the interval's own (timed-plan.positionFor): a run's later intervals share
+     the run's one set, and markSkipped must not roll past the end of it onto the
+     next exercise. markSkipped's rule is unchanged for a timed skip: an un-ticked
+     set goes back to being a plan prefill, which is what a skipped interval is;
+     a set already ticked (an interval of the run that was played) is left alone. */
   if (iv && iv.kind === 'work' && skip) {
-    flow.markSkipped(draft, { entryIndex: iv.entryIndex, setIndex: iv.setIndex });
+    const at = timedPlan.positionFor(draft, iv);
+    if (at) flow.markSkipped(draft, at);
     keepDraft(ctx);
   }
 
   /* What a skip did not use goes back on the clock, so the circuit still runs
      for the time asked for. Skipping the cool-down is the exception: it is the
-     end of the session, and there is nothing after it to play. */
-  if (iv && skip && iv.kind !== 'cooldown') {
+     end of the session, and there is nothing after it to play. Only an interval
+     not yet played through or handed back pays out (audit 16 Nov 2026, #36): Previous
+     then Skip on one that already finished used to give back its whole length
+     again - time already spent - and grew the circuit by an interval and a set. */
+  if (iv && skip && iv.kind !== 'cooldown' && !played && !handedBack) {
+    tp.given[tp.index] = true;
     draft.timed = timedPlan.giveTimeBack(draft.timed, iv.seconds - timedElapsed(tp), tp.index);
     growToSchedule(ctx, draft, draft.timed.setsPerEntry);
     keepDraft(ctx);
   }
 
-  if (iv && iv.kind === 'work' && !skip) {
-    if (!tp.completed) tp.completed = {};
-    if (!tp.completed[tp.index]) {
-      tp.completed[tp.index] = true;
+  if (iv && !skip) {
+    const first = !played;
+    tp.completed[tp.index] = true;
+    if (iv.kind === 'work' && first) {
       const entry = draft.entries[iv.entryIndex];
-      const set = entry && entry.sets && entry.sets[iv.setIndex];
+      const set = timedPlan.setFor(draft, iv);
       if (entry && set) {
         /* The clock is the one figure this screen writes (an untouched plan
            prefill is cleared rather than promoted to observed work —
@@ -2195,10 +2294,14 @@ function advanceTimed(ctx, draft, sess, opts) {
            observed: [] — a timed interval watches NOTHING here, not even
            seconds: an interval that counts down and ends on its own is a
            SCHEDULED duration, not an observed hold (see timedFigures' seconds
-           box for a duration entry — a typed figure is what makes the hold
-           itself claimable, via typedByUser). */
+           box for a duration entry). `typed` is what the user DID type, per
+           figure (session-flow.typedKinds), read before applyCompletion for the
+           same reason: it is what makes a typed figure claimable, and ONLY that
+           figure - a typed rep count leaves an untouched weight prefill
+           unclaimable (audit 16 Nov 2026, #5). */
+        const typed = flow.typedKinds(set);
         const measured = timedPlan.timedSetValues(entry, set, iv.seconds);
-        sess.pendingCallouts = applyCompletion(ctx, draft, sess, set, entry, measured, { observed: [] });
+        sess.pendingCallouts = applyCompletion(ctx, draft, sess, set, entry, measured, { observed: [], typed });
       }
     }
   }
@@ -2241,7 +2344,8 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   const tp = sess.timed;
   const isWork = iv.kind === 'work';
   const entry = isWork ? draft.entries[iv.entryIndex] : null;
-  const set = entry && entry.sets ? entry.sets[iv.setIndex] : null;
+  /* timed-plan.setFor: a run's every interval shows the run's one set. */
+  const set = isWork ? timedPlan.setFor(draft, iv) : null;
 
   const top = timedTopBar(ctx, draft, sess, schedule, iv);
   root.append(top.node);
@@ -2407,6 +2511,9 @@ function timedFigures(ctx, entry, set, iv) {
     }, v => {
       set[key] = v;
       set.touched = true;
+      /* WHICH figure was edited, beside the per-set flag (session-flow.markTyped):
+         typing the reps leaves an untouched weight prefill unclaimable. */
+      flow.markTyped(set, key);
       keepDraft(ctx);
       wrap.classList.remove('gv-timed-prefill'); // typed — it reads as a result now, not a suggestion
     });
@@ -2471,6 +2578,31 @@ function pbMoment(r) {
     chips);
 }
 
+/* NOTHING WOULD BE SAVED, SO NOTHING IS CELEBRATED (audit 16 Nov 2026, #13 and
+   #47). Reaching the end of the sets with no saveable row - a freestyle session
+   with no exercises, every set skipped, an empty run ticked - used to draw the
+   trophy, "Session done" and a "0 sets done" tile, and offered a Finish & save
+   that only raised a notice. This is the plain version: it says so, leads back to
+   the log (where an exercise can be added and a figure typed) and offers Discard,
+   the honest name for the one other thing that can be done. No trophy, no
+   confetti, no XP preview: the rewards card previews what Finish pays and Finish
+   pays nothing here. Same exit (X) as every other phase. */
+function renderNothingLogged(ctx, root, draft) {
+  root.append(el('div', { class: 'gv-session-top' }, el('div', { class: 'gv-session-top-row' }, exitButton(ctx, draft))));
+  const hasEntries = draft.entries.length > 0;
+  const toLog = el('button', { class: 'gv-btn-go', type: 'button' }, ico(hasEntries ? 'list' : 'plus'), el('span', {}, hasEntries ? 'Review in log' : 'Add exercise'));
+  toLog.addEventListener('click', () => ctx.nav('log'));
+  const discard = el('button', { class: 'gv-btn gv-btn-ghost gv-session-review', type: 'button' }, 'Discard');
+  discard.addEventListener('click', () => { ctx.state.logDraft = null; ctx.nav('dashboard'); }); // nothing was saveable - same as EndSessionModal's onDiscard
+  root.append(el('div', { class: 'gv-session-complete' },
+    el('h2', { class: 'gv-display gv-session-complete-title' }, 'Nothing logged yet'),
+    el('p', { class: 'gv-microcopy' }, hasEntries
+      ? 'No set was ticked or given a figure, so there is nothing to save. Open the log to fill one in, or discard this session.'
+      : 'This session has no exercises yet. Add one in the log, or discard it.'),
+    el('div', { class: 'gv-hero-action gv-session-nextwrap' }, toLog),
+    discard));
+}
+
 function renderComplete(ctx, root, draft, sess) {
   /* ONE minutes rule for a finished session (contract K5): page-log's
      sessionMinutes, the same function finishSession writes duration_min with, so
@@ -2483,13 +2615,16 @@ function renderComplete(ctx, root, draft, sess) {
   const totalMin = typeof sessionMinutes === 'function'
     ? sessionMinutes(draft)
     : Math.max(1, Math.round((Date.now() - draft.startedAt) / 60000));
-  let doneSets = 0;
-  for (const entry of draft.entries) for (const set of entry.sets) if (setCounts(set)) doneSets++;
-  /* page-log.finishSession's own guard: zero saveable rows means Finish has
-     nothing to write and only notices, leaving a "Finish & save" button that
-     silently does nothing under a thumb. Discard is the honest name for
-     what tapping it here actually does — nothing was saved either way. */
+  /* ONE RULE FOR "IS THERE ANYTHING TO SAVE" (audit 16 Nov 2026, #13). This used
+     to count with stats.setCounts, while page-log.finishSession saves what
+     buildRows says - and buildRows also refuses a run with neither km nor
+     minutes (setWorthSaving). So a ticked, empty run row read "Session done - 1
+     set done" over a Finish & save that only raised "Tick a set (or type a
+     figure) before finishing." The count is now the length of the SAME rows
+     Finish would write, so the tile, the button and the note cannot disagree. */
+  const doneSets = buildRows(draft).length;
   const hasSaveableRows = doneSets > 0;
+  if (!hasSaveableRows) { renderNothingLogged(ctx, root, draft); return; }
 
   const broken = sess.records || [];
   const wins = [];
@@ -2522,11 +2657,8 @@ function renderComplete(ctx, root, draft, sess) {
      ending up here from a mostly-skipped session is not a dead end. */
   root.append(el('div', { class: 'gv-session-top' }, el('div', { class: 'gv-session-top-row' }, exitButton(ctx, draft))));
 
-  const primaryBtn = el('button', { class: 'gv-btn-go', type: 'button' }, hasSaveableRows ? 'Finish & save' : 'Discard');
-  primaryBtn.addEventListener('click', () => {
-    if (hasSaveableRows) finishSession(ctx, draft);
-    else { ctx.state.logDraft = null; ctx.nav('dashboard'); } // nothing was ever saveable — same as EndSessionModal's onDiscard
-  });
+  const primaryBtn = el('button', { class: 'gv-btn-go', type: 'button' }, 'Finish & save');
+  primaryBtn.addEventListener('click', () => finishSession(ctx, draft));
 
   /* The rewards card sits between the records and the tiles. null when rewards are off. It previews what
      "Finish & save" will pay; the XP is written by page-log.finishSession, never from here. */

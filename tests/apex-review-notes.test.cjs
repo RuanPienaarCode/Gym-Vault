@@ -48,7 +48,8 @@ const origLoad = Module._load;
 Module._load = (req, ...rest) => {
   if (req === 'obsidian') return stub;
   if (req === './motion-source') return { motionAvailable: () => false, startMotionCounter: async () => () => {} };
-  if (req === './page-log') return { buildRows: () => [], finishSession: () => {}, keepDraft: () => {} };
+  /* buildRows: one row per ticked or typed set - renderComplete counts what Finish would save by (audit 16 Nov 2026, #13) */
+  if (req === './page-log') return { buildRows: draft => draft.entries.flatMap(e => e.sets.filter(s => s.done || s.touched).map(() => ({ exercise: '', set: 1 }))), finishSession: () => {}, keepDraft: () => {} };
   return origLoad(req, ...rest);
 };
 const mkNode = tag => {

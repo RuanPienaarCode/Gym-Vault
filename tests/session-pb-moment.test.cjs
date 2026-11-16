@@ -22,7 +22,9 @@ const stub = {
   normalizePath: p => p, requestUrl: async () => ({}), Platform: { isMobile: false },
 };
 const motionStub = { motionAvailable: () => false, startMotionCounter: async () => () => {} };
-const pageLogStub = { buildRows: () => [], finishSession: () => {}, keepDraft: () => {} };
+/* buildRows is the rule renderComplete counts what Finish would save by (audit 16 Nov 2026, #13): the stub
+   returns one row per ticked or typed set, so a draft with work in it still reads as having something to save. */
+const pageLogStub = { buildRows: draft => draft.entries.flatMap(e => e.sets.filter(s => s.done || s.touched).map(() => ({ exercise: '', set: 1 }))), finishSession: () => {}, keepDraft: () => {} };
 const origLoad = Module._load;
 Module._load = (req, ...rest) => {
   if (req === 'obsidian') return stub;

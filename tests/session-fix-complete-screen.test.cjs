@@ -34,7 +34,9 @@ const motionStub = { motionAvailable: () => false, startMotionCounter: async () 
    write a vault file. */
 const finishCalls = [];
 const pageLogStub = {
-  buildRows: () => [],
+  /* One row per ticked or typed set: renderComplete counts what Finish would save by buildRows (audit 16 Nov 2026,
+     #13), so the stub has to say which sets Finish would write. */
+  buildRows: draft => draft.entries.flatMap(e => e.sets.filter(s => s.done || s.touched).map(() => ({ exercise: '', set: 1 }))),
   finishSession: (ctx, draft) => { finishCalls.push(draft); },
 };
 
@@ -156,8 +158,9 @@ const newSess = () => ({ records: [], goalCount: 0, muted: true, completionCeleb
 /* ---------- 4. #7: the elapsed tile floors at 1, same as the note it saves */
 {
   const ctx = newCtx();
-  /* Under a minute — the exact case that used to read "0 min". */
-  const draft = { startedAt: Date.now() - 2000, entries: [] };
+  /* Under a minute — the exact case that used to read "0 min". It needs a set that saves: a session with
+     nothing to save now shows the plain "nothing logged yet" state with no tiles at all (audit 16 Nov 2026, #47). */
+  const draft = { startedAt: Date.now() - 2000, entries: [{ sets: [{ done: true, touched: true, reps: '10' }] }] };
   const root = mkNode('div');
   renderComplete(ctx, root, draft, newSess());
   const tileBig = collectByClass(root, 'gv-tile-big').map(textOf);

@@ -300,14 +300,43 @@ function initialIndex(schedule, draft, isHandled) {
 }
 
 /* A run's time as the run screen's MINUTES box holds it - the ONE
-   seconds->minutes conversion (page-log.buildRows owns the way back,
-   round(minutes * 60)). It used to round to 0.1 min, so 45 s became "0.8" and
-   was saved as 48 s. Two decimals give every whole second back exactly (the
-   error is at most 0.3 s) and a whole number of minutes still prints plain. */
+   seconds->minutes conversion (secondsFromMinutes below is the way back, and
+   page-log.buildRows saves through it). It used to round to 0.1 min, so 45 s
+   became "0.8" and was saved as 48 s. Two decimals give every whole second back
+   exactly (the error is at most 0.3 s) and a whole number of minutes still
+   prints plain. */
 function minutesText(seconds) {
   const s = Math.round(Number(seconds));
   if (!Number.isFinite(s)) return '';
   return String(Math.round((s / 60) * 100) / 100);
+}
+
+/* The way back: whole seconds from a MINUTES box's text, or null when it holds no
+   number. The only minutes->seconds conversion - page-log.buildRows saves a run's
+   time through it, and timedSetValues adds a run's intervals through it, so the
+   saved row and the running total can never be worked out two ways. */
+function secondsFromMinutes(text) {
+  const mins = parseFloat(text);
+  return Number.isFinite(mins) ? Math.round(mins * 60) : null;
+}
+
+/* WHICH SET AN INTERVAL WRITES INTO. A run is ONE set however many intervals the
+   schedule plays it as (page-log.makeEntry: `distance` -> one set; every row of a
+   run is a single continuous effort), so every interval of a run entry - not just
+   the first - belongs to that one set. Every other entry keeps one set per
+   interval, indexed by the interval's own setIndex. The screen's figure boxes,
+   the write on completion and the skip mark all go through these two, so they
+   cannot point at different sets. */
+function positionFor(draft, iv) {
+  const entry = draft && draft.entries && iv ? draft.entries[iv.entryIndex] : null;
+  if (!entry) return null;
+  return { entryIndex: iv.entryIndex, setIndex: entry.distance ? 0 : iv.setIndex };
+}
+
+function setFor(draft, iv) {
+  const at = positionFor(draft, iv);
+  const entry = at ? draft.entries[at.entryIndex] : null;
+  return (entry && entry.sets && entry.sets[at.setIndex]) || null;
 }
 
 /* WHAT A FINISHED INTERVAL IS ENTITLED TO WRITE.
@@ -331,7 +360,13 @@ function minutesText(seconds) {
    A distance entry has no prefills to clear (makeEntry leaves a run empty —
    the distance covered is the whole point of logging it) and takes `minutes`
    rather than `seconds`, because buildRows reads a run's time from minutes
-   and ignores seconds entirely.
+   and ignores seconds entirely. A run is ONE row that its intervals share, so
+   each finished interval ADDS its seconds to the time the row already holds
+   (read back through secondsFromMinutes) rather than replacing it: the row
+   ends up holding the total time run. Reading the row, not a counter kept by
+   the screen, is what lets a circuit that was left and re-entered carry on
+   adding to the time it had. The caller guarantees an interval is written once
+   (page-session's tp.completed), and a skipped interval is never written.
 
    THE DURATION CARVE-OUT. For every OTHER kind of entry, `seconds` is a side
    figure the clock alone gets to write (a push-up interval logging "15 reps,
@@ -347,7 +382,8 @@ function minutesText(seconds) {
    is exactly what was measured, same as before this carve-out existed. */
 function timedSetValues(entry, set, seconds) {
   if (entry && entry.distance) {
-    return { minutes: minutesText(seconds) };
+    const before = set ? secondsFromMinutes(set.minutes) : null;
+    return { minutes: minutesText((before || 0) + Math.round(Number(seconds))) };
   }
   if (entry && entry.duration) {
     if (set && set.touched) return {}; // the typed figure wins; don't write over it
@@ -362,6 +398,6 @@ function timedSetValues(entry, set, seconds) {
 }
 
 module.exports = {
-  timedSetValues, minutesText,
+  timedSetValues, minutesText, secondsFromMinutes, positionFor, setFor,
   TIMED_DEFAULTS, MIN_INTERVAL_S, buildSchedule, giveTimeBack, workSecondsFor, workIntervals, initialIndex,
 };

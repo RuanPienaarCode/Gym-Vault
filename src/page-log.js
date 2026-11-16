@@ -14,6 +14,9 @@ const { targetFirstNumber, targetWeight, targetIsDuration, targetDurationSeconds
 
 const { FormModal, ConfirmModal, EndSessionModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
+const { noteActivity, countedElapsedMs } = require('./draft-store');
+const { secondsFromMinutes } = require('./timed-plan');
+const { markTyped } = require('./session-flow');
 const { motionPref, setMotionPref } = require('./motion-count');
 const rewardsFlow = require('./rewards-flow');
 const { isOpenEnded } = require('./counter-target');
@@ -65,7 +68,17 @@ function growToSchedule(ctx, draft, setsPerEntry) {
    device-local copy; it asks directly. A no-op under a ctx that has no
    controller behind it (the unit guards render these pages against a stub). */
 function keepDraft(ctx) {
+  markActive(ctx);
   if (ctx && typeof ctx.persistDraft === 'function') ctx.persistDraft();
+}
+
+/* SOMETHING HAPPENED IN THE SESSION (audit 16 Nov 2026, #8): stamps the live draft
+   so a stale gap between two activities is left out of the workout's length - the
+   same rule restoreDraft applies after a kill (draft-store.noteActivity). Every
+   edit that changes the draft calls this, directly or through keepDraft. */
+function markActive(ctx) {
+  const d = ctx && ctx.state && ctx.state.logDraft;
+  if (d) noteActivity(d, Date.now());
 }
 
 /* A canonical YYYY-MM-DD that is not in the future, or null. */
@@ -74,6 +87,16 @@ function pastDate(iso) {
   if (!d) return null;
   const canon = toISO(d);
   return canon <= todayISO() ? canon : null;
+}
+
+/* HOW MANY SETS A DRAFT ENTRY HOLDS - the ONE rule, makeEntry builds by it and the
+   setup screen's reps-mode preview counts by it. A run is a single continuous
+   effort, so it is one set whatever the plan wrote (`6 x 3 min hard` is one run of
+   six efforts, logged as one row with one distance); every other exercise holds
+   one set per planned set, never fewer than one. */
+function setsInDraft(ctx, exercise, sets) {
+  const ex = ctx.data.exercises.find(e => sameName(e.name, exercise));
+  return ex && ex.fm && ex.fm.unit === 'km' ? 1 : Math.max(1, sets);
 }
 
 function makeEntry(ctx, exercise, sets, target) {
@@ -107,7 +130,7 @@ function makeEntry(ctx, exercise, sets, target) {
        user ticks the set or edits a field (see stats.setCounts). */
     /* A run is one entry, not three sets — and nothing is prefilled, since
        the distance you actually covered is the whole point of logging it. */
-    sets: Array.from({ length: distance ? 1 : Math.max(1, sets) }, () => (distance
+    sets: Array.from({ length: setsInDraft(ctx, exercise, sets) }, () => (distance
       ? { distance_km: '', minutes: '', done: false, touched: false }
       : { reps: prefReps, weight_kg: prefW, seconds: prefSecs, done: false, touched: false })),
   };
@@ -157,25 +180,39 @@ function render(ctx, root) {
     for (const s of root.querySelectorAll('.gv-log-elapsed')) s.textContent = t;
   }, 30000);
 
-  draft.entries.forEach((entry, ei) => root.append(entryCard(ctx, draft, entry, ei)));
+  /* The tally's two figures are painted by this function, so a typed figure can
+     refresh them in place (see below) without a re-render. Declared here, filled
+     when the tally is built. */
+  let paintTally = () => {};
+  draft.entries.forEach((entry, ei) => root.append(entryCard(ctx, draft, entry, ei, () => paintTally())));
 
   const addEx = el('button', { class: 'gv-add-line', type: 'button', onclick: () => openAddExercise(ctx, draft) },
     ico('plus'), el('span', {}, 'Add exercise'));
   root.append(addEx);
 
-  /* Tally — recomputed on every rerender, so ticking a set updates it.
-     Counts by setWorthSaving, the SAME rule buildRows saves by (setCounts
-     alone isn't enough here — see that function's comment). */
-  let doneSets = 0, doneReps = 0;
-  for (const entry of draft.entries) for (const set of entry.sets) {
-    if (!setWorthSaving(entry, set)) continue;
-    doneSets++;
-    const r = parseFloat(set.reps);
-    if (Number.isFinite(r)) doneReps += r;
-  }
+  /* Tally — recomputed on every rerender, so ticking a set updates it, AND
+     repainted in place by every typed figure (audit 16 Nov 2026, #49): typing
+     changes the draft without a re-render (the input would lose focus), so the
+     tally used to sit stale until something else redrew the page although the row
+     already counted and saved. Counts by setWorthSaving, the SAME rule buildRows
+     saves by (setCounts alone isn't enough here — see that function's comment). */
+  const setsNum = el('b', {}, '0');
+  const repsNum = el('b', {}, '0');
+  paintTally = () => {
+    let doneSets = 0, doneReps = 0;
+    for (const entry of draft.entries) for (const set of entry.sets) {
+      if (!setWorthSaving(entry, set)) continue;
+      doneSets++;
+      const r = parseFloat(set.reps);
+      if (Number.isFinite(r)) doneReps += r;
+    }
+    setsNum.textContent = String(doneSets);
+    repsNum.textContent = String(doneReps);
+  };
+  paintTally();
   root.append(el('div', { class: 'gv-log-tally' },
-    el('span', {}, 'Sets', el('b', {}, String(doneSets))),
-    el('span', {}, 'Reps', el('b', {}, String(doneReps))),
+    el('span', {}, 'Sets', setsNum),
+    el('span', {}, 'Reps', repsNum),
     el('span', {}, 'Elapsed', el('b', { class: 'gv-log-elapsed' }, elapsed(draft)))));
 
   const finish = el('button', { class: 'gv-btn-finish', type: 'button', onclick: () => finishSession(ctx, draft) },
@@ -191,12 +228,19 @@ function render(ctx, root) {
     el('p', { class: 'gv-microcopy' }, "The bar isn't going to climb itself.")));
 }
 
-function elapsed(draft) {
-  const min = Math.max(0, Math.round((Date.now() - draft.startedAt) / 60000));
-  return `${min} min`;
+/* Whole minutes of the workout so far, by the ONE gap rule (draft-store.
+   countedElapsedMs): the clock label here, the complete tile and the saved note
+   (sessionMinutes below) all read it. A session left open for 15 hours after its
+   last tick must not read 900. */
+function elapsedMinutes(draft, now = Date.now()) {
+  return Math.max(0, Math.round(countedElapsedMs(draft, now) / 60000));
 }
 
-function entryCard(ctx, draft, entry, ei) {
+function elapsed(draft) {
+  return `${elapsedMinutes(draft)} min`;
+}
+
+function entryCard(ctx, draft, entry, ei, onFigure) {
   /* Says so, rather than leaving a column of the plan's own numbers to be
      read as work. setCounts is the SAME rule finishSession saves by, so this
      label and the note that lands can never disagree. */
@@ -211,7 +255,7 @@ function entryCard(ctx, draft, entry, ei) {
     removeBtn(ctx, draft, ei)));
 
   const rows = el('div', { class: 'gv-log-sets' });
-  entry.sets.forEach((set, si) => rows.append(setRow(ctx, entry, set, si)));
+  entry.sets.forEach((set, si) => rows.append(setRow(ctx, entry, set, si, onFigure)));
   card.append(rows);
 
   const addSet = el('button', { class: 'gv-add-line gv-add-set', type: 'button' }, ico('plus'), el('span', {}, 'Set'));
@@ -221,6 +265,7 @@ function entryCard(ctx, draft, entry, ei) {
     entry.sets.push(entry.distance
       ? { distance_km: '', minutes: '', done: false, touched: false }
       : { reps: prev.reps ?? '', weight_kg: prev.weight_kg ?? '', seconds: prev.seconds ?? '', done: false, touched: false });
+    markActive(ctx);
     ctx.rerender();
   });
   card.append(addSet);
@@ -237,7 +282,7 @@ const INPUT_LABELS = {
   distance_km: 'Distance in kilometres', minutes: 'Minutes',
 };
 
-function setRow(ctx, entry, set, si) {
+function setRow(ctx, entry, set, si, onFigure) {
   /* A PREFILL IS THE PLAN TALKING, NOT YOU. These boxes are seeded from the
      day's prescription and marked `touched: false`; until you type or tick,
      nothing here has happened. They rendered identically to a figure you had
@@ -263,7 +308,7 @@ function setRow(ctx, entry, set, si) {
        nothing to anyone not looking at the colour. */
     'aria-label': `${INPUT_LABELS[key] || placeholder} — ${entry.exercise}, set ${si + 1}`
       + (isPrefill && String(set[key] ?? '').trim() ? ', from the plan, not yet logged' : ''),
-  }, v => { set[key] = v; set.touched = true; keepDraft(ctx); });
+  }, v => { set[key] = v; set.touched = true; markTyped(set, key); keepDraft(ctx); if (onFigure) onFigure(); });
 
   if (entry.distance) {
     /* Two inputs in one row — narrower so km + min + the 48px tick still
@@ -282,7 +327,7 @@ function setRow(ctx, entry, set, si) {
   }
 
   const done = el('button', { class: 'gv-set-done', type: 'button', 'aria-label': set.done ? 'Mark not done' : 'Mark done' }, ico('check'));
-  done.addEventListener('click', () => { set.done = !set.done; ctx.rerender(); });
+  done.addEventListener('click', () => { set.done = !set.done; markActive(ctx); ctx.rerender(); });
   row.append(done);
   return row;
 }
@@ -329,6 +374,8 @@ function counterBtn(ctx, entry, set) {
       onDone: count => {
         set.reps = String(count);
         set.touched = true;
+        markTyped(set, 'reps');
+        markActive(ctx);
         ctx.rerender();
       },
     }).open();
@@ -354,6 +401,7 @@ function removeBtn(ctx, draft, ei) {
   b.addEventListener('click', () => {
     if (locked) { ctx.notice('Finish or discard the timed session first — removing an exercise mid-clock would log the rest against the wrong one.'); return; }
     draft.entries.splice(ei, 1);
+    markActive(ctx);
     ctx.rerender();
   });
   return b;
@@ -374,6 +422,7 @@ function openAddExercise(ctx, draft) {
     onSubmit: v => {
       const sets = parseInt(v.sets, 10);
       draft.entries.push(makeEntry(ctx, String(v.exercise).trim(), Number.isFinite(sets) && sets > 0 ? sets : 3, ''));
+      markActive(ctx);
       ctx.rerender();
     },
   }).open();
@@ -408,12 +457,14 @@ function buildRows(draft) {
       if (!setWorthSaving(entry, set)) continue;
       n++;
       if (entry.distance) {
-        /* The ONLY minutes->seconds conversion: the column is seconds, the
-           input is minutes because nobody logs a 30-minute run as 1800. */
-        const mins = parseFloat(set.minutes);
+        /* The ONLY minutes->seconds conversion (timed-plan.secondsFromMinutes,
+           the same one a timed run adds its intervals through): the column is
+           seconds, the input is minutes because nobody logs a 30-minute run as
+           1800. */
+        const secs = secondsFromMinutes(set.minutes);
         rows.push({
           exercise: entry.exercise, set: n, reps: '', weight_kg: '',
-          seconds: Number.isFinite(mins) ? String(Math.round(mins * 60)) : '',
+          seconds: secs !== null ? String(secs) : '',
           note: '', distance_km: String(set.distance_km ?? '').trim(),
         });
       } else {
@@ -446,7 +497,11 @@ function buildRows(draft) {
    its entered work keeps the clock. page-session's completion tile calls this
    too, so the tile and the saved note agree. */
 function sessionMinutes(draft, now = Date.now()) {
-  const elapsedMin = (now - draft.startedAt) / 60000;
+  /* The clock is the workout's length by the one gap rule (draft-store.
+     countedElapsedMs), not the time since the draft was created: a session left
+     open for 15 hours after its last tick is not a 900-minute workout (audit 16
+     Nov 2026, #8). */
+  const elapsedMin = countedElapsedMs(draft, now) / 60000;
   let workSec = 0;
   for (const r of buildRows(draft)) {
     const sec = parseFloat(r.seconds);
@@ -488,4 +543,4 @@ async function finishSession(ctx, draft) {
   ctx.reload();
 }
 
-module.exports = { render, startDraft, growToSchedule, buildRows, finishSession, sessionMinutes, keepDraft, saveMotionPref };
+module.exports = { render, startDraft, growToSchedule, setsInDraft, buildRows, finishSession, sessionMinutes, elapsedMinutes, keepDraft, saveMotionPref };

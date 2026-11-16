@@ -81,17 +81,73 @@ function initialPosition(draft) {
   return nextUnhandled(draft, { entryIndex: 0, setIndex: 0 });
 }
 
-/* Mark the set at `pos` skipped. Never touches done/touched/figures. */
-function markSkipped(draft, pos) {
-  const cur = currentSet(draft, pos);
-  if (cur && !isHandled(cur.set)) cur.set.skipped = true;
+/* SKIP MEANS "NOT DONE", WHATEVER WAS TYPED INTO THE SET FIRST (audit 16 Nov
+   2026, #2). A weight write sets `touched`, and touched plus any figure is what
+   stats.setCounts calls worth saving - so a set whose weight was nudged and then
+   skipped was saved (`8 x 62.5`) and counted ("3 sets done") although the user
+   had said no to it. The rule lives HERE rather than in each reader: a skipped,
+   unticked set goes back to being a plan PREFILL (touched false), so
+   stats.setCounts, page-log.buildRows, progress() and the complete tile all stop
+   counting it at once, with no second rule to drift. The figures stay in the
+   boxes (dimmed as a prefill) and nothing is deleted; a figure typed or a tick
+   made AFTER the skip sets touched / done again and wins, as it always did.
+
+   A ticked set is never touched: a skip cannot un-do work the user ticked.
+   Only the set the user is looking at when they press Skip is ever passed here,
+   or (below) the rest of its exercise. */
+function skipOne(set) {
+  if (!set || set.done) return;
+  set.skipped = true;
+  set.touched = false;
+  /* Back to a prefill means nothing in it was typed: the per-figure record goes
+     with `touched`, or a figure typed before the skip would still be believed after
+     the set is touched again by an unrelated one. */
+  delete set.typed;
 }
 
-/* Mark the rest of the exercise at `pos` (from this set on) skipped. */
+/* WHICH FIGURES THE USER TYPED, KEPT BESIDE `touched` (audit 16 Nov 2026, #5).
+   `touched` is one flag for the whole set and keeps meaning "this set holds
+   something the user did" (stats.setCounts, the skip rule above). It cannot say WHICH
+   figure, and a record claim has to: typing the reps of `3 x 8 @ 60kg` says nothing
+   about the 60, which is still the plan's prefill, and letting it claim a weight
+   record paid XP for a lift nobody did.
+
+   `set.typed` is {figureKey: true} for the figures the user edited (reps,
+   weight_kg, seconds, ...). Plain data on the set like `skipped`, never read by
+   buildRows or stats, so a saved note is unchanged. typedKinds turns it into the
+   record KINDS applyCompletion's trust rule asks about. A set that is touched but has
+   no record (marked by an older build, or by a path that sets only `touched`) keeps
+   the old answer - everything counts as typed - rather than silently losing a claim
+   the user earned. An untouched set has typed nothing, whatever the record says. */
+const KIND_OF_FIGURE = { reps: 'reps', weight_kg: 'weight', seconds: 'seconds' };
+
+function markTyped(set, key) {
+  if (!set || !key) return;
+  if (!set.typed || typeof set.typed !== 'object') set.typed = {};
+  set.typed[key] = true;
+}
+
+function typedKinds(set) {
+  if (!set || !set.touched) return [];
+  if (!set.typed || typeof set.typed !== 'object') return ['reps', 'weight', 'seconds'];
+  return Object.keys(KIND_OF_FIGURE).filter(k => set.typed[k] === true).map(k => KIND_OF_FIGURE[k]);
+}
+
+/* Mark the set at `pos` skipped. */
+function markSkipped(draft, pos) {
+  const cur = currentSet(draft, pos);
+  if (cur) skipOne(cur.set);
+}
+
+/* Mark the rest of the exercise at `pos` (from this set on) skipped. The set on
+   screen follows the rule above; a LATER set the user had already typed into on
+   the log is one they never visited here, so it stays handled and saved exactly
+   as before. */
 function markExerciseSkipped(draft, pos) {
   const cur = currentSet(draft, pos);
   if (!cur) return;
-  for (let i = cur.setIndex; i < cur.entry.sets.length; i++) {
+  skipOne(cur.set);
+  for (let i = cur.setIndex + 1; i < cur.entry.sets.length; i++) {
     if (!isHandled(cur.entry.sets[i])) cur.entry.sets[i].skipped = true;
   }
 }
@@ -139,4 +195,4 @@ function progress(draft) {
   return { done, total };
 }
 
-module.exports = { isHandled, isSkipped, isSettled, markSkipped, markExerciseSkipped, initialPosition, isDone, currentSet, advance, skipSet, skipExercise, progress };
+module.exports = { isHandled, isSkipped, isSettled, markTyped, typedKinds, markSkipped, markExerciseSkipped, initialPosition, isDone, currentSet, advance, skipSet, skipExercise, progress };
