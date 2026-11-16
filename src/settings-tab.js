@@ -9,6 +9,7 @@ const { progressOf } = require('./voice-pack');
 const { visualPrefs } = require('./motion-library');
 const { rewardsEnabled } = require('./rewards');
 const { autoPlayMedia } = require('./media-cycle');
+const { quietMotionOn } = require('./quiet-motion');
 
 /* A TEXT BOX IS NOT COMMITTED UNTIL YOU STOP TYPING.
 
@@ -89,8 +90,8 @@ class GymSettingTab extends PluginSettingTab {
       });
 
     new Setting(c)
-      .setName('Style on this device only')
-      .setDesc('For a shared vault: on means Style and Accent below change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
+      .setName('Look and feel on this device only')
+      .setDesc('For a shared vault: on means Style, Accent, Rewards and Calm motion change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
       .addToggle(t => t
         .setValue(!!this.plugin.deviceLook)
         .onChange(v => {
@@ -109,14 +110,17 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Rewards')
-      .setDesc('XP, levels, a weekly quest and medals, tracked in Gym/Rewards.md. Off means nothing is awarded, shown or written.')
+      .setDesc(`XP, levels, a weekly quest and medals, tracked in Gym/Rewards.md. Off means nothing is awarded, shown or written.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
       .addToggle(t => t
         .setValue(rewardsEnabled(this.plugin.settings))
-        .onChange(async v => {
-          this.plugin.settings.rewards = v;
-          await this.plugin.saveSettings();
-          this.plugin.refreshViews();
-        }));
+        .onChange(v => this.plugin.setLook('rewards', v)));
+
+    new Setting(c)
+      .setName('Calm motion')
+      .setDesc(`No confetti, no pulsing, flickering or scrolling, and exercise images held still. Sounds and counting are unchanged.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
+      .addToggle(t => t
+        .setValue(quietMotionOn(this.plugin.settings))
+        .onChange(v => this.plugin.setLook('quietMotion', v)));
 
     new Setting(c)
       .setName('Animate exercise images')

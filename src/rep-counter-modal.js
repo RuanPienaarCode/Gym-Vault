@@ -1,4 +1,5 @@
 'use strict';
+const { QUIET_CLASS, quietMotionOn } = require('./quiet-motion');
 /* Full-screen tap-to-count modal — phone flat on the floor, nose touches the
    screen at the bottom of each rep. Exercise-agnostic: same counter serves
    push-ups (nose), sit-ups/squats (finger), or a freestyle count from the
@@ -83,6 +84,7 @@ class RepCounterModal extends Modal {
     this.modalEl.addClass('gv-repcounter-modal');
     for (const cls of skinClasses(this.skin)) this.modalEl.addClass(cls);
     this.modalEl.addClass(`gv-accent-${this.accent}`);
+    if (quietMotionOn(this.settings)) this.modalEl.addClass(QUIET_CLASS);
 
     const c = this.contentEl;
     const label = el('div', { class: 'gv-rc-label' }, this.exerciseName || 'Freestyle');

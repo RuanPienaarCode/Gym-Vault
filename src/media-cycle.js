@@ -1,4 +1,5 @@
 'use strict';
+const { quietMotionOn } = require('./quiet-motion');
 /* Pure order logic for the guided view's media-cycle (src/page-session.js
    guidedImageBlock). Given a frame count and the set of indices that have
    errored (offline / dead links), picks the next frame to show — skipping
@@ -75,7 +76,7 @@ function frameLabel(frames, i) {
    paused whatever the setting says. Stepping by hand and the viewer's Play
    button are never gated by this: it only decides what happens WITHOUT a tap. */
 function autoPlayMedia(settings, reducedMotion) {
-  if (reducedMotion) return false;
+  if (reducedMotion || quietMotionOn(settings)) return false;
   const v = settings ? settings.animateMedia : undefined;
   return !(v === false || String(v) === 'false');
 }

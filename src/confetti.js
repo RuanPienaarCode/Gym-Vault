@@ -52,6 +52,8 @@ function prefersReducedMotion(win) {
 function burst(hostEl, opts) {
   try {
     if (!hostEl) return () => {};
+    /* Settings › Calm motion: no burst at all. */
+    if (typeof hostEl.closest === 'function' && hostEl.closest('.gv-quiet-motion')) return () => {};
     const doc = hostEl.ownerDocument || document;
     const win = (doc.defaultView) || window;
     /* Ask the host's OWN window, not the global one: in an Obsidian popout

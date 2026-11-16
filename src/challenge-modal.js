@@ -1,4 +1,5 @@
 'use strict';
+const { QUIET_CLASS, quietMotionOn } = require('./quiet-motion');
 /* The weekly challenge counter — phone flat on the floor, nose taps the
    screen at the bottom of each rep, exactly like the rep counter. Three
    steps: pick how (Max or Sets), count, then a summary you save or discard.
@@ -98,6 +99,7 @@ class ChallengeModal extends Modal {
     this.modalEl.addClass('gv-challenge-modal');
     for (const cls of skinClasses(this.skin)) this.modalEl.addClass(cls);
     this.modalEl.addClass(`gv-accent-${this.accent}`);
+    if (quietMotionOn(this.settings)) this.modalEl.addClass(QUIET_CLASS);
     /* Inside the gesture that opened the modal — iOS will not let a timer
        make the first sound. Same reason as the rep counter. */
     sound.unlock();

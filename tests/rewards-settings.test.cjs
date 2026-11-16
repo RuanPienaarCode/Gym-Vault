@@ -36,6 +36,8 @@ const show = settings => {
   rows.length = 0;
   const log = { saved: 0, refreshed: 0 };
   const plugin = { settings: Object.assign({}, DEFAULT_SETTINGS, settings), saveSettings: async () => { log.saved++; }, refreshViews: () => { log.refreshed++; } };
+  /* main.js setLook with no device choice set (16 Nov 2026: Rewards goes through it so it can be per device) */
+  plugin.setLook = async (field, value) => { plugin.settings[field] = value; await plugin.saveSettings(); plugin.refreshViews(); };
   const tab = new GymSettingTab({}, plugin);
   tab.display();
   return { row: rows.find(r => r.name === 'Rewards'), plugin, log };
