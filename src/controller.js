@@ -11,6 +11,7 @@ const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
 const { skinClasses } = require('./constants');
+const { paintLeaf } = require('./leaf-paper');
 const pages = {
   dashboard: require('./page-dashboard'),
   exercises: require('./page-exercises'),
@@ -240,6 +241,8 @@ function mountApp(view) {
       if (cls.indexOf('gv-skin-') === 0 || cls.indexOf('gv-accent-') === 0) rootEl.classList.remove(cls);
     }
     rootEl.classList.add(...skinClasses(plugin.settings.skin || 'apex'), `gv-accent-${plugin.settings.accent || 'lime'}`);
+    /* Obsidian's own title bar above the gym takes the style's paper too. */
+    paintLeaf(rootEl, view.containerEl, rootEl.ownerDocument && rootEl.ownerDocument.defaultView);
   };
   syncChrome();
 
@@ -715,6 +718,8 @@ function mountApp(view) {
       for (const evt of ['modify', 'create', 'delete', 'rename']) {
         view.registerEvent(app.vault.on(evt, onVaultEvent));
       }
+      /* Light/dark switched: the paper changed, so does the title bar's. */
+      if (app.workspace && app.workspace.on) view.registerEvent(app.workspace.on('css-change', () => syncChrome()));
       /* Opening the gym while Obsidian is still indexing (a new device, a
          big iCloud sync) can read an empty or unreadable vault. `resolved`
          fires when the metadata cache finishes, so reload once more then —
