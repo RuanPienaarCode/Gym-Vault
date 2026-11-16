@@ -47,7 +47,7 @@ const text = n => n.textContent.replace(/\s+/g, ' ');
 {
   const plan = (name, extra) => Object.assign({ name, days: 1, exercises: ['a'], summary: 's' }, extra);
   const index = { plans: [plan('Solo'), plan('Prog 1 · Base', { series: 'Prog', phase: 1 }), plan('Prog 2 · Build', { series: 'Prog', phase: 2, days: 3, exercises: ['a', 'b'] })] };
-  const ctx = { app: {}, data: { plans: [] }, state: { browseUi: { index, error: null, loading: false, busy: null } }, backTo: f => f, back() {}, nav() {}, notice() {}, reload: async () => {}, io: { fetchPlanIndex: async () => index, installPlan: async () => ({}) } };
+  const ctx = { app: {}, data: { plans: [] }, state: { browseUi: { index, repo: '', error: null, loading: false, busy: null } }, backTo: f => f, back() {}, nav() {}, notice() {}, reload: async () => {}, io: { safeName: n => n, fetchPlanIndex: async () => index, installPlan: async () => ({}) } };
   const t = text(T.render(browse, ctx));
   assert.ok(/1 day · 1 exercise(?!s)/.test(t) && !/1 days|1 exercises/.test(t), `browse plural: ${t}`);
   assert.ok(/3 days · 2 exercises/.test(t), 'control: plural stays plural');

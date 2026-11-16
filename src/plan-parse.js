@@ -40,9 +40,20 @@ const DAY_HEADING = /^##\s+(.+?)\s*\((mon|tue|wed|thu|fri|sat|sun|any)\)\s*$/i;
    "4 sets of 10", "3 sets x 10", "3 sets × 10". The original lowercase
    `N x text` / `N × text` rule is tried FIRST and unchanged, so every line
    that parsed before parses identically; the new shapes only claim text that
-   used to be taken whole as the target. */
+   used to be taken whole as the target.
+
+   A BARE COUNT ("5 x", "5 ×", "5 sets", "3 sets x") is {sets: N, target: ''}.
+   serializeItem writes `N x` for a line whose Target was left empty (Add
+   exercise makes Target optional, and Edit lets you clear it), and this used to
+   read that back as {sets: null, target: "5 x"}: the Sets box came up empty, the
+   session ran the default 3 sets, and the next Sets edit stacked a second count
+   on the dangling one (`6 x 4 x`). Write and read are one fixpoint now. The
+   only reading that changes is a hand-written target that is nothing BUT a
+   count; a capital "5 X" is still a plain target, as "5 Xtreme" always was. */
 function parsePrescription(text) {
   const t = (text || '').trim();
+  const bare = t.match(/^(\d+)\s*(?:[x×]|[sS]ets?(?:\s*[xX×])?)$/);
+  if (bare) return { sets: +bare[1], target: '' };
   const m = t.match(/^(\d+)\s*[x×]\s*(.+)$/);
   if (m) return { sets: +m[1], target: m[2].trim() };
   /* A capital X needs a number after it, so "5 Xtreme" stays a name. */
@@ -170,7 +181,13 @@ function parsePlanBody(body) {
        flattened the author's nesting on disk. Match the RAW line. */
     const bullet = day && !fenced ? line.match(ITEM_LINE) : null;
     const cells = bullet ? splitBarePipes(line.slice(bullet[0].length)).map(c => c.trim()) : null;
-    if (bullet && (bullet[1] === '-' || (!THEMATIC_BREAK.test(line.trim()) && cells.length > 1 && cells[0] !== ''))) {
+    /* A line is an exercise only when it NAMES one. A `- - -` rule is a
+       thematic break whatever its marker is (it used to be read as an exercise
+       called "- -" because a `- ` marker skipped that test), and a bare `- `
+       (or `- | 3 x 8`) names nothing: it was an exercise called "" that showed
+       up in the day's list, the session and the set count. Both are prose now,
+       kept verbatim and written back where they stood. */
+    if (bullet && !THEMATIC_BREAK.test(line.trim()) && cells[0] !== '' && (bullet[1] === '-' || cells.length > 1)) {
       /* Everything after the FIRST pipe is the prescription — rejoining
          keeps a hand-written `- A | B | C` intact instead of dropping C. */
       const { sets, target } = parsePrescription(cells.slice(1).join(' | '));
@@ -274,6 +291,18 @@ const isRestDay = day => /\brest\b|\brecovery\b/i.test((day && day.name) || '');
    dashboard's sets-total must never disagree on what "no count" means. */
 const itemSets = it => it.sets || 3;
 
+/* How a line's prescription is SHOWN: "5 × submax", "5 sets" when the Target is
+   empty (never a dangling "5 × "), or just the target when no count was given.
+   `sep` is the glyph between the two ("×" with spaces on the Plans page, a bare
+   "×" in the export). Every surface that prints a prescription calls this. */
+function rxLabel(it, sep) {
+  if (it.sets == null) return it.target || '';
+  if (it.target) return `${it.sets}${sep === undefined ? ' × ' : sep}${it.target}`;
+  return `${it.sets} ${it.sets === 1 ? 'set' : 'sets'}`;
+}
+
+/* An empty target is written as a bare `N x`, which parsePrescription reads
+   back as {sets: N, target: ''} — keep the two ends of that in step. */
 function serializeItem(it) {
   const rhs = it.sets != null ? `${it.sets} x ${it.target || ''}`.trim() : (it.target || '');
   const lead = it.marker && KEPT_MARKER.test(it.marker) ? it.marker : '- ';
@@ -330,8 +359,44 @@ function isFavourite(plan) {
   return String(((plan && plan.fm) || {}).favourite) === 'true';
 }
 
+/* THE PLAN TODAY RUNS, AND WHAT EACH PLAN IS DOING FOR YOU (finding #40).
+
+   These lived in controller.js (ctx.activePlan) and page-plans.js (planRole),
+   out of reach of export.js, which therefore labelled plans from the raw flags
+   and disagreed with the Plans page: the plan Today runs with no `active: true`
+   anywhere exported as "inactive", a fallback plan as "inactive", and the
+   seeded Rest & Recovery (parallel AND fallback) as "runs alongside" while
+   Plans badges it "fills gaps". They sit here, pure, so the page and the export
+   read ONE rule.
+
+   activePlanOf is ctx.activePlan's rule: the first plan flagged `active` among
+   those that are not `parallel`, else the first of them (the "implicit" active
+   plan controller.isImplicitActive describes). */
+function activePlanOf(plans) {
+  const main = (plans || []).filter(p => String(p.fm.parallel) !== 'true');
+  return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
+}
+
+/* 'fallback' | 'parallel' | '' — what kind of ALONGSIDE plan it is, paused or
+   not. Fallback wins over parallel (a plan flagged both fills gaps), the same
+   precedence controller.js builds Today with. */
+function alongsideKind(p) {
+  if (String(p.fm.fallback) === 'true') return 'fallback';
+  if (String(p.fm.parallel) === 'true') return 'parallel';
+  return '';
+}
+
+/* The role decides ORDER and the badge. A PAUSED plan is in use by nothing, so
+   its role is '' (see isPaused); `activePlan` is the plan Today runs. */
+function planRole(p, activePlan) {
+  const kind = alongsideKind(p);
+  if (kind === 'fallback') return isPaused(p) ? '' : 'fills-gaps';
+  if (kind === 'parallel') return isPaused(p) ? '' : 'alongside';
+  return activePlan && p === activePlan ? 'active' : '';
+}
+
 module.exports = {
-  isPaused, isFavourite,
+  isPaused, isFavourite, activePlanOf, alongsideKind, planRole, rxLabel,
   parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, moveItem, updateItem, itemSets, isRestDay,
   targetWeight, targetFirstNumber, targetIsDuration, targetDurationSeconds,
 };

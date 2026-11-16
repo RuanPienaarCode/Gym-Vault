@@ -60,7 +60,7 @@ function mount() {
     state: { page: 'voice' }, settings: { soundMode: 'silent' },
     plugin: { settings: {}, saveSettings: async () => {} },
     io: { listVoiceClips: async () => [], readVoiceClip: async () => new ArrayBuffer(0) },
-    nav() {}, notice() {},
+    nav() {}, back() {}, backTo: f => f, notice() {},
   };
   const view = { root: null };
   ctx.rerender = () => { view.root = mkNode('div'); page.render(ctx, view.root); };

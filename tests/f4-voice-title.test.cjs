@@ -42,7 +42,7 @@ const render = recordedKeys => {
   sound.clipKeys = () => new Set(recordedKeys);
   try {
     const root = global.document.createElement('div');
-    const ctx = { state: { voiceUi: { queue: [], at: 0, phase: 'idle', rec: null, take: null, takeBuffer: null, error: '', loaded: true } }, settings: { soundMode: 'voice' }, io: {}, nav() {}, rerender() {}, plugin: { settings: {}, saveSettings() {} }, app: {} };
+    const ctx = { state: { voiceUi: { queue: [], at: 0, phase: 'idle', rec: null, take: null, takeBuffer: null, error: '', loaded: true } }, settings: { soundMode: 'voice' }, io: {}, nav() {}, back() {}, backTo: f => f, rerender() {}, plugin: { settings: {}, saveSettings() {} }, app: {} };
     page.render(ctx, root);
     return headings(root);
   } finally { sound.clipKeys = orig; }

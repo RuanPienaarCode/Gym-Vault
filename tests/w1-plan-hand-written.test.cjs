@@ -15,12 +15,15 @@ const { SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN } = require('../src/seed');
 
 const { check, run } = makeRunner();
 
-/* BEFORE: [line, result of parsePrescription before this change]. */
+/* BEFORE: [line, result of parsePrescription before this change]. Three rows were changed on 16 Nov 2026
+   (audit finding #1): a BARE count ("3x", "3 x", "3 sets") used to read as a plain target, which
+   is how the `N x` the editor writes for an empty Target could not be read back. They now read as
+   sets with an empty target; see audit-1116-content-plan-roundtrip.test.cjs. */
 const BEFORE = [
   ['5 x submax', 5, 'submax'], ['3 × 8-12', 3, '8-12'], ['3x8', 3, '8'], ['3 x 8 @ 20kg', 3, '8 @ 20kg'],
   ['just move', null, 'just move'], ['', null, ''], ['12', null, '12'], ['submax', null, 'submax'],
-  ['1 x 30 min easy', 1, '30 min easy'], ['2 x 10/leg', 2, '10/leg'], ['3x', null, '3x'], ['x 5', null, 'x 5'],
-  ['3 x', null, '3 x'], ['10 reps', null, '10 reps'], ['3 sets', null, '3 sets'], ['5 x 5 @ 100 kg', 5, '5 @ 100 kg'],
+  ['1 x 30 min easy', 1, '30 min easy'], ['2 x 10/leg', 2, '10/leg'], ['3x', 3, ''], ['x 5', null, 'x 5'],
+  ['3 x', 3, ''], ['10 reps', null, '10 reps'], ['3 sets', 3, ''], ['5 x 5 @ 100 kg', 5, '5 @ 100 kg'],
   ['4×6', 4, '6'], ['65% max', null, '65% max'], ['30-45s', null, '30-45s'], ['3 xylophone', 3, 'ylophone'],
   ['2 x 30-45s', 2, '30-45s'], ['8/leg', null, '8/leg'], ['1 round of 5', null, '1 round of 5'],
   ['0 x 5', 0, '5'], ['10 x 1 x 5', 10, '1 x 5'],

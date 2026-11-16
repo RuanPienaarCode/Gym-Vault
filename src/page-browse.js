@@ -9,8 +9,20 @@
 const { el, ico, backButton, emptyLine } = require('./dom');
 const { countLabel } = require('./stats');
 
+/* The address the library is fetched from, as data.js's repoBase reads it
+   (trailing slashes do not make a different address). */
+const repoOf = ctx => String((ctx.settings && ctx.settings.planRepo) || '').trim().replace(/\/+$/, '');
+
+/* THE NAME A PLAN HAS IN THE VAULT. Notes are saved under the folded name
+   (ctx.io.safeName turns / : # [ ] and friends into "-"), so "is it already
+   here?" must fold the library's name the same way before comparing, and fold
+   the local name too (contract K4). Comparing the raw library name with the
+   local names meant a plan called "Push/Pull" never showed "added", and a second
+   Add was reported as an install that had been skipped. */
+const vaultKey = (ctx, name) => ctx.io.safeName(name).toLowerCase();
+
 function render(ctx, root) {
-  const ui = ctx.state.browseUi || (ctx.state.browseUi = { index: null, error: null, loading: false, busy: null });
+  const ui = ctx.state.browseUi || (ctx.state.browseUi = { index: null, repo: null, error: null, loading: false, busy: null });
 
   const back = backButton(ctx, 'plans');
   root.append(el('div', { class: 'gv-toolbar' },
@@ -35,7 +47,7 @@ function render(ctx, root) {
     }
     if (!ui.index) return;
 
-    const have = new Set(ctx.data.plans.map(p => p.name.toLowerCase()));
+    const have = new Set(ctx.data.plans.map(p => vaultKey(ctx, p.name)));
     /* Group numbered series into one card; standalone plans stand alone. */
     const groups = [];
     const bySeries = new Map();
@@ -50,10 +62,17 @@ function render(ctx, root) {
     }
   };
 
+  /* The cached index remembers the address it was fetched FROM (`ui.repo`). Once
+     the Plan library address in Settings no longer matches, the list is another
+     library's: Browse showed the old one, and Add fetched the old entry's file
+     from the new address (a 404). It is dropped, not just refetched, so a failed
+     fetch from the new address cannot bring the old list back on the next visit. */
   const load = async force => {
+    const from = repoOf(ctx);
+    if (ui.index && ui.repo !== from) ui.index = null;
     if (ui.index && !force) { draw(); return; }
     ui.loading = true; ui.error = null; draw();
-    try { ui.index = await ctx.io.fetchPlanIndex(); }
+    try { ui.index = await ctx.io.fetchPlanIndex(); ui.repo = from; }
     catch (e) { ui.error = e.message || String(e); }
     ui.loading = false;
     draw();
@@ -64,7 +83,7 @@ function render(ctx, root) {
 
 function seriesCard(ctx, group, have, draw) {
   const first = group.phases[0];
-  const installed = group.phases.filter(p => have.has(p.name.toLowerCase())).length;
+  const installed = group.phases.filter(p => have.has(vaultKey(ctx, p.name))).length;
   const card = el('div', { class: 'gv-card gv-browse-card' },
     el('div', { class: 'gv-browse-head' },
       el('div', {},
@@ -84,7 +103,7 @@ function seriesCard(ctx, group, have, draw) {
 const seriesTitle = first => (first.name || '').replace(/\s*\d+\s*·.*$/, '').trim() || first.series;
 
 function phaseRow(ctx, p, have, draw) {
-  const added = have.has(p.name.toLowerCase());
+  const added = have.has(vaultKey(ctx, p.name));
   return el('div', { class: 'gv-browse-phase' },
     el('span', { class: 'gv-browse-phase-n' }, `${p.phase}`),
     el('span', { class: 'gv-browse-phase-name' }, p.name.replace(/^.*?·\s*/, '')),
@@ -95,7 +114,7 @@ function phaseRow(ctx, p, have, draw) {
 }
 
 function planCard(ctx, p, have, draw) {
-  const added = have.has(p.name.toLowerCase());
+  const added = have.has(vaultKey(ctx, p.name));
   return el('div', { class: 'gv-card gv-browse-card' },
     el('div', { class: 'gv-browse-head' },
       el('div', {},
@@ -152,18 +171,28 @@ async function installMany(ctx, series, entries, draw) {
   }
   ui.busy = null;
   await ctx.reload();
-  if (results.length) ctx.notice(report(`${results.length} plan${results.length === 1 ? '' : 's'}`, results));
+  if (results.length) ctx.notice(report(entries[0].name, results));
   draw();
 }
 
-/* One honest sentence: what landed, what was already there, what failed. */
+/* One honest sentence: what landed, what was already there, what failed.
+
+   `what` names the plan when ONE was installed. A skipped install (the note was
+   already in the vault, which installPlan never overwrites) says so; it used to
+   open with "<name> added" whatever happened, and a series counted the skipped
+   phases among the ones added. */
 function report(what, results) {
   const added = results.reduce((n, r) => n + r.exercisesAdded, 0);
   const skipped = results.reduce((n, r) => n + r.exercisesSkipped, 0);
   const failed = results.flatMap(r => r.failed);
   const planSkipped = results.filter(r => r.planSkipped).length;
-  const bits = [`${what} added`];
-  if (planSkipped) bits.push(`${planSkipped} already there`);
+  const planAdded = results.length - planSkipped;
+  const bits = [];
+  if (results.length === 1) bits.push(`${what} ${planSkipped ? 'was already there' : 'added'}`);
+  else {
+    if (planAdded) bits.push(`${planAdded} plan${planAdded === 1 ? '' : 's'} added`);
+    if (planSkipped) bits.push(`${planSkipped} already there`);
+  }
   if (added) bits.push(`${added} new exercise${added === 1 ? '' : 's'}`);
   if (skipped) bits.push(`${skipped} you already had`);
   if (failed.length) bits.push(`could not fetch: ${failed.join(', ')}`);

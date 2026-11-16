@@ -25,7 +25,7 @@
    half-finished queue; pageCleanup cancels a live take so a microphone can
    never stay open on a page nobody is looking at. */
 
-const { el, ico, clear, toggleRow, clickableCard } = require('./dom');
+const { el, ico, clear, toggleRow, clickableCard, backButton } = require('./dom');
 const { CUES, GROUPS, cueFor, progressOf, prepareClip } = require('./voice-pack');
 const { canRecord, startRecording } = require('./voice-record');
 const voiceClips = require('./voice-clips');
@@ -81,8 +81,11 @@ function render(ctx, root) {
       .catch(e => { ui.loaded = true; console.error('gym-vault voice clips', e); });
   }
 
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Back to profile' }, ico('arrow-left'));
-  back.addEventListener('click', () => ctx.nav('profile'));
+  /* Back to the CALLER. This page is reached from Profile, but also from the
+     `record-voice` command and from Settings, and a hardcoded ctx.nav('profile')
+     landed on a page you never visited and pushed `voice` onto the back stack.
+     Profile is only the fallback for a first visit with no caller. */
+  const back = backButton(ctx, 'profile');
   root.append(el('div', { class: 'gv-toolbar' }, back, el('h2', { class: 'gv-toolbar-title' }, 'Your voice')));
 
   const progress = progressOf(sound.clipKeys());
@@ -200,7 +203,14 @@ async function deleteClip(ctx, ui, key) {
     voiceClips.invalidate();
     ui.error = '';
   } catch (e) {
-    ui.error = `Could not delete that clip (${e.message || e}).`;
+    /* A NOTICE, not ui.error: that line is drawn only inside the wizard card, and
+       Delete is used from the clip list with no wizard open, so a refused trash
+       (Obsidian 1.15's trashFile can return false; io.trash turns that into an
+       error) showed nothing at all. The Exercises, Plans and History delete paths
+       raise a notice the same way. ui.error is left clear so a stale message
+       never reappears in the next wizard card. */
+    ui.error = '';
+    ctx.notice(`could not delete that clip (${e.message || e}).`);
   }
   ctx.rerender();
 }
