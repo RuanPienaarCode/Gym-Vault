@@ -982,10 +982,16 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
   color: var(--gv-ink-dim);
   margin-top: 7px;
 }
+/* FOUR COLUMNS ARE FOR A WIDE PANE, NOT A WIDE WINDOW. A media query sees the window; an iPad split view or a desktop
+   side pane can be 320-480px wide inside a 1000px window, and four tiles in 320px is ~80px each. The controller puts
+   `gv-narrow` on the view root when the PANE is 480px or less (controller.js, watchWidth), so the wide layout is
+   written against its absence. `:not()` adds one class to the selector; the poster skins' own tile rules
+   (`.gv-app.gv-skin-poster .gv-tile`, border: 0) are at (0,3,0) and later in the file, so they still win the border
+   they always won. The `:nth-child(2n)` variant is not repeated: (0,3,0) here already beats the base's (0,2,0). */
 @media (min-width: 620px) {
-  .gv-tiles { grid-template-columns: repeat(4, 1fr); }
-  .gv-tile, .gv-tile:nth-child(2n) { border-right: 1px solid var(--gv-line); border-bottom: 0; }
-  .gv-tile:last-child { border-right: 0; }
+  .gv-app:not(.gv-narrow) .gv-tiles { grid-template-columns: repeat(4, 1fr); }
+  .gv-app:not(.gv-narrow) .gv-tile { border-right: 1px solid var(--gv-line); border-bottom: 0; }
+  .gv-app:not(.gv-narrow) .gv-tile:last-child { border-right: 0; }
 }
 
 .gv-goal-mini-list { display: flex; flex-direction: column; gap: 16px; }
@@ -2050,13 +2056,20 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 
    Hollow, not solid: a counted rep is ink you have earned, a countdown is
    the app waiting for you. The kicker underneath names it outright, because
-   colour alone is not an explanation. */
+   colour alone is not an explanation.
+
+   THE OUTLINE IS THE WHOLE NUMERAL, so it takes --gv-ink-dim in BOTH themes.
+   Dark mode used to swap it for the hairline token --gv-line-2, which is a
+   border colour: 1.5-1.9:1 against the page in four skins (2.6:1 in Lock In),
+   and during a challenge rest this hollow clock is the only readout there is.
+   A large numeral needs 3:1 (WCAG 1.4.11) counting the opacity below;
+   tests/audit-1116-style-css.test.cjs measures it for every theme, skin,
+   accent and Calm colour. */
 .gv-rc-count.gv-rc-countin {
   color: transparent;
   -webkit-text-stroke: 2px var(--gv-ink-dim);
   opacity: 0.85;
 }
-.theme-dark .gv-app .gv-rc-count.gv-rc-countin { -webkit-text-stroke-color: var(--gv-line-2); }
 /* GO lands solid — that beat IS the transition to counting. */
 .gv-rc-count.gv-rc-countin.gv-rc-countin-go {
   color: var(--gv-lime-deep);
@@ -2604,13 +2617,14 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 .gv-challenge-how .svg-icon { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px; }
 
 /* THE REST CLOCK IS NOT A COUNT — hollow, like the count-in, so it can never
-   read as reps. Same stroke rule as .gv-rc-count.gv-rc-countin. */
+   read as reps. Same stroke rule as .gv-rc-count.gv-rc-countin, and for the
+   same reason it has no dark-mode swap to a hairline token: the outline is
+   the only readout of the clock, so --gv-ink-dim in both themes. */
 .gv-rc-count.gv-challenge-resting {
   color: transparent;
   -webkit-text-stroke: 2px var(--gv-ink-dim);
   opacity: 0.85;
 }
-.theme-dark .gv-app .gv-rc-count.gv-challenge-resting { -webkit-text-stroke-color: var(--gv-line-2); }
 .gv-challenge-actions { display: flex; gap: 10px; margin-top: 8px; }
 
 /* The ladder of sets: done ones solid, the open one outlined, the ones to
@@ -2630,7 +2644,16 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 .gv-challenge-chip.hit { background: var(--gv-lime); border-color: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-challenge-chip.short { background: var(--gv-surface); color: var(--gv-ink); }
 .gv-challenge-chip.now { border-color: var(--gv-ink); color: var(--gv-ink); }
-.gv-challenge-chip.next { opacity: 0.6; }
+/* The sets still to come are the quiet ones: dim text and the hairline border, NOT a lowered opacity. `opacity: 0.6`
+   on 13px bold --gv-ink-dim printed ~2.4:1 on light paper (audit 16 Nov 2026), and text this small needs 4.5:1.
+   The open set's chip is --gv-ink with an ink border, so the ladder still reads as done / now / next. */
+.gv-challenge-chip.next { color: var(--gv-ink-dim); }
+/* On the warm / hot / peak floods the dim grey is 1.7-2.9:1 (it was ~1.2:1 on the green for the hint, 0.13.1), so the
+   chip takes full --gv-ink there, the same as the target and hint lines; what keeps it quieter is its hairline border
+   against the open chip's ink one. Sets mode is the only place the ladder sits in a flooded zone. */
+.gv-rc-zone[data-fill="warm"] .gv-challenge-chip.next,
+.gv-rc-zone[data-fill="hot"] .gv-challenge-chip.next,
+.gv-rc-zone[data-fill="peak"] .gv-challenge-chip.next { color: var(--gv-ink); }
 /* On the full accent flood (target met) the chips follow the zone's text to
    the fixed dark ink: light ink on lime was unreadable in dark mode, and a
    lime "hit" chip vanished into the lime behind it. */
@@ -2690,6 +2713,17 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 }
 .gv-rc-zone:not([data-fill]).gv-rc-flash .gv-rc-count,
 .gv-rc-zone[data-fill="idle"].gv-rc-flash .gv-rc-count { color: var(--gv-lime); }
+
+/* THE NUMERAL IS ALSO CAPPED BY THE SCREEN'S HEIGHT, in the full-screen counters (rep counter and weekly challenge).
+   34vw is a PORTRAIT size: on a landscape iPhone (844x390) it is ~287px in a ~303px zone (the screen less the 66px
+   bar and the 21px home-indicator inset), and the set ladder, target line and hint that stack under it ended 4-10px
+   off the bottom edge (more with more than six sets). Under the numeral sit the hint (10 + 16), the target line
+   (6 + 16), the ladder (10 + ~26) and the count-in label (2 + 14), about 100px, so the numeral may take the height
+   minus the bar and that stack: 100vh - 200px (190px at 844x390, 175px at 667x375). Portrait and desktop windows are
+   taller than wide enough that 34vw still wins, so nothing there moves. `vh`, not `dvh`/`svh` (iOS 15), and min()
+   is iOS 11.1+. The live-set page sizes its own numeral (.gv-session-count) and is not in this modal.
+   tests/audit-1116-style-css.test.cjs does this arithmetic for 844x390, 812x375 and 667x375. */
+.modal.gv-repcounter-modal .gv-rc-count { font-size: clamp(64px, min(34vw, calc(100vh - 200px)), 320px); }
 
 /* "Type" swaps the giant count for a number box IN PLACE. It inherits the
    display face and size so the screen does not lurch when it appears.
@@ -4912,6 +4946,15 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   font-size: clamp(48px, calc(132vw / var(--gv-t1-n)), 112px);
   line-height: 0.84;
 }
+/* IN A NARROW PANE UNDER A WIDE WINDOW the vw size above is the window's, not the pane's: at a 1024px window a
+   7-letter word is 112px (~550px of type) in a 320-480px split pane and is clipped. The window is wider than the pane
+   exactly when it is wider than 480px while gv-narrow is on (a phone is its own pane, and is left alone), so the size
+   is capped at what the same formula gives a 320px pane: 132 * 3.2 = 420. */
+@media (min-width: 481px) {
+  .gv-app.gv-skin-apex.gv-narrow .gv-title-first {
+    font-size: clamp(48px, min(calc(132vw / var(--gv-t1-n)), calc(420px / var(--gv-t1-n))), 112px);
+  }
+}
 .gv-app.gv-skin-apex .gv-title-rest {
   display: block;
   margin-top: 6px;
@@ -6454,6 +6497,12 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   font-size: clamp(52px, calc(174vw / var(--gv-t1-n)), 148px);
   line-height: 0.82;
 }
+/* Narrow pane under a wide window: the same cap as Apex, at what 174vw gives a 320px pane (174 * 3.2 = 556). */
+@media (min-width: 481px) {
+  .gv-app.gv-skin-lockin.gv-narrow .gv-title-first {
+    font-size: clamp(52px, min(calc(174vw / var(--gv-t1-n)), calc(556px / var(--gv-t1-n))), 148px);
+  }
+}
 .gv-app.gv-skin-lockin .gv-title-rest {
   display: block;
   margin-top: 6px;
@@ -7237,6 +7286,11 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
 .gv-app.gv-skin-calm .gv-btn-danger-ghost { color: var(--gv-danger); }
 .gv-app.gv-skin-calm .gv-btn-hero-ghost { min-height: 48px; border-radius: var(--gv-calm-radius); font-size: 14px; font-weight: 600; }
 .gv-app.gv-skin-calm .gv-icon-btn { border: 1px solid var(--gv-line-2); border-radius: 10px; }
+/* The live set's two skip buttons ("Set", "Exercise") are 11px (.gv-app .gv-session-skip, (0,2,0)), but the 13px Calm gives every
+   .gv-btn above is (0,3,0) and won, so in Calm they were ~11px wider than in the other skins and the top label beside them
+   ("Exercise 1/3 · Set 1/5", the flexible item of the row) lost 4px at 375px and truncated to "Exercise 1/3 · Set …". At the narrow
+   tier only (a wide pane has room) they take their own size back. tests/audit-1116-style-css.test.cjs #48. */
+.gv-app.gv-skin-calm.gv-narrow .gv-session-skip { font-size: 11px; }
 .gv-app.gv-skin-calm .gv-icon-btn-on { background: var(--gv-calm-tint); border-color: var(--gv-calm-tint-ink); color: var(--gv-calm-tint-ink); }
 .gv-app.gv-skin-calm .gv-chip { border-radius: 999px; font-size: 12px; font-weight: 600; }
 .gv-app.gv-skin-calm .gv-chip.on { background: var(--gv-calm-tint); border-color: var(--gv-calm-tint-ink); color: var(--gv-calm-tint-ink); }

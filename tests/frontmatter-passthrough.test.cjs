@@ -56,7 +56,7 @@ const roundTrip = text => {
 /* Repeated saves must be a fixpoint for unmodelled structure too — one lost
    line per cycle is how a slow corruption hides from a single-pass test. */
 {
-  let text = '---\ntype: strength\ntags:\n  - gym\ncoach:\n  name: Ruan\ncue: >\n  brace hard\n---\nBody.\n';
+  let text = '---\ntype: strength\ntags:\n  - gym\ncoach:\n  name: Sam Example\ncue: >\n  brace hard\n---\nBody.\n';
   const first = roundTrip(text);
   for (let i = 0; i < 3; i++) {
     const next = roundTrip(text);
