@@ -1,4 +1,5 @@
 'use strict';
+const { accentFor } = require('./constants');
 /* Opening a weekly challenge and saving what it counted. The rules live in
    challenge.js and the screen in challenge-modal.js; this is the seam to the
    vault, kept out of both so neither needs the app context.
@@ -32,7 +33,7 @@ function openChallenge(ctx, goal) {
     shape: ch.parseShape(goal.fm.split),
     restSeconds: ch.restSeconds(goal.fm),
     skin: ctx.settings.skin,
-    accent: ctx.settings.accent,
+    accent: accentFor(ctx.settings),
     settings: ctx.settings,
     onSave: (sets, mode, startedAt) => saveRun(ctx, goal, sets, mode, startedAt),
   }).open();

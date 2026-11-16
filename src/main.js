@@ -10,7 +10,7 @@
    ============================================================================ */
 
 const { Plugin, normalizePath, Notice } = require('obsidian');
-const { VIEW_TYPE, DEFAULT_SETTINGS } = require('./constants');
+const { VIEW_TYPE, DEFAULT_SETTINGS, accentFor } = require('./constants');
 const { GymView } = require('./view');
 const { GymSettingTab } = require('./settings-tab');
 const { RepCounterModal } = require('./rep-counter-modal');
@@ -48,7 +48,7 @@ class GymPlugin extends Plugin {
         new RepCounterModal(this.app, {
           exerciseName: '',
           skin: this.settings.skin,
-          accent: this.settings.accent,
+          accent: accentFor(this.settings),
           settings: this.settings,
           onDone: count => new Notice(`Gym: counted ${count} rep${count === 1 ? '' : 's'}.`, 5000),
         }).open();

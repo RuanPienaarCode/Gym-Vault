@@ -61,6 +61,7 @@ check('C4 the Calm section has colour literals only in its two token blocks', ()
   const stripped = section
     .replace(/\.theme-dark \.gv-app\.gv-skin-calm \{[^}]*\}/, '')
     .replace(/\.theme-light \.gv-app\.gv-skin-calm\.gv-accent-[a-z]+ \{[^}]*\}/g, '')
+    .replace(/(\.theme-dark )?\.gv-app\.gv-skin-calm\.gv-accent-[a-z]+ \{[^}]*\}/g, '') /* Calm colours: palette token blocks */
     .replace(/\.gv-app\.gv-skin-calm \{[^}]*\}/, '');
   const leaks = stripped.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g);
   assert.ok(!leaks, `colour literal(s) in a Calm rule: ${leaks && leaks.join(', ')}`);

@@ -395,7 +395,10 @@ const modalChain = (o, ...inner) => cx.chainOf([
 
 const measured = [];
 const problems = [];
-for (const theme of THEMES) for (const skin of SKINS) for (const accent of ACCENTS) {
+/* Calm colours (constants.CALM_PALETTES): each palette is a Calm-only accent class, probed like one. */
+const CALM_PALETTES = ['oat', 'sea', 'blush', 'lavender', 'honey', 'sky', 'lagoon'];
+const COMBOS = SKINS.flatMap(skin => ACCENTS.map(accent => [skin, accent])).concat(CALM_PALETTES.map(p => ['calm', p]));
+for (const theme of THEMES) for (const [skin, accent] of COMBOS) {
   for (const probe of PROBES) {
     const chain = probe.modal ? modalChain({ theme, skin, accent }, ...probe.chain) : cx.appChain({ theme, skin, accent }, ...probe.chain);
     const surface = probe.surface && probe.surface(skin);

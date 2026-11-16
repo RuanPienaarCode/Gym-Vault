@@ -6918,6 +6918,10 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   --gv-calm-tint: var(--gv-lime-ghost);     /* the selected / done background */
   --gv-calm-tint-ink: var(--gv-lime-deep);  /* text on the tint, accent text on paper */
   --gv-calm-radius: 12px;
+  /* The rep counter's red stage, thinner than the base 0.92: Calm's ink is softer
+     than the other styles' near-black and its paper is tinted, so the count needs
+     a lighter flood to hold 4.5:1. tests/rc-zone-stages.test.cjs (Calm colours). */
+  --gv-stage-peak-a: 0.72; /* reaches dark too: Calm's dark block does not restate it, and 0.72 passes there */
 }
 .theme-dark .gv-app.gv-skin-calm {
   --gv-bg: #131611;
@@ -6929,6 +6933,215 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   --gv-calm-fill: var(--gv-lime);
   --gv-calm-fill-ink: var(--gv-ink-fixed);
   --gv-calm-tint-ink: var(--gv-lime);
+  /* Dark: the amber stage a touch thinner, so the light ink holds 4.5:1 on it. */
+  --gv-stage-hot-a: 0.3;
+}
+
+/* ---- CALM COLOURS — Settings › Calm colours (constants.CALM_PALETTES) ------
+   Seven complete palettes for Calm: a paper AND its own accent, light and
+   dark. Each is a Calm-only accent class the root wears in place of the
+   user's accent (constants.accentFor). A palette's dark block must restate
+   every paper token its light block sets: the light block has the same
+   specificity as Calm's own dark block and comes later, so it would otherwise
+   paint light paper into dark mode. tests/calm-palettes.test.cjs; readability
+   in contrast / light-paper / rc-zone-stages, which iterate these. */
+/* Oat: warm paper, olive green */
+.gv-app.gv-skin-calm.gv-accent-oat {
+  --gv-bg: #ebe2d0;
+  --gv-surface: #f5efe2;
+  --gv-line: #dbd0ba;
+  --gv-line-2: #c4b89e;
+  --gv-ink: #2b2a22;
+  --gv-ink-dim: #5c5644;
+  --gv-accent-solid: #568203;
+  --gv-lime: #7da51f;
+  --gv-lime-hi: #b9d47a;
+  --gv-lime-deep: #476b03;
+  --gv-lime-ghost: #dde3bd;
+  --gv-flood-dim: #2c3d0a;
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-oat {
+  --gv-bg: #17150f;
+  --gv-surface: #1f1c14;
+  --gv-line: #2e2a1e;
+  --gv-line-2: #3d3828;
+  --gv-ink: #ece7da;
+  --gv-ink-dim: #a8a08a;
+  --gv-lime: #a9cc5c;
+  --gv-lime-ghost: #232a12;
+}
+/* Sea glass: pale aqua, deep teal */
+.gv-app.gv-skin-calm.gv-accent-sea {
+  --gv-bg: #d6e6e2;
+  --gv-surface: #e6f0ee;
+  --gv-line: #c3d8d3;
+  --gv-line-2: #a6c2bc;
+  --gv-ink: #1e2d2c;
+  --gv-ink-dim: #44605c;
+  --gv-accent-solid: #1d7873;
+  --gv-lime: #3fa39d;
+  --gv-lime-hi: #8fd0ca;
+  --gv-lime-deep: #14635f;
+  --gv-lime-ghost: #c3dfda;
+  --gv-flood-dim: #0c3b39;
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-sea {
+  --gv-bg: #0f1716;
+  --gv-surface: #151f1e;
+  --gv-line: #22302e;
+  --gv-line-2: #2f423f;
+  --gv-ink: #e3ecea;
+  --gv-ink-dim: #94a9a5;
+  --gv-lime: #5cc4bd;
+  --gv-lime-ghost: #12302d;
+}
+/* Blush: soft rose, berry */
+.gv-app.gv-skin-calm.gv-accent-blush {
+  --gv-bg: #f0ddd6;
+  --gv-surface: #f8ebe6;
+  --gv-line: #e3cbc2;
+  --gv-line-2: #cdb0a6;
+  --gv-ink: #33231e;
+  --gv-ink-dim: #6b4f47;
+  --gv-accent-solid: #a04458;
+  --gv-lime: #c5668f;
+  --gv-lime-hi: #e9a9b5;
+  --gv-lime-deep: #8c384b;
+  --gv-lime-ghost: #efcdd0;
+  --gv-flood-dim: #4d1c28;
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-blush {
+  --gv-bg: #191213;
+  --gv-surface: #21181a;
+  --gv-line: #33262a;
+  --gv-line-2: #453338;
+  --gv-ink: #f0e6e4;
+  --gv-ink-dim: #b39da0;
+  --gv-lime: #e58fa1;
+  --gv-lime-ghost: #3a1c24;
+}
+/* Lavender: misty lilac, plum */
+.gv-app.gv-skin-calm.gv-accent-lavender {
+  --gv-bg: #e1deee;
+  --gv-surface: #eeecf6;
+  --gv-line: #d0cbe2;
+  --gv-line-2: #b5aed0;
+  --gv-ink: #25223a;
+  --gv-ink-dim: #544f6f;
+  --gv-accent-solid: #6a4c9c;
+  --gv-lime: #9479c6;
+  --gv-lime-hi: #c3b2e6;
+  --gv-lime-deep: #5a3f8c;
+  --gv-lime-ghost: #d6cfee;
+  --gv-flood-dim: #2f2052;
+  --gv-stage-warm: #63bdb3; /* the counter's first stage: teal, since the base blue vanishes on lilac paper */
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-lavender {
+  --gv-bg: #141320;
+  --gv-surface: #1b1a2b;
+  --gv-line: #2a2840;
+  --gv-line-2: #3a3757;
+  --gv-ink: #e9e7f4;
+  --gv-ink-dim: #a39fbf;
+  --gv-lime: #b39ce6;
+  --gv-lime-ghost: #272045;
+  --gv-stage-warm: #4a6a8f; /* back to the base dark blue: it reads on near-black */
+}
+/* Honey: warm cream, amber */
+.gv-app.gv-skin-calm.gv-accent-honey {
+  --gv-bg: #efe3c2;
+  --gv-surface: #f8f0d9;
+  --gv-line: #e0d2ab;
+  --gv-line-2: #c9b98c;
+  --gv-ink: #2e2716;
+  --gv-ink-dim: #62563a;
+  --gv-accent-solid: #8a5a0b;
+  --gv-lime: #c08a22;
+  --gv-lime-hi: #e3bf6c;
+  --gv-lime-deep: #7a4f08;
+  --gv-lime-ghost: #ecd9a4;
+  --gv-flood-dim: #432b03;
+  --gv-stage-warm: #63bdb3; /* the counter's stages run teal, violet, red here: the base amber IS this palette's accent */
+  --gv-stage-hot: #9a78d6;
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-honey {
+  --gv-bg: #18140b;
+  --gv-surface: #201b10;
+  --gv-line: #322a18;
+  --gv-line-2: #443a22;
+  --gv-ink: #f1ead8;
+  --gv-ink-dim: #b0a585;
+  --gv-lime: #e0aa3e;
+  --gv-lime-ghost: #33270d;
+  --gv-stage-warm: #2f7a72;
+  --gv-stage-hot: #7a5cc0;
+}
+/* Sky: pale blue, denim */
+.gv-app.gv-skin-calm.gv-accent-sky {
+  --gv-bg: #d9e4f0;
+  --gv-surface: #e8eff7;
+  --gv-line: #c6d5e6;
+  --gv-line-2: #a9bdd4;
+  --gv-ink: #1c2939;
+  --gv-ink-dim: #475a70;
+  --gv-accent-solid: #2f62a3;
+  --gv-lime: #5b8fd0;
+  --gv-lime-hi: #a3c4ec;
+  --gv-lime-deep: #285792;
+  --gv-lime-ghost: #c6d8ee;
+  --gv-flood-dim: #132e52;
+  --gv-stage-warm: #63bdb3; /* the counter's first stage: teal, since the base blue vanishes on blue paper */
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-sky {
+  --gv-bg: #0f151d;
+  --gv-surface: #151d28;
+  --gv-line: #222f40;
+  --gv-line-2: #2f4057;
+  --gv-ink: #e4ebf4;
+  --gv-ink-dim: #97a8bd;
+  --gv-lime: #7fb0ea;
+  --gv-lime-ghost: #172a45;
+  --gv-stage-warm: #2f7a72; /* dark teal: the base dark blue is this palette's own hue */
+}
+/* Lagoon: the ten colours Ruan supplied, lime cream through Yale blue */
+.gv-app.gv-skin-calm.gv-accent-lagoon {
+  --gv-bg: #d7ebe3;
+  --gv-surface: #e7f3ed;
+  --gv-line: #c3ddd3;
+  --gv-line-2: #a3c6ba;
+  --gv-ink: #12303f;
+  --gv-ink-dim: #3f6070;
+  --gv-accent-solid: #1a759f;
+  --gv-lime: #168aad;
+  --gv-lime-hi: #76c893;
+  --gv-lime-deep: #1e6091;
+  --gv-lime-ghost: #d9ed92;
+  --gv-flood-dim: #184e77;
+  --gv-calm-title: #184e77;
+  --gv-calm-chip: #b5e48c;
+  --gv-calm-chip-ink: #184e77;
+  --gv-calm-ring: #52b69a;
+  --gv-calm-bar: #34a0a4;
+  --gv-calm-done: #99d98c;
+  --gv-calm-done-ink: #184e77;
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-lagoon {
+  --gv-bg: #0c1d2b;
+  --gv-surface: #12283a;
+  --gv-line: #1d3a52;
+  --gv-line-2: #2a4d6b;
+  --gv-ink: #e6f1ee;
+  --gv-ink-dim: #9bb4c0;
+  --gv-lime: #d9ed92;
+  --gv-lime-ghost: #14425c;
+  --gv-calm-title: #d9ed92;
+  --gv-calm-tint-ink: #b5e48c;
+  --gv-calm-chip: #184e77;
+  --gv-calm-chip-ink: #b5e48c;
+  --gv-calm-ring: #52b69a;
+  --gv-calm-bar: #52b69a;
+  --gv-calm-done: #1e6091;
+  --gv-calm-done-ink: #d9ed92;
 }
 
 /* Type: sentence case, normal tracking, the system face at a real weight. */
@@ -6997,7 +7210,7 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
 .gv-app.gv-skin-calm .gv-rw-profile-level { font-size: 24px; }
 .gv-app.gv-skin-calm .gv-rw-xp-big { font-size: 34px; }
 .gv-app.gv-skin-calm .gv-day-name { font-size: 15px; }
-.gv-app.gv-skin-calm .gv-mark { background: none; color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-mark { background: none; color: var(--gv-calm-title, var(--gv-calm-tint-ink)); }
 
 /* Header and tabs: the selected tab is a soft tint, not an ink block. */
 .gv-app.gv-skin-calm .gv-nav { border-bottom: 1px solid var(--gv-line); padding-bottom: 6px; }
@@ -7047,7 +7260,13 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
 .gv-app.gv-skin-calm .gv-bar,
 .gv-app.gv-skin-calm .gv-rw-bar { height: 8px; border: 0; border-radius: 999px; background: var(--gv-line); }
 .gv-app.gv-skin-calm .gv-bar-fill,
-.gv-app.gv-skin-calm .gv-rw-bar-fill { background: var(--gv-calm-fill); background-image: none; border-radius: 999px; }
+.gv-app.gv-skin-calm .gv-rw-bar-fill { background: var(--gv-calm-bar, var(--gv-calm-fill)); background-image: none; border-radius: 999px; }
+/* A palette with more than one colour (Lagoon) may give the ring, the kit chips
+   and a done day their own; without those tokens each falls back to what Calm
+   always drew. */
+.gv-app.gv-skin-calm .gv-ring-fill { stroke: var(--gv-calm-ring, var(--gv-lime)); }
+.gv-app.gv-skin-calm .gv-today-kit .gv-tag { background: var(--gv-calm-chip, var(--gv-lime-ghost)); color: var(--gv-calm-chip-ink, var(--gv-calm-tint-ink)); }
+.gv-app.gv-skin-calm .gv-day.done { background: var(--gv-calm-done, transparent); }
 .gv-app.gv-skin-calm .gv-rw-bar-gain { background-color: var(--gv-lime); border-radius: 999px; }
 .gv-app.gv-skin-calm .gv-ex-best,
 .gv-app.gv-skin-calm .gv-rec-delta,
@@ -7120,9 +7339,9 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
 .gv-app.gv-skin-calm .gv-week { border: 1px solid var(--gv-line); border-radius: var(--gv-calm-radius); overflow: hidden; }
 .gv-app.gv-skin-calm .gv-day.today { background: var(--gv-calm-tint); box-shadow: none; }
 .gv-app.gv-skin-calm .gv-day.today .gv-day-name { color: var(--gv-ink); }
-.gv-app.gv-skin-calm .gv-day.today .gv-day-dot,
+.gv-app.gv-skin-calm .gv-day.today .gv-day-dot { color: var(--gv-calm-tint-ink); }
 .gv-app.gv-skin-calm .gv-day.done .gv-day-name,
-.gv-app.gv-skin-calm .gv-day.done .gv-day-dot { color: var(--gv-calm-tint-ink); }
+.gv-app.gv-skin-calm .gv-day.done .gv-day-dot { color: var(--gv-calm-done-ink, var(--gv-calm-tint-ink)); }
 .gv-app.gv-skin-calm .gv-tiles { border-radius: var(--gv-calm-radius); overflow: hidden; }
 
 /* Logging: no ink bar, no flood on the exercise head; done sets go soft green. */

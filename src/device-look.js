@@ -11,14 +11,14 @@
 
    Pure helpers + a tiny store; the plugin (main.js) owns the state. */
 
-const { SKINS, ACCENTS } = require('./constants');
+const { SKINS, ACCENTS, CALM_PALETTES } = require('./constants');
 
 const LOOK_KEY = 'gym-app-device-look';
 /* What a device may choose for itself: how it looks (Style, Accent) and how
-   loud it is (Rewards, Calm motion). Everything else stays shared. */
-const FIELDS = ['skin', 'accent', 'rewards', 'quietMotion'];
+   loud it is (Calm colours, Rewards, Calm motion). Everything else stays shared. */
+const FIELDS = ['skin', 'accent', 'calmPalette', 'rewards', 'quietMotion'];
 const BOOL = [true, false];
-const VALID = { skin: SKINS.map(s => s[0]), accent: ACCENTS.map(a => a[0]), rewards: BOOL, quietMotion: BOOL };
+const VALID = { skin: SKINS.map(s => s[0]), accent: ACCENTS.map(a => a[0]), calmPalette: CALM_PALETTES.map(p => p[0]), rewards: BOOL, quietMotion: BOOL };
 
 /* Only known keys survive, field by field; nothing valid = null (no look). */
 function cleanLook(raw) {

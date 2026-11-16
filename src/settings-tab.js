@@ -1,7 +1,7 @@
 'use strict';
 
 const { PluginSettingTab, Setting, Notice } = require('obsidian');
-const { SKINS, WEEK_STARTS, ACCENTS, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
+const { SKINS, WEEK_STARTS, ACCENTS, CALM_PALETTES, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
 const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 const sound = require('./sound');
@@ -91,7 +91,7 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Look and feel on this device only')
-      .setDesc('For a shared vault: on means Style, Accent, Rewards and Calm motion change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
+      .setDesc('For a shared vault: on means Style, Accent, Calm colours, Rewards and Calm motion change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
       .addToggle(t => t
         .setValue(!!this.plugin.deviceLook)
         .onChange(v => {
@@ -170,6 +170,15 @@ class GymSettingTab extends PluginSettingTab {
         for (const [key, label] of ACCENTS) d.addOption(key, label);
         d.setValue(this.plugin.settings.accent || 'lime')
           .onChange(v => this.plugin.setLook('accent', v));
+      });
+
+    new Setting(c)
+      .setName('Calm colours')
+      .setDesc(`The colours the Calm style wears: a soft page and its own accent, in light and dark. The first choice keeps sage with your Accent color; the others are complete palettes. Only the Calm style uses this.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
+      .addDropdown(d => {
+        for (const [key, label] of CALM_PALETTES) d.addOption(key, label);
+        d.setValue(this.plugin.settings.calmPalette || 'accent')
+          .onChange(v => this.plugin.setLook('calmPalette', v));
       });
 
     this.renderSound(c);
