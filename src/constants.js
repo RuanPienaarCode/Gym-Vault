@@ -131,12 +131,13 @@ const ACCENTS = [
 ];
 
 /* Calm colours — Settings › Calm colour, the dropdown under Style while the
-   style is Calm. Eight complete palettes for the Calm
+   style is Calm. Twelve complete palettes for the Calm
    style: a paper AND its own accent, light and dark. 'accent' (the default) is
    what Calm always was: sage paper and the Accent color above. The others are
    Calm-only accent classes (.gv-app.gv-skin-calm.gv-accent-<key> in styles.css);
    accentFor() below is the one place that decides which class a root wears.
-   Lagoon is built from the ten colours Ruan supplied on 16 Nov 2026.
+   Lagoon is built from the ten colours Ruan supplied on 16 Nov 2026; Aurora,
+   Sorbet, Carnival and Forest from the four sets of five he supplied on 17 Nov.
    tests/calm-palettes.test.cjs */
 const CALM_PALETTES = [
   ['accent', 'Sage, with your accent color'],
@@ -147,6 +148,10 @@ const CALM_PALETTES = [
   ['honey', 'Honey — warm cream, amber'],
   ['sky', 'Sky — pale blue, denim'],
   ['lagoon', 'Lagoon — mint, lime and ocean blues'],
+  ['aurora', 'Aurora — pale aqua, indigo and neon pink'],
+  ['sorbet', 'Sorbet — peach, rose, tangerine and gold'],
+  ['carnival', 'Carnival — lilac, violet, pink and amber'],
+  ['forest', 'Forest — vanilla cream, sea green and dark teal'],
 ];
 
 /* The accent class an app root (or a gym modal) wears: the Calm palette while

@@ -13,7 +13,8 @@
      P3  every palette declares its full light and dark token blocks
      P4  palettes are Calm-only: no rule names one without .gv-skin-calm
      P5  nothing in src/ puts the raw accent on a root (accentFor is the door)
-     P6  Lagoon carries all ten supplied colours
+     P6  Lagoon carries all ten supplied colours; Aurora, Sorbet, Carnival and
+         Forest each carry their five, in light and in dark
      P7  Style lists Calm once; a Calm colour dropdown sits right under it while
          the style is Calm (per device)
    Readability and "never white" for each palette live in contrast.test.cjs,
@@ -40,8 +41,8 @@ const KEYS = CALM_PALETTES.map(p => p[0]);
 const OWN = KEYS.filter(k => k !== 'accent');
 const block = sel => { const m = css.match(new RegExp('(?:^|\\n)' + sel.replace(/[.]/g, '\\.') + '\\s*\\{([^}]*)\\}')); return m ? m[1] : null; };
 
-check('P1 eight palettes; the default is "your accent" and changes nothing', () => {
-  assert.deepStrictEqual(KEYS, ['accent', 'oat', 'sea', 'blush', 'lavender', 'honey', 'sky', 'lagoon']);
+check('P1 twelve palettes; the default is "your accent" and changes nothing', () => {
+  assert.deepStrictEqual(KEYS, ['accent', 'oat', 'sea', 'blush', 'lavender', 'honey', 'sky', 'lagoon', 'aurora', 'sorbet', 'carnival', 'forest']);
   assert.strictEqual(DEFAULT_SETTINGS.calmPalette, 'accent');
   for (const [, label] of CALM_PALETTES) assert.ok(label && label.length > 3);
   for (const k of OWN) assert.ok(!ACCENTS.some(a => a[0] === k), `${k} must not collide with an accent key`);
@@ -86,6 +87,23 @@ check('P5 the raw accent never reaches a root: accentFor is the only door', () =
 check('P6 Lagoon carries all ten supplied colours', () => {
   const both = (block('.gv-app.gv-skin-calm.gv-accent-lagoon') || '') + (block('.theme-dark .gv-app.gv-skin-calm.gv-accent-lagoon') || '');
   for (const hex of ['#d9ed92', '#b5e48c', '#99d98c', '#76c893', '#52b69a', '#34a0a4', '#168aad', '#1a759f', '#1e6091', '#184e77']) assert.ok(both.toLowerCase().includes(hex), `${hex} is not in Lagoon`);
+});
+
+/* 17 Nov 2026: four more, each built from the five colours Ruan supplied for it. */
+const SUPPLIED = {
+  aurora: ['#f72585', '#7209b7', '#3a0ca3', '#4361ee', '#4cc9f0'],
+  sorbet: ['#70d6ff', '#ff70a6', '#ff9770', '#ffd670', '#e9ff70'],
+  carnival: ['#ffbe0b', '#fb5607', '#ff006e', '#8338ec', '#3a86ff'],
+  forest: ['#114b5f', '#1a936f', '#88d498', '#c6dabf', '#f3e9d2'],
+};
+check('P6b Aurora, Sorbet, Carnival and Forest each show all five supplied colours, in light AND in dark', () => {
+  for (const [k, hexes] of Object.entries(SUPPLIED)) {
+    const l = (block(`.gv-app.gv-skin-calm.gv-accent-${k}`) || '').toLowerCase(), d = (block(`.theme-dark .gv-app.gv-skin-calm.gv-accent-${k}`) || '').toLowerCase();
+    for (const hex of hexes) {
+      assert.ok(l.includes(hex), `${hex} is not in ${k} (light)`);
+      assert.ok(d.includes(hex), `${hex} is not in ${k} (dark)`);
+    }
+  }
 });
 
 check('P7 Style lists Calm once; a Calm colour dropdown sits right under it, per device', async () => {
