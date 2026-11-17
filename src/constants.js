@@ -130,7 +130,8 @@ const ACCENTS = [
   ['olive', 'Olive (deep green)'],
 ];
 
-/* Calm colours — eight entries in Settings › Style. Eight complete palettes for the Calm
+/* Calm colours — Settings › Calm colour, the dropdown under Style while the
+   style is Calm. Eight complete palettes for the Calm
    style: a paper AND its own accent, light and dark. 'accent' (the default) is
    what Calm always was: sage paper and the Accent color above. The others are
    Calm-only accent classes (.gv-app.gv-skin-calm.gv-accent-<key> in styles.css);
@@ -152,42 +153,15 @@ const CALM_PALETTES = [
    the style is Calm and one is chosen, otherwise the user's accent. */
 function accentFor(settings) {
   const s = settings || {};
-  const pal = s.calmPalette;
-  if (s.skin === 'calm' && pal && pal !== 'accent' && CALM_PALETTES.some(p => p[0] === pal)) return pal;
+  const pal = calmPaletteOf(s);
+  if (s.skin === 'calm' && pal !== 'accent') return pal;
   return s.accent || 'lime';
 }
 
-/* THE STYLE DROPDOWN LISTS EVERY CALM PALETTE AS ITS OWN THEME. A separate
-   "Calm colours" row further down was missed ("I only see one calm theme"), so
-   the one list people look in carries them all: value 'calm' is Sage with the
-   accent, 'calm:<key>' a palette. Stored as before: skin + calmPalette. */
-function styleChoices() {
-  const out = [];
-  for (const [key, label] of SKINS) {
-    if (key !== 'calm') { out.push([key, label]); continue; }
-    for (const [pal, palLabel] of CALM_PALETTES) {
-      out.push(pal === 'accent'
-        ? ['calm', 'Calm · Sage — soft cards, quiet type, your accent color']
-        : [`calm:${pal}`, `Calm · ${palLabel}`]);
-    }
-  }
-  return out;
-}
-
-function styleValue(settings) {
-  const s = settings || {};
-  const skin = s.skin || 'apex';
-  if (skin !== 'calm') return skin;
-  const pal = s.calmPalette;
-  return pal && pal !== 'accent' && CALM_PALETTES.some(p => p[0] === pal) ? `calm:${pal}` : 'calm';
-}
-
-/* What picking a Style entry writes. Another style leaves the Calm palette as
-   it was, so going back to Calm later finds it. */
-function parseStyle(value) {
-  const [skin, pal] = String(value || '').split(':');
-  if (skin !== 'calm') return { skin };
-  return { skin: 'calm', calmPalette: pal && CALM_PALETTES.some(p => p[0] === pal) ? pal : 'accent' };
+/* The stored Calm colour, or 'accent' (Sage) when it is missing or unknown. */
+function calmPaletteOf(settings) {
+  const pal = settings ? settings.calmPalette : undefined;
+  return CALM_PALETTES.some(p => p[0] === pal) ? pal : 'accent';
 }
 
 /* Music-app shortcut shown in guided sessions. Keys (besides 'none') must
@@ -290,7 +264,7 @@ const GOAL_METRICS = [
 const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms', 'core', 'glutes', 'quads', 'hamstrings', 'calves', 'full body'];
 
 module.exports = {
-  VIEW_TYPE, DEFAULT_SETTINGS, WEEK_STARTS, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, CALM_PALETTES, accentFor, styleChoices, styleValue, parseStyle, MUSIC_APPS, SOUND_MODES,
+  VIEW_TYPE, DEFAULT_SETTINGS, WEEK_STARTS, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, CALM_PALETTES, accentFor, calmPaletteOf, MUSIC_APPS, SOUND_MODES,
   GUIDE_MODES, GUIDE_MINUTES, GUIDE_REST, PAGE_TITLES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

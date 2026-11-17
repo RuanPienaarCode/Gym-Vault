@@ -1,7 +1,7 @@
 'use strict';
 
 const { PluginSettingTab, Setting, Notice } = require('obsidian');
-const { WEEK_STARTS, ACCENTS, styleChoices, styleValue, parseStyle, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
+const { SKINS, WEEK_STARTS, ACCENTS, CALM_PALETTES, calmPaletteOf, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
 const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 const sound = require('./sound');
@@ -91,7 +91,7 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Look and feel on this device only')
-      .setDesc('For a shared vault: on means Style, Accent, Rewards and Calm motion change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
+      .setDesc('For a shared vault: on means Style, Calm colour, Accent, Rewards and Calm motion change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
       .addToggle(t => t
         .setValue(!!this.plugin.deviceLook)
         .onChange(v => {
@@ -99,15 +99,31 @@ class GymSettingTab extends PluginSettingTab {
           this.display();
         }));
 
+    const device = this.plugin.deviceLook ? ' Applies to this device only.' : '';
     new Setting(c)
       .setName('Style')
-      .setDesc(`How the gym looks. Every style uses the same data. Calm is the quiet one (soft cards, plain type, no shouting) and comes in eight colour themes, each with its own dark mode; only Calm · Sage follows your Accent color. Lock In is designed around the Blaze (orange) accent; it never changes your accent for you.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
+      .setDesc(`How the gym looks. Every style uses the same data. Calm is the quiet one (soft cards, plain type, no shouting); choose it and a Calm colour list appears right below. Lock In is designed around the Blaze (orange) accent; it never changes your accent for you.${device}`)
       .addDropdown(d => {
-        /* Every Calm palette is its own entry here (constants.styleChoices). */
-        for (const [value, label] of styleChoices()) d.addOption(value, label);
-        d.setValue(styleValue(this.plugin.settings))
-          .onChange(v => this.plugin.setLooks(parseStyle(v)));
+        for (const [key, label] of SKINS) d.addOption(key, label);
+        d.setValue(this.plugin.settings.skin || 'apex')
+          .onChange(v => {
+            this.plugin.setLook('skin', v);
+            this.display(); // the Calm colour list appears/disappears with the style
+          });
       });
+
+    /* Only Calm has colours of its own, so its list lives directly under Style
+       and only while Calm is on (a row further down the tab was missed). */
+    if (this.plugin.settings.skin === 'calm') {
+      new Setting(c)
+        .setName('Calm colour')
+        .setDesc(`The colours Calm wears: a soft page and its own accent, each with a dark mode. Sage follows your Accent color; the others bring their own.${device}`)
+        .addDropdown(d => {
+          for (const [key, label] of CALM_PALETTES) d.addOption(key, label);
+          d.setValue(calmPaletteOf(this.plugin.settings))
+            .onChange(v => this.plugin.setLook('calmPalette', v));
+        });
+    }
 
     new Setting(c)
       .setName('Rewards')
@@ -166,7 +182,7 @@ class GymSettingTab extends PluginSettingTab {
 
     new Setting(c)
       .setName('Accent color')
-      .setDesc(`The highlight color threading through the whole app. Olive is the softest. A Calm colour theme other than Sage brings its own and ignores this.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
+      .setDesc(`The highlight color threading through the whole app. Olive is the softest. A Calm colour other than Sage brings its own and ignores this.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
       .addDropdown(d => {
         for (const [key, label] of ACCENTS) d.addOption(key, label);
         d.setValue(this.plugin.settings.accent || 'lime')
