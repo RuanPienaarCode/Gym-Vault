@@ -1,5 +1,5 @@
 'use strict';
-/* CALM COLOURS (16 Nov 2026). Settings > Calm colours: eight complete palettes
+/* CALM COLOURS (16 Nov 2026). Settings > Style > Calm, then Calm colour: eight complete palettes
    for the Calm style, each a paper AND its own accent, in light and dark:
    Sage + your accent (the default, what Calm always was), Oat, Sea glass,
    Blush, Lavender, Honey, Sky, and Lagoon, built from the ten colours Ruan
@@ -14,7 +14,8 @@
      P4  palettes are Calm-only: no rule names one without .gv-skin-calm
      P5  nothing in src/ puts the raw accent on a root (accentFor is the door)
      P6  Lagoon carries all ten supplied colours
-     P7  each palette is its own entry in the Style dropdown (per device)
+     P7  Style lists Calm once; a Calm colour dropdown sits right under it while
+         the style is Calm (per device)
    Readability and "never white" for each palette live in contrast.test.cjs,
    light-paper.test.cjs and rc-zone-stages.test.cjs, which iterate them. */
 const assert = require('node:assert');
@@ -26,7 +27,15 @@ const { cleanLook, LOOK_FIELDS } = require('../src/device-look');
 const SRC = path.join(__dirname, '..', 'src');
 const css = fs.readFileSync(process.env.GV_STYLES_CSS || path.join(SRC, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 let failed = 0;
-const check = (name, fn) => { try { fn(); console.log('  ok   ' + name); } catch (e) { failed++; console.error('  FAIL ' + name + '\n       ' + String(e.message).split('\n')[0]); } };
+const pending = [];
+const fail = (name, e) => { failed++; console.error('  FAIL ' + name + '\n       ' + String(e.message).split('\n')[0]); };
+const check = (name, fn) => {
+  try {
+    const r = fn();
+    if (r && typeof r.then === 'function') pending.push(r.then(() => console.log('  ok   ' + name), e => fail(name, e)));
+    else console.log('  ok   ' + name);
+  } catch (e) { fail(name, e); }
+};
 const KEYS = CALM_PALETTES.map(p => p[0]);
 const OWN = KEYS.filter(k => k !== 'accent');
 const block = sel => { const m = css.match(new RegExp('(?:^|\\n)' + sel.replace(/[.]/g, '\\.') + '\\s*\\{([^}]*)\\}')); return m ? m[1] : null; };
@@ -79,34 +88,87 @@ check('P6 Lagoon carries all ten supplied colours', () => {
   for (const hex of ['#d9ed92', '#b5e48c', '#99d98c', '#76c893', '#52b69a', '#34a0a4', '#168aad', '#1a759f', '#1e6091', '#184e77']) assert.ok(both.toLowerCase().includes(hex), `${hex} is not in Lagoon`);
 });
 
-check('P7 every palette is its own entry in the Style dropdown, per device', () => {
-  /* 16 Nov 2026: a separate "Calm colours" row was missed ("I only see one calm theme"). */
-  const { styleChoices, styleValue, parseStyle, SKINS } = require('../src/constants');
-  const choices = styleChoices();
-  const values = choices.map(c => c[0]);
-  assert.deepStrictEqual(values.filter(v => !/^calm/.test(v)), SKINS.map(s => s[0]).filter(k => k !== 'calm'), 'the other styles are listed once each, in order');
-  assert.deepStrictEqual(values.filter(v => /^calm/.test(v)), ['calm', 'calm:oat', 'calm:sea', 'calm:blush', 'calm:lavender', 'calm:honey', 'calm:sky', 'calm:lagoon']);
-  for (const [v, label] of choices) if (/^calm/.test(v)) assert.ok(/^Calm · /.test(label), `${v} must read as a Calm theme: ${label}`);
-  assert.strictEqual(new Set(choices.map(c => c[1])).size, choices.length, 'no two entries share a label');
-  /* value <-> settings, both ways */
-  assert.deepStrictEqual(parseStyle('apex'), { skin: 'apex' }, 'another style leaves the Calm palette alone');
-  assert.deepStrictEqual(parseStyle('calm'), { skin: 'calm', calmPalette: 'accent' });
-  assert.deepStrictEqual(parseStyle('calm:lagoon'), { skin: 'calm', calmPalette: 'lagoon' });
-  assert.deepStrictEqual(parseStyle('calm:neon'), { skin: 'calm', calmPalette: 'accent' }, 'an unknown palette is plain Calm');
-  assert.strictEqual(styleValue({ skin: 'calm', calmPalette: 'lagoon' }), 'calm:lagoon');
-  assert.strictEqual(styleValue({ skin: 'calm', calmPalette: 'accent' }), 'calm');
-  assert.strictEqual(styleValue({ skin: 'calm' }), 'calm');
-  assert.strictEqual(styleValue({ skin: 'apex', calmPalette: 'lagoon' }), 'apex');
-  assert.strictEqual(styleValue({}), 'apex');
-  for (const v of values) assert.strictEqual(styleValue(Object.assign({ accent: 'lime' }, parseStyle(v))), v, `${v} round-trips`);
-  /* the tab builds Style from it and saves both fields in one go */
-  const tab = fs.readFileSync(path.join(SRC, 'settings-tab.js'), 'utf8');
-  assert.match(tab, /styleChoices\(\)/);
-  assert.match(tab, /setLooks\(parseStyle\(/);
-  assert.ok(!/setName\('Calm colours'\)/.test(tab), 'the separate Calm colours row is gone: one place to pick');
+check('P7 Style lists Calm once; a Calm colour dropdown sits right under it, per device', async () => {
+  /* 17 Nov 2026 (Ruan): "the calm theme rather add another drop down to select the colour".
+     History: a "Calm colours" row far down the tab was missed (16 Nov), then every
+     palette was a Style entry (too long a list). Now: Style > Calm, and the
+     colour list appears directly below it, only while the style is Calm. */
+  const constants = require('../src/constants');
+  for (const gone of ['styleChoices', 'styleValue', 'parseStyle']) assert.strictEqual(constants[gone], undefined, `${gone} is the retired one-list design`);
+  const Module = require('node:module');
+  const rows = [];
+  class Setting {
+    constructor() { this.row = { name: '', desc: '', options: [], value: undefined, change: null }; rows.push(this.row); }
+    setName(n) { this.row.name = n; return this; }
+    setDesc(d) { this.row.desc = d; return this; }
+    setHeading() { return this; }
+    addText(fn) { fn({ inputEl: { addEventListener() {} }, setValue() { return this; }, setPlaceholder() { return this; }, onChange() { return this; } }); return this; }
+    addDropdown(fn) {
+      const row = this.row;
+      fn({ addOption(v, l) { row.options.push([v, l]); return this; }, setValue(v) { row.value = v; return this; }, onChange(f) { row.change = f; return this; } });
+      return this;
+    }
+    addToggle(fn) { fn({ setValue() { return this; }, onChange() { return this; }, setDisabled() { return this; } }); return this; }
+    addButton(fn) { fn({ setButtonText() { return this; }, setCta() { return this; }, setWarning() { return this; }, setDisabled() { return this; }, onClick() { return this; } }); return this; }
+    addExtraButton(fn) { fn({ setIcon() { return this; }, setTooltip() { return this; }, onClick() { return this; } }); return this; }
+  }
+  const el = () => ({ empty() {}, createDiv: () => el(), createEl: () => el(), createSpan: () => el(), addClass() {}, setText() {}, appendChild() {}, append() {}, addEventListener() {}, style: {}, textContent: '' });
+  const origLoad = Module._load;
+  Module._load = (req, ...rest) => (req === 'obsidian'
+    ? { Setting, PluginSettingTab: class { constructor(app, plugin) { this.app = app; this.plugin = plugin; this.containerEl = el(); } }, Notice: class {}, setIcon: () => {}, normalizePath: p => p, Platform: { isMobile: false } }
+    : origLoad(req, ...rest));
+  const { GymSettingTab } = require('../src/settings-tab');
+  Module._load = origLoad;
+  global.window = global.window || {};
+  const open = settings => {
+    const calls = [];
+    const plugin = { settings: Object.assign({}, DEFAULT_SETTINGS, settings), saveSettings: async () => {}, refreshViews() {} };
+    plugin.setLook = async (field, value) => { calls.push([field, value]); plugin.settings[field] = value; };
+    const tab = new GymSettingTab({}, plugin);
+    /* every draw starts from an empty row list, as the real tab empties its container */
+    const realDisplay = tab.display.bind(tab);
+    let redraws = 0;
+    tab.display = () => { redraws++; rows.length = 0; return realDisplay(); };
+    const draw = () => { tab.display(); return rows.map(r => r.name); };
+    return { plugin, calls, draw, row: n => rows.find(r => r.name === n), redraws: () => redraws };
+  };
+
+  /* Style: the five styles, Calm once */
+  const apex = open({ skin: 'apex', calmPalette: 'lagoon' });
+  let names = apex.draw();
+  assert.deepStrictEqual(apex.row('Style').options.map(o => o[0]), constants.SKINS.map(s => s[0]));
+  assert.strictEqual(apex.row('Style').value, 'apex');
+  assert.ok(!names.includes('Calm colour'), 'no Calm colour row while another style is on');
+
+  /* Calm: the colour row is the very next row, lists all eight, shows the current one */
+  const calm = open({ skin: 'calm', calmPalette: 'lagoon' });
+  names = calm.draw();
+  assert.strictEqual(names[names.indexOf('Style') + 1], 'Calm colour', 'the colour list sits directly under Style');
+  assert.deepStrictEqual(calm.row('Calm colour').options.map(o => o[0]), KEYS);
+  assert.strictEqual(calm.row('Calm colour').value, 'lagoon');
+  assert.strictEqual(open({ skin: 'calm' }).draw() && rows.find(r => r.name === 'Calm colour').value, 'accent', 'Sage by default');
+  assert.strictEqual(open({ skin: 'calm', calmPalette: 'neon' }).draw() && rows.find(r => r.name === 'Calm colour').value, 'accent', 'an unknown stored palette shows Sage');
+
+  /* picking a colour writes only calmPalette, through setLook (so it is per device) */
+  calm.draw();
+  await calm.row('Calm colour').change('sea');
+  assert.deepStrictEqual(calm.calls, [['calmPalette', 'sea']]);
+
+  /* picking Calm in Style writes only the skin, redraws the tab, and the row appears with the remembered colour */
+  apex.draw();
+  const before = apex.redraws();
+  await apex.row('Style').change('calm');
+  assert.deepStrictEqual(apex.calls, [['skin', 'calm']], 'Style never touches the Calm colour');
+  assert.ok(apex.redraws() > before, 'the tab redraws so the colour list appears');
+  assert.ok(rows.some(r => r.name === 'Calm colour'), 'the colour list is there after picking Calm');
+  assert.strictEqual(rows.find(r => r.name === 'Calm colour').value, 'lagoon', 'the colour chosen earlier is kept');
+  /* and away again: the row goes */
+  await rows.find(r => r.name === 'Style').change('apex');
+  assert.ok(!rows.some(r => r.name === 'Calm colour'));
+
   assert.ok(LOOK_FIELDS.includes('calmPalette'));
   assert.deepStrictEqual(cleanLook({ calmPalette: 'sea' }), { calmPalette: 'sea' });
   assert.strictEqual(cleanLook({ calmPalette: 'neon' }), null);
 });
 
-if (failed) { console.error(`calm-palettes: ${failed} failed`); process.exit(1); }
+Promise.all(pending).then(() => { if (failed) { console.error(`calm-palettes: ${failed} failed`); process.exit(1); } });
