@@ -32,7 +32,8 @@ desktop and mobile.
   dashboard. Star the ones you like and they move up the Plans list. The full
   format is under *Plan format* below.
 - **Goals** — targets measured from real logged data (best reps, best hold,
-  heaviest weight, body weight, workouts per week).
+  heaviest weight, body weight, workouts per week). A rep or hold goal can
+  also be a *weekly challenge*, below.
 - **History** — activity heatmap and every logged session, plus a Records
   page of every personal best.
 - **Running** — the week's runs from your running plan, the long-run ladder,
@@ -70,6 +71,15 @@ Requires Obsidian 1.8.0 or newer. Works on desktop and on iOS/Android.
 
 **Open it.** Click the dumbbell in the left ribbon, or run **Open gym** from
 the command palette (it appears as *Gym Vault: Open gym*).
+
+**Commands.** All five are in the command palette, under *Gym Vault:*
+
+- **Open gym** — opens the gym view.
+- **Log today's workout** — opens the gym and starts logging today's day.
+- **Open rep counter** — the full-screen rep counter, with no exercise chosen.
+- **Start weekly challenge** — straight into your challenge if you have one,
+  the Goals page if you have several, or the new-challenge picker if none.
+- **Record your own count-in** — the *Your voice* recorder.
 
 **Set up.** On first run the app offers **Create my gym**. It writes an
 *example* gym for you to edit or replace, all as notes under your Gym folder:
@@ -134,6 +144,24 @@ stays the record of what the session actually was.
 `## Day name (mon)` headings with `- Exercise | 4 x 8-12` lines underneath, so
 the app and the editor always agree (see *Plan format*).
 
+**Weekly challenges.** A goal measured by best reps in a set, or by best hold
+(a plank, a wall sit), can be a weekly challenge: each week you try to beat
+your best unbroken set, or longest hold. Week one is a test: do as many as you
+can, and that sets the first target. Each later week's target is the best from
+the last week you attempted, plus 10% (rounded up, and at least one more),
+never more than the goal. The score is the best single unbroken set, never a
+total. You pick a mode when you start:
+
+- **Max** — one big set. A rest of more than a few seconds (5 by default; the
+  goal's `rest_limit_s` changes it) closes the set, and the next rep opens a
+  new one. For a hold, tap the screen when you stop.
+- **Sets** — the week's target split across several sets, as a training day.
+  Your biggest set still counts as the score.
+
+Start one from the **Start** button on the goal's card, or the **Challenge**
+button on Goals to make a new one, or run **Start weekly challenge** from the
+command palette. Nothing is saved until you press Save on the summary.
+
 **Get plans from others.** *Plans → Browse* installs shared plans and any
 exercises they need. Point it somewhere else under Settings → *Plan library*.
 
@@ -158,6 +186,25 @@ also an accent colour and five visual styles (Apex is the default; Lock In, a
 black-and-one-hot-accent skin designed around the Blaze accent, Floor,
 Editorial, and Calm, a quiet one with soft cards and sentence-case type that
 pairs with the Olive accent, are also there).
+
+**More settings.**
+
+- **Week starts on** — Monday, Saturday or Sunday. The week strip, the week
+  streak, the weekly goal and the weekly challenge all follow it.
+- **Rest between sets** — how long the guided rest screen runs before it moves
+  on to the next set by itself. *No rest* goes straight there; **Next** is
+  always available either way.
+- **Open on startup** — opens the gym view when Obsidian launches.
+- **Refresh starter media** — updates the demonstration images and videos on
+  the starter exercises to the latest set. It only touches media that is still
+  the bundled default; anything you set yourself stays.
+- **Calm motion** — no confetti, no pulsing, flickering or scrolling, and
+  exercise images held still. Sounds and counting are unchanged.
+- **Look and feel on this device only** — for a vault shared between devices
+  or people. With it on, *Style* (the Calm colours included), *Accent color*, *Rewards* and
+  *Calm motion* are kept on that phone or computer only, in Obsidian's local
+  storage, and are not written to the synced `data.json`, so the other devices
+  keep their own. With it off they follow one shared choice.
 
 ## Plan format
 
@@ -348,7 +395,10 @@ Gym/
                         # plans and goals refer to exercises by name
   Plans/<name>.md       # day sections + exercise lines (see above)
   Goals/<name>.md       # frontmatter: metric, exercise, target, deadline
+                        # (a weekly challenge also: challenge: weekly, started,
+                        #  split, rest_limit_s)
   Workouts/<date> <day>.md  # frontmatter + a table of logged sets
+                        # (a saved challenge run has kind: challenge)
   Attachments/<exercise>/   # exercise images saved by "Download images for offline"
   Exports/              # exports you save from the Export page (.md, .csv, .json)
   Progress Photos/<pose>/<date>.jpg   # the folder IS the record — no index note
@@ -404,6 +454,8 @@ own register. Award keys look like `session:<workout file>`,
 - **Exercise photos and videos.** Some starter exercises link media from
   [wger.de](https://wger.de), licensed CC-BY-SA 4.0. The exercise notes that
   use it credit the authors.
+- **Downloaded plans.** Plans you download through Plans → Browse come from
+  the plan library repository and are licensed CC BY 4.0.
 
 The full licence text for both fonts, and the attributions, are in
 [NOTICE](NOTICE).

@@ -47,6 +47,17 @@ function commitOnBlur(tab, t, onCommit) {
   return t;
 }
 
+/* Close Obsidian's settings window. `app.setting` is not in the published
+   typings, so every hop is guarded (the header's Settings button in
+   controller.js does the same going the other way): on a host without it the
+   page still opens, just under the window. Never throws. */
+function closeSettingsWindow(app) {
+  try {
+    const setting = app && app.setting;
+    if (setting && typeof setting.close === 'function') setting.close();
+  } catch (e) { console.error('gym-vault close settings', e); }
+}
+
 class GymSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -381,7 +392,12 @@ class GymSettingTab extends PluginSettingTab {
         .addButton(b => b
           .setButtonText(p.recorded ? 'Open the recorder' : 'Start recording')
           .setCta()
-          .onClick(() => this.plugin.openPage('voice')))
+          .onClick(() => {
+            /* The settings window sits on top of the view; without closing it
+               the recorder opens underneath and the button looks dead. */
+            closeSettingsWindow(this.app);
+            this.plugin.openPage('voice');
+          }))
         .addButton(b => b
           .setButtonText('Test')
           .onClick(() => {
@@ -494,4 +510,4 @@ class GymSettingTab extends PluginSettingTab {
   }
 }
 
-module.exports = { GymSettingTab };
+module.exports = { GymSettingTab, closeSettingsWindow };

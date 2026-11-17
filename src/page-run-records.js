@@ -97,13 +97,24 @@ function render(ctx, root) {
         x.longestTime ? fmtSeconds(x.longestTime.seconds) : null,
       ].filter(Boolean).join(' · ')
       : 'never run';
-    byEx.append(clickableCard(
-      { class: 'gv-card gv-recrow', 'aria-label': `Open ${x.exercise}` },
-      () => ctx.nav('exercise', { exercise: x.exercise, path: ex && ex.file ? ex.file.path : null }),
+    const kids = [
       el('div', { class: 'gv-recrow-main' },
         el('div', { class: 'gv-recrow-name' }, x.exercise),
         el('div', { class: 'gv-recrow-was' }, meta)),
-      el('div', { class: 'gv-recrow-margin' }, x.longest ? `${x.longest.km} km` : '—')));
+      el('div', { class: 'gv-recrow-margin' }, x.longest ? `${x.longest.km} km` : '—'),
+    ];
+    /* A run row can name an exercise with no note behind it (the note was
+       deleted or renamed; run-records.byExercise keeps names that only appear in
+       a logged row). Tapping it reached exercise detail, which bounces to the
+       Exercises list and leaves a dead entry on the back stack, so such a row has
+       no tap target at all — the same call page-plans' planItemRow makes. The
+       runs are still listed: they happened. */
+    byEx.append(ex
+      ? clickableCard(
+        { class: 'gv-card gv-recrow', 'aria-label': `Open ${x.exercise}` },
+        () => ctx.nav('exercise', { exercise: x.exercise, path: ex.file ? ex.file.path : null }),
+        ...kids)
+      : el('div', { class: 'gv-card gv-recrow' }, ...kids));
   }
   root.append(byEx);
 

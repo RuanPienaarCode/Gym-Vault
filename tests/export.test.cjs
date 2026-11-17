@@ -103,7 +103,7 @@ const CLINICAL_VALUES = ['118', '74', '3.92', '6.15'];
    not exported, because we cannot know it is safe. */
 {
   const data = {
-    profile: { fm: { name: 'Ruan', birth_year: 1990, height_cm: 175, sex: 'male', hba1c: '5.4', meds: 'metformin' }, body: '' },
+    profile: { fm: { name: 'Sam Example', birth_year: 1985, height_cm: 180, sex: 'male', hba1c: '5.1', meds: 'none listed' }, body: '' },
     workouts: [], exercises: [], goals: [], body: [], plans: [],
   };
   const locked = { today: '2026-08-29', includeBody: false, includeHealth: false, days: 90 };
@@ -111,17 +111,17 @@ const CLINICAL_VALUES = ['118', '74', '3.92', '6.15'];
   const j = JSON.parse(buildJson(data, locked));
   const asText = JSON.stringify(j.profile || {});
   assert.ok(!/hba1c/.test(asText), `unknown clinical key leaked into JSON: ${asText}`);
-  assert.ok(!/metformin/.test(asText), `unknown clinical value leaked into JSON: ${asText}`);
+  assert.ok(!/none listed/.test(asText), `unknown clinical value leaked into JSON: ${asText}`);
   assert.ok(!/height_cm/.test(asText), `body measurement leaked with includeBody:false: ${asText}`);
 
   const csv = buildCsv(data, locked);
-  assert.ok(!/hba1c|metformin/.test(csv), 'unknown clinical key leaked into CSV');
+  assert.ok(!/hba1c|none listed/.test(csv), 'unknown clinical key leaked into CSV');
 
   // ...and with the switches ON, the modelled fields still come through.
   const open = { ...locked, includeBody: true, includeHealth: true };
   const j2 = JSON.parse(buildJson(data, open));
-  assert.strictEqual(j2.profile.height_cm, 175, 'includeBody:true should still export height');
-  assert.ok(!/metformin/.test(JSON.stringify(j2.profile)),
+  assert.strictEqual(j2.profile.height_cm, 180, 'includeBody:true should still export height');
+  assert.ok(!/none listed/.test(JSON.stringify(j2.profile)),
     'an unmodelled key must stay out even when the switches are on — whitelist, not spread');
 }
 

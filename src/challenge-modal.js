@@ -194,6 +194,13 @@ class ChallengeModal extends Modal {
   /* ---------- step 2: count ---------- */
 
   begin(mode, plan) {
+    /* FIRST, before anything else: iOS unlocks audio only inside the call stack
+       of a tap, and the count-in is spoken from a timer (countdown.js). From
+       "New weekly challenge -> Start challenge" the modal opens after an awaited
+       createGoal, and from the Start command after an awaited activateView, so
+       the tap that opened it has long passed and onOpen's unlock may not have
+       held. Tapping Max or Sets is a real tap on every path. */
+    sound.unlock();
     this.mode = mode;
     this.plan = plan;
     this.phase = 'count';
@@ -544,7 +551,7 @@ class ChallengeModal extends Modal {
 
     let verdict;
     if (goal && best >= goal) verdict = `Goal reached: ${sc(best)} in ${one}!`;
-    else if (s.testWeek) verdict = `Baseline: ${sc(best)} in ${one}. Next week, beat ${sc(ch.nextTarget(best, goal))}.`;
+    else if (s.testWeek) verdict = `Baseline: ${sc(best)} in ${one}. Next week, beat ${sc(ch.nextAfterGo(s, best))}.`;
     else if (best >= this.target) verdict = `Beaten! ${sc(best)} in ${one} — the target was ${sc(this.target)}.`;
     else if (this.mode === 'sets') {
       /* A Sets day is training, not the attempt: say what was done, and

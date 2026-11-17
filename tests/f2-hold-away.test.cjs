@@ -41,17 +41,21 @@ const setHidden = hidden => {
 };
 
 (async () => {
-  await check('F2-7a. a hold left running while the app was hidden: seconds saved, but no NEW BEST', async () => {
+  await check('F2-7a. a hold left running while the app was hidden: seconds up to the hide saved, no NEW BEST', async () => {
     const b = await start();
     H.advance(6000);
     assert.ok(sess(b).hold && sess(b).hold.running, 'fixture: the hold is running');
     H.advance(5000);
+    const shown = Math.round((H.clock.now - sess(b).hold.startedAt) / 1000);
     setHidden(true);
     H.advance(60 * 60 * 1000);            // an hour in the background
     setHidden(false);
     H.tapZone(zone(b));                    // back, tap to stop
     assert.strictEqual(sets(b)[0].done, true);
-    assert.ok(parseFloat(sets(b)[0].seconds) >= 3600, `the seconds are still saved: ${sets(b)[0].seconds}`);
+    /* DECISION D2 (audit 16 Nov 2026): what is saved is the seconds the clock showed
+       when the page was hidden, not the hour nobody watched. This used to pin the
+       full wall-clock figure (>= 3600). */
+    assert.strictEqual(parseFloat(sets(b)[0].seconds), shown, `the seconds saved are those on the clock when it was hidden: ${sets(b)[0].seconds}`);
     const rec = (sess(b).records || []).length;
     assert.strictEqual(rec, 0, `an hour in the background claimed ${rec} record(s)`);
     assert.ok(!H.notices.some(n => /NEW BEST/.test(n)) && !(sess(b).pendingCallouts || []).some(n => /NEW BEST/.test(n)), 'and announced none');
@@ -98,7 +102,8 @@ const setHidden = hidden => {
     const modal = H.modals.slice().reverse().find(m => m.kind === 'end');
     assert.ok(modal, 'the end-session sheet opened');
     modal.opts.onReview();                               // commits the live hold, then opens the log
-    assert.ok(parseFloat(sets(b)[0].seconds) >= 3600, 'saved');
+    /* D2: the seconds at the moment of hiding (6 s of hold), not the hour. */
+    assert.ok(parseFloat(sets(b)[0].seconds) > 0 && parseFloat(sets(b)[0].seconds) < 60, `saved the seconds at the hide: ${sets(b)[0].seconds}`);
     const carry = b.ctx.state.sessionCarry;
     assert.strictEqual(((carry && carry.records) || []).length, 0, 'and claimed nothing');
   });

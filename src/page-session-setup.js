@@ -24,7 +24,7 @@ const { buildSchedule, workIntervals } = require('./timed-plan');
 const { musicRow } = require('./music-picker');
 const { sameName, countLabel } = require('./stats');
 const { itemSets } = require('./plan-parse');
-const { startDraft } = require('./page-log');
+const { startDraft, setsInDraft } = require('./page-log');
 const sound = require('./sound');
 
 /* How many moves a warm-up / cool-down block is built from. timed-plan.js
@@ -195,7 +195,20 @@ function scheduleFor(ctx, day, ui) {
   });
 }
 
+/* THE ONE ROUNDING for "how long is this circuit", read by the summary line
+   ("n min scheduled") and by the Start button - both from the schedule's own
+   total, so the two can never disagree. */
 const mins = secs => Math.max(1, Math.round(secs / 60));
+
+/* The Start button's label for a timed circuit: the length that WILL be scheduled,
+   not the dial. They differ whenever the schedule is not the dial - the first work
+   interval is never cut, so a `1 x 30 min` run on a 10-minute dial is a 30-minute
+   circuit, and warm-up plus cool-down on a 5-minute dial run to 6 (audit 16 Nov
+   2026, #37). Building the schedule is unchanged; only what the button says. */
+function startLabel(schedule) {
+  const n = mins((schedule && schedule.totalSeconds) || 0);
+  return `Start ${n} minute${n === 1 ? '' : 's'}`;
+}
 
 /* ---------- render ---------- */
 
@@ -305,7 +318,7 @@ function render(ctx, root) {
     start.disabled = empty;
     start.textContent = empty
       ? 'Nothing to start'
-      : (ui.mode === 'timed' ? `Start ${ui.minutes} minutes` : 'Start session');
+      : (ui.mode === 'timed' ? startLabel(scheduleFor(ctx, day, ui)) : 'Start session');
   };
 
   /* 2. HOW MANY — ONE DIAL, NEVER BOTH. In a timed circuit the CLOCK
@@ -543,7 +556,9 @@ function previewText(ctx, day, ui) {
   const count = ((day && day.items) || []).length;
   if (!count) return 'Nothing on this day yet — add an exercise to the plan first.';
   if (ui.mode !== 'timed') {
-    const sets = setsPerEntryFor(day, ui).reduce((n, v) => n + v, 0);
+    /* setsInDraft is the rule makeEntry builds the draft by: a run is ONE set
+       however the plan wrote it, so the preview counts what the draft will hold. */
+    const sets = setsPerEntryFor(day, ui).reduce((n, v, i) => n + setsInDraft(ctx, day.items[i].exercise, v), 0);
     return `${countLabel(count, 'exercise')} · ${countLabel(sets, 'set')} · you set the pace`;
   }
   const schedule = scheduleFor(ctx, day, ui);
@@ -634,4 +649,4 @@ function rememberSetup(ctx, ui) {
    with them so _preview/setsrow.html can render the REAL control: it used
    to hand-build a replica of this markup, which is a harness that silently
    stops matching what ships. */
-module.exports = { render, setsBlock, setsForItem, setsPerEntryFor, uniformSets, mostCommonSets, nextSetsValue, levelSets, SETS_MIN, SETS_MAX };
+module.exports = { render, startLabel, setsBlock, setsForItem, setsPerEntryFor, uniformSets, mostCommonSets, nextSetsValue, levelSets, SETS_MIN, SETS_MAX };

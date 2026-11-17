@@ -10,7 +10,8 @@
 
 const { BODY_COLUMNS, WORKOUT_COLUMNS, WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, fmtShort, addDays, fromISO } = require('./dates');
-const { isPaused } = require('./plan-parse');
+const { escMd } = require('./markdown');
+const { isPaused, isFavourite, planRole, alongsideKind, activePlanOf, rxLabel } = require('./plan-parse');
 const {
   num, claimedBests, goalCurrent, goalProgress, distanceInWeek, ladderWeek, sessionSets, countLabel, sessionCount, workoutDate,
 } = require('./stats');
@@ -20,6 +21,23 @@ const HEALTH_KEYS = ['bp_systolic', 'bp_diastolic', 'cholesterol', 'glucose'];
 const isHealthKey = k => HEALTH_KEYS.indexOf(k) >= 0;
 
 const DEFAULTS = { days: 90, includeBody: true, includeHealth: false };
+
+/* WHAT A PLAN IS CALLED, by the Plans page's own rule (finding #40). The tag used
+   to be read off the raw flags, so a plan Today runs implicitly (no
+   `active: true` anywhere) exported as "inactive", a fallback plan as "inactive",
+   and the seeded Rest & Recovery (parallel AND fallback) as "runs alongside"
+   while Plans badges it "fills gaps". The role comes from plan-parse.planRole,
+   the very function page-plans.js re-exports, judged against activePlanOf (the
+   plan Today runs); only the WORDS are the export's. A paused plan has no role
+   (nothing is using it) and says what it would be, then "paused". */
+const ROLE_WORD = { active: 'active', alongside: 'runs alongside', 'fills-gaps': 'fills gaps' };
+const KIND_WORD = { parallel: 'runs alongside', fallback: 'fills gaps' };
+function planTag(p, activePlan) {
+  const role = planRole(p, activePlan);
+  if (role) return ROLE_WORD[role];
+  const kind = alongsideKind(p);
+  return kind && isPaused(p) ? `${KIND_WORD[kind]}, paused` : 'inactive';
+}
 
 function windowStart(days, today) {
   return days ? addDays(today, -days + 1) : null;
@@ -101,14 +119,14 @@ function buildSummary(data, options) {
   if (data.plans.length) {
     L.push('## Current programme');
     L.push('');
+    const activeNow = activePlanOf(data.plans);
     for (const p of data.plans) {
-      const tag = String(p.fm.parallel) === 'true' ? (isPaused(p) ? 'runs alongside, paused' : 'runs alongside')
-        : String(p.fm.active) === 'true' ? 'active' : 'inactive';
-      L.push(`### ${p.name} (${tag})`);
+      L.push(`### ${p.name} (${planTag(p, activeNow)})`);
       L.push('');
       const ordered = [...p.model.days].sort((a, b) => WEEKDAYS.indexOf(a.weekday) - WEEKDAYS.indexOf(b.weekday));
       for (const d of ordered) {
-        const items = d.items.map(i => `${i.exercise}${i.sets != null ? ` ${i.sets}×${i.target}` : i.target ? ` ${i.target}` : ''}`);
+        /* rxLabel: "5×submax", "5 sets" when there is no target (never a dangling "5×") */
+        const items = d.items.map(i => { const rx = rxLabel(i, '×'); return `${i.exercise}${rx ? ` ${rx}` : ''}`; });
         L.push(`- **${WEEKDAY_LABELS[d.weekday] || d.weekday} — ${d.name}**${items.length ? ': ' + items.join('; ') : ''}`);
       }
       const ladder = Array.isArray(p.fm.ladder) ? p.fm.ladder.map(num).filter(v => v !== null) : [];
@@ -131,8 +149,8 @@ function buildSummary(data, options) {
     const sctx = { workouts: data.workouts, body: data.body, weekStart: o.weekStart, today: o.today, exercises: data.exercises };
     for (const g of data.goals) {
       const cur = goalCurrent(g, sctx);
-      const p = goalProgress(g, cur);
-      L.push(`| ${g.name} | ${g.fm.metric}${g.fm.exercise ? ` (${g.fm.exercise})` : ''} | ${cur ?? '—'} | ${g.fm.target ?? '—'} | ${p === null ? '—' : Math.round(p * 100) + '%'} |`);
+      const p = goalProgress(g, cur, sctx);
+      L.push(`| ${escMd(g.name)} | ${g.fm.metric}${g.fm.exercise ? ` (${escMd(g.fm.exercise)})` : ''} | ${cur ?? '—'} | ${g.fm.target ?? '—'} | ${p === null ? '—' : Math.round(p * 100) + '%'} |`);
     }
     L.push('');
   }
@@ -147,7 +165,7 @@ function buildSummary(data, options) {
     if (b.weight !== null) cells.push(`${b.weight} kg`);
     if (b.seconds !== null) cells.push(`${b.seconds} s`);
     if (b.distance !== null) cells.push(`${b.distance} km`);
-    bestRows.push(`| ${ex.name} | ${cells.join(' · ')} | ${b.lastDate ? fmtShort(b.lastDate) : '—'} |`);
+    bestRows.push(`| ${escMd(ex.name)} | ${cells.join(' · ')} | ${b.lastDate ? fmtShort(b.lastDate) : '—'} |`);
   }
   if (bestRows.length) {
     L.push('## Personal bests');
@@ -208,7 +226,8 @@ function buildSummary(data, options) {
       L.push('');
       L.push(`| ${cols.map(c => c.label).join(' | ')} |`);
       L.push(`|${cols.map(() => '---').join('|')}|`);
-      for (const r of rows) L.push(`| ${cols.map(c => r[c.key] || '').join(' | ')} |`);
+      /* escMd: a `|` in a note cell added a column to the exported table. */
+      for (const r of rows) L.push(`| ${cols.map(c => escMd(r[c.key] || '')).join(' | ')} |`);
       L.push('');
       if (!o.includeHealth) L.push('_Clinical markers (blood pressure, cholesterol, glucose) were not included in this export._');
       L.push('');
@@ -244,22 +263,31 @@ function buildCsv(data, options) {
 function buildJson(data, options) {
   const o = { ...DEFAULTS, today: todayISO(), weekStart: 'mon', ...options };
   const from = windowStart(o.days, o.today);
+  const activeNow = activePlanOf(data.plans);
   const out = {
     exported: o.today,
     range: o.days ? `last ${o.days} days` : 'all',
     profile: pickProfile(data.profile.fm || {}, o),
     plans: data.plans.map(p => ({
       name: p.name,
-      active: String(p.fm.active) === 'true',
+      /* `active` is the plan Today runs (the same reading the summary's tag and
+         the Plans badge use), not the raw flag: with no flag anywhere the first
+         main plan is still the one being followed. */
+      active: planRole(p, activeNow) === 'active',
       parallel: String(p.fm.parallel) === 'true',
+      fallback: String(p.fm.fallback) === 'true',
       ...(isPaused(p) ? { paused: true } : {}),
+      ...(isFavourite(p) ? { favourite: true } : {}),
       ladder: p.fm.ladder,
       start_date: p.fm.start_date,
       days: p.model.days.map(d => ({ weekday: d.weekday, name: d.name, items: d.items })),
     })),
     goals: data.goals.map(g => {
-      const cur = goalCurrent(g, { workouts: data.workouts, body: data.body, weekStart: o.weekStart, today: o.today, exercises: data.exercises });
-      return { name: g.name, ...g.fm, current: cur, progress: goalProgress(g, cur) };
+      const sctx = { workouts: data.workouts, body: data.body, weekStart: o.weekStart, today: o.today, exercises: data.exercises };
+      const cur = goalCurrent(g, sctx);
+      /* The same third argument Goals and Today pass — without the body log a
+         decrease goal with no start_value exported 0% while Goals showed 43%. */
+      return { name: g.name, ...g.fm, current: cur, progress: goalProgress(g, cur, sctx) };
     }),
     exercises: data.exercises.map(e => ({ name: e.name, ...e.fm, bests: claimedBests(data.workouts, e) })),
     workouts: pickWorkouts(data, o).map(w => ({ ...w.fm, rows: w.rows })),

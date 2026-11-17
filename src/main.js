@@ -36,6 +36,11 @@ class GymPlugin extends Plugin {
       callback: async () => {
         await this.activateView();
         this.forEachView(ctl => {
+          /* No gym yet (or nothing loaded yet): the setup card is what the
+             view shows, and a draft started behind it would turn up as a
+             phantom "Session in progress" after "Create my gym". Opening the
+             view is all the command does then. */
+          if (!GymPlugin.canLogNow(ctl.ctx)) return;
           const { plan, day } = GymPlugin.logTargetFor(ctl.ctx);
           ctl.ctx.startLog(plan, day);
         });
@@ -121,12 +126,28 @@ class GymPlugin extends Plugin {
     this.forEachView(ctl => ctl.ctx.nav(page, params));
   }
 
+  /* Brings the gym forward and resolves only once there is a view to act on.
+
+     revealLeaf is awaited in BOTH branches: it is async on the host, and the
+     commands run forEachView right after this returns. And a Gym tab restored
+     at startup in the background is DEFERRED — the leaf exists but has no view
+     (and so no appCtl) until something loads it — so forEachView skipped it and
+     "Log today's workout" / "Record your own count-in" only brought the tab
+     forward. loadIfDeferred is feature-detected (it is newer than some hosts
+     in range of minAppVersion) and a failure to load must not stop the
+     command from reaching whatever views there are. */
   async activateView() {
-    const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE);
-    if (existing.length) { this.app.workspace.revealLeaf(existing[0]); return; }
-    const leaf = this.app.workspace.getLeaf(true);
-    await leaf.setViewState({ type: VIEW_TYPE, active: true });
-    this.app.workspace.revealLeaf(leaf);
+    const ws = this.app.workspace;
+    const existing = ws.getLeavesOfType(VIEW_TYPE);
+    let leaf = existing[0];
+    if (!leaf) {
+      leaf = ws.getLeaf(true);
+      await leaf.setViewState({ type: VIEW_TYPE, active: true });
+    }
+    await ws.revealLeaf(leaf);
+    if (typeof leaf.loadIfDeferred === 'function') {
+      try { await leaf.loadIfDeferred(); } catch (e) { console.error('gym-vault load deferred view', e); }
+    }
   }
 
   /* Style + Accent may be chosen for THIS DEVICE ONLY (src/device-look.js):
@@ -139,6 +160,18 @@ class GymPlugin extends Plugin {
     this._lookStore = makeLookStore(this.app);
     this.deviceLook = this._lookStore.read();
     this.settings = applyLook(stored, this.deviceLook);
+  }
+
+  /* data.json was changed on disk by something else — the vault syncing another
+     device's choice. Obsidian calls this; without it settings were read once at
+     load, so this device's next save wrote its stale copy over the change.
+     It goes back through loadSettings so the per-device look is re-applied (a
+     Style or Accent chosen for THIS DEVICE still wins here and still stays out
+     of data.json) and _sharedLook now holds what the file holds. A failed read
+     leaves the settings this device has. */
+  async onExternalSettingsChange() {
+    try { await this.loadSettings(); } catch (e) { console.error('gym-vault external settings', e); return; }
+    this.refreshViews();
   }
 
   async saveSettings() { await this.saveData(sharedForSave(this.settings, this._sharedLook, this.deviceLook)); }
@@ -176,6 +209,10 @@ class GymPlugin extends Plugin {
     this.refreshViews();
   }
 }
+
+/* Is there a gym to log into? Loaded, and its folder holds a gym
+   (data.present — the same field the view's setup card keys on). */
+GymPlugin.canLogNow = ctx => !!(ctx && ctx.data && ctx.data.present);
 
 /* WHAT "Log today's workout" OPENS. The first entry of ctx.daysOn for today -
    the rule Today's hero uses (controller.resolveDaysOn: the active plan's own

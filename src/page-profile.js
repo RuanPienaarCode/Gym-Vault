@@ -151,6 +151,17 @@ function iconBtn(name, label, onClick) {
   return b;
 }
 
+/* A measurement the form can refuse: no date, or nothing measured. The date and
+   the note are not measurements — a row of just those prints as "—" in the log
+   and moves no tile or trend, so it is refused the same as an empty one.
+   Judged on the NORMALISED values (the form hands them over cleaned), so a
+   field that held only junk counts as empty. Exported for the guard test. */
+function measurementIssue(v) {
+  if (!v.date) return 'Pick a date.';
+  const any = BODY_COLUMNS.some(c => c.key !== 'date' && c.key !== 'note' && String(v[c.key] ?? '').trim() !== '');
+  return any ? null : 'Enter at least one measurement.';
+}
+
 function openEditProfile(ctx) {
   const fm = ctx.data.profile.fm || {};
   new FormModal(ctx.app, {
@@ -158,7 +169,7 @@ function openEditProfile(ctx) {
     fields: [
       { key: 'name', label: 'Name', kind: 'text', value: fm.name || '' },
       { key: 'birth_year', label: 'Birth year', kind: 'number', value: fm.birth_year || '' },
-      { key: 'height_cm', label: 'Height (cm)', kind: 'number', value: fm.height_cm || '' },
+      { key: 'height_cm', label: 'Height (cm)', kind: 'decimal', value: fm.height_cm || '' },
       { key: 'sex', label: 'Sex', kind: 'dropdown', options: [['', '—'], ['male', 'Male'], ['female', 'Female']], value: fm.sex || '' },
     ],
     onSubmit: async v => {
@@ -174,22 +185,22 @@ function openAddMeasurement(ctx) {
     title: 'Log measurement',
     fields: [
       { key: 'date', label: 'Date', kind: 'date', value: todayISO() },
-      { key: 'weight_kg', label: 'Weight (kg)', kind: 'number' },
-      { key: 'body_fat_pct', label: 'Body fat %', kind: 'number' },
-      { key: 'waist_cm', label: 'Waist (cm)', kind: 'number' },
-      { key: 'chest_cm', label: 'Chest (cm)', kind: 'number' },
-      { key: 'hips_cm', label: 'Hips (cm)', kind: 'number' },
-      { key: 'arm_cm', label: 'Arm (cm)', kind: 'number' },
-      { key: 'thigh_cm', label: 'Thigh (cm)', kind: 'number' },
-      { key: 'resting_hr', label: 'Resting heart rate', kind: 'number' },
-      { key: 'bp_systolic', label: 'Blood pressure — systolic', kind: 'number' },
-      { key: 'bp_diastolic', label: 'Blood pressure — diastolic', kind: 'number' },
-      { key: 'cholesterol', label: 'Total cholesterol (mmol/L)', kind: 'number' },
-      { key: 'glucose', label: 'Glucose (mmol/L)', kind: 'number' },
+      { key: 'weight_kg', label: 'Weight (kg)', kind: 'decimal' },
+      { key: 'body_fat_pct', label: 'Body fat %', kind: 'decimal' },
+      { key: 'waist_cm', label: 'Waist (cm)', kind: 'decimal' },
+      { key: 'chest_cm', label: 'Chest (cm)', kind: 'decimal' },
+      { key: 'hips_cm', label: 'Hips (cm)', kind: 'decimal' },
+      { key: 'arm_cm', label: 'Arm (cm)', kind: 'decimal' },
+      { key: 'thigh_cm', label: 'Thigh (cm)', kind: 'decimal' },
+      { key: 'resting_hr', label: 'Resting heart rate', kind: 'decimal' },
+      { key: 'bp_systolic', label: 'Blood pressure — systolic', kind: 'decimal' },
+      { key: 'bp_diastolic', label: 'Blood pressure — diastolic', kind: 'decimal' },
+      { key: 'cholesterol', label: 'Total cholesterol (mmol/L)', kind: 'decimal' },
+      { key: 'glucose', label: 'Glucose (mmol/L)', kind: 'decimal' },
       { key: 'note', label: 'Note', kind: 'text' },
     ],
     submitLabel: 'Log',
-    validate: v => (!v.date ? 'Pick a date.' : null),
+    validate: measurementIssue,
     onSubmit: async v => { await ctx.io.appendBodyRow(v); ctx.reload(); },
   }).open();
 }
@@ -307,4 +318,4 @@ function openCapture(ctx, pose, list, body, entries, ui) {
   }).open();
 }
 
-module.exports = { render };
+module.exports = { render, measurementIssue };

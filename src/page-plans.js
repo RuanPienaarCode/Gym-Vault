@@ -6,7 +6,7 @@
 
 const { el, ico, prose, clickableCard, backButton, toggleRow, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
-const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite } = require('./plan-parse');
+const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite, planRole, rxLabel } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
 const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
@@ -90,7 +90,49 @@ function afterPress(ctx, fn) {
    outside the app — savePlan has already said so) lands on the same reload. */
 async function saveThenReload(ctx, plan) {
   try { await saveSerial(ctx, plan); }
-  finally { await savesSettled(plan); ctx.reload(); }
+  /* The reload is AWAITED: structuralEdit below holds the row controls until the
+     page has been re-drawn, and ctx.reload resolves after it has re-rendered. */
+  finally { await savesSettled(plan); await ctx.reload(); }
+}
+
+/* ONE STRUCTURAL EDIT AT A TIME (finding #7: a double tap on Remove deleted two
+   exercises).
+
+   Remove and Move change the model by position, then save and reload
+   asynchronously. Until that reload lands the old row (and its Remove button) is
+   still on screen, and the model has already shifted: a second tap removed
+   whatever had slid into the index the first one used. There is no confirm and no
+   undo, so the second tap is simply not taken. The hold is per plan record and
+   released only after the save AND the re-draw (saveThenReload awaits both), in a
+   finally, so a refused save or a failed refresh cannot leave the controls dead.
+   `mutate` returns false when it changed nothing (a Move at the end of the list),
+   and then nothing is written. */
+const structuralBusy = new WeakSet();   // plan record -> a structural edit is saving
+/* ...and for a moment after the tap, whatever the save did. On a fast vault the
+   save and the re-draw can finish inside a double tap: the hold above is already
+   released, the page holds NEW plan records, and the second tap lands on the row
+   that slid under the finger. So a second structural tap on the same plan within
+   DOUBLE_TAP_MS of the last one taken is not taken either. Keyed by plan name,
+   because the reload replaces the records. */
+const DOUBLE_TAP_MS = 300;
+const structuralTapAt = new Map();      // plan name -> when its last structural tap was taken
+async function structuralEdit(ctx, plan, mutate) {
+  const tapAt = Date.now();
+  const last = structuralTapAt.get(plan.name);
+  if (structuralBusy.has(plan) || (last !== undefined && tapAt - last < DOUBLE_TAP_MS)) return;
+  structuralTapAt.set(plan.name, tapAt);
+  structuralBusy.add(plan);
+  try {
+    if (mutate() === false) return;
+    await saveThenReload(ctx, plan);
+  } catch (e) {
+    /* saveThenReload has already re-read the note (its finally), so the screen
+       is true again; say why the edit did not stick. */
+    console.error('gym-vault plan save', e);
+    ctx.notice(`could not save the plan (${e.message || e})`);
+  } finally {
+    structuralBusy.delete(plan);
+  }
 }
 
 /* WHAT A PLAN IS DOING FOR YOU RIGHT NOW. The same split controller.js uses to
@@ -102,12 +144,11 @@ async function saveThenReload(ctx, plan) {
    A PAUSED plan (plan-parse.js isPaused) is in use by nothing, so its role is
    '' — it sorts with the ordinary plans, not in the "in use" group. The list
    still says "paused" on it (pausedBadge below): the role decides the ORDER,
-   the badge tells the truth about why it is not leading. */
-function planRole(p, activePlan) {
-  if (String(p.fm.fallback) === 'true') return isPaused(p) ? '' : 'fills-gaps';
-  if (String(p.fm.parallel) === 'true') return isPaused(p) ? '' : 'alongside';
-  return activePlan && p === activePlan ? 'active' : '';
-}
+   the badge tells the truth about why it is not leading.
+
+   THE RULE ITSELF (planRole) LIVES IN plan-parse.js, pure, so the export labels
+   plans by the very same function (finding #40); it is imported above and
+   re-exported at the bottom for this page's callers and tests. */
 const ROLE_RANK = { active: 0, alongside: 1, 'fills-gaps': 2, '': 4 };
 const FAVOURITE_RANK = 3;
 const ROLE_BADGE = { active: 'active', alongside: 'alongside', 'fills-gaps': 'fills gaps' };
@@ -195,6 +236,12 @@ function render(ctx, root) {
     for (const k of f.kit) usedKit.add(k);
     for (const m of f.focus) usedFocus.add(m);
   }
+  /* A filter whose chip row is not drawn, or whose value is no longer offered,
+     cannot be cleared by the user, so it must not keep filtering: with one kit
+     left (the plans you had were deleted or edited) the row hides while `ui.kit`
+     went on hiding every plan under "No plan matches both filters". */
+  if (ui.kit && (usedKit.size < 2 || !usedKit.has(ui.kit))) ui.kit = '';
+  if (ui.focus && (usedFocus.size < 2 || !usedFocus.has(ui.focus))) ui.focus = '';
   if (usedKit.size > 1) root.append(facetChips(ctx, 'Equipment', [...usedKit], k => labelFor(k), () => ui.kit, v => { ui.kit = v; }));
   if (usedFocus.size > 1) {
     root.append(facetChips(ctx, 'Focus', MUSCLE_GROUPS.filter(m => usedFocus.has(m)), m => m, () => ui.focus, v => { ui.focus = v; }));
@@ -482,7 +529,7 @@ function renderDetail(ctx, root, plan) {
    bounces straight back to the library when it can't resolve one, which
    would only replace "goes nowhere" with "goes to the wrong somewhere". */
 function planItemRow(ctx, it) {
-  const rx = it.sets != null ? `${it.sets} × ${it.target}` : it.target;
+  const rx = rxLabel(it);
   const ex = ctx.data.exercises.find(e => sameName(e.name, it.exercise));
   if (!ex) {
     return el('div', { class: 'gv-day-item' },
@@ -528,12 +575,6 @@ function editableItem(ctx, plan, day, it, idx) {
     ctx.reload();
     return false;
   };
-  const save = async () => {
-    if (!(await persist())) return;
-    await savesSettled(plan);
-    ctx.reload();
-  };
-
   const setsInput = el('input', {
     class: 'gv-set-input gv-edititem-sets', type: 'number', inputmode: 'numeric', min: '1', step: '1',
     value: it.sets == null ? '' : String(it.sets), placeholder: '3',
@@ -570,11 +611,14 @@ function editableItem(ctx, plan, day, it, idx) {
     persist();
   });
 
-  const move = delta => async () => {
-    const to = moveItem(day, idx, delta);
-    if (to === idx) return; // already at the end — nothing was written
-    await save();
-  };
+  /* By the item, not the index captured at render: the position is read at the
+     moment of the tap, so a model that has shifted can never move a different
+     line. */
+  const move = delta => () => structuralEdit(ctx, plan, () => {
+    const from = day.items.indexOf(it);
+    if (from < 0) return false;
+    return moveItem(day, from, delta) !== from; // false at the end: nothing to write
+  });
   const up = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': `Move ${it.exercise} up` }, ico('chevron-up'));
   up.addEventListener('click', move(-1));
   up.disabled = idx === 0;
@@ -588,7 +632,7 @@ function editableItem(ctx, plan, day, it, idx) {
       setsInput,
       el('span', { class: 'gv-set-unit' }, '×'),
       targetInput),
-    el('div', { class: 'gv-edititem-actions' }, up, down, removeItemBtn(ctx, plan, day, idx)));
+    el('div', { class: 'gv-edititem-actions' }, up, down, removeItemBtn(ctx, plan, day, it)));
 
   /* `focusout` bubbles (unlike `blur`), so one listener on the row catches
      focus leaving ANY of its fields. `relatedTarget` is where focus is
@@ -603,12 +647,13 @@ function editableItem(ctx, plan, day, it, idx) {
   return row;
 }
 
-function removeItemBtn(ctx, plan, day, idx) {
+function removeItemBtn(ctx, plan, day, it) {
   const b = el('button', { class: 'gv-icon-btn gv-icon-btn-small', type: 'button', 'aria-label': 'Remove' }, ico('x'));
-  b.addEventListener('click', async () => {
-    removeItemAt(day, idx);
-    await saveThenReload(ctx, plan);
-  });
+  b.addEventListener('click', () => structuralEdit(ctx, plan, () => {
+    const at = day.items.indexOf(it);   // this line, wherever it is now
+    if (at < 0) return false;
+    removeItemAt(day, at);
+  }));
   return b;
 }
 

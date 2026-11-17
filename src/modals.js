@@ -4,7 +4,7 @@
    exist in Electron). One generic FormModal covers every add/edit form. */
 
 const { Modal, Setting, Notice } = require('obsidian');
-const { el, clickableCard } = require('./dom');
+const { el, clickableCard, numericInput, normaliseNumber } = require('./dom');
 const { DEFAULT_SETTINGS, skinClasses } = require('./constants');
 
 /* A modal action that fails must SAY so. These all used to land in
@@ -30,9 +30,18 @@ function wearApp(modalEl) {
   for (const c of cls) modalEl.addClass(c);
 }
 
-/* fields: [{key, label, kind: 'text'|'number'|'date'|'dropdown'|'toggle'|'textarea',
+/* fields: [{key, label, kind: 'text'|'number'|'decimal'|'date'|'dropdown'|'toggle'|'textarea',
              options?, value?, placeholder?, desc?}]
-   onSubmit(values) — called only when required fields validate. */
+   onSubmit(values) — called only when required fields validate.
+
+   `number` is a browser <input type="number">, which holds ONE decimal
+   separator, the period: in a comma-decimal locale "82,5" leaves .value an
+   empty string and the figure silently vanishes. `decimal` is for any figure a
+   person types with a decimal part (a measurement): the text input with a
+   decimal keypad that dom.js numericInput gives the logging screens, its value
+   cleaned by dom.normaliseNumber — "82,5" is stored as "82.5", "abc" as
+   nothing. The value is normalised again at submit, so a value that never went
+   through the input (a prefill) is held to the same rule. */
 class FormModal extends Modal {
   constructor(app, { title, fields, submitLabel, onSubmit, validate }) {
     super(app);
@@ -66,6 +75,12 @@ class FormModal extends Modal {
           if (f.placeholder) t.setPlaceholder(f.placeholder);
           t.onChange(v => { this.values[f.key] = v; });
         });
+      } else if (f.kind === 'decimal') {
+        const input = numericInput({ 'aria-label': f.label, ...(f.placeholder ? { placeholder: f.placeholder } : {}) },
+          val => { this.values[f.key] = val; });
+        input.value = normaliseNumber(this.values[f.key]);
+        this.values[f.key] = input.value;
+        s.controlEl.append(input);
       } else {
         s.addText(t => {
           if (f.kind === 'number') t.inputEl.type = 'number';
@@ -81,6 +96,9 @@ class FormModal extends Modal {
   }
 
   submit() {
+    for (const f of this.fields) {
+      if (f.kind === 'decimal') this.values[f.key] = normaliseNumber(this.values[f.key]);
+    }
     const err = this.validate ? this.validate(this.values) : null;
     if (err) { this.errEl.setText(err); return; }
     this.close();

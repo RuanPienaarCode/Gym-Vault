@@ -3,7 +3,7 @@
 
 const { el, ico, fmt, fmtSeconds, ring, clickableCard, emptyLine } = require('./dom');
 const { GOAL_METRICS } = require('./constants');
-const { goalCurrent, goalIssue, goalProgress, countLabel } = require('./stats');
+const { goalCurrent, goalIssue, goalProgress, newGoalDefaults, countLabel } = require('./stats');
 const { todayISO, daysBetween, fmtShort } = require('./dates');
 const { FormModal, ConfirmModal } = require('./modals');
 const ch = require('./challenge');
@@ -46,7 +46,7 @@ function render(ctx, root) {
        rendered identically, so a typo'd exercise name told the user to go log
        a workout — blaming them for the plugin's silence. */
     const issue = goalIssue(g, { ...ctxStats, exerciseNames });
-    return { g, current, issue, p: goalProgress(g, current) };
+    return { g, current, issue, p: goalProgress(g, current, { body: data.body }) };
   }).sort((a, b) => (b.p ?? -1) - (a.p ?? -1));
 
   for (const { g, current, issue, p } of scored) {
@@ -67,7 +67,7 @@ function render(ctx, root) {
       el('div', { class: 'gv-goal-main' },
         el('div', { class: 'gv-goal-name' }, g.name),
         el('div', { class: 'gv-goal-metric' },
-          `${METRIC_LABELS[g.fm.metric] || g.fm.metric}${g.fm.exercise ? ` · ${g.fm.exercise}` : ''}`),
+          `${METRIC_LABELS[g.fm.metric] || g.fm.metric || 'No metric set'}${g.fm.exercise ? ` · ${g.fm.exercise}` : ''}`),
         el('div', { class: 'gv-goal-nums' },
           el('b', {}, cur), ` of ${tgt}`,
           p === null ? el('span', { class: 'gv-dim' }, issue ? ` — ${issue}` : ' — log a workout to start tracking') : ''),
@@ -125,7 +125,14 @@ function goalFields(ctx, g) {
       : { key: 'exercise', label: 'Exercise', kind: 'text', value: fm.exercise || '' },
     { key: 'target', label: 'Target', kind: 'number', value: fm.target ?? '', desc: 'Reps, kg, or seconds — whatever the metric measures' },
     { key: 'start_value', label: 'Starting from (optional)', kind: 'number', value: fm.start_value ?? '' },
-    { key: 'direction', label: 'Direction', kind: 'dropdown', options: [['increase', 'Increase'], ['decrease', 'Decrease']], value: fm.direction || 'increase' },
+    /* A NEW goal opens on "Automatic": nobody has chosen yet, and goalFm then reads
+       the direction off the target against the current weight (a body-weight goal
+       below the current weight is a Decrease). An existing goal has an explicit
+       direction and shows it, with no Automatic to flip it by accident. */
+    g
+      ? { key: 'direction', label: 'Direction', kind: 'dropdown', options: [['increase', 'Increase'], ['decrease', 'Decrease']], value: fm.direction || 'increase' }
+      : { key: 'direction', label: 'Direction', kind: 'dropdown', options: [['auto', 'Automatic'], ['increase', 'Increase'], ['decrease', 'Decrease']], value: 'auto',
+          desc: 'Automatic: a body-weight target below your current weight is a decrease.' },
     { key: 'deadline', label: 'Deadline (optional)', kind: 'date', value: fm.deadline || '' },
     { key: 'challenge', label: 'Weekly challenge', kind: 'toggle', value: fm.challenge === 'weekly',
       desc: 'Beat your best unbroken set (or hold) every week until you reach the target. Best reps or best hold only.' },
@@ -146,14 +153,21 @@ const validateGoal = v => {
    when it is turned off - a plain goal never grows empty challenge keys.
    `started` is kept from the first time it was switched on: turning the
    switch off and on again must not quietly restart the weeks. */
-const goalFm = (v, prev) => {
+const goalFm = (v, prev, body) => {
   const p = prev || {};
+  /* `body` is given only when a goal is being CREATED (openAdd): stats.newGoalDefaults
+     then resolves an unchosen Direction and a blank body-weight "Starting from"
+     from the body log. An edit passes none, so it never fills in anything the
+     user left blank. */
+  const given = body === undefined
+    ? { direction: v.direction === 'auto' ? 'increase' : v.direction, start_value: v.start_value }
+    : newGoalDefaults(v, body);
   const fm = {
     metric: v.metric,
     exercise: v.metric.startsWith('exercise-') ? String(v.exercise).trim() : '',
     target: parseFloat(v.target),
-    start_value: String(v.start_value).trim() === '' ? '' : parseFloat(v.start_value),
-    direction: v.direction,
+    start_value: String(given.start_value).trim() === '' ? '' : parseFloat(given.start_value),
+    direction: given.direction,
     deadline: v.deadline || '',
   };
   if (v.challenge) {
@@ -172,7 +186,7 @@ function openAdd(ctx) {
     submitLabel: 'Add',
     validate: validateGoal,
     onSubmit: async v => {
-      const created = await ctx.io.createGoal({ name: v.name.trim(), fm: goalFm(v, {}) });
+      const created = await ctx.io.createGoal({ name: v.name.trim(), fm: goalFm(v, {}, ctx.data.body || []) });
       if (!created) ctx.notice('A goal with that name already exists.');
       ctx.reload();
     },
@@ -192,4 +206,4 @@ function openEdit(ctx, g) {
   }).open();
 }
 
-module.exports = { render };
+module.exports = { render, goalFields, goalFm };

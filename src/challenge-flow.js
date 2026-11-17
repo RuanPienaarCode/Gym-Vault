@@ -4,11 +4,15 @@ const { accentFor } = require('./constants');
    challenge.js and the screen in challenge-modal.js; this is the seam to the
    vault, kept out of both so neither needs the app context.
 
-   A finished run is saved as an ordinary workout note (one row per unbroken
-   set), so History, Records, the Goals card and next week's target all read
-   it through the same rows as everything else. */
+   A finished run is saved as a workout note (one row per unbroken set) marked
+   `kind: challenge`, so History, Records, the Goals card and next week's target
+   all read it through the same rows as everything else - but it is NOT a session
+   (stats.isChallengeRun, decision D1): no session count, week ring, workouts-per-
+   week goal, session medal, weekly quest or +100 "Session finished" XP. It does
+   earn the per-set XP and the PB bonus, and it keeps the week streak alive. */
 
 const ch = require('./challenge');
+const records = require('./records');
 const { ChallengeModal } = require('./challenge-modal');
 const rewardsFlow = require('./rewards-flow');
 const { FormModal } = require('./modals');
@@ -39,25 +43,52 @@ function openChallenge(ctx, goal) {
   }).open();
 }
 
+/* The record this go set, if it set one, in the shape awardsForSession reads
+   (sess.records: {key, exercise, kind, val, prev}), or none.
+
+   A challenge count is observed tap by tap (or by the hold's own clock), so its
+   best is as trustworthy a record as a guided set's. The figure to beat is the
+   previous ALL-TIME best of this exercise and kind (records.previousBest, the one
+   rule the guided counter and the Records page use) - not the challenge's own
+   best since it started, which is a different, smaller question. `before` is the
+   history as it stood BEFORE this go was saved, so the go cannot beat itself.
+   The kind comes from the goal's metric, and an exercise that cannot claim it
+   (records.claimableKinds) claims nothing, exactly as everywhere else. */
+function recordFor(ctx, goal, sets, before) {
+  const exercise = goal.fm.exercise;
+  const kind = ch.kindOf(goal) === 'seconds' ? 'seconds' : 'reps';
+  const lib = ((ctx.data && ctx.data.exercises) || []).find(e => e.name && String(e.name).trim().toLowerCase() === String(exercise).trim().toLowerCase());
+  if (lib && !records.claimableKinds(lib).includes(kind)) return [];
+  const val = ch.bestSet(sets);
+  const prev = records.previousBest(before, exercise, kind);
+  if (!records.isRecord(prev, val)) return [];
+  return [{ key: `${exercise}/${kind}`, exercise, kind, val, prev }];
+}
+
 /* Resolves true once the note exists, false if nothing was written. */
 async function saveRun(ctx, goal, sets, mode, startedAt) {
   const rows = ch.challengeRows(goal.fm.exercise, sets, mode, ch.kindOf(goal));
   if (!rows.length) return false;
   const date = todayISO();
   const duration_min = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
+  /* The history BEFORE the save: the save (or the reload it triggers) can put
+     this go into ctx.data.workouts, and a go does not beat its own figure. */
+  const before = ((ctx.data && ctx.data.workouts) || []).slice();
   let path;
   try {
-    path = await ctx.io.saveWorkout({ date, plan: '', day: challengeDay(goal.name), duration_min, rows });
+    path = await ctx.io.saveWorkout({ date, plan: '', day: challengeDay(goal.name), duration_min, rows, kind: 'challenge' });
   } catch (e) {
     ctx.notice(`could not save the challenge (${e.message || e})`);
     return false;
   }
-  /* XP the same way a logged session earns it — but not while a guided
-     session is open: rewards-flow reads THAT session's records, and they
-     would be paid against this note and again when the session finishes. */
+  /* Per-set XP and the PB bonus, but not the +100 for a session (the draft says
+     `kind: challenge`) - and not while a guided session is open:
+     rewards-flow reads THAT session's records, and they would be paid against
+     this note and again when the session finishes. */
   let award = null;
   if (!(ctx.state && ctx.state.session)) {
-    award = await rewardsFlow.awardWithin(ctx, { date, startedAt }, rows, path, rewardsFlow.flow.AWARD_WAIT_MS);
+    const draft = { date, startedAt, kind: 'challenge', records: recordFor(ctx, goal, sets, before) };
+    award = await rewardsFlow.awardWithin(ctx, draft, rows, path, rewardsFlow.flow.AWARD_WAIT_MS);
   }
   ctx.notice(award && award.xp ? `Challenge logged. +${award.xp} XP` : 'Challenge logged.');
   ctx.reload();
@@ -82,7 +113,9 @@ function openNewChallenge(ctx) {
     submitLabel: 'Start challenge',
     validate: v => {
       const t = parseFloat(v.target);
-      return Number.isFinite(t) && t > 0 ? null : 'Set a goal above zero.';
+      /* The goal is saved rounded (below), so what must clear zero is the
+         ROUNDED figure: 0.4 is above zero but would make "0 Push-ups challenge". */
+      return Number.isFinite(t) && Math.round(t) >= 1 ? null : 'Set a goal of at least 1.';
     },
     onSubmit: async v => {
       const p = byName.get(v.exercise) || all[0];

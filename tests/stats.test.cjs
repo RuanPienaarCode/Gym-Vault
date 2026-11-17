@@ -129,7 +129,8 @@ const set = (exercise, reps, weight_kg, seconds) => ({ exercise, reps, weight_kg
    data. Blaming the user for a typo is the failure mode being fixed. */
 {
   const names = ['Pull-ups', 'Bench Press'];
-  const goal = fm => ({ name: 'g', fm });
+  /* A real goal has a target (a goal with none is its own issue, pinned in audit-1116-numbers-challenge-figures). */
+  const goal = fm => ({ name: 'g', fm: { target: 10, ...fm } });
 
   assert.strictEqual(goalIssue(goal({ metric: 'exercise-reps', exercise: 'Pull-ups' }), { exerciseNames: names }), null,
     'a goal naming a real exercise has no issue');

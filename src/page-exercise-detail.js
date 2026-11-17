@@ -227,8 +227,11 @@ function resolveExerciseImages(ctx, ex) {
   return out;
 }
 
-function mediaBlock(ctx, ex) {
-  const images = resolveExerciseImages(ctx, ex);
+/* `opts.videoOnly` builds the video and nothing else: the Muscle Map's Video
+   button uses it so the photos (which have their own button) are not drawn a
+   second time under the map. */
+function mediaBlock(ctx, ex, opts) {
+  const images = opts && opts.videoOnly ? [] : resolveExerciseImages(ctx, ex);
   const video = (ex.fm.video || '').toString().trim();
   if (!images.length && !video) return null;
   const wrap = el('div', { class: 'gv-card gv-media' });
@@ -294,9 +297,11 @@ function mediaBlock(ctx, ex) {
 
 /* THE MUSCLE MAP ON THE EXERCISE PAGE, in place of the photo row. It carries its
    own Basic/Detailed switch; a tap on it (or the corner badge) opens the viewer
-   on the map, large; "Photos" opens the same viewer on the originals. An
-   exercise whose only media is a video keeps that one reachable inline, since
-   the viewer shows images. A map that cannot build returns null and the page
+   on the map, large; "Photos" opens the same viewer on the originals. A VIDEO is
+   always reachable inline through its own "Video" / "Hide video" button, because
+   the viewer shows images only: it used to be offered only when the exercise had
+   no photos, so the seeded Pull-ups (a map, three photos and a video) could not
+   reach its video at all. A map that cannot build returns null and the page
    shows its photos exactly as before. */
 function motionBlock(ctx, ex, motion) {
   const block = el('div', { class: 'gv-mm-block' });
@@ -325,18 +330,22 @@ function motionBlock(ctx, ex, motion) {
   }
   ctx.state.pageCleanup = stopMap;
 
-  if (images.length || video) {
+  if (images.length) {
+    const btn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-mm-photos', type: 'button' }, ico('image'), el('span', {}, 'Photos'));
+    btn.addEventListener('click', () => openViewer('photos', btn));
+    wrap.append(btn);
+  }
+  if (video) {
     let shown = null;
-    const label = el('span', {}, images.length ? 'Photos' : 'Video');
-    const btn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-mm-photos', type: 'button' }, ico(images.length ? 'image' : 'play'), label);
-    btn.addEventListener('click', () => {
-      if (images.length) { openViewer('photos', btn); return; }
-      /* video only: built when asked for, so a page that never opens it never loads it */
-      if (shown) { shown.remove(); shown = null; } else { shown = mediaBlock(ctx, ex); if (shown) extra.append(shown); }
-      btn.setAttribute('aria-expanded', String(!!shown));
+    const label = el('span', {}, 'Video');
+    const vbtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-mm-photos', type: 'button', 'aria-expanded': 'false' }, ico('play'), label);
+    vbtn.addEventListener('click', () => {
+      /* built when asked for, so a page that never opens it never loads it */
+      if (shown) { shown.remove(); shown = null; } else { shown = mediaBlock(ctx, ex, { videoOnly: true }); if (shown) extra.append(shown); }
+      vbtn.setAttribute('aria-expanded', String(!!shown));
       label.textContent = shown ? 'Hide video' : 'Video';
     });
-    wrap.append(btn);
+    wrap.append(vbtn);
   }
   return block;
 }

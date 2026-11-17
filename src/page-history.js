@@ -3,7 +3,7 @@
 
 const { el, ico, fmtSeconds, clickableCard, emptyLine } = require('./dom');
 const { todayISO, addDays, startOfWeek, fmtShort, monthLabel, weekdayKey } = require('./dates');
-const { workoutDates, workoutDate, weekStreak, sessionCount, sessionVolume, sessionSets, countLabel } = require('./stats');
+const { workoutDates, workoutDate, weekStreak, sessionCount, sessionVolume, sessionSets, countLabel, isChallengeRun } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { ConfirmModal } = require('./modals');
 
@@ -19,12 +19,16 @@ function render(ctx, root) {
      top of that, making three surfaces and three answers. stats.sessionCount
      is the one rule now. */
   const counted = sessionCount(data.workouts);
+  /* A weekly-challenge go is listed below but is not a session (stats.
+     isChallengeRun), so the count names them apart — otherwise the number and
+     the cards under it disagree again. */
+  const goes = data.workouts.filter(isChallengeRun).length;
 
   root.append(el('div', { class: 'gv-toolbar' },
     el('h2', { class: 'gv-toolbar-title' }, 'History'),
     /* stats.sessionCount — the same rule the dashboard tile and the export
        summary use. */
-    el('div', { class: 'gv-dim' }, `${counted} session${counted === 1 ? '' : 's'}`),
+    el('div', { class: 'gv-dim' }, `${counted} session${counted === 1 ? '' : 's'}${goes ? ` · ${goes} challenge ${goes === 1 ? 'go' : 'goes'}` : ''}`),
     /* Records hang off History rather than taking a seventh nav tab — see
        page-records.js's header for why the bar stays at six. */
     el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => ctx.nav('records') },

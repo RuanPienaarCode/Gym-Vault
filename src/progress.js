@@ -9,7 +9,7 @@
      a best         records.previousBest   (-> stats.exerciseBests)
      "is it a PB"   records.isRecord
      which kinds    records.claimableKinds
-     sessions/week  stats.sessionsInWeek
+     sessions/week  stats.sessionsInWeek   (a weekly-challenge go is not a session: stats.isChallengeRun)
      the streak     stats.weekStreak       (computed by the caller)
 
    What IS new here is arithmetic on those figures (a gap, a percentage, a

@@ -55,7 +55,13 @@ function splitListItems(inner) {
   let cur = '', inQ = false;
   for (let i = 0; i < inner.length; i++) {
     const ch = inner[i];
-    if (ch === '"' && inner[i - 1] !== '\\') { inQ = !inQ; cur += ch; }
+    /* Inside quotes a backslash takes the NEXT character with it (backslash +
+       quote is a quote, two backslashes are one backslash). Looking only at the
+       PREVIOUS character called the closing quote of an item that ends in an
+       escaped backslash escaped too, so the item never closed and the comma
+       after it was swallowed. */
+    if (inQ && ch === '\\' && i + 1 < inner.length) { cur += ch + inner[++i]; }
+    else if (ch === '"') { inQ = !inQ; cur += ch; }
     else if (ch === ',' && !inQ) { items.push(cur); cur = ''; }
     else cur += ch;
   }
@@ -74,7 +80,9 @@ function splitListItems(inner) {
 
    `layout` records the original line order. A part is one of:
      raw    — comment / blank / stray lines, re-emitted verbatim.
-     key    — a flat `key: value` or inline list, re-emitted from `fm`.
+     key    — a flat `key: value` or inline list. Re-emitted from its own
+              original line while `fm` still says what that line parsed to;
+              once the plugin changes the value, serialised afresh.
      block  — a key whose value sits on the following lines and IS modelled:
               a block sequence of scalars (read into `fm` as an array) or an
               empty `key:` (kept OUT of `fm`). Re-emitted verbatim while `fm`
@@ -197,7 +205,11 @@ function parseFrontmatter(text) {
         continue;
       }
       fm[key] = parseScalar(rest);
-      layout.push({ kind: 'key', key });
+      /* `raw` is the line exactly as the file has it and `val` what it parsed
+         to (a COPY of a list, so editing the live array in place is still seen
+         as a change). serializeFrontmatter re-emits `raw` while `fm[key]` still
+         says `val` — see the note there. */
+      layout.push({ kind: 'key', key, raw: line, val: Array.isArray(fm[key]) ? fm[key].slice() : fm[key] });
     }
     Object.defineProperty(fm, FM_LAYOUT, { value: layout, enumerable: true, writable: true, configurable: true });
   }
@@ -212,8 +224,18 @@ function parseFrontmatter(text) {
 function yamlStr(v) {
   const s = (v ?? '').toString().replace(/\r?\n/g, ' ').trim();
   if (s === '') return '""';
-  if (/[:#\[\]{}"'|>&*!%@`,]|^\s|\s$|^-|^\d+$/.test(s) && !/^[\d.]+$/.test(s)) {
-    return `"${s.replace(/"/g, '\\"')}"`;
+  /* Quote what a YAML reader would otherwise read as something else: an
+     indicator character, edge whitespace, a leading `-` or `?`, and a digit
+     string with a leading zero (`007` is the number 7 to Obsidian; plain
+     digits and decimals stay plain on purpose — they ARE the numbers the
+     app writes). */
+  if ((/[:#\[\]{}"'|>&*!%@`,]|^\s|\s$|^-|^\?/.test(s) && !/^[\d.]+$/.test(s)) || /^0\d+$/.test(s)) {
+    /* Inside double quotes a backslash starts an escape, so a literal one is
+       written as two — otherwise a value ending in a backslash is not valid
+       YAML (it escapes the closing quote) and any other is read back as a
+       different string. Backslashes first, THEN the quotes, or the backslash
+       added for a quote would itself be doubled. */
+    return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
   }
   return s;
 }
@@ -272,6 +294,15 @@ function serializeFrontmatter(fm) {
            told to write a real value there. */
         if (isEmptyFm(cur)) lines.push(...part.lines);
         else emit(part.key, cur);
+      } else if (part.raw !== undefined && hasKey(fm, part.key) && sameFm(cur, part.val)) {
+        /* A flat key the plugin did not change: its own line, byte for byte.
+           Re-emitting from the PARSED value rewrote notation the parser had
+           thrown away — `"007"` lost its quotes (a string became a number),
+           `kg # heavy` gained quotes (a comment became text), and a quoted
+           value with backslash escapes lost them — on every unrelated save. It also
+           keeps a `key: ""` the user wrote, which `emit` would drop as empty.
+           A key the plugin deleted (`hasKey` false) is still removed. */
+        lines.push(part.raw);
       } else {
         emit(part.key, cur);
       }

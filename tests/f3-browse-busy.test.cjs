@@ -13,10 +13,10 @@ const index = { plans: [plan('Solo'), plan('Prog 1 · Base', { series: 'Prog', p
 function setup() {
   const calls = []; let release = null; const notices = []; let reloads = 0;
   const ctx = {
-    app: {}, data: { plans: [] }, state: { browseUi: { index, error: null, loading: false, busy: null } },
+    app: {}, data: { plans: [] }, state: { browseUi: { index, repo: '', error: null, loading: false, busy: null } },
     backTo: f => f, back() {}, nav() {},
     notice: m => notices.push(m), reload: async () => { reloads++; },
-    io: { fetchPlanIndex: async () => index, installPlan: e => { calls.push(e.name); return new Promise(res => { release = () => res({ exercisesAdded: 0, exercisesSkipped: 0, failed: [] }); }); } },
+    io: { safeName: n => n, fetchPlanIndex: async () => index, installPlan: e => { calls.push(e.name); return new Promise(res => { release = () => res({ exercisesAdded: 0, exercisesSkipped: 0, failed: [] }); }); } },
   };
   return { ctx, calls, notices, release: () => release(), reloads: () => reloads };
 }

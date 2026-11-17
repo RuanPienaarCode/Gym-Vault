@@ -13,7 +13,7 @@ const { QUIET_CLASS, quietMotionOn } = require('./quiet-motion');
 const { Modal } = require('obsidian');
 const { el, ico, clear, segmented } = require('./dom');
 const { createCounter, tap, undo } = require('./rep-counter');
-const { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton } = require('./rep-counter-shared');
+const { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton, commitOpenTypeIn } = require('./rep-counter-shared');
 const counterTarget = require('./counter-target');
 const { helpButton } = require('./explainer');
 const sound = require('./sound');
@@ -69,6 +69,9 @@ class RepCounterModal extends Modal {
     this.motion = false;
     this._stopMotion = null;
     this._countIn = null;
+    /* True once the counter has been armed (the count-in handed over): from then on
+       a Done is a deliberate end of the set, even at 0. See the Done button. */
+    this._armed = false;
     /* What this count is FOR. null is open-ended — a real choice, offered
        first on the picker, not a missing value. Set once, before the
        counter arms, and never afterwards: a target that could move
@@ -126,7 +129,18 @@ class RepCounterModal extends Modal {
     });
 
     const doneBtn = el('button', { class: 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, 'Done'));
-    doneBtn.addEventListener('click', () => { this._committed = true; this.close(); });
+    doneBtn.addEventListener('click', () => {
+      /* The open type-in box first: iOS keeps it focused when this button is tapped
+         and its numeric pad has no Enter (audit 16 Nov 2026, #24). */
+      commitOpenTypeIn();
+      /* DONE BEFORE THE COUNTER WAS ARMED IS CANCEL (audit 16 Nov 2026, #38). Done is
+         live during "How many?" and the count-in, when nothing can have been counted:
+         it used to call onDone(0), which overwrote the plan's prefill on the log with
+         "0" and marked the set logged. A 0 the user typed into the box (only possible
+         once armed) and a set deliberately ended at 0 still go through. */
+      this._committed = this._armed || this.state.count > 0;
+      this.close();
+    });
 
     const cancelBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'Cancel' }, ico('x'));
     cancelBtn.addEventListener('click', () => { this._committed = false; this.close(); });
@@ -202,6 +216,7 @@ class RepCounterModal extends Modal {
     };
 
     this._armZone = () => {
+      this._armed = true;
       typeBtn.disabled = false;
       undoBtn.disabled = false;
       /* The count-in borrowed the numeral; hand it back to the real count. */
@@ -322,6 +337,10 @@ class RepCounterModal extends Modal {
   }
 
   registerTap() {
+    /* A tap while the type-in box is open commits the typed number and is NOT a rep
+       (audit 16 Nov 2026, #24): the zone preventDefault()s touchstart, so on iOS the
+       box never blurs. */
+    if (commitOpenTypeIn()) return;
     /* THE TAP THAT SAYS "READY" IS NOT REP ONE. While the count-in is
        running a tap skips it; only once armed does a tap count. Without this
        the gesture that dismisses the countdown lands as the first rep and

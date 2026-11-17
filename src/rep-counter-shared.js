@@ -346,7 +346,33 @@ function attachFillMeter(zone, target) {
    Commits on Enter and on blur; Escape abandons. Blur committing is
    deliberate: on iOS the keyboard's "done" and a tap anywhere else both blur
    without ever firing a key event, and a number typed and then lost is worse
-   than one committed a moment early. */
+   than one committed a moment early.
+
+   BLUR ALONE IS NOT ENOUGH (audit 16 Nov 2026, #24). The box has
+   inputmode="numeric", which has no Enter key on an iPhone pad, and iOS keeps an
+   input focused when a BUTTON is tapped - so Tick set could read the count from
+   before the number was typed. The tap zone is worse: it preventDefault()s
+   touchstart, which stops the focus change that would have blurred the box. So
+   every handler that reads the count (Tick / Done, the tap zone, Bank it) first
+   calls commitOpenTypeIn() below: an explicit "commit what is in the open box",
+   independent of blur. */
+const openTypeIns = new Set();
+
+/* Commit the number box if one is open, and say whether one was. Callers that
+   get true have just had the typed number become the count; the tap zone must
+   then NOT also add a rep for the same touch. A box whose input has left the page
+   (its screen was rebuilt or its modal closed) is forgotten, never committed into
+   a counter that is no longer on screen. */
+function commitOpenTypeIn() {
+  let committed = false;
+  for (const entry of Array.from(openTypeIns)) {
+    if (entry.input.isConnected === false) { openTypeIns.delete(entry); continue; }
+    entry.commit();
+    committed = true;
+  }
+  return committed;
+}
+
 function typeCountButton(countEl, opts) {
   const o = opts || {};
   const get = typeof o.get === 'function' ? o.get : () => 0;
@@ -371,13 +397,19 @@ function typeCountButton(countEl, opts) {
     });
 
     let settled = false;
+    const entry = { input, commit: () => commit() };
     const restore = value => {
       if (settled) return;
       settled = true;
+      openTypeIns.delete(entry);
       input.remove();
       countEl.textContent = String(value);
     };
     const commit = () => {
+      /* Enter, blur and commitOpenTypeIn can all arrive for one box (removing
+         the input fires a blur of its own): the first one wins, the rest are
+         nothing. */
+      if (settled) return;
       const n = parseInt(input.value, 10);
       /* Reps do not go negative and a blank box is not zero — an abandoned
          edit keeps what was there, same rule undo() already applies. */
@@ -403,6 +435,7 @@ function typeCountButton(countEl, opts) {
 
     countEl.textContent = '';
     countEl.append(input);
+    openTypeIns.add(entry);
     input.focus();
     input.select();
   });
@@ -410,4 +443,4 @@ function typeCountButton(countEl, opts) {
   return btn;
 }
 
-module.exports = { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton, TOUCH_MOUSE_GUARD_MS };
+module.exports = { holdWakeLock, attachTapZone, attachCountIn, attachFillMeter, attachPowerUp, punch, typeCountButton, commitOpenTypeIn, TOUCH_MOUSE_GUARD_MS };

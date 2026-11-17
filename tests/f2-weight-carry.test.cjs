@@ -103,8 +103,12 @@ const bests = () => H.notices.filter(n => /NEW BEST/.test(n));
     assert.strictEqual(sets(b)[0].done, false);
     typeWeight(b, '30');                                          // set 2: typed 30, then skipped
     H.click(H.byLabel(H.page(b.ctx), 'Skip this set'));
-    assert.strictEqual(sets(b)[1].touched, true);
-    assert.strictEqual(weightBox(b).value, '30', 'set 3 opens on the 30 the log is about to save for set 2');
+    /* AUDIT 16 NOV 2026, #2: a skipped set is not saved whatever was typed in it, so it is no longer one the log
+       is about to save, and its 30 must not carry. This case used to pin the opposite (touched stayed true, set 3
+       opened on 30) - the very bug the audit found: the skipped set was saved at 30. The carry still follows
+       stats.setCounts, which now reads the skipped set as a prefill. */
+    assert.strictEqual(sets(b)[1].touched, false, 'the skip gave set 2 back to the plan');
+    assert.strictEqual(weightBox(b).value, '17.5', 'set 3 carries nothing from skipped sets and opens on the history weight');
     assert.strictEqual(sets(b)[0].weight_kg, '17.5', 'fixture: skipped set 1 still holds only its history prefill');
   });
 
