@@ -19,7 +19,7 @@ const lum = c => cx.ratio(c, { r: 0, g: 0, b: 0, a: 1 }) * 0.05 - 0.05;
 const SKINS = ['floor', 'editorial', 'apex', 'lockin', 'calm'];
 const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch', 'olive'];
 /* Calm colours: each palette is a Calm-only accent class, checked like one. */
-const COMBOS = SKINS.flatMap(skin => ACCENTS.map(accent => [skin, accent])).concat(['oat', 'sea', 'blush', 'lavender', 'honey', 'sky', 'lagoon'].map(p => ['calm', p]));
+const COMBOS = SKINS.flatMap(skin => ACCENTS.map(accent => [skin, accent])).concat(require('../src/constants').CALM_PALETTES.map(p => p[0]).filter(k => k !== 'accent').map(p => ['calm', p]));
 const SPOTS = {
   page: ['p.gv-kicker'],
   card: ['div.gv-card', 'div.gv-tile-label'],

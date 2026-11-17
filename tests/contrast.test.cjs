@@ -396,7 +396,7 @@ const modalChain = (o, ...inner) => cx.chainOf([
 const measured = [];
 const problems = [];
 /* Calm colours (constants.CALM_PALETTES): each palette is a Calm-only accent class, probed like one. */
-const CALM_PALETTES = ['oat', 'sea', 'blush', 'lavender', 'honey', 'sky', 'lagoon'];
+const CALM_PALETTES = require('../src/constants').CALM_PALETTES.map(p => p[0]).filter(k => k !== 'accent'); /* read, not listed: a new palette is measured the day it is added */
 const COMBOS = SKINS.flatMap(skin => ACCENTS.map(accent => [skin, accent])).concat(CALM_PALETTES.map(p => ['calm', p]));
 for (const theme of THEMES) for (const [skin, accent] of COMBOS) {
   for (const probe of PROBES) {

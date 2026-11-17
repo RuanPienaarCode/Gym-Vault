@@ -148,7 +148,7 @@ const MIN_NEXT = 30, MIN_ANY = 20, MIN_PAGE = 15, AA = 4.5;
 const report = [];
 /* Calm (never measured before 16 Nov 2026) with its two green accents, and Calm colours: each palette's
    own accent is the counter's "done" flood, so it must stay apart from the three stages too. */
-const COMBOS = SKINS.flatMap(skin => ACCENTS.map(accent => [skin, accent])).concat(['lime', 'olive', 'oat', 'sea', 'blush', 'lavender', 'honey', 'sky', 'lagoon'].map(p => ['calm', p]));
+const COMBOS = SKINS.flatMap(skin => ACCENTS.map(accent => [skin, accent])).concat(['lime', 'olive'].concat(require('../src/constants').CALM_PALETTES.map(p => p[0]).filter(k => k !== 'accent')).map(p => ['calm', p]));
 for (const [skin, accent] of COMBOS) for (const theme of THEMES) {
   const t = tokens(theme, accent, skin);
   const bg = colour('var(--gv-bg)', t);

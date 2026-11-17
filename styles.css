@@ -6988,8 +6988,8 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   --gv-stage-hot-a: 0.3;
 }
 
-/* ---- CALM COLOURS — Settings › Calm colours (constants.CALM_PALETTES) ------
-   Seven complete palettes for Calm: a paper AND its own accent, light and
+/* ---- CALM COLOURS — Settings › Calm colour (constants.CALM_PALETTES) ------
+   Eleven complete palettes for Calm: a paper AND its own accent, light and
    dark. Each is a Calm-only accent class the root wears in place of the
    user's accent (constants.accentFor). A palette's dark block must restate
    every paper token its light block sets: the light block has the same
@@ -7193,6 +7193,178 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
   --gv-calm-bar: #52b69a;
   --gv-calm-done: #1e6091;
   --gv-calm-done-ink: #d9ed92;
+}
+/* Aurora: neon pink, indigo bloom, vivid royal, electric sapphire, sky aqua (Ruan, 17 Nov 2026) */
+.gv-app.gv-skin-calm.gv-accent-aurora {
+  --gv-bg: #d9eef9;
+  --gv-surface: #e9f5fc;
+  --gv-line: #c2dff0;
+  --gv-line-2: #a0c6e0;
+  --gv-ink: #1a1147;
+  --gv-ink-dim: #47437c;
+  --gv-accent-solid: #7209b7;
+  --gv-lime: #f72585;
+  --gv-lime-hi: #4cc9f0;
+  --gv-lime-deep: #7209b7;
+  --gv-lime-ghost: #f9d2e6;
+  --gv-flood-dim: #3a0ca3;
+  --gv-calm-title: #3a0ca3;
+  --gv-calm-chip: #4cc9f0;
+  --gv-calm-chip-ink: #3a0ca3;
+  --gv-calm-ring: #f72585;
+  --gv-calm-bar: #4361ee;
+  --gv-stage-warm: #4361ee; /* the counter's first stage: sapphire, since the base blue vanishes on aqua paper */
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-aurora {
+  --gv-bg: #0f0a2a;
+  --gv-surface: #171138;
+  --gv-line: #292057;
+  --gv-line-2: #3a2f75;
+  --gv-ink: #ecebfa;
+  --gv-ink-dim: #a9a5d0;
+  --gv-lime: #4cc9f0; /* aqua leads in dark: the pink is too dim to carry dark text as a fill */
+  --gv-lime-ghost: #2c1560;
+  --gv-calm-title: #4cc9f0;
+  --gv-calm-chip: #3a0ca3;
+  --gv-calm-chip-ink: #4cc9f0;
+  --gv-calm-ring: #f72585;
+  --gv-calm-bar: #4361ee;
+  --gv-calm-done: #7209b7;
+  --gv-calm-done-ink: #ecebfa;
+  --gv-stage-warm: #4361ee;
+}
+/* Sorbet: frozen lake, rose kiss, tangerine dream, royal gold, lime cream. All five are
+   pastels, so the deep tones (button text, accent text) are a raspberry drawn from the rose. */
+.gv-app.gv-skin-calm.gv-accent-sorbet {
+  --gv-bg: #f6e3dc;
+  --gv-surface: #fbefea;
+  --gv-line: #ebd0c6;
+  --gv-line-2: #d6b4a8;
+  --gv-ink: #3a2030;
+  --gv-ink-dim: #6e4f5c;
+  --gv-accent-solid: #b32e63;
+  --gv-lime: #ff70a6;
+  --gv-lime-hi: #e9ff70;
+  --gv-lime-deep: #a3285a;
+  --gv-lime-ghost: #ffd670;
+  --gv-flood-dim: #5a1532;
+  --gv-calm-fill: #ff70a6;
+  --gv-calm-fill-ink: #3a1028;
+  --gv-calm-chip: #70d6ff;
+  --gv-calm-chip-ink: #3a2030;
+  --gv-calm-ring: #ff9770;
+  --gv-calm-bar: #ff70a6;
+  --gv-calm-done: #e9ff70;
+  --gv-calm-done-ink: #5a1532;
+  --gv-stage-warm: #70d6ff; /* the counter runs lake, gold, tangerine, then rose: the base red sits too close to the rose */
+  --gv-stage-hot: #ffd670;
+  --gv-stage-peak: #ff9770;
+  --gv-stage-peak-a: 0.92; /* full strength, or tangerine reads as more gold */
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-sorbet {
+  --gv-bg: #1b131d;
+  --gv-surface: #251a28;
+  --gv-line: #39293e;
+  --gv-line-2: #4e3954;
+  --gv-ink: #f6ecef;
+  --gv-ink-dim: #b9a3b0;
+  --gv-lime: #ff70a6;
+  --gv-lime-ghost: #3d2036;
+  --gv-calm-fill: #ff70a6;
+  --gv-calm-fill-ink: #3a1028;
+  --gv-calm-title: #e9ff70;
+  --gv-calm-tint-ink: #ffd670;
+  --gv-calm-chip: #1f3d4d;
+  --gv-calm-chip-ink: #70d6ff;
+  --gv-calm-ring: #ff9770;
+  --gv-calm-bar: #ff70a6;
+  --gv-calm-done: #4a3a14;
+  --gv-calm-done-ink: #ffd670;
+  --gv-stage-warm: #4a6a8f; /* dark: back to the base blue, amber, red, which carry light text */
+  --gv-stage-hot: var(--gv-amber);
+  --gv-stage-peak: #dc2626;
+  --gv-stage-peak-a: 0.72;
+}
+/* Carnival: amber gold, blaze orange, neon pink, blue violet, azure blue */
+.gv-app.gv-skin-calm.gv-accent-carnival {
+  --gv-bg: #ebe3f8;
+  --gv-surface: #f4effb;
+  --gv-line: #d8cdee;
+  --gv-line-2: #bdaedd;
+  --gv-ink: #22143d;
+  --gv-ink-dim: #53456f;
+  --gv-accent-solid: #8338ec;
+  --gv-lime: #ff006e;
+  --gv-lime-hi: #ffbe0b;
+  --gv-lime-deep: #6a22d4;
+  --gv-lime-ghost: #ffd6e7;
+  --gv-flood-dim: #36106f;
+  --gv-calm-title: #8338ec;
+  --gv-calm-chip: #ffbe0b;
+  --gv-calm-chip-ink: #22143d;
+  --gv-calm-ring: #fb5607;
+  --gv-calm-bar: #3a86ff;
+  --gv-stage-warm: #3a86ff; /* the counter's first stage: azure, since the base blue vanishes on lilac paper */
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-carnival {
+  --gv-bg: #150e23;
+  --gv-surface: #1e1532;
+  --gv-line: #31244e;
+  --gv-line-2: #43326a;
+  --gv-ink: #f1ecfa;
+  --gv-ink-dim: #ab9fc6;
+  --gv-lime: #ffbe0b;
+  --gv-lime-ghost: #33215c;
+  --gv-calm-title: #ffbe0b;
+  --gv-calm-tint-ink: #ffbe0b;
+  --gv-calm-chip: #3a86ff;
+  --gv-calm-chip-ink: #150e23;
+  --gv-calm-ring: #fb5607;
+  --gv-calm-bar: #ff006e;
+  --gv-calm-done: #8338ec;
+  --gv-calm-done-ink: #f1ecfa;
+  --gv-stage-warm: #3a86ff;
+}
+/* Forest: dark teal, sea green, celadon, tea green, vanilla cream (the cream IS the paper) */
+.gv-app.gv-skin-calm.gv-accent-forest {
+  --gv-bg: #f3e9d2;
+  --gv-surface: #f9f2e2;
+  --gv-line: #e2d6ba;
+  --gv-line-2: #cabd9d;
+  --gv-ink: #0c2831;
+  --gv-ink-dim: #46605f;
+  --gv-accent-solid: #114b5f;
+  --gv-lime: #1a936f;
+  --gv-lime-hi: #88d498;
+  --gv-lime-deep: #114b5f;
+  --gv-lime-ghost: #c6dabf;
+  --gv-flood-dim: #0b3442;
+  --gv-calm-title: #114b5f;
+  --gv-calm-chip: #88d498;
+  --gv-calm-chip-ink: #114b5f;
+  --gv-calm-ring: #1a936f;
+  --gv-calm-bar: #1a936f;
+  --gv-calm-done: #88d498;
+  --gv-calm-done-ink: #114b5f;
+}
+.theme-dark .gv-app.gv-skin-calm.gv-accent-forest {
+  --gv-bg: #071a22;
+  --gv-surface: #0c2630;
+  --gv-line: #173a47;
+  --gv-line-2: #245262;
+  --gv-ink: #f3e9d2;
+  --gv-ink-dim: #a9bdb0;
+  --gv-lime: #88d498;
+  --gv-lime-ghost: #0f3d4d;
+  --gv-calm-title: #c6dabf;
+  --gv-calm-tint-ink: #88d498;
+  --gv-calm-chip: #114b5f;
+  --gv-calm-chip-ink: #c6dabf;
+  --gv-calm-ring: #1a936f;
+  --gv-calm-bar: #88d498;
+  --gv-calm-done: #114b5f;
+  --gv-calm-done-ink: #88d498;
+  --gv-stage-hot-a: 0.25; /* the amber stage thinner still, so the cream ink holds 4.5:1 over the teal tint */
 }
 
 /* Type: sentence case, normal tracking, the system face at a real weight. */
