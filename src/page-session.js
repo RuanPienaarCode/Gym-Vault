@@ -651,7 +651,7 @@ function exerciseBlock(ctx, sess, entry) {
     entry.target ? el('div', { class: 'gv-session-target' }, entry.target) : '',
     /* Last time and your bests (issue #28), the same lines the log card shows;
        history from before this session (sess.workoutsAtStart). */
-    entry.distance ? '' : recapEl(sess.workoutsAtStart, entry.exercise, 'gv-session-recap'));
+    recapEl(sess.workoutsAtStart, entry, 'gv-session-recap'));
   /* Guided view only ever animates a start->finish pair — cap BEFORE error
      handling wires up, so a dropped frame 1 never promotes a frame 3 that
      was never even resolved for this view (the detail page still shows
@@ -755,7 +755,7 @@ function posterHead(ctx, sess, entry, entryIndex, setIndex) {
     el('div', { class: 'gv-live-headtext' },
       el('h2', { class: 'gv-display gv-session-exname gv-live-name' }, entry.exercise),
       sub ? el('div', { class: 'gv-session-target gv-live-sub' }, sub) : '',
-      recapEl(sess.workoutsAtStart, entry.exercise, 'gv-session-recap gv-live-recap')),
+      recapEl(sess.workoutsAtStart, entry, 'gv-session-recap gv-live-recap')),
     img || '',
     el('div', { class: 'gv-live-rail', role: 'img', 'aria-label': label },
       ...chrome.railPips(entry.sets, setIndex).map(p => el('span', { class: `gv-live-pip is-${p}` })),

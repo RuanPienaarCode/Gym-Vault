@@ -256,7 +256,7 @@ function entryCard(ctx, draft, entry, ei, onFigure) {
     removeBtn(ctx, draft, ei)));
   /* Last time, best set, most reps (issue #28): what you need sitting down
      at the machine, without leaving the log. */
-  const recap = recapEl(ctx.data.workouts, entry.exercise, 'gv-log-recap');
+  const recap = recapEl(ctx.data.workouts, entry, 'gv-log-recap');
   if (recap) card.append(recap);
 
   const rows = el('div', { class: 'gv-log-sets' });

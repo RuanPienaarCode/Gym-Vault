@@ -94,4 +94,25 @@ const history = [
   const r = R.exerciseRecap([w('2026-11-01', [lp(9, 30)]), w('2026-11-04', [{ exercise: 'Leg Press', reps: '', weight_kg: '' }])], 'Leg Press');
   assert.strictEqual(r.last.date, '2026-11-01');
 }
+{ /* two notes on the latest day (morning + evening) are both "last time" */
+  const r = R.exerciseRecap([w('2026-11-01', [lp(5, 50)]), w('2026-11-09', [lp(10, 60)]), w('2026-11-09', [lp(8, 65)])], 'Leg Press');
+  assert.deepStrictEqual(r.last.sets.map(x => x.weight_kg), ['60', '65'], 'both sessions of the day, in file order');
+}
+{ /* the card says what the exercise IS: a timed piece shows Last + Longest
+     even when an old note logged reps for it; a run shows nothing at all */
+  const hist = [w('2026-11-01', [{ exercise: 'Plank', reps: '1', seconds: '40' }]), w('2026-11-06', [{ exercise: 'Plank', seconds: '75' }])];
+  const r = R.exerciseRecap(hist, 'Plank');
+  assert.deepStrictEqual(R.recapLines(r, 'duration').map(l => l.label), [`Last · ${fmtShort('2026-11-06')}`, 'Longest']);
+  assert.strictEqual(R.recapLines(r, 'duration')[1].text, '1:15');
+  const run = R.exerciseRecap([w('', [{ exercise: 'Run', distance_km: '5', seconds: '1800' }]), w('2026-10-01', [{ exercise: 'Run', reps: '3' }])], 'Run');
+  assert.deepStrictEqual(R.recapLines(run, 'distance'), [], 'a run card never shows lifting lines, whatever its history holds');
+  assert.strictEqual(R.kindOf({ exercise: 'Run', distance: true }), 'distance');
+  assert.strictEqual(R.kindOf({ exercise: 'Plank', duration: true }), 'duration');
+  assert.strictEqual(R.kindOf({ exercise: 'Dips' }), 'reps');
+}
+{ /* 0 kg is no load: no Best line, and Most reps reads bare */
+  const r = R.exerciseRecap([w('2026-11-02', [lp(9, 0), lp(11, 0)])], 'Leg Press');
+  assert.strictEqual(r.best, null);
+  assert.deepStrictEqual(R.recapLines(r, 'reps').map(l => [l.label, l.text]), [[`Last · ${fmtShort('2026-11-02')}`, '9 · 11'], ['Most reps', '11']]);
+}
 console.log('recap OK');
