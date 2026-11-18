@@ -108,7 +108,7 @@ beside it. Every Start follows it: Today, *Also today* and each day on a plan's
 page.
 
 Each exercise in the log, and on the guided screen, shows what you did **last
-time** (the date and every set), your **best** set (the heaviest, with its own
+time** (the date and up to six sets), your **best** set (the heaviest, with its own
 reps) and your **most reps** (with the weight you did them at). A timed
 exercise shows its last time and its **longest**; a run shows none of these,
 because the Running pages own distance.

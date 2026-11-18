@@ -16,7 +16,7 @@
    usually come from different sets, and "160 kg" glued to "14 reps" would be a
    lift nobody did (best1RM's rule). */
 
-const { forEachExerciseRow, num, workoutDate, sameName } = require('./stats');
+const { forEachExerciseRow, num, workoutDate } = require('./stats');
 const { fmtShort } = require('./dates');
 const { fmtSeconds, el } = require('./dom');
 
@@ -46,7 +46,7 @@ function exerciseRecap(workouts, exercise) {
   });
   if (!any) return null;
   const sets = [];
-  if (lastKey) for (const w of workouts) if (workoutDate(w) === lastKey) for (const r of w.rows || []) if (sameName(r.exercise, exercise) && hasFigure(r)) sets.push(r);
+  if (lastKey) forEachExerciseRow(workouts, exercise, (r, w) => { if (workoutDate(w) === lastKey && hasFigure(r)) sets.push(r); });
   return { last: lastKey ? { date: lastKey, sets } : null, best, mostReps, longest };
 }
 
@@ -86,8 +86,11 @@ function recapLines(recap, kind) {
   return lines;
 }
 
-/* A draft entry's kind for recapLines: its own flags, set from the plan line. */
-const kindOf = entry => (!entry ? undefined : entry.distance ? 'distance' : entry.duration ? 'duration' : 'reps');
+/* A draft entry's kind for recapLines: its own flags, set from the plan line.
+   A stand-in that is not a draft entry (the timed circuit's warm-up, cool-down
+   and transition cards pass just { exercise, target }) carries no flags to
+   read, so it says nothing and history decides — never a guessed 'reps'. */
+const kindOf = entry => (!entry || !Array.isArray(entry.sets) ? undefined : entry.distance ? 'distance' : entry.duration ? 'duration' : 'reps');
 
 /* The lines as one small block, or '' when there is nothing to say (never
    logged): the log card and the guided live set both draw this, so the two

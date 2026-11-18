@@ -3,7 +3,7 @@
 
    A lifter sitting down at a machine wants three things without leaving the
    log: the sets they did last time, their heaviest set, and their most reps.
-   src/recap.js is pure; the log card and the guided live set both print its
+   src/recap.js's exerciseRecap and recapLines are plain functions; the log card and the guided live set both print its
    recapLines, so the two screens cannot disagree.
 
    CONTRACT (written before the code):
@@ -106,9 +106,12 @@ const history = [
   assert.strictEqual(R.recapLines(r, 'duration')[1].text, '1:15');
   const run = R.exerciseRecap([w('', [{ exercise: 'Run', distance_km: '5', seconds: '1800' }]), w('2026-10-01', [{ exercise: 'Run', reps: '3' }])], 'Run');
   assert.deepStrictEqual(R.recapLines(run, 'distance'), [], 'a run card never shows lifting lines, whatever its history holds');
-  assert.strictEqual(R.kindOf({ exercise: 'Run', distance: true }), 'distance');
-  assert.strictEqual(R.kindOf({ exercise: 'Plank', duration: true }), 'duration');
-  assert.strictEqual(R.kindOf({ exercise: 'Dips' }), 'reps');
+  assert.strictEqual(R.kindOf({ exercise: 'Run', distance: true, sets: [] }), 'distance');
+  assert.strictEqual(R.kindOf({ exercise: 'Plank', duration: true, sets: [] }), 'duration');
+  assert.strictEqual(R.kindOf({ exercise: 'Dips', sets: [] }), 'reps');
+  assert.strictEqual(R.kindOf({ exercise: 'Run', target: '' }), undefined, 'a timed-circuit stand-in (no sets) lets history decide');
+  const runOnly = R.exerciseRecap([w('2026-11-03', [{ exercise: 'Run', distance_km: '5', seconds: '1800' }])], 'Run');
+  assert.deepStrictEqual(R.recapLines(runOnly, R.kindOf({ exercise: 'Run', target: '' })), [], 'so a run named on a transition card still shows nothing');
 }
 { /* 0 kg is no load: no Best line, and Most reps reads bare */
   const r = R.exerciseRecap([w('2026-11-02', [lp(9, 0), lp(11, 0)])], 'Leg Press');
