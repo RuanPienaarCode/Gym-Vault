@@ -210,8 +210,8 @@ class PlanPickerModal extends Modal {
       main.createDiv({ cls: 'gv-optrow-name', text: p.name });
       main.createDiv({ cls: 'gv-optrow-desc',
         text: `${String(p.fm.fallback) === 'true'
-          ? 'Fills any day your plan leaves empty'
-          : 'Runs alongside whichever plan is active'} — switch it on or off on its page.` });
+          ? 'Backup: only shows on days your main plan has no workout'
+          : 'Add-on: adds its days on top of your main plan'} — switch it on or off on its page.` });
     }
   }
   onClose() { this.contentEl.empty(); }

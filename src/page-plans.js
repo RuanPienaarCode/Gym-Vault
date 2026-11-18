@@ -151,7 +151,7 @@ async function structuralEdit(ctx, plan, mutate) {
    re-exported at the bottom for this page's callers and tests. */
 const ROLE_RANK = { active: 0, alongside: 1, 'fills-gaps': 2, '': 4 };
 const FAVOURITE_RANK = 3;
-const ROLE_BADGE = { active: 'active', alongside: 'alongside', 'fills-gaps': 'fills gaps' };
+const ROLE_BADGE = { active: 'active', alongside: 'add-on', 'fills-gaps': 'backup' };
 /* The badge words for a plan: its role, or "paused". */
 function badgeWord(p, activePlan) {
   const role = planRole(p, activePlan);
@@ -249,6 +249,7 @@ function render(ctx, root) {
 
   const activeNow = typeof ctx.activePlan === 'function' ? ctx.activePlan() : null;
   const ordered = orderPlans(data.plans, activeNow);
+  root.append(plansHelp(ui));
   const listWrap = el('div', {});
   root.append(listWrap);
 
@@ -346,22 +347,17 @@ function facetChips(ctx, label, values, labelOf, get, set) {
   return row;
 }
 
-/* WHAT THIS PLAN DOES, AND WHETHER IT IS ON — one block at the top of a
-   plan's page, for every plan.
-
-   The role picker makes it a Main plan (an alternative for the plan Today
-   runs), one that Runs alongside (its days are added beside the main plan's)
-   or one that Fills gaps (it only takes a weekday nothing else claims). The
-   role used to be a frontmatter key you could only type by hand.
-
-   The switch is Active / Inactive in every role. For a main plan it is the
-   `active` flag: on makes it THE plan Today runs (the one that was active is
-   switched off — exactly one, so Today is never ambiguous), off leaves Today
-   with no main plan until you turn one on. setActivePlan is only ever handed
-   ctx.mainPlans(): stamping `active` onto an alongside plan means nothing.
-   For an alongside plan it is `paused` (plan-parse.isPaused). Nothing is
-   deleted either way; the plan stays in the library. */
-const ROLE_OPTIONS = [['main', 'Main plan'], ['parallel', 'Runs alongside'], ['fallback', 'Fills gaps']];
+/* Plain words for the three roles, each with the one line that says what it
+   does. Ruan, 18 Nov 2026: "Runs alongside" and "Fills gaps" meant nothing to
+   a user. So each role has a short everyday name, and wherever you pick one
+   the line under it says what will happen on Today. The frontmatter keys
+   (parallel, fallback) are unchanged. */
+const ROLES = {
+  main: { label: 'Main plan', desc: 'The plan Today follows. Only one can be active.' },
+  parallel: { label: 'Add-on', desc: 'Adds its days on top of your main plan.' },
+  fallback: { label: 'Backup', desc: 'Only shows on days your main plan has no workout.' },
+};
+const ROLE_OPTIONS = ['main', 'parallel', 'fallback'].map(v => [v, ROLES[v].label]);
 
 /* The two writes, shared by the plan page and the Plans list so both say and
    do exactly the same thing. */
@@ -376,17 +372,44 @@ async function setPlanOn(ctx, plan, on) {
 }
 async function changeRole(ctx, plan, next) {
   const ok = await ctx.io.setPlanRole(plan, next);
-  if (ok && next === 'main') ctx.notice(`${plan.name} is now a main plan. Switch it on to make it the plan Today runs.`);
+  if (ok && next === 'main') ctx.notice(`${plan.name} is now a main plan. Switch it to Active to make Today follow it.`);
   ctx.reload();
 }
 
-/* The compact pair on a Plans list card: a role dropdown and an Active
-   switch. Both sit inside a card that opens the plan when tapped, so every
-   event they take stops there (the star does the same). */
+/* What the Active switch will do, in one line, for each role. */
+function switchLine(ctx, plan, role, on) {
+  if (role === 'main') {
+    if (on) return 'Today follows this plan.';
+    const cur = typeof ctx.activePlan === 'function' ? ctx.activePlan() : null;
+    return cur ? `Switch on to make Today follow it instead of ${cur.name}.` : 'Switch on to make Today follow it.';
+  }
+  if (!on) return 'Not on Today. Nothing is deleted.';
+  return role === 'fallback' ? 'Fills the days your main plan leaves empty.' : 'Its days are added to Today.';
+}
+
+/* "How plans work": one closed line above the Plans list that opens to say,
+   once, what the three roles and the switch mean. Whether it is open lives in
+   the list's view state, so flipping a switch (which redraws) keeps it open. */
+function plansHelp(ui) {
+  const d = el('details', ui.help ? { class: 'gv-plan-help', open: '' } : { class: 'gv-plan-help' },
+    el('summary', {}, ico('info'), el('span', {}, 'How plans work')));
+  d.addEventListener('toggle', () => { ui.help = d.open; });
+  const list = el('dl', {});
+  for (const v of ['main', 'parallel', 'fallback']) {
+    list.append(el('dt', {}, ROLES[v].label), el('dd', {}, ROLES[v].desc));
+  }
+  d.append(list, el('p', {}, 'Set a plan to Inactive to take it off Today. Nothing is deleted. Tap a plan to change it on its own page.'));
+  return d;
+}
+
+/* The footer of a Plans list card: the role on the left, the Active switch on
+   the right, under a hairline so it reads apart from the plan's details. Both
+   sit inside a card that opens the plan when tapped, so every event they take
+   stops there (the star does the same). */
 function cardControls(ctx, plan) {
   const stop = e => e.stopPropagation();
   const role = roleOf(plan.fm);
-  const sel = el('select', { class: 'dropdown gv-plan-role-select', 'aria-label': `Role of ${plan.name}` },
+  const sel = el('select', { class: 'dropdown gv-plan-role-select', 'aria-label': `Role of ${plan.name}`, title: ROLES[role].desc },
     ...ROLE_OPTIONS.map(([v, label]) => el('option', v === role ? { value: v, selected: 'selected' } : { value: v }, label)));
   sel.value = role;
   sel.addEventListener('click', stop);
@@ -402,45 +425,44 @@ function cardControls(ctx, plan) {
   return el('div', { class: 'gv-plan-ctl' }, sel, sw);
 }
 
+/* WHAT THIS PLAN DOES, AND WHETHER IT IS ON — one block at the top of a
+   plan's page, for every plan.
+
+   First the Active switch (the thing you came to change), then the role as
+   three rows, each saying in one line what it does, so the choice explains
+   itself without a help page.
+
+   The switch is Active / Inactive in every role. For a main plan it is the
+   `active` flag: on makes it THE plan Today runs (the one that was active is
+   switched off — exactly one, so Today is never ambiguous), off leaves Today
+   with no main plan until you turn one on. setActivePlan is only ever handed
+   ctx.mainPlans(): stamping `active` onto an alongside plan means nothing.
+   For an add-on or backup it is `paused` (plan-parse.isPaused). Nothing is
+   deleted either way; the plan stays in the library. */
 function planControls(ctx, plan) {
   const wrap = el('div', { class: 'gv-plan-controls' });
   const role = roleOf(plan.fm);
-  /* Chips, not dom.segmented: the chip's pressed colours are tuned and
-     contrast-guarded per skin, and the segmented button's are not (its
-     pressed label vanished on Apex light). */
-  const picker = el('div', { class: 'gv-chips gv-facet gv-plan-role', role: 'radiogroup', 'aria-label': `Role of ${plan.name}` },
-    el('span', { class: 'gv-facet-label' }, 'Role'));
-  for (const [value, label] of ROLE_OPTIONS) {
-    const on = value === role;
-    const b = el('button', { class: `gv-chip${on ? ' on' : ''}`, type: 'button', role: 'radio', 'aria-checked': on ? 'true' : 'false' }, label);
-    b.addEventListener('click', () => { if (!on) changeRole(ctx, plan, value); });
-    picker.append(b);
-  }
-  wrap.append(picker);
+  const on = isPlanOn(ctx, plan);
+  wrap.append(toggleRow(on ? 'Active' : 'Inactive', switchLine(ctx, plan, role, on), on,
+    want => setPlanOn(ctx, plan, want),
+    { label: role === 'main' ? 'Active plan' : 'Show on Today' }));
 
-  if (role === 'main') {
-    const on = isPlanOn(ctx, plan);
-    const desc = on
-      ? 'Today runs this plan. Switch off and Today has no main plan until you turn one on.'
-      : (ctx.activePlan && ctx.activePlan()
-        ? `Switch on to make this the plan Today runs. ${ctx.activePlan().name} will be switched off.`
-        : 'Switch on to make this the plan Today runs.');
-    wrap.append(toggleRow(on ? 'Active' : 'Inactive', desc, on,
-      want => setPlanOn(ctx, plan, want),
-      { label: 'Active plan' }));
-    return wrap;
+  const group = el('div', { class: 'gv-plan-roles', role: 'radiogroup', 'aria-label': `Role of ${plan.name}` },
+    el('div', { class: 'gv-plan-roles-label' }, 'How Today uses it'));
+  for (const [value, label] of ROLE_OPTIONS) {
+    const picked = value === role;
+    const row = el('button', {
+      class: `gv-card gv-optrow gv-plan-roleopt${picked ? ' on' : ''}`, type: 'button',
+      role: 'radio', 'aria-checked': picked ? 'true' : 'false',
+    },
+    el('span', { class: 'gv-radio', 'aria-hidden': 'true' }),
+    el('span', { class: 'gv-optrow-main' },
+      el('span', { class: 'gv-optrow-name' }, label),
+      el('span', { class: 'gv-optrow-desc' }, ROLES[value].desc)));
+    row.addEventListener('click', () => { if (!picked) changeRole(ctx, plan, value); });
+    group.append(row);
   }
-  const paused = isPaused(plan);
-  wrap.append(toggleRow(
-    paused ? 'Inactive' : 'Active',
-    role === 'fallback'
-      ? (paused ? 'It will not fill your empty days. Nothing is deleted. Switch on to bring it back.'
-        : 'Fills any weekday your main plan leaves empty. Switch off to pause it.')
-      : (paused ? 'Its days are not added to Today. Nothing is deleted. Switch on to bring it back.'
-        : 'Runs alongside your main plan: its days are added to Today. Switch off to pause it.'),
-    !paused,
-    on => setPlanOn(ctx, plan, on),
-    { label: 'Show on Today' }));
+  wrap.append(group);
   return wrap;
 }
 

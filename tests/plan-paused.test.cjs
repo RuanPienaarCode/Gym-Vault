@@ -332,7 +332,7 @@ check('detail: a parallel plan shows ONE switch, ON, named for what it does', ()
   assert.ok(sw, 'no switch on a parallel plan');
   assert.strictEqual(sw.attrs['aria-checked'], 'true');
   assert.strictEqual(sw.attrs['aria-label'], 'Show on Today');
-  assert.ok(/Active/.test(sw.textContent) && /Runs alongside your main plan/.test(sw.textContent), sw.textContent);
+  assert.ok(/Active/.test(sw.textContent) && /Its days are added to Today/.test(sw.textContent), sw.textContent);
   assert.strictEqual(flat(root).filter(n => n.attrs && n.attrs.role === 'switch').length, 1);
 });
 check('detail: the old static line is gone', () => {
@@ -344,13 +344,13 @@ check('detail: a paused plan shows the switch OFF and says Inactive', () => {
   const { root } = detail([LUNCH, g], g);
   const sw = switchOf(root);
   assert.strictEqual(sw.attrs['aria-checked'], 'false');
-  assert.ok(/Inactive/.test(sw.textContent) && /not added to Today/.test(sw.textContent), sw.textContent);
+  assert.ok(/Inactive/.test(sw.textContent) && /Not on Today/.test(sw.textContent), sw.textContent);
 });
 check('detail: a fallback plan gets the same switch, with its own wording', () => {
   const { root } = detail([LUNCH, REST], REST);
-  assert.ok(/Fills any weekday/.test(switchOf(root).textContent));
+  assert.ok(/Fills the days your main plan leaves empty/.test(switchOf(root).textContent));
   const r = withPaused(REST);
-  assert.ok(/will not fill your empty days/.test(switchOf(detail([LUNCH, r], r).root).textContent));
+  assert.ok(/Not on Today/.test(switchOf(detail([LUNCH, r], r).root).textContent));
 });
 check('detail: the ACTIVE plan and an ORDINARY plan get the Active switch (on / off), and no Make active button', () => {
   const other = plan('Pull Day', {}, []);
@@ -359,7 +359,7 @@ check('detail: the ACTIVE plan and an ORDINARY plan get the Active switch (on / 
   assert.strictEqual(switchOf(a.root).attrs['aria-label'], 'Active plan');
   const o = detail([LUNCH, other], other);
   assert.strictEqual(switchOf(o.root).attrs['aria-checked'], 'false');
-  assert.ok(/Lunch Circuit will be switched off/.test(switchOf(o.root).textContent), switchOf(o.root).textContent);
+  assert.ok(/instead of Lunch Circuit/.test(switchOf(o.root).textContent), switchOf(o.root).textContent);
   assert.ok(!byTag(o.root, 'button').some(b => b.textContent.includes('Make active')));
 });
 check('detail: tapping the ON switch pauses (setPaused(plan, true)) and reloads', async () => {
@@ -393,8 +393,8 @@ check('list: a paused plan has role "" and the badge word "inactive"; live ones 
   assert.strictEqual(badgeWord(g, LUNCH), 'inactive');
   assert.strictEqual(badgeWord(r, LUNCH), 'inactive');
   assert.strictEqual(planRole(GTG, LUNCH), 'alongside');
-  assert.strictEqual(badgeWord(GTG, LUNCH), 'alongside');
-  assert.strictEqual(badgeWord(REST, LUNCH), 'fills gaps');
+  assert.strictEqual(badgeWord(GTG, LUNCH), 'add-on');
+  assert.strictEqual(badgeWord(REST, LUNCH), 'backup');
   assert.strictEqual(badgeWord(LUNCH, LUNCH), 'active');
   assert.strictEqual(badgeWord(plan('Pull', {}), LUNCH), '');
 });
@@ -415,7 +415,7 @@ check('list: the card carries the "inactive" badge and says so in its aria-label
   assert.strictEqual(card.attrs['aria-label'], 'Open Grease the Groove, inactive');
   assert.deepStrictEqual(flat(card).filter(n => hasClass(n, 'gv-badge')).map(n => n.textContent), ['inactive']);
   const live = cards.find(c => /Trail Base/.test(c.attrs['aria-label']));
-  assert.strictEqual(live.attrs['aria-label'], 'Open Trail Base, alongside');
+  assert.strictEqual(live.attrs['aria-label'], 'Open Trail Base, add-on');
 });
 
 /* ---- the export --------------------------------------------------------- */

@@ -200,7 +200,7 @@ check('list: changing the dropdown sets the role', async () => {
 check('plan page: a role picker with the three roles, current one pressed; picking one sets it', async () => {
   const { root, calls } = makeCtx({ plan: 'Pull Day' });
   const radios = flat(root).filter(n => n.attrs && n.attrs.role === 'radio');
-  assert.deepStrictEqual(radios.map(r => r.textContent), ['Main plan', 'Runs alongside', 'Fills gaps']);
+  assert.deepStrictEqual(radios.map(r => r.textContent.match(/^(Main plan|Add-on|Backup)/)?.[1]), ['Main plan', 'Add-on', 'Backup']);
   assert.deepStrictEqual(radios.map(r => r.attrs['aria-checked']), ['true', 'false', 'false']);
   fire(radios[1], 'click', stopEvt());
   await flush();
@@ -215,6 +215,36 @@ check('plan page: the Active switch is on every plan — the active main plan ca
   await flush();
   assert.deepStrictEqual(calls.active, [[['Lunch Circuit', 'Pull Day'], null]]);
   assert.ok(!byTag(root, 'button').some(b => b.textContent.includes('Make active')), 'the switch replaces Make active');
+});
+
+/* PLAIN WORDS (18 Nov 2026). Ruan: "user dont know what those terms means,
+   options must be more clear or somewhere it needs to be explained". Each role
+   option carries the line that says what it does, the list has one "How plans
+   work" explainer, and the old jargon is gone from both pages. */
+const MEANING = { 'Main plan': /Today follows/, 'Add-on': /on top of your main plan/, Backup: /no workout/ };
+check('plain words: every role row on the plan page says what it does under its name', () => {
+  const { root } = makeCtx({ plan: 'Grease the Groove' });
+  const radios = flat(root).filter(n => n.attrs && n.attrs.role === 'radio');
+  assert.strictEqual(radios.length, 3);
+  for (const r of radios) {
+    const name = Object.keys(MEANING).find(k => r.textContent.startsWith(k));
+    assert.ok(name, r.textContent);
+    assert.ok(MEANING[name].test(r.textContent), `${name} explains itself: ${r.textContent}`);
+  }
+});
+check('plain words: the list has one "How plans work" explainer naming all three roles with their meaning', () => {
+  const { root } = makeCtx();
+  const help = flat(root).filter(n => hasClass(n, 'gv-plan-help'));
+  assert.strictEqual(help.length, 1);
+  for (const [name, re] of Object.entries(MEANING)) {
+    assert.ok(help[0].textContent.includes(name) && re.test(help[0].textContent), name);
+  }
+});
+check('plain words: no "Runs alongside" / "Fills gaps" jargon left on the list or a plan page', () => {
+  for (const params of [{}, { plan: 'Grease the Groove' }, { plan: 'Rest & Recovery' }, { plan: 'Pull Day' }]) {
+    const { root } = makeCtx(params);
+    assert.ok(!/runs alongside|fills gaps/i.test(root.textContent), JSON.stringify(params));
+  }
 });
 
 run('plan controls');

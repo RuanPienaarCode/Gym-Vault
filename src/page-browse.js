@@ -119,7 +119,7 @@ function planCard(ctx, p, have, draw) {
     el('div', { class: 'gv-browse-head' },
       el('div', {},
         el('div', { class: 'gv-browse-name' }, p.name),
-        el('div', { class: 'gv-kicker' }, `${countLabel(p.days, 'day')} · ${countLabel(p.exercises.length, 'exercise')}${p.fallback ? ' · fills empty days' : p.parallel ? ' · runs alongside' : ''}`)),
+        el('div', { class: 'gv-kicker' }, `${countLabel(p.days, 'day')} · ${countLabel(p.exercises.length, 'exercise')}${p.fallback ? ' · backup' : p.parallel ? ' · add-on' : ''}`)),
       added
         ? el('span', { class: 'gv-badge' }, 'added')
         : addButton(ctx, 'plan:' + p.name, 'gv-btn gv-btn-small', 'Add', () => installOne(ctx, p, draw))),

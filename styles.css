@@ -2822,17 +2822,56 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 .theme-dark .gv-app .gv-segmented-btn { border-color: var(--gv-line-2); }
 .gv-app .gv-segmented-btn.on { background: var(--gv-ink); color: var(--gv-lime); }
 .theme-dark .gv-app .gv-segmented-btn.on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
-/* A plan's role picker + Active switch, at the top of its page. The picker
-   reads left to right like the rows under it, and its buttons are full
-   44px touch targets: this one is tapped at rest, on a phone, not mid-set. */
-.gv-plan-controls { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 14px; }
-.gv-app .gv-plan-role .gv-chip { min-height: 44px; }
-.gv-plan-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
-.gv-app .gv-plan-role-select { min-height: 44px; max-width: 100%; }
+/* A plan's Active switch + role rows, at the top of its page. The role rows
+   reuse .gv-optrow (per-skin colours, stacked hairlines) with a radio dot in
+   place of the switch; each is a full 44px+ touch target with its meaning
+   written under the name. */
+.gv-plan-controls { display: flex; flex-direction: column; gap: 14px; margin: 6px 0 18px; }
+.gv-plan-roles { display: flex; flex-direction: column; }
+.gv-plan-roles-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--gv-ink-dim); margin: 0 0 6px;
+}
+.gv-app .gv-plan-roleopt {
+  /* app.css owns the bare `button`: undo its fixed height and chrome. */
+  width: 100%; height: auto; min-height: 56px; text-align: left; font: inherit; color: var(--gv-ink);
+  padding: 10px 14px; border-radius: 0;
+}
+.gv-plan-roleopt:first-of-type { border-top-left-radius: inherit; }
+.gv-plan-roleopt .gv-optrow-name, .gv-plan-roleopt .gv-optrow-desc { display: block; }
+.gv-radio {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--gv-line-2, var(--gv-ink-dim)); box-sizing: border-box;
+}
+.gv-plan-roleopt.on .gv-radio { border-color: var(--gv-ink); background: var(--gv-ink); box-shadow: inset 0 0 0 3px var(--gv-surface); }
+
+/* "How plans work" above the Plans list: one quiet line, open on demand. */
+.gv-plan-help { margin: 4px 0 12px; font-size: 13px; color: var(--gv-ink-dim); }
+.gv-plan-help summary {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; cursor: pointer;
+  list-style: none; font-weight: 600; color: var(--gv-ink-dim);
+}
+.gv-plan-help summary::-webkit-details-marker { display: none; }
+.gv-plan-help summary .svg-icon { width: 16px; height: 16px; }
+.gv-plan-help dl {
+  display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 2px 0 8px;
+  padding: 12px 14px; border: 1px solid var(--gv-line); background: var(--gv-surface);
+}
+.gv-plan-help dt { font-weight: 700; color: var(--gv-ink); }
+.gv-plan-help dd { margin: 0; line-height: 1.45; }
+.gv-plan-help p { margin: 0 0 4px; line-height: 1.45; }
+
+/* The footer of a Plans list card: role left, Active switch right, under a
+   hairline so it reads apart from the plan's details above it. */
+.gv-plan-ctl {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gv-line);
+}
+.gv-app .gv-plan-role-select { min-height: 40px; max-width: 60%; }
 .gv-app .gv-plan-switch {
   /* app.css owns the bare `button`: undo its fixed height and chrome. */
-  height: auto; min-height: 44px; padding: 0 4px;
-  display: inline-flex; align-items: center; gap: 8px;
+  height: auto; min-height: 44px; padding: 0 2px;
+  display: inline-flex; align-items: center; gap: 10px;
   background: transparent; box-shadow: none; border: 0;
   color: var(--gv-ink); font-weight: 700; cursor: pointer;
 }

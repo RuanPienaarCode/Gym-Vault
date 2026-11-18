@@ -123,8 +123,8 @@ const badgeOf = (root, name) => {
     ['Midday Circuit', 'Pull-up · Grease the Groove', 'Run Base · 10km', 'Rest & Recovery'],
     'render: the list opens with the plans in use, active first');
   eq(badgeOf(root, 'Midday Circuit'), ['active'], 'render: active plan carries the "active" badge');
-  eq(badgeOf(root, 'Run Base · 10km'), ['alongside'], 'render: a parallel plan carries an "alongside" badge');
-  eq(badgeOf(root, 'Rest & Recovery'), ['fills gaps'], 'render: a fallback plan carries a "fills gaps" badge');
+  eq(badgeOf(root, 'Run Base · 10km'), ['add-on'], 'render: a parallel plan carries an "add-on" badge');
+  eq(badgeOf(root, 'Rest & Recovery'), ['backup'], 'render: a fallback plan carries a "backup" badge');
   eq(badgeOf(root, 'Run · 5km'), [], 'render: an unused plan carries no badge');
 
   const search = byTag(root, 'input').find(i => hasClass(i, 'gv-search'));
@@ -225,7 +225,7 @@ const badgeOf = (root, name) => {
   render(ctx, root);
   eq(badgeOf(root, 'Pull-up · Grease the Groove'), ['inactive'], 'render: a paused parallel plan carries an "inactive" badge');
   eq(badgeOf(root, 'Rest & Recovery'), ['inactive'], 'render: a paused fallback plan carries an "inactive" badge');
-  eq(badgeOf(root, 'Run Base · 10km'), ['alongside'], 'render: a live parallel plan still says alongside');
+  eq(badgeOf(root, 'Run Base · 10km'), ['add-on'], 'render: a live parallel plan still says add-on');
   eq(cardNames(root).slice(0, 2), ['Midday Circuit', 'Run Base · 10km'], 'render: only the live plans lead the list');
   const card = flat(root).filter(nd => hasClass(nd, 'gv-plan-card')).find(c => nameOf(c) === 'Rest & Recovery');
   eq(card.attrs['aria-label'], 'Open Rest & Recovery, inactive', 'render: the aria-label says paused');

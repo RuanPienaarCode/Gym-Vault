@@ -145,10 +145,11 @@ interval each have a pause button; a pause freezes the clock exactly, and what
 the screen stopped on is what the workout saves.
 
 **Managing plans.** Every plan, on the Plans list and on its own page, has a
-*Role* and an *Active* switch. The role is *Main plan* (the plan Today runs —
-only one main plan is active at a time, so switching one on switches the other
-off), *Runs alongside* (its days are added to Today beside the main plan's) or
-*Fills gaps* (it only takes a weekday nothing else claims). Switching a plan
+*Role* and an *Active* switch. The role is *Main plan* (the plan Today
+follows — only one main plan is active at a time, so switching one on switches
+the other off), *Add-on* (adds its days on top of your main plan) or *Backup*
+(only shows on days your main plan has no workout). *How plans work*, above
+the Plans list, explains the same in the app. Switching a plan
 off keeps it in your library and deletes nothing; switch the main plan off and
 Today shows *No active plan* with a *Choose a plan* button until you pick one.
 A plan moved to *Main plan* arrives switched off, so it never takes Today over
