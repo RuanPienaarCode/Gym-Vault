@@ -10,7 +10,7 @@ const { isPaused, mainPlansOf, activePlanOf } = require('./plan-parse');
 const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
-const { skinClasses, accentFor } = require('./constants');
+const { skinClasses, accentFor, startModes } = require('./constants');
 const { paintLeaf, clearLeaf } = require('./leaf-paper');
 const { todayISO } = require('./dates');
 const { QUIET_CLASS, quietMotionOn } = require('./quiet-motion');
@@ -493,6 +493,12 @@ function mountApp(view) {
     pages.log.startDraft(ctx, plan, day, opts);
     ctx.nav('log');
   });
+
+  /* Every Start button (issue #28): Settings → Start opens decides, and
+     startAlt is the other one, offered beside it. Defined as calls through
+     ctx so they always reach the current startGuided/startLog. */
+  ctx.start = (plan, day) => (startModes(ctx.settings).primary === 'log' ? ctx.startLog(plan, day) : ctx.startGuided(plan, day));
+  ctx.startAlt = (plan, day) => (startModes(ctx.settings).alt === 'log' ? ctx.startLog(plan, day) : ctx.startGuided(plan, day));
 
   /* Enter guided mode over whatever draft already exists in
      ctx.state.logDraft — page-session.js routes to the dashboard if there

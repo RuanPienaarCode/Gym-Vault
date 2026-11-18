@@ -5739,6 +5739,9 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 .gv-app.gv-skin-poster .gv-log-ex-name { font-weight: 900; }
 .gv-app.gv-skin-poster .gv-log-ex-head .gv-icon-btn-small { --gv-slab: transparent; color: var(--gv-ink-fixed); }
 .gv-app.gv-skin-poster .gv-log-set { border-color: var(--gv-line-2); }
+/* Issue #28: the last-time band is drawn like the set rows under it; on the live set it is a size smaller. */
+.gv-app.gv-skin-poster .gv-log-recap { border-color: var(--gv-line-2); }
+.gv-app.gv-skin-poster .gv-live-recap dd { font-size: 12px; }
 .gv-app.gv-skin-poster .gv-log-set.done {
   background-color: var(--gv-lime-ghost);
   color: var(--gv-ink);
@@ -7670,3 +7673,22 @@ b.gv-badge-num { color: inherit; }
    buttons keep their 12px margins and nothing collides. */
 .gv-app.gv-skin-apex .gv-live-weightval input.gv-session-weight,
 .gv-app.gv-skin-lockin .gv-live-weightval input.gv-session-weight { min-width: 5.4ch; }
+
+/* ---------- Issue #28: Start's other way, and last time + bests ---------- */
+/* The other way to start (Log manually / Guided) beside each Start button. */
+.gv-start-pair { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
+/* Last time, best set, most reps (src/recap.js). A <dl>: the host styles dd with
+   a 40px indent, so every rule that touches dt/dd carries .gv-app. Long set
+   lists wrap (overflow-wrap: break-word — "anywhere" needs Safari 15.4). */
+.gv-app .gv-recap { margin: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gv-app .gv-recap-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; min-width: 0; }
+.gv-app .gv-recap dt { margin: 0; font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gv-ink-dim); white-space: nowrap; }
+.gv-app .gv-recap dd { margin: 0; font-size: 13px; font-weight: 700; color: var(--gv-ink); font-variant-numeric: tabular-nums; overflow-wrap: break-word; min-width: 0; }
+/* On the log card it is a band between the exercise head and its sets, drawn
+   like a set row in each style so it reads as part of the card. */
+.gv-app .gv-log-recap { padding: 7px 12px; border: 2px solid var(--gv-ink); border-top: 0; background: var(--gv-surface); }
+.theme-dark .gv-app .gv-log-recap { border-color: var(--gv-line-2); }
+.gv-app.gv-skin-editorial .gv-log-recap { border: 0; background: transparent; padding: 8px 2px; }
+.gv-app.gv-skin-calm .gv-log-recap { border: 0; background: transparent; padding: 8px 4px 6px; }
+/* On the live set it sits under the target line. */
+.gv-app .gv-session-recap { margin-top: 8px; }

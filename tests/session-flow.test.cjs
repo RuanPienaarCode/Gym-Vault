@@ -116,4 +116,72 @@ function freshDraft() {
   assert.strictEqual(flow.isDone(null, { entryIndex: 0, setIndex: 0 }), true);
 }
 
+/* LATER (issue #28): the machine is taken, so the exercise goes to the back
+   of the queue instead of being skipped. Nothing is marked; the walk simply
+   wraps around, so the exercise comes back once everything after it is dealt
+   with. A ticked or skipped set never comes back. */
+const three = () => ({
+  entries: ['Leg Press', 'Row', 'Chest Press'].map(exercise => ({
+    exercise, sets: [{ reps: '', done: false, touched: false }, { reps: '', done: false, touched: false }],
+  })),
+});
+{
+  const draft = three();
+  const pos = flow.later(draft, { entryIndex: 0, setIndex: 0 });
+  flow.markLater(draft, { entryIndex: 0, setIndex: 0 });
+  assert.deepStrictEqual(pos, { entryIndex: 1, setIndex: 0 }, 'Later goes to the next exercise');
+  assert.strictEqual(draft.entries[0].later, true, 'the exercise is marked');
+  assert.strictEqual(draft.entries[0].sets.some(s => s.skipped || s.touched || s.done), false, 'its sets are not');
+  /* Row and Chest Press done: the walk wraps back to Leg Press. */
+  for (const e of [1, 2]) for (const s of draft.entries[e].sets) s.done = true;
+  assert.deepStrictEqual(flow.advance(draft, { entryIndex: 2, setIndex: 1 }), { entryIndex: 0, setIndex: 0 }, 'the deferred exercise comes back at the end');
+  assert.strictEqual(flow.isDone(draft, flow.advance(draft, { entryIndex: 2, setIndex: 1 })), false, 'not done while it waits');
+  for (const s of draft.entries[0].sets) s.done = true;
+  assert.strictEqual(flow.isDone(draft, flow.advance(draft, { entryIndex: 0, setIndex: 1 })), true, 'done once it is done too');
+}
+{ /* Later halfway through an exercise resumes on the set it left */
+  const draft = three();
+  draft.entries[0].sets[0].done = true;
+  const pos = flow.later(draft, { entryIndex: 0, setIndex: 1 });
+  flow.markLater(draft, { entryIndex: 0, setIndex: 1 });
+  assert.deepStrictEqual(pos, { entryIndex: 1, setIndex: 0 });
+  for (const e of [1, 2]) for (const s of draft.entries[e].sets) s.done = true;
+  assert.deepStrictEqual(flow.advance(draft, { entryIndex: 2, setIndex: 1 }), { entryIndex: 0, setIndex: 1 }, 'back to the set it left, not set 1 again');
+}
+{ /* the last exercise left has nowhere to go: null, and the button hides */
+  const draft = three();
+  for (const e of [0, 1]) for (const s of draft.entries[e].sets) s.done = true;
+  assert.strictEqual(flow.later(draft, { entryIndex: 2, setIndex: 0 }), null);
+  /* Later from the last exercise wraps to an earlier one still waiting. */
+  const d2 = three();
+  for (const s of d2.entries[1].sets) s.done = true;
+  assert.deepStrictEqual(flow.later(d2, { entryIndex: 2, setIndex: 0 }), { entryIndex: 0, setIndex: 0 }, 'wraps to the front');
+  assert.strictEqual(flow.later(d2, { entryIndex: 9, setIndex: 0 }), null, 'past the end: nothing to defer');
+}
+{ /* skipped and ticked sets stay gone after a wrap */
+  const draft = three();
+  flow.markExerciseSkipped(draft, { entryIndex: 0, setIndex: 0 });
+  flow.markLater(draft, { entryIndex: 0, setIndex: 0 });
+  flow.markLater(draft, { entryIndex: 1, setIndex: 0 });
+  draft.entries[1].sets[0].done = true;
+  assert.deepStrictEqual(flow.advance(draft, { entryIndex: 2, setIndex: 0 }), { entryIndex: 2, setIndex: 1 });
+  assert.deepStrictEqual(flow.advance(draft, { entryIndex: 2, setIndex: 1 }), { entryIndex: 1, setIndex: 1 }, 'wraps only to the unhandled set');
+  draft.entries[1].sets[1].done = true;
+  draft.entries[2].sets.forEach(s => { s.done = true; });
+  assert.strictEqual(flow.isDone(draft, flow.advance(draft, { entryIndex: 2, setIndex: 1 })), true, 'skipped Leg Press never comes back');
+}
+
+{ /* the "up next" peek asks before the set is ticked: the last set left is
+     never its own next, so the slab says "Then you're done" */
+  const draft = three();
+  flow.markLater(draft, { entryIndex: 0, setIndex: 0 });
+  for (const e of [1, 2]) for (const s of draft.entries[e].sets) s.done = true;
+  draft.entries[0].sets[0].done = true;
+  assert.strictEqual(flow.isDone(draft, flow.advance(draft, { entryIndex: 0, setIndex: 1 })), true, 'not handed back to itself');
+  /* an UNMARKED set behind the walk is not revisited: the old meaning holds */
+  const d2 = three();
+  for (const s of d2.entries[2].sets) s.done = true;
+  assert.strictEqual(flow.isDone(d2, flow.advance(d2, { entryIndex: 2, setIndex: 1 })), true);
+}
+
 console.log('session-flow OK');

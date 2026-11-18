@@ -1,7 +1,7 @@
 'use strict';
 
 const { PluginSettingTab, Setting, Notice } = require('obsidian');
-const { SKINS, WEEK_STARTS, ACCENTS, CALM_PALETTES, calmPaletteOf, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
+const { SKINS, WEEK_STARTS, START_OPENS, ACCENTS, CALM_PALETTES, calmPaletteOf, MUSIC_APPS, SOUND_MODES, GUIDE_REST } = require('./constants');
 const { isMusicUrl, parseMusicTarget, appLabel } = require('./music-link');
 const { makeIo } = require('./data');
 const sound = require('./sound');
@@ -86,6 +86,20 @@ class GymSettingTab extends PluginSettingTab {
         /* Once, on the finished folder name. */
         this.plugin.refreshViews();
       }));
+
+    new Setting(c)
+      .setName('Start opens')
+      .setDesc('What the Start button does. Guided leads you set by set; Log screen opens the log, where you can work through the exercises in any order. The other one is always one tap away beside Start.')
+      .addDropdown(d => {
+        for (const [key, label] of START_OPENS) d.addOption(key, label);
+        return d
+          .setValue(this.plugin.settings.startOpens === 'log' ? 'log' : 'guided')
+          .onChange(async v => {
+            this.plugin.settings.startOpens = v;
+            await this.plugin.saveSettings();
+            this.plugin.refreshViews();
+          });
+      });
 
     new Setting(c)
       .setName('Week starts on')

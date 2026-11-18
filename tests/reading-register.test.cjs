@@ -57,9 +57,12 @@ const isSolid = c => !/gv-btn-ghost|gv-btn-danger-ghost/.test(c);
 
   /* Start must survive on EVERY day. This is a change of register, not of
      function: starting a specific day from the plan is a real action. */
-  const starts = [...src.matchAll(/ctx\.startGuided\(plan, day\)/g)];
+  /* ctx.start since issue #28: Settings → Start opens decides Guided or the
+     log, and ctx.startAlt (the other way) sits beside it. */
+  const starts = [...src.matchAll(/ctx\.start\(plan, day\)/g)];
   assert.strictEqual(starts.length, 1,
     'exactly one Start handler, rendered once per day — dropping it from non-today days would remove a real action');
+  assert.strictEqual([...src.matchAll(/ctx\.startAlt\(plan, day\)/g)].length, 1, 'and the other way beside it, once per day');
 }
 
 /* ---- GUARD 2: plan-detail day cards are a hairline, not acting weight ---- */
