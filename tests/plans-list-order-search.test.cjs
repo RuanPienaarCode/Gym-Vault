@@ -223,12 +223,12 @@ const badgeOf = (root, name) => {
   const ctx = makeCtx(list, LUNCH);
   const root = global.document.createElement('div');
   render(ctx, root);
-  eq(badgeOf(root, 'Pull-up · Grease the Groove'), ['paused'], 'render: a paused parallel plan carries a "paused" badge');
-  eq(badgeOf(root, 'Rest & Recovery'), ['paused'], 'render: a paused fallback plan carries a "paused" badge');
+  eq(badgeOf(root, 'Pull-up · Grease the Groove'), ['inactive'], 'render: a paused parallel plan carries an "inactive" badge');
+  eq(badgeOf(root, 'Rest & Recovery'), ['inactive'], 'render: a paused fallback plan carries an "inactive" badge');
   eq(badgeOf(root, 'Run Base · 10km'), ['alongside'], 'render: a live parallel plan still says alongside');
   eq(cardNames(root).slice(0, 2), ['Midday Circuit', 'Run Base · 10km'], 'render: only the live plans lead the list');
   const card = flat(root).filter(nd => hasClass(nd, 'gv-plan-card')).find(c => nameOf(c) === 'Rest & Recovery');
-  eq(card.attrs['aria-label'], 'Open Rest & Recovery, paused', 'render: the aria-label says paused');
+  eq(card.attrs['aria-label'], 'Open Rest & Recovery, inactive', 'render: the aria-label says paused');
 }
 
 console.log(`plans list order + search OK (${n} checks)`);

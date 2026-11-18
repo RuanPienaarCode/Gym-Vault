@@ -173,7 +173,9 @@ class EndSessionModal extends Modal {
 
 /* Switch which plan drives the dashboard. Parallel and fallback plans are
    listed too but not selectable — they are not alternatives, they fill in
-   around whatever is active, and saying so beats hiding them. */
+   around whatever is active, and saying so beats hiding them. Only ACTIVE
+   ones are listed (the caller passes ctx.parallelPlans/fallbackPlans, which
+   skip paused plans). */
 class PlanPickerModal extends Modal {
   constructor(app, { plans, extras, currentName, onPick }) {
     super(app);
@@ -207,9 +209,9 @@ class PlanPickerModal extends Modal {
       const main = row.createDiv({ cls: 'gv-optrow-main' });
       main.createDiv({ cls: 'gv-optrow-name', text: p.name });
       main.createDiv({ cls: 'gv-optrow-desc',
-        text: String(p.fm.fallback) === 'true'
-          ? 'Fills any day your plan leaves empty — always on.'
-          : 'Runs alongside whichever plan is active — always on.' });
+        text: `${String(p.fm.fallback) === 'true'
+          ? 'Fills any day your plan leaves empty'
+          : 'Runs alongside whichever plan is active'} — switch it on or off on its page.` });
     }
   }
   onClose() { this.contentEl.empty(); }

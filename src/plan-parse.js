@@ -377,9 +377,16 @@ function isFavourite(plan) {
    export can never label a different plan than Today follows. For an afternoon
    there were two copies, and this one still let a fallback plan lead. */
 const mainPlansOf = plans => (plans || []).filter(p => String(p.fm.parallel) !== 'true' && String(p.fm.fallback) !== 'true');
+/* `active: false` written on the note is a CHOICE (the plan page's Active
+   switch, or a switch to another plan): such a plan is never picked
+   implicitly. Only a plan whose note says nothing about `active` (one written
+   by hand) may stand in when nothing is flagged — so switching the active plan
+   off really leaves Today with no main plan, instead of quietly promoting the
+   next one in the list. */
+const saysInactive = p => String(p.fm.active) === 'false';
 function activePlanOf(plans) {
   const main = mainPlansOf(plans);
-  return main.find(p => String(p.fm.active) === 'true') || main[0] || null;
+  return main.find(p => String(p.fm.active) === 'true') || main.find(p => !saysInactive(p)) || null;
 }
 
 /* 'fallback' | 'parallel' | '' — what kind of ALONGSIDE plan it is, paused or
@@ -400,7 +407,44 @@ function planRole(p, activePlan) {
   return activePlan && p === activePlan ? 'active' : '';
 }
 
+/* WHAT A PLAN IS FOR, CHOSEN ON ITS PAGE: 'main' (an alternative for the
+   plan Today runs), 'parallel' (its days are added beside the main plan's) or
+   'fallback' (it fills a weekday nothing else claims). Until now the role was
+   a frontmatter key you could only type by hand.
+
+   withRole(fm, role) returns the frontmatter the note should carry, or null
+   when it already says so. The on/off state carries across, in the role's own
+   key: a main plan's `active` becomes an alongside plan's `paused` (active →
+   on, anything else → paused), and a plan moved INTO main arrives
+   `active: false` — becoming main never silently takes Today over from the
+   plan you chose. Keys the new role does not read are removed, so a note
+   never carries a flag that means nothing. Pure. */
+const PLAN_ROLES = ['main', 'parallel', 'fallback'];
+function roleOf(fm) {
+  return alongsideKind({ fm: fm || {} }) || 'main';
+}
+function withRole(fm, role) {
+  if (!PLAN_ROLES.includes(role)) throw new Error(`unknown plan role: ${role}`);
+  const was = roleOf(fm);
+  /* A plan flagged BOTH parallel and fallback reads as fallback; picking
+     fallback still tidies the stray parallel key. */
+  if (was === role && !(role === 'fallback' && String(fm.parallel) === 'true')) return null;
+  const next = { ...fm };
+  if (role === 'main') {
+    delete next.parallel; delete next.fallback; delete next.paused;
+    next.active = false;
+    return next;
+  }
+  const on = was === 'main' ? String(fm.active) === 'true' : String(fm.paused) !== 'true';
+  delete next.active;
+  if (role === 'parallel') { next.parallel = true; delete next.fallback; }
+  else { next.fallback = true; delete next.parallel; }
+  if (on) delete next.paused; else next.paused = true;
+  return next;
+}
+
 module.exports = {
+  PLAN_ROLES, roleOf, withRole,
   isPaused, isFavourite, mainPlansOf, activePlanOf, alongsideKind, planRole, rxLabel,
   parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, moveItem, updateItem, itemSets, isRestDay,
   targetWeight, targetFirstNumber, targetIsDuration, targetDurationSeconds,

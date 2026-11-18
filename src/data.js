@@ -13,7 +13,7 @@
 
 const { normalizePath, TFile, TFolder, requestUrl, Notice } = require('obsidian');
 const { parseFrontmatter, serializeFrontmatter, tableToObjects, parseMdTable, unescMd, ROW_EXTRA, buildMdTable, replaceFirstTable, tableHeaderLabels } = require('./markdown');
-const { parsePlanBody, serializePlanBody, isPaused } = require('./plan-parse');
+const { parsePlanBody, serializePlanBody, isPaused, withRole } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
@@ -690,12 +690,17 @@ function makeIo(plugin) {
   }
 
   /* Exactly one plan active: activating one deactivates the rest, so
-     "today's workout" is never ambiguous. */
+     "today's workout" is never ambiguous. A null target switches them ALL
+     off (the plan page's Active switch): every plan is then stamped
+     `active: false`, including a hand-written note with no `active` key,
+     because plan-parse.activePlanOf lets a key-less plan stand in when
+     nothing is flagged — and "off" must not hand Today to the next plan. */
   async function setActivePlan(plans, target) {
     for (const p of plans) {
       const want = p === target;
       const is = String(p.fm.active) === 'true';
-      if (want === is) continue;
+      const stampOff = target === null && String(p.fm.active) !== 'false';
+      if (want === is && !stampOff) continue;
       /* Patch the FRONTMATTER only. savePlan re-serializes the body from the
          parsed model, so flipping a flag used to rewrite every other plan's
          prose and list formatting too — a plan switch has no business
@@ -730,6 +735,29 @@ function makeIo(plugin) {
 
   /* Star or unstar a plan. Same write as setPaused, under its own key. */
   async function setFavourite(plan, on) { return setPlanFlag(plan, 'favourite', on); }
+
+  /* Make a plan main, alongside or fills-gaps (plan-parse.withRole says what
+     the frontmatter becomes). Frontmatter only, applied to the note's current
+     text like setPlanFlag; the body is the file's own. Resolves true when the
+     note now says what was asked, false when it was deleted outside the app. */
+  async function setPlanRole(plan, role) {
+    const path = plan.file && plan.file.path;
+    return exclusive(path, async () => {
+      let nextFm = null;
+      const res = await applyToFile(path, current => {
+        const { fm, body } = parseFrontmatter(current);
+        nextFm = withRole(fm, role);
+        return nextFm ? serializeFrontmatter(nextFm) + '\n' + body : null;
+      });
+      if (res.gone) { tell(`"${plan.name}" was deleted or moved outside the app — nothing was saved.`); return false; }
+      if (res.text !== null && nextFm) {
+        for (const k of Object.keys(plan.fm)) delete plan.fm[k];
+        Object.assign(plan.fm, nextFm);
+        rememberLoaded(plan.fm, undefined, res.text);
+      }
+      return true;
+    });
+  }
 
   async function setPlanFlag(plan, key, on) {
     const path = plan.file && plan.file.path;
@@ -1198,7 +1226,7 @@ function makeIo(plugin) {
     paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveExport, saveProfile, appendBodyRow, readRewards, appendRewards,
     fetchPlanIndex, installPlan,
     createExercise, saveExercise, createGoal, saveGoal,
-    createPlan, savePlan, setActivePlan, setPaused, setFavourite, saveWorkout, trash, safeName,
+    createPlan, savePlan, setActivePlan, setPaused, setFavourite, setPlanRole, saveWorkout, trash, safeName,
     listPhotos, savePhoto, photoSrc,
     listVoiceClips, saveVoiceClip, readVoiceClip,
   };

@@ -142,10 +142,17 @@ allow it) or *Silent* (the count is still on screen).
 
 **Pausing.** The hold timer, the rest countdown and the timed circuit's
 interval each have a pause button; a pause freezes the clock exactly, and what
-the screen stopped on is what the workout saves. Separately, a plan that runs
-alongside your active plan or fills its empty days has a *Show on Today*
-switch on its page: switch it off to pause that plan (it is kept, and writes
-`paused: true` into its note) without deleting anything.
+the screen stopped on is what the workout saves.
+
+**Managing plans.** Every plan, on the Plans list and on its own page, has a
+*Role* and an *Active* switch. The role is *Main plan* (the plan Today runs —
+only one main plan is active at a time, so switching one on switches the other
+off), *Runs alongside* (its days are added to Today beside the main plan's) or
+*Fills gaps* (it only takes a weekday nothing else claims). Switching a plan
+off keeps it in your library and deletes nothing; switch the main plan off and
+Today shows *No active plan* with a *Choose a plan* button until you pick one.
+A plan moved to *Main plan* arrives switched off, so it never takes Today over
+by surprise.
 
 Either way the session is saved to `Gym/Workouts/` when you're done, and you
 can switch to the plain log screen mid-session without losing a thing. Warm-up
@@ -270,10 +277,13 @@ Keep the elbows tucked on this one.
 - **Prose** between lines, under a day or above the first one, is kept exactly
   where you wrote it. An *indented* bullet is your own annotation on the line
   above, not an exercise.
-- **Frontmatter**: `active: true` makes it the plan Today follows (*Make
-  active* in the app clears the flag on your other plans). `paused: true`
-  takes a plan that runs alongside, or fills gaps, off Today without deleting
-  it; on any other plan it means nothing.
+- **Frontmatter** (the *Role* and *Active* controls write these for you):
+  `active: true` makes it the plan Today follows (switching a plan on in the
+  app clears the flag on your other plans); `active: false` keeps a main plan
+  off. A main plan with no `active` key at all may stand in when nothing is
+  flagged. `parallel: true` makes it run alongside, `fallback: true` makes it
+  fill gaps, and `paused: true` takes either of those off Today without
+  deleting it; on a main plan `paused` means nothing.
   `favourite: true` is the star on the Plans list; it only moves the plan up
   the list.
 

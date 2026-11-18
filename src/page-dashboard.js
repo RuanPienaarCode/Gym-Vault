@@ -254,6 +254,31 @@ function render(ctx, root) {
       claim));
   }
 
+  /* Every main plan is switched off (its page's Active switch, or every
+     note says `active: false`): Today has no programme of its own, only
+     whatever runs alongside. Say so, and make choosing one a tap rather than
+     a trip to Plans. */
+  const mains = typeof ctx.mainPlans === 'function' ? ctx.mainPlans() : [];
+  if (!plan && mains.length) {
+    const choose = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button' },
+      ico('circle-check'), el('span', {}, 'Choose a plan'));
+    choose.addEventListener('click', () => new PlanPickerModal(ctx.app, {
+      plans: mains,
+      extras: [...ctx.parallelPlans(), ...ctx.fallbackPlans()],
+      currentName: null,
+      onPick: async next => {
+        await ctx.io.setActivePlan(ctx.mainPlans(), next);
+        ctx.notice(`${next.name} is now your active plan.`);
+        ctx.reload();
+      },
+    }).open());
+    head.append(el('div', { class: 'gv-card gv-alsotoday' },
+      el('div', { class: 'gv-alsotoday-main' },
+        el('div', { class: 'gv-kicker' }, 'No active plan'),
+        el('div', { class: 'gv-alsotoday-plan' }, 'Switch a plan on to fill Today.')),
+      choose));
+  }
+
   /* The title, its chips and the streak badge share one positioned stage, so
      the chips and the badge sit beside the title's second line. */
   const stage = el('div', { class: `gv-hero-stage${streak > 0 ? ' has-badge' : ''}` });

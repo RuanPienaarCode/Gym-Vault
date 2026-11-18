@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Plans harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .lab{font:600 11px/1.6 system-ui;color:#555;letter-spacing:.05em;text-transform:uppercase;margin:0 0 4px}
+  .frame{border:1px solid #bbb;background:#fff;overflow:hidden}
+  .frame .gv-app{display:flex;flex-direction:column;height:820px}
+  .frame .gv-page{overflow:auto;padding:12px}
+</style></head>
+<body>
+<script src="bundle.js"></script>
+<script>
+  /* An in-memory io that does what data.js does to frontmatter, so the
+     switches and the role picker actually flip and the page re-renders. */
+  const P = window.__planParse;
+  const day = (name, weekday, items) => ({ name, weekday, notes: [], items: items || [], parts: [] });
+  const ex = (exercise) => ({ exercise, sets: 3, target: '10' });
+  const plan = (name, fm, days) => ({ name, file: { path: 'Gym/Plans/' + name + '.md' }, fm, model: { intro: [], days } });
+  const plans = [
+    plan('Lunch Circuit', { active: true }, [day('Upper', 'mon', [ex('Push-ups'), ex('Pull-ups')]), day('Lower', 'wed', [ex('Squat')])]),
+    plan('Get Over The Bar', { active: false }, [day('Pull', 'tue', [ex('Pull-ups')]), day('Pull', 'thu', [ex('Pull-ups')])]),
+    plan('Grease the Groove', { parallel: true }, [day('Grease', 'sun', [ex('Pull-ups')])]),
+    plan('Rest & Recovery', { fallback: true, paused: true }, [day('Rest', 'any', [])]),
+  ];
+  const mains = () => plans.filter(p => String(p.fm.parallel) !== 'true' && String(p.fm.fallback) !== 'true');
+  const frames = [];
+  function mount(width, dark, params) {
+    const wrap = document.createElement('div');
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = width + 'px' + (dark ? ' · dark' : '') + (params.plan ? ' · ' + params.plan : ' · list');
+    const frame = document.createElement('div'); frame.className = 'frame' + (dark ? ' theme-dark' : ' theme-light'); frame.style.width = width + 'px';
+    const app = document.createElement('div'); app.className = 'gv-app ' + (window.__skin || 'gv-skin-apex gv-skin-poster gv-accent-lime') + (width <= 480 ? ' gv-narrow' : '');
+    const page = document.createElement('main'); page.className = 'gv-page';
+    app.append(page); frame.append(app); wrap.append(lab, frame); document.body.append(wrap);
+    const state = { params };
+    const draw = () => { page.innerHTML = ''; window.__pages.plans.render(ctx, page); };
+    const ctx = {
+      data: { plans, exercises: [] }, app: {}, state,
+      io: {
+        setActivePlan: async (list, target) => { for (const p of list) p.fm.active = p === target; },
+        setPaused: async (p, on) => { if (on) p.fm.paused = true; else delete p.fm.paused; return true; },
+        setPlanRole: async (p, role) => { const n = P.withRole(p.fm, role); if (n) { for (const k of Object.keys(p.fm)) delete p.fm[k]; Object.assign(p.fm, n); } return true; },
+        setFavourite: async (p, on) => { p.fm.favourite = on; return true; }, savePlan: async () => true,
+      },
+      nav: (pg, prm) => { state.params = prm || {}; draw(); }, rerender: () => draw(),
+      reload: () => frames.forEach(f => f()), notice: m => console.log('notice:', m),
+      openFile: () => {}, startGuided: () => {}, backTo: f => f, back: () => { state.params = {}; draw(); },
+      activePlan: () => P.activePlanOf(plans), mainPlans: mains,
+    };
+    frames.push(draw); draw();
+  }
+  mount(375, false, {});
+  mount(375, false, { plan: 'Get Over The Bar' });
+  mount(375, true, {});
+  window.__skin = 'gv-skin-calm gv-accent-olive'; mount(375, false, { plan: 'Lunch Circuit' });
+</script>
+</body></html>

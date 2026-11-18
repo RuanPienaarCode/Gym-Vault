@@ -71,7 +71,11 @@ window.__pages = {
      and personal-best elements on Today and Records, against a stub ctx. */
   dashboard: require('../src/page-dashboard'),
   records: require('../src/page-records'),
+  /* plans, for _preview/plans.html — the role picker + Active switch on the
+     list cards and on a plan's page, against an in-memory io. */
+  plans: require('../src/page-plans'),
 };
+window.__planParse = require('../src/plan-parse');
 window.__voicePack = require('../src/voice-pack');
 window.__voiceRecord = require('../src/voice-record');
 window.__voiceClips = require('../src/voice-clips');
