@@ -221,5 +221,16 @@ assert.strictEqual(
   'a plan flagged active must produce no notice at all.',
 );
 
+/* ---- PROMISE 4: every main plan switched OFF (18 Nov 2026) ---- */
+const offPlan = plan('Get Over The Bar', thePlan.model.days.map(d => ({ ...d })), { active: 'false' });
+const none = renderTo(makeCtx({ activePlan: () => null, mainPlans: () => [offPlan], daysOn: () => [] }));
+assert.ok(
+  none.textContent.indexOf('No active plan') !== -1 && none.textContent.indexOf('Switch a plan on to fill Today.') !== -1,
+  `with every main plan switched off, Today must say so. Got: ${none.textContent.slice(0, 200)}`,
+);
+assert.ok(findButton(none, 'Choose a plan'), 'and offer the way back in one tap.');
+const empty = renderTo(makeCtx({ activePlan: () => null, mainPlans: () => [], daysOn: () => [] }));
+assert.strictEqual(findButton(empty, 'Choose a plan'), null, 'no main plans at all: there is nothing to choose.');
+
 console.log('today draft render OK (an open session is announced, named and resumable; an unflagged ' +
   'active plan says so and can be claimed; neither appears when it should not)');

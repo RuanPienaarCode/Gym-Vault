@@ -6,7 +6,7 @@
 
 const { el, ico, prose, clickableCard, backButton, toggleRow, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS, startModes } = require('./constants');
-const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite, planRole, rxLabel } = require('./plan-parse');
+const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite, planRole, rxLabel, roleOf } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
 const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
@@ -155,7 +155,7 @@ const ROLE_BADGE = { active: 'active', alongside: 'alongside', 'fills-gaps': 'fi
 /* The badge words for a plan: its role, or "paused". */
 function badgeWord(p, activePlan) {
   const role = planRole(p, activePlan);
-  return role ? ROLE_BADGE[role] : isPaused(p) ? 'paused' : '';
+  return role ? ROLE_BADGE[role] : isPaused(p) ? 'inactive' : '';
 }
 
 /* Plans in use lead the list (active, then the ones running alongside it,
@@ -291,7 +291,8 @@ function planCards(ctx, shown, activeNow) {
         el('div', { class: 'gv-plan-kit' }, ico('dumbbell'),
           el('span', {}, equipmentSummary(data.exercises, planExerciseNames(p)))),
         el('div', { class: 'gv-plan-days' },
-          ...days.map(d => el('span', { class: 'gv-tag' }, `${d.weekday} · ${d.name}`)))),
+          ...days.map(d => el('span', { class: 'gv-tag' }, `${d.weekday} · ${d.name}`))),
+        cardControls(ctx, p)),
       el('div', { class: 'gv-card-actions' }, favouriteButton(ctx, p), ico('chevron-right', 'gv-dim')));
     list.append(c);
   }
@@ -345,8 +346,105 @@ function facetChips(ctx, label, values, labelOf, get, set) {
   return row;
 }
 
+/* WHAT THIS PLAN DOES, AND WHETHER IT IS ON — one block at the top of a
+   plan's page, for every plan.
+
+   The role picker makes it a Main plan (an alternative for the plan Today
+   runs), one that Runs alongside (its days are added beside the main plan's)
+   or one that Fills gaps (it only takes a weekday nothing else claims). The
+   role used to be a frontmatter key you could only type by hand.
+
+   The switch is Active / Inactive in every role. For a main plan it is the
+   `active` flag: on makes it THE plan Today runs (the one that was active is
+   switched off — exactly one, so Today is never ambiguous), off leaves Today
+   with no main plan until you turn one on. setActivePlan is only ever handed
+   ctx.mainPlans(): stamping `active` onto an alongside plan means nothing.
+   For an alongside plan it is `paused` (plan-parse.isPaused). Nothing is
+   deleted either way; the plan stays in the library. */
+const ROLE_OPTIONS = [['main', 'Main plan'], ['parallel', 'Runs alongside'], ['fallback', 'Fills gaps']];
+
+/* The two writes, shared by the plan page and the Plans list so both say and
+   do exactly the same thing. */
+function isPlanOn(ctx, plan) {
+  if (roleOf(plan.fm) === 'main') return typeof ctx.activePlan === 'function' && ctx.activePlan() === plan;
+  return !isPaused(plan);
+}
+async function setPlanOn(ctx, plan, on) {
+  if (roleOf(plan.fm) === 'main') await ctx.io.setActivePlan(ctx.mainPlans(), on ? plan : null);
+  else await ctx.io.setPaused(plan, !on);
+  ctx.reload();
+}
+async function changeRole(ctx, plan, next) {
+  const ok = await ctx.io.setPlanRole(plan, next);
+  if (ok && next === 'main') ctx.notice(`${plan.name} is now a main plan. Switch it on to make it the plan Today runs.`);
+  ctx.reload();
+}
+
+/* The compact pair on a Plans list card: a role dropdown and an Active
+   switch. Both sit inside a card that opens the plan when tapped, so every
+   event they take stops there (the star does the same). */
+function cardControls(ctx, plan) {
+  const stop = e => e.stopPropagation();
+  const role = roleOf(plan.fm);
+  const sel = el('select', { class: 'dropdown gv-plan-role-select', 'aria-label': `Role of ${plan.name}` },
+    ...ROLE_OPTIONS.map(([v, label]) => el('option', v === role ? { value: v, selected: 'selected' } : { value: v }, label)));
+  sel.value = role;
+  sel.addEventListener('click', stop);
+  sel.addEventListener('keydown', stop);
+  sel.addEventListener('change', e => { stop(e); if (sel.value !== role) changeRole(ctx, plan, sel.value); });
+  const on = isPlanOn(ctx, plan);
+  const sw = el('button', {
+    class: `gv-plan-switch${on ? ' on' : ''}`, type: 'button', role: 'switch',
+    'aria-checked': on ? 'true' : 'false', 'aria-label': `${plan.name} active`,
+  }, el('span', {}, on ? 'Active' : 'Inactive'), el('span', { class: `gv-switch${on ? ' on' : ''}`, 'aria-hidden': 'true' }));
+  sw.addEventListener('keydown', stop);
+  sw.addEventListener('click', e => { stop(e); setPlanOn(ctx, plan, !on); });
+  return el('div', { class: 'gv-plan-ctl' }, sel, sw);
+}
+
+function planControls(ctx, plan) {
+  const wrap = el('div', { class: 'gv-plan-controls' });
+  const role = roleOf(plan.fm);
+  /* Chips, not dom.segmented: the chip's pressed colours are tuned and
+     contrast-guarded per skin, and the segmented button's are not (its
+     pressed label vanished on Apex light). */
+  const picker = el('div', { class: 'gv-chips gv-facet gv-plan-role', role: 'radiogroup', 'aria-label': `Role of ${plan.name}` },
+    el('span', { class: 'gv-facet-label' }, 'Role'));
+  for (const [value, label] of ROLE_OPTIONS) {
+    const on = value === role;
+    const b = el('button', { class: `gv-chip${on ? ' on' : ''}`, type: 'button', role: 'radio', 'aria-checked': on ? 'true' : 'false' }, label);
+    b.addEventListener('click', () => { if (!on) changeRole(ctx, plan, value); });
+    picker.append(b);
+  }
+  wrap.append(picker);
+
+  if (role === 'main') {
+    const on = isPlanOn(ctx, plan);
+    const desc = on
+      ? 'Today runs this plan. Switch off and Today has no main plan until you turn one on.'
+      : (ctx.activePlan && ctx.activePlan()
+        ? `Switch on to make this the plan Today runs. ${ctx.activePlan().name} will be switched off.`
+        : 'Switch on to make this the plan Today runs.');
+    wrap.append(toggleRow(on ? 'Active' : 'Inactive', desc, on,
+      want => setPlanOn(ctx, plan, want),
+      { label: 'Active plan' }));
+    return wrap;
+  }
+  const paused = isPaused(plan);
+  wrap.append(toggleRow(
+    paused ? 'Inactive' : 'Active',
+    role === 'fallback'
+      ? (paused ? 'It will not fill your empty days. Nothing is deleted. Switch on to bring it back.'
+        : 'Fills any weekday your main plan leaves empty. Switch off to pause it.')
+      : (paused ? 'Its days are not added to Today. Nothing is deleted. Switch on to bring it back.'
+        : 'Runs alongside your main plan: its days are added to Today. Switch off to pause it.'),
+    !paused,
+    on => setPlanOn(ctx, plan, on),
+    { label: 'Show on Today' }));
+  return wrap;
+}
+
 function renderDetail(ctx, root, plan) {
-  const active = String(plan.fm.active) === 'true';
 
   const bar = el('div', { class: 'gv-toolbar' });
   /* Back to the CALLER. This was hardcoded to the plan LIST, which is right
@@ -363,32 +461,6 @@ function renderDetail(ctx, root, plan) {
   const back = backButton(ctx, 'plans');
   bar.append(back, el('h2', { class: 'gv-toolbar-title' }, plan.name));
   const actions = el('div', { class: 'gv-toolbar-actions' }, favouriteButton(ctx, plan));
-  /* A parallel or fallback plan is never a switch TARGET. ctx.activePlan()
-     (controller.js) filters both kinds out of `main` before picking who
-     drives the dashboard, so a "Make active" button here that flipped
-     fm.active on one of them badged IT as active on this page while Today
-     kept running whatever main plan the filter fell back to — the truth
-     split between the two screens. Say what the plan actually does
-     instead of offering a switch that cannot work. */
-  const isParallel = String(plan.fm.parallel) === 'true';
-  const isFallback = String(plan.fm.fallback) === 'true';
-  if (active) {
-    actions.append(el('span', { class: 'gv-badge' }, 'active'));
-  } else if (isFallback || isParallel) {
-    /* The control is a full-width row under the toolbar (below), not a
-       toolbar button: the toolbar already carries Back, the title, Edit and
-       Open note on a 390px phone. */
-  } else {
-    actions.append(el('button', {
-      class: 'gv-btn gv-btn-ghost', type: 'button',
-      /* ctx.mainPlans(), never the whole plan list: setActivePlan clears
-         active:false onto every OTHER plan it is handed, so passing the raw
-         list let it stamp a real flag onto a parallel/fallback plan the
-         dashboard was never going to look at, and just as easily clear one
-         on a plan the switcher never showed as an option. */
-      onclick: async () => { await ctx.io.setActivePlan(ctx.mainPlans(), plan); ctx.reload(); },
-    }, ico('circle-check'), el('span', {}, 'Make active')));
-  }
   /* EDIT MODE is a view state, not a draft. Every change writes to the note
      the moment it is made — there is no Save button and nothing accumulates
      unsaved, because a half-finished plan edit lost to a vault sync would be
@@ -413,26 +485,7 @@ function renderDetail(ctx, root, plan) {
   bar.append(actions);
   root.append(bar);
 
-  /* A plan that runs alongside the active one, or fills its empty days, is on
-     Today until you say otherwise. This is the switch (it was static text:
-     "Runs alongside the active plan", with no way to manage it). Pausing
-     writes `paused: true` into the note's frontmatter and nothing else; the
-     plan stays in the library and on the Plans list, it just stops landing on
-     Today. The active plan and ordinary plans do not get this row: they have
-     "Make active". */
-  if (!active && (isFallback || isParallel)) {
-    const paused = isPaused(plan);
-    root.append(toggleRow(
-      paused ? 'Paused' : 'On Today',
-      isFallback
-        ? (paused ? 'It will not fill your empty days. Nothing is deleted. Switch on to bring it back.'
-          : 'Fills any weekday your active plan leaves empty. Switch off to pause it.')
-        : (paused ? 'Its days are not added to Today. Nothing is deleted. Switch on to bring it back.'
-          : 'Runs alongside your active plan: its days are added to Today. Switch off to pause it.'),
-      !paused,
-      async on => { await ctx.io.setPaused(plan, !on); ctx.reload(); },
-      { label: 'Show on Today' }));
-  }
+  root.append(planControls(ctx, plan));
 
   if (plan.model.intro.length) {
     /* First paragraph only until asked — a plan's rationale is worth having

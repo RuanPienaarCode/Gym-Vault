@@ -114,9 +114,13 @@ function renderRoot(renderFn, ctx) {
     {
       const { ctx, calls } = makeCtx(plans, { openPlan: 'Strength' });
       const root = renderRoot(render, ctx);
-      const btn = byTag(root, 'button').find(b => b.textContent.includes('Make active'));
-      assert.ok(btn, `${label}: a main, inactive plan must offer "Make active"`);
-      fire(btn, 'click');
+      /* Since the Active switch (18 Nov 2026) the control is a role="switch"
+         row; OLD source has only the Make active button. */
+      const btn = label === 'OLD'
+        ? byTag(root, 'button').find(b => b.textContent.includes('Make active'))
+        : flat(root).find(n => n.attrs && n.attrs.role === 'switch' && n.attrs['aria-label'] === 'Active plan');
+      assert.ok(btn, `${label}: a main, inactive plan must offer a way to make it active`);
+      fire(btn, 'click', { target: { closest: () => null } });
       return { calls, ctx, plans, label };
     }
   };
@@ -147,14 +151,14 @@ function renderRoot(renderFn, ctx) {
     /* 0.13.1: the static "Fills empty days" text became a switch row (paused
        plans) — it must still SAY what the plan does. tests/plan-paused.test.cjs
        drives the switch itself. */
-    assert.ok(flat(restRoot).some(n => n.tag === 'div' && /^Fills any weekday your active plan leaves empty/.test(n.textContent)),
+    assert.ok(flat(restRoot).some(n => n.tag === 'div' && /^Fills any weekday your main plan leaves empty/.test(n.textContent)),
       'NEW: a fallback plan must say what it actually does instead');
 
     const { ctx: runCtx } = makeCtx(plans, { openPlan: 'Running' });
     const runRoot = renderRoot(CURRENT.render, runCtx);
     assert.ok(!byTag(runRoot, 'button').some(b => b.textContent.includes('Make active')),
       'NEW: a parallel plan must not offer "Make active"');
-    assert.ok(flat(runRoot).some(n => n.tag === 'div' && /^Runs alongside your active plan/.test(n.textContent)),
+    assert.ok(flat(runRoot).some(n => n.tag === 'div' && /^Runs alongside your main plan/.test(n.textContent)),
       'NEW: a parallel plan must say what it actually does instead');
   }
 

@@ -152,8 +152,8 @@ function runPlanOf(plans, isRunExercise) {
    as the rule above: the dashboard's notice and the guard that pins it must
    read one implementation. */
 function isImplicitActive(mainPlans) {
-  const main = mainPlans || [];
-  return main.length > 0 && !main.some(p => String(p.fm.active) === 'true');
+  const picked = activePlanOf(mainPlans || []);
+  return !!picked && String(picked.fm.active) !== 'true';
 }
 
 /* THE MAIN PLAN RULE, one function (audit 16 Nov 2026, #45).

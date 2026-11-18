@@ -2777,6 +2777,20 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 .theme-dark .gv-app .gv-segmented-btn { border-color: var(--gv-line-2); }
 .gv-app .gv-segmented-btn.on { background: var(--gv-ink); color: var(--gv-lime); }
 .theme-dark .gv-app .gv-segmented-btn.on { background: var(--gv-lime); color: var(--gv-ink-fixed); }
+/* A plan's role picker + Active switch, at the top of its page. The picker
+   reads left to right like the rows under it, and its buttons are full
+   44px touch targets: this one is tapped at rest, on a phone, not mid-set. */
+.gv-plan-controls { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 14px; }
+.gv-app .gv-plan-role .gv-chip { min-height: 44px; }
+.gv-plan-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.gv-app .gv-plan-role-select { min-height: 44px; max-width: 100%; }
+.gv-app .gv-plan-switch {
+  /* app.css owns the bare `button`: undo its fixed height and chrome. */
+  height: auto; min-height: 44px; padding: 0 4px;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: transparent; box-shadow: none; border: 0;
+  color: var(--gv-ink); font-weight: 700; cursor: pointer;
+}
 
 /* ---------- guided session (src/page-session.js) ----------
    A second renderer over the SAME draft page-log.js edits — deliberately
