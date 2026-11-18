@@ -61,9 +61,17 @@ function normalize(draft, pos) {
 }
 
 /* From `pos` (inclusive), roll forward to the next set that is NOT already
-   handled. Shared by resume-mid-draft, advance and both skips — one rule for
-   "what counts as the next actionable set". */
-function nextUnhandled(draft, pos) {
+   handled. Shared by resume-mid-draft, advance, both skips and Later — one
+   rule for "what counts as the next actionable set".
+
+   OFF THE END, IT COMES BACK FOR WHAT WAS PUT OFF (issue #28). An exercise
+   marked `later` (markLater, below) is looked at again once the forward walk
+   runs out, so it comes back on the set it was left on. Only marked
+   exercises: an unmarked set behind the walk was passed over on purpose (the
+   tests and the "up next" peek walk an untouched draft), and keeps meaning
+   what it always did. `leaving` is the set being moved on from — the peek asks
+   before it is ticked, so the wrap must not hand it back as its own next. */
+function nextUnhandled(draft, pos, leaving) {
   let p = normalize(draft, pos);
   const n = entryCount(draft);
   while (p.entryIndex < n) {
@@ -71,7 +79,44 @@ function nextUnhandled(draft, pos) {
     if (!isSettled(set)) return p;
     p = normalize(draft, { entryIndex: p.entryIndex, setIndex: p.setIndex + 1 });
   }
+  for (let e = 0; e < n; e++) {
+    if (!isLater(draft.entries[e])) continue;
+    const sets = draft.entries[e].sets;
+    for (let i = 0; i < sets.length; i++) {
+      if (leaving && leaving.entryIndex === e && leaving.setIndex === i) continue;
+      if (!isSettled(sets[i])) return { entryIndex: e, setIndex: i };
+    }
+  }
   return p; // isDone position
+}
+
+/* LATER: the machine is taken, so do something else and come back. The mark
+   is plain data on the ENTRY (`entry.later`), like `set.skipped` on a set: it
+   follows the exercise if the log adds or removes others, it survives leaving
+   guided mode with the draft, and buildRows never reads it, so a saved note is
+   unchanged. Nothing on its sets changes — they are not skipped and not done. */
+function isLater(entry) {
+  return !!(entry && entry.later === true);
+}
+
+function markLater(draft, pos) {
+  const cur = currentSet(draft, pos);
+  if (cur) cur.entry.later = true;
+}
+
+/* Where Later goes: the first unsettled set of ANOTHER exercise — after this
+   one, then wrapping to the front — or null when no other exercise is waiting
+   (the button hides then: there is nothing to do instead). */
+function later(draft, pos) {
+  const n = entryCount(draft);
+  const here = pos ? pos.entryIndex : -1;
+  if (here < 0 || here >= n) return null;
+  for (let k = 1; k < n; k++) {
+    const e = (here + k) % n;
+    const i = draft.entries[e].sets.findIndex(set => !isSettled(set));
+    if (i >= 0) return { entryIndex: e, setIndex: i };
+  }
+  return null;
 }
 
 /* Where a guided session starts: the first not-yet-handled set, honouring
@@ -167,14 +212,14 @@ function currentSet(draft, pos) {
 /* Move on from the set just completed — skips over anything already handled
    (the user may have ticked ahead on the overview mid-session). */
 function advance(draft, pos) {
-  return nextUnhandled(draft, { entryIndex: pos.entryIndex, setIndex: pos.setIndex + 1 });
+  return nextUnhandled(draft, { entryIndex: pos.entryIndex, setIndex: pos.setIndex + 1 }, pos);
 }
 
 /* Skip THIS set without marking it done — it stays untouched/unticked, so it
    still counts only as a plan-target prefill, same as leaving it alone on
    the overview (see stats.setCounts). */
 function skipSet(draft, pos) {
-  return nextUnhandled(draft, { entryIndex: pos.entryIndex, setIndex: pos.setIndex + 1 });
+  return nextUnhandled(draft, { entryIndex: pos.entryIndex, setIndex: pos.setIndex + 1 }, pos);
 }
 
 /* Skip the rest of the CURRENT exercise — jump to the first unhandled set of
@@ -195,4 +240,4 @@ function progress(draft) {
   return { done, total };
 }
 
-module.exports = { isHandled, isSkipped, isSettled, markTyped, typedKinds, markSkipped, markExerciseSkipped, initialPosition, isDone, currentSet, advance, skipSet, skipExercise, progress };
+module.exports = { isHandled, isSkipped, isSettled, markTyped, typedKinds, markSkipped, markExerciseSkipped, initialPosition, isDone, currentSet, advance, skipSet, skipExercise, isLater, markLater, later, progress };

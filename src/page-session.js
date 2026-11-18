@@ -15,6 +15,7 @@
 
 const { Notice } = require('obsidian');
 const { el, ico, clear, fmtSeconds, segmented, numericInput, statTile } = require('./dom');
+const { recapEl } = require('./recap');
 const { todayISO } = require('./dates');
 const { DEFAULT_SETTINGS, GUIDE_REST, accentFor } = require('./constants');
 const { setCounts, goalCurrent, goalProgress, sameName } = require('./stats');
@@ -588,11 +589,29 @@ function renderActive(ctx, root, draft, sess) {
     ctx.rerender();
   });
 
+  /* LATER (issue #28): the machine is taken, so do another exercise and come
+     back to this one at the end, on the set it was left on. Not a skip:
+     nothing is marked undone. Only offered while another exercise is waiting
+     — with nothing else to do, "later" would just be now. */
+  const laterTo = flow.later(draft, sess.pos);
+  let laterBtn = '';
+  if (laterTo) {
+    laterBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-session-skip gv-session-later', type: 'button', 'aria-label': `Do ${entry.exercise} later` },
+      ico('clock'), el('span', {}, 'Later'));
+    laterBtn.addEventListener('click', () => {
+      flow.markLater(draft, sess.pos);
+      keepDraft(ctx);
+      sess.pos = laterTo;
+      resetActiveState(sess);
+      ctx.rerender();
+    });
+  }
+
   const ord = el('div', { class: 'gv-session-ord' },
     `Exercise ${entryIndex + 1}/${draft.entries.length} · Set ${setIndex + 1}/${entry.sets.length}`);
   const extra = el('div', { class: 'gv-session-top-extra' }, ord,
     el('div', { class: 'gv-session-skips' },
-      el('span', { class: 'gv-session-skip-kicker' }, 'Skip'), skipSetBtn, skipExBtn));
+      laterBtn, el('span', { class: 'gv-session-skip-kicker' }, 'Skip'), skipSetBtn, skipExBtn));
 
   /* THE POSTER CHROME (Apex + Lock In; live-chrome.js). A different arrangement
      of the SAME controls: the skip buttons built above move down into the
@@ -607,7 +626,7 @@ function renderActive(ctx, root, draft, sess) {
       : entry.weighted ? weightedBody(ctx, draft, sess, entry, set)
         : repsBody(ctx, draft, sess, entry, set);
     const skipSlot = posterBody.querySelector('.gv-live-skips');
-    if (skipSlot) skipSlot.append(el('span', { class: 'gv-session-skip-kicker' }, 'Skip'), skipSetBtn, skipExBtn);
+    if (skipSlot) skipSlot.append(laterBtn, el('span', { class: 'gv-session-skip-kicker' }, 'Skip'), skipSetBtn, skipExBtn);
     root.append(posterBody);
     return;
   }
@@ -629,7 +648,10 @@ function exerciseBlock(ctx, sess, entry) {
   const ex = findExercise(ctx, entry.exercise);
   const head = el('div', { class: 'gv-session-exhead' },
     el('h2', { class: 'gv-display gv-session-exname' }, entry.exercise),
-    entry.target ? el('div', { class: 'gv-session-target' }, entry.target) : '');
+    entry.target ? el('div', { class: 'gv-session-target' }, entry.target) : '',
+    /* Last time and your bests (issue #28), the same lines the log card shows;
+       history from before this session (sess.workoutsAtStart). */
+    recapEl(sess.workoutsAtStart, entry, 'gv-session-recap'));
   /* Guided view only ever animates a start->finish pair — cap BEFORE error
      handling wires up, so a dropped frame 1 never promotes a frame 3 that
      was never even resolved for this view (the detail page still shows
@@ -732,7 +754,8 @@ function posterHead(ctx, sess, entry, entryIndex, setIndex) {
   return el('div', { class: 'gv-session-exblock gv-live-head' + (img ? ' has-media' : '') },
     el('div', { class: 'gv-live-headtext' },
       el('h2', { class: 'gv-display gv-session-exname gv-live-name' }, entry.exercise),
-      sub ? el('div', { class: 'gv-session-target gv-live-sub' }, sub) : ''),
+      sub ? el('div', { class: 'gv-session-target gv-live-sub' }, sub) : '',
+      recapEl(sess.workoutsAtStart, entry, 'gv-session-recap gv-live-recap')),
     img || '',
     el('div', { class: 'gv-live-rail', role: 'img', 'aria-label': label },
       ...chrome.railPips(entry.sets, setIndex).map(p => el('span', { class: `gv-live-pip is-${p}` })),

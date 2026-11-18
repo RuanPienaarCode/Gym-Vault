@@ -522,7 +522,7 @@ function bmi(weightKg, heightCm) {
 }
 
 module.exports = {
-  num, workoutDates, workoutDate, workoutTime, compareWorkouts, sameName, countInWeek, sessionCount, sessionsInWeek, sessionsOf, sessionDates, isChallengeRun, weekStreak, exerciseBests, epley1RM, best1RM,
+  num, workoutDates, workoutDate, workoutTime, compareWorkouts, sameName, forEachExerciseRow, countInWeek, sessionCount, sessionsInWeek, sessionsOf, sessionDates, isChallengeRun, weekStreak, exerciseBests, epley1RM, best1RM,
   sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek, ranOn,
   goalCurrent, goalIssue, goalProgress, newGoalDefaults, weightSeries, bmi, claimableKinds, claimedBests,
 };

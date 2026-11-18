@@ -4,7 +4,7 @@
    the session stats and the start button (design/06-editorial-floor.html). */
 
 const { el, ico, fmt, fmtSeconds, clickableCard, statTile, emptyLine } = require('./dom');
-const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
+const { WEEKDAYS, WEEKDAY_LABELS, startModes } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, ISO_DATE } = require('./dates');
 const { workoutDates, sessionDates, workoutDate, weekStreak, sessionCount, sessionsInWeek, goalCurrent, goalProgress, sessionSets, countLabel, countNoun } = require('./stats');
 const { streakFlame } = require('./streak-flame');
@@ -333,15 +333,15 @@ function render(ctx, root) {
     const copy = startCopy(settings.skin, doneToday);
     slab.append(el('button', {
       class: 'gv-btn-go', type: 'button',
-      onclick: () => ctx.startGuided(dayPlan, day),
+      onclick: () => ctx.start(dayPlan, day),
     }, copy.label, copy.arrow ? ico('arrow-right', 'gv-go-arrow') : ''));
     afterHead.push(slab);
-    /* Guided is the default path; manual entry (the old direct-to-overview
-       behaviour) stays one tap away for anyone who'd rather type it in. */
+    /* Start opens what Settings → Start opens says (Guided unless changed);
+       the other way stays one tap away under it (issue #28). */
     afterHead.push(el('button', {
       class: 'gv-btn-hero-ghost gv-hero-manual', type: 'button',
-      onclick: () => ctx.startLog(dayPlan, day),
-    }, el('span', {}, 'Log manually')));
+      onclick: () => ctx.startAlt(dayPlan, day),
+    }, el('span', {}, startModes(settings).altLabel)));
     /* Calm: the detail goes UNDER the buttons, so opening it never moves Start. */
     if (simple) afterHead.push(todayMore(ctx, [prose ? el('p', { class: 'gv-today-notes' }, prose) : null, rx, kit]));
   } else if (!plan) {
@@ -381,8 +381,11 @@ function render(ctx, root) {
         el('div', { class: 'gv-kicker' }, 'Also today'),
         el('div', { class: 'gv-alsotoday-name' }, extra.day.name),
         el('div', { class: 'gv-alsotoday-plan' }, extra.plan.name)),
-      el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.startGuided(extra.plan, extra.day) },
-        ico('play'), el('span', {}, 'Start'))));
+      el('div', { class: 'gv-start-pair' },
+        el('button', { class: 'gv-btn gv-btn-small gv-btn-ghost gv-start-alt', type: 'button', onclick: () => ctx.startAlt(extra.plan, extra.day) },
+          el('span', {}, startModes(settings).altLabel)),
+        el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => ctx.start(extra.plan, extra.day) },
+          ico('play'), el('span', {}, 'Start')))));
   }
 
   /* Week strip — typographic: big initial, plan-day tag beneath. The day

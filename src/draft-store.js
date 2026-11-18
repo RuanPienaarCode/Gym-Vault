@@ -116,6 +116,9 @@ function plainEntry(entry) {
   return {
     exercise: entry.exercise, target: str(entry.target),
     duration: entry.duration === true, weighted: entry.weighted === true, distance: entry.distance === true,
+    /* Put off with Later (session-flow.markLater, issue #28): kept, so a kill
+       or a reload does not lose which exercise was waiting for its machine. */
+    ...(entry.later === true ? { later: true } : {}),
     sets,
   };
 }

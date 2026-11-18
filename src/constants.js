@@ -30,6 +30,10 @@ const DEFAULT_SETTINGS = {
      an older version would replace the default wholesale and every key added
      later would arrive undefined. Flat keys each fall back on their own. */
   guideMode: 'reps',       // 'reps' (set-by-set, the original) | 'timed' (interval circuit)
+  /* What every Start button opens (issue #28): 'guided' (the setup screen,
+     then a led session) or 'log' (straight to the log, any order). The other
+     one is always a tap away beside it — see startModes. */
+  startOpens: 'guided',
   guideMinutes: 30,
   guideWarmup: false,
   guideCooldown: false,
@@ -204,6 +208,17 @@ const SOUND_MODES = [
    accepts any weekday key; this list is the choice, in the order shown. */
 const WEEK_STARTS = [['mon', 'Monday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
 
+/* Start opens (settings.startOpens) — [key, name]. */
+const START_OPENS = [['guided', 'Guided session'], ['log', 'Log screen']];
+
+/* What a Start button opens and what sits one tap beside it. ONE rule for the
+   Today hero, the "Also today" card and every Plans day card. Anything but
+   'log' (missing, hand-edited) is Guided, the behaviour before the setting. */
+function startModes(settings) {
+  const log = !!settings && settings.startOpens === 'log';
+  return log ? { primary: 'log', alt: 'guided', altLabel: 'Guided' } : { primary: 'guided', alt: 'log', altLabel: 'Log manually' };
+}
+
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const WEEKDAY_LABELS = {
   mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
@@ -269,7 +284,7 @@ const GOAL_METRICS = [
 const MUSCLE_GROUPS = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms', 'core', 'glutes', 'quads', 'hamstrings', 'calves', 'full body'];
 
 module.exports = {
-  VIEW_TYPE, DEFAULT_SETTINGS, WEEK_STARTS, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, CALM_PALETTES, accentFor, calmPaletteOf, MUSIC_APPS, SOUND_MODES,
+  VIEW_TYPE, DEFAULT_SETTINGS, WEEK_STARTS, START_OPENS, startModes, WEEKDAYS, WEEKDAY_LABELS, SKINS, POSTER_SKINS, skinClasses, ACCENTS, CALM_PALETTES, accentFor, calmPaletteOf, MUSIC_APPS, SOUND_MODES,
   GUIDE_MODES, GUIDE_MINUTES, GUIDE_REST, PAGE_TITLES,
   BODY_COLUMNS, WORKOUT_COLUMNS, EXERCISE_TYPES, GOAL_METRICS, MUSCLE_GROUPS,
 };

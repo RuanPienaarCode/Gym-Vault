@@ -5,7 +5,7 @@
    plan-parse so hand-written coaching cues survive. */
 
 const { el, ico, prose, clickableCard, backButton, toggleRow, emptyLine } = require('./dom');
-const { WEEKDAYS, WEEKDAY_LABELS } = require('./constants');
+const { WEEKDAYS, WEEKDAY_LABELS, startModes } = require('./constants');
 const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite, planRole, rxLabel } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
 const { MUSCLE_GROUPS } = require('./constants');
@@ -463,11 +463,21 @@ function renderDetail(ctx, root, plan) {
       el('div', {},
         el('div', { class: 'gv-day-title' }, day.name),
         el('div', { class: 'gv-day-sub' }, WEEKDAY_LABELS[day.weekday] || day.weekday)),
-      el('button', {
-        class: `gv-btn gv-btn-small${isToday ? '' : ' gv-btn-ghost'}`,
-        type: 'button',
-        onclick: () => ctx.startGuided(plan, day),
-      }, ico('play'), el('span', {}, 'Start'))));
+      /* Start opens what Settings → Start opens says; the other way sits
+         beside it, so the log is never reached by starting and leaving a
+         guided session (issue #28). */
+      el('div', { class: 'gv-start-pair' },
+        el('button', {
+          class: 'gv-btn gv-btn-small gv-btn-ghost gv-start-alt',
+          type: 'button',
+          'aria-label': `${startModes(ctx.settings).altLabel}: ${day.name}`,
+          onclick: () => ctx.startAlt(plan, day),
+        }, el('span', {}, startModes(ctx.settings).altLabel)),
+        el('button', {
+          class: `gv-btn gv-btn-small${isToday ? '' : ' gv-btn-ghost'}`,
+          type: 'button',
+          onclick: () => ctx.start(plan, day),
+        }, ico('play'), el('span', {}, 'Start')))));
     if (day.notes.length) card.append(prose(day.notes, { class: 'gv-day-note', preview: 1 }));
     const kit = equipmentFor(ctx.data.exercises, day.items.map(it => it.exercise));
     if (kit.length) {

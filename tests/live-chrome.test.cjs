@@ -106,7 +106,7 @@ const PLAN = '## D (any)\n\n- Push-ups | 3 x 10\n- Goblet Squat | 1 x 8 @ 20kg\n
       tapN(b, 4);
       const sheet = q(b, '.gv-live-sheet');
       const skips = sheet.querySelector('.gv-live-skips');
-      eq(skips.querySelectorAll('button').map(x => x.getAttribute('aria-label')), ['Skip this set', 'Skip this exercise'], 'both skips live in the sheet, labelled as before');
+      eq(skips.querySelectorAll('button').map(x => x.getAttribute('aria-label')), ['Do Push-ups later', 'Skip this set', 'Skip this exercise'], 'Later (issue #28) and both skips live in the sheet, labelled as before');
       eq(skips.querySelector('.gv-session-skip-kicker').textContent, 'Skip', 'and the word that says what they do');
       ok(!inside(b, '.gv-session-top', '.gv-session-skip'), 'they are not also in the top row');
       H.click(H.byText(H.page(b.ctx), 'Tick set'));

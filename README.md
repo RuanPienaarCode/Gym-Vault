@@ -101,10 +101,22 @@ Settings → *Starter files*. Delete anything you do not want; the plugin works
 from whatever notes are there.
 
 **Train.** *Today* shows what's scheduled. Tap **Start** and choose how you
-want to be guided:
+want to be guided, or tap **Log manually** beside it to go straight to the log
+and work through the exercises in any order. Settings → *Start opens* swaps
+the two: with *Log screen* chosen, Start opens the log and **Guided** sits
+beside it. Every Start follows it: Today, *Also today* and each day on a plan's
+page.
+
+Each exercise in the log, and on the guided screen, shows what you did **last
+time** (the date and up to six sets), your **best** set (the heaviest, with its own
+reps) and your **most reps** (with the weight you did them at). A timed
+exercise shows its last time and its **longest**; a run shows none of these,
+because the Running pages own distance.
 
 - **Reps** — one set at a time, at your pace. Tap to count reps, hold to time
-  a plank, tick it off and move on.
+  a plank, tick it off and move on. Someone on the machine you need? Tap
+  **Later**: you move on to the next exercise, and the one you put off comes
+  back at the end, on the set you left it on. (*Skip* is for not doing it.)
 - **Timed circuit** — say how long you have and the app builds a circuit to
   fit it, looping the day's exercises and counting each one down. Warm-up,
   cool-down, shuffled order and between-exercise transitions are switches on

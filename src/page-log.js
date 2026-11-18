@@ -8,6 +8,7 @@ const { accentFor } = require('./constants');
    that have to ask for it. */
 
 const { el, ico, fmtSeconds, numericInput } = require('./dom');
+const { recapEl } = require('./recap');
 const { todayISO, fmtShort, fromISO, toISO } = require('./dates');
 const { setCounts, sameName } = require('./stats');
 const { targetFirstNumber, targetWeight, targetIsDuration, targetDurationSeconds, itemSets } = require('./plan-parse');
@@ -253,6 +254,10 @@ function entryCard(ctx, draft, entry, ei, onFigure) {
         [entry.target ? `target ${entry.target}` : '', logged ? '' : 'not logged yet']
           .filter(Boolean).join(' · '))),
     removeBtn(ctx, draft, ei)));
+  /* Last time, best set, most reps (issue #28): what you need sitting down
+     at the machine, without leaving the log. */
+  const recap = recapEl(ctx.data.workouts, entry, 'gv-log-recap');
+  if (recap) card.append(recap);
 
   const rows = el('div', { class: 'gv-log-sets' });
   entry.sets.forEach((set, si) => rows.append(setRow(ctx, entry, set, si, onFigure)));
