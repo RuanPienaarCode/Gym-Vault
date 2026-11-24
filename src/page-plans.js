@@ -6,7 +6,7 @@
 
 const { el, ico, prose, clickableCard, backButton, toggleRow, emptyLine } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS, startModes } = require('./constants');
-const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite, planRole, rxLabel, roleOf } = require('./plan-parse');
+const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite, planRole, rxLabel, roleOf, startDayFor } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
 const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
@@ -210,6 +210,10 @@ function render(ctx, root) {
     return;
   }
 
+  const activeNow = typeof ctx.activePlan === 'function' ? ctx.activePlan() : null;
+  const inUse = inUseStrip(ctx, orderPlans(data.plans, activeNow).filter(p => planRole(p, activeNow)), activeNow);
+  if (inUse) root.append(inUse);
+
   /* Two filters: what you need to own, and what it works.
 
      Both are DERIVED from the plan's exercises rather than stored on the
@@ -242,12 +246,22 @@ function render(ctx, root) {
      went on hiding every plan under "No plan matches both filters". */
   if (ui.kit && (usedKit.size < 2 || !usedKit.has(ui.kit))) ui.kit = '';
   if (ui.focus && (usedFocus.size < 2 || !usedFocus.has(ui.focus))) ui.focus = '';
-  if (usedKit.size > 1) root.append(facetChips(ctx, 'Equipment', [...usedKit], k => labelFor(k), () => ui.kit, v => { ui.kit = v; }));
-  if (usedFocus.size > 1) {
-    root.append(facetChips(ctx, 'Focus', MUSCLE_GROUPS.filter(m => usedFocus.has(m)), m => m, () => ui.focus, v => { ui.focus = v; }));
+  /* The two chip rows fold into one "Filters" line (24 Nov 2026: on a phone
+     they filled two screens and pushed the plans, and every Start, out of
+     sight). Open while a filter is set, so a filter is never hidden. */
+  if (usedKit.size > 1 || usedFocus.size > 1) {
+    const set = (ui.kit ? 1 : 0) + (ui.focus ? 1 : 0);
+    const open = ui.filtersOpen || set > 0;
+    const fold = el('details', open ? { class: 'gv-plan-filters', open: '' } : { class: 'gv-plan-filters' },
+      el('summary', {}, ico('sliders-horizontal'), el('span', {}, set ? `Filters · ${set} on` : 'Filters')));
+    fold.addEventListener('toggle', () => { ui.filtersOpen = fold.open; });
+    if (usedKit.size > 1) fold.append(facetChips(ctx, 'Equipment', [...usedKit], k => labelFor(k), () => ui.kit, v => { ui.kit = v; }));
+    if (usedFocus.size > 1) {
+      fold.append(facetChips(ctx, 'Focus', MUSCLE_GROUPS.filter(m => usedFocus.has(m)), m => m, () => ui.focus, v => { ui.focus = v; }));
+    }
+    root.append(fold);
   }
 
-  const activeNow = typeof ctx.activePlan === 'function' ? ctx.activePlan() : null;
   const ordered = orderPlans(data.plans, activeNow);
   root.append(plansHelp(ui));
   const listWrap = el('div', {});
@@ -266,6 +280,47 @@ function render(ctx, root) {
     listWrap.append(planCards(ctx, shown, activeNow));
   };
   renderList();
+}
+
+/* WHAT START OPENS, as one card: "Today" or "Next · Friday", the day's name,
+   the plan, and the two ways in (Settings → Start opens decides which is
+   Start). Shared by the Plans list's "In use" strip and the top of a plan's
+   own page, so both start the same day. Any day can be started on any day:
+   a Friday lunch circuit on a Tuesday is the plan's next day, started now. */
+function startCard(ctx, plan, pick, opts = {}) {
+  const when = pick.today ? 'Today' : `Next · ${WEEKDAY_LABELS[pick.weekday] || pick.weekday}`;
+  const stop = e => e.stopPropagation();
+  const alt = el('button', {
+    class: 'gv-btn gv-btn-small gv-btn-ghost gv-start-alt', type: 'button',
+    'aria-label': `${startModes(ctx.settings).altLabel}: ${pick.day.name}`,
+  }, el('span', {}, startModes(ctx.settings).altLabel));
+  alt.addEventListener('click', e => { stop(e); ctx.startAlt(plan, pick.day); });
+  const go = el('button', { class: 'gv-btn gv-btn-small gv-plan-go', type: 'button', 'aria-label': `Start ${pick.day.name}` },
+    ico('play'), el('span', {}, 'Start'));
+  go.addEventListener('click', e => { stop(e); ctx.start(plan, pick.day); });
+  const main = el('div', { class: 'gv-alsotoday-main' },
+    el('div', { class: 'gv-kicker' }, opts.kicker ? `${opts.kicker} · ${when}` : when),
+    el('div', { class: 'gv-alsotoday-name' }, pick.day.name),
+    opts.showPlan ? el('div', { class: 'gv-alsotoday-plan' }, plan.name) : '');
+  const pair = el('div', { class: 'gv-start-pair' }, alt, go);
+  if (!opts.onOpen) return el('div', { class: 'gv-card gv-alsotoday gv-plan-start' }, main, pair);
+  return clickableCard({ class: 'gv-card gv-alsotoday gv-plan-start', 'aria-label': `Open ${plan.name}` }, opts.onOpen, main, pair);
+}
+
+/* THE PLANS YOU ARE ON, FIRST. Every plan Today uses (main, add-ons, backup)
+   as a start card at the top of the list, above search and filters, so the
+   plan you follow is never two screens of chips away from its Start. */
+const ROLE_KICKER = { active: 'Main plan', alongside: 'Add-on', 'fills-gaps': 'Backup' };
+function inUseStrip(ctx, plans, activeNow) {
+  const todayKey = weekdayKey(todayISO());
+  const cards = [];
+  for (const p of plans) {
+    const pick = startDayFor(p, todayKey);
+    if (!pick) continue;
+    cards.push(startCard(ctx, p, pick, { kicker: ROLE_KICKER[planRole(p, activeNow)], showPlan: true, onOpen: () => ctx.nav('plans', { plan: p.name }) }));
+  }
+  if (!cards.length) return null;
+  return el('div', { class: 'gv-plan-inuse' }, el('div', { class: 'gv-plan-roles-label' }, 'In use'), ...cards);
 }
 
 function planCards(ctx, shown, activeNow) {
@@ -507,6 +562,13 @@ function renderDetail(ctx, root, plan) {
   bar.append(actions);
   root.append(bar);
 
+  /* THE ONE START ON THIS PAGE, at the top (24 Nov 2026): today's day, or the
+     next one, so a plan whose days fall later in the week can still be done
+     now. It is the page's single flood; the per-day Starts below are ghost. */
+  const todayKey = weekdayKey(todayISO());
+  const pick = startDayFor(plan, todayKey);
+  if (pick) root.append(startCard(ctx, plan, pick));
+
   root.append(planControls(ctx, plan));
 
   if (plan.model.intro.length) {
@@ -520,20 +582,14 @@ function renderDetail(ctx, root, plan) {
      day. Every day card used to carry a solid Start, which made a six-day
      plan six acting blocks and left nothing for the eye to land on.
 
-     The one flood is today's day, if the plan has one. On a rest day, or
-     when today is not on this plan, every Start goes ghost and NO flood is
-     invented: Today already owns the primary training CTA, and a second one
-     here would be competing with it from a page you came to read.
+     The one flood is the start card at the top of the page (today's day, or
+     the plan's next one), so every day card's Start below is ghost.
 
      Start stays on every day either way — starting a specific day from the
      plan is a real action, and this is a change of register, not of
      function. */
-  const todayKey = weekdayKey(todayISO());
-  const todaysDay = plan.model.days.find(d => d.weekday === todayKey && !isRestDay(d)) || null;
-
   for (const day of plan.model.days) {
     const card = el('div', { class: 'gv-card gv-day-card' });
-    const isToday = day === todaysDay;
     card.append(el('div', { class: 'gv-day-head' },
       el('div', {},
         el('div', { class: 'gv-day-title' }, day.name),
@@ -549,7 +605,7 @@ function renderDetail(ctx, root, plan) {
           onclick: () => ctx.startAlt(plan, day),
         }, el('span', {}, startModes(ctx.settings).altLabel)),
         el('button', {
-          class: `gv-btn gv-btn-small${isToday ? '' : ' gv-btn-ghost'}`,
+          class: 'gv-btn gv-btn-small gv-btn-ghost',
           type: 'button',
           onclick: () => ctx.start(plan, day),
         }, ico('play'), el('span', {}, 'Start')))));

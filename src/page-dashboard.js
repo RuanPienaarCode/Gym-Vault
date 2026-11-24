@@ -388,6 +388,20 @@ function render(ctx, root) {
     sub.append(next ? `Next up: ${next.day.name} on ${WEEKDAY_LABELS[next.weekday]}. Progress lives on rest days.`
            : plan ? 'No days scheduled in the active plan yet.'
                   : 'No active plan — pick one on the Plans page.');
+    /* Nothing is scheduled today, but the next day can be done NOW (24 Nov
+       2026, Ruan: "I want to do my lunch time plan in the week" — a Friday
+       lunch circuit had no Start on a Tuesday). The real Start, with the
+       other way under it, the same pair a training day gets. */
+    if (next && next.plan) {
+      afterHead.push(el('button', {
+        class: 'gv-btn-go gv-go-next', type: 'button',
+        onclick: () => ctx.start(next.plan, next.day),
+      }, `Start ${next.day.name}`, ico('arrow-right', 'gv-go-arrow')));
+      afterHead.push(el('button', {
+        class: 'gv-btn-hero-ghost gv-hero-manual', type: 'button',
+        onclick: () => ctx.startAlt(next.plan, next.day),
+      }, el('span', {}, startModes(settings).altLabel)));
+    }
     afterHead.push(el('button', {
       class: 'gv-btn-hero-ghost', type: 'button',
       onclick: () => ctx.startLog(plan, null),
@@ -587,7 +601,7 @@ function nextPlannedDay(ctx, todayKeyName) {
   for (let i = 1; i <= 7; i++) {
     const wk = WEEKDAYS[(start + i) % 7];
     const hit = ctx.daysOn(wk)[0];
-    if (hit) return { weekday: wk, day: hit.day };
+    if (hit) return { weekday: wk, day: hit.day, plan: hit.plan };
   }
   return null;
 }

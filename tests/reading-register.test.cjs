@@ -40,20 +40,18 @@ const isSolid = c => !/gv-btn-ghost|gv-btn-danger-ghost/.test(c);
 {
   const src = strip(read('page-plans.js'));
 
-  /* The Start on a day card must be able to render ghost. Before this it was
-     a bare 'gv-btn gv-btn-small' on every day. */
-  assert.match(src, /class: `gv-btn gv-btn-small\$\{isToday \? '' : ' gv-btn-ghost'\}`/,
-    "the day-card Start must be ghost unless it is today's day — one flood per screen, not one per day");
-
-  /* And the flood is chosen by TODAY, not by position — "the first day" or
-     "the active plan's day 1" would put a flood on a page you opened in
-     December to read. */
+  /* 24 Nov 2026: the ONE flood is the start card at the top of the page
+     (today's day, or the plan's next one, so a Friday plan can be done on a
+     Tuesday). Every day card's Start is therefore ghost. */
+  assert.match(src, /class: 'gv-btn gv-btn-small gv-btn-ghost',\s*type: 'button',\s*onclick: \(\) => ctx\.start\(plan, day\)/,
+    "the day-card Start must be ghost — the start card at the top is the page's one flood");
+  assert.match(src, /const pick = startDayFor\(plan, todayKey\);\s*if \(pick\) root\.append\(startCard\(ctx, plan, pick\)\)/,
+    'the plan page leads with one start card, chosen by the real weekday');
   assert.match(src, /const todayKey = weekdayKey\(todayISO\(\)\)/,
-    'the one flood must be chosen by the real weekday');
-  assert.match(src, /plan\.model\.days\.find\(d => d\.weekday === todayKey && !isRestDay\(d\)\)/,
-    'a rest day is not the day to flood, and neither is a plan today is not on');
-  assert.match(src, /\|\| null;/,
-    'when today is not on this plan the answer must be nothing — Today already owns the primary CTA');
+    'the start card must be chosen by the real weekday');
+  const solids = buttonClasses(src).filter(isSolid).filter(c => /gv-btn-small/.test(c));
+  assert.deepStrictEqual(solids, ['gv-btn gv-btn-small gv-plan-go'],
+    'the only solid small button on the Plans page is the start card\'s Start');
 
   /* Start must survive on EVERY day. This is a change of register, not of
      function: starting a specific day from the plan is a real action. */
@@ -107,4 +105,4 @@ const isSolid = c => !/gv-btn-ghost|gv-btn-danger-ghost/.test(c);
     'dark mode must not flip the avatar back to a filled accent block');
 }
 
-console.log('reading register OK (plan detail floods only today; Profile floods nothing; both keep every action)');
+console.log('reading register OK (plan detail floods only its start card; Profile floods nothing; both keep every action)');

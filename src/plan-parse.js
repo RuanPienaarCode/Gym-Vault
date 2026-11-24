@@ -443,9 +443,32 @@ function withRole(fm, role) {
   return next;
 }
 
+/* WHICH DAY A PLAN'S START OPENS, on a given weekday (24 Nov 2026, Ruan: "I
+   want to do my lunch time plan in the week" — a Friday-only plan had no Start
+   anywhere on a Tuesday). Today's own day if the plan has one, else its `any`
+   day, else the next day it trains (wrapping round the week), else its first
+   training day. Rest days are never picked. Returns { day, weekday, today }
+   (`weekday` is the day it is written for, `today` true when that is today),
+   or null for a plan with nothing to train. */
+function startDayFor(plan, todayKey) {
+  const days = ((plan && plan.model && plan.model.days) || []).filter(d => !isRestDay(d));
+  if (!days.length) return null;
+  const exact = days.find(d => d.weekday === todayKey);
+  if (exact) return { day: exact, weekday: todayKey, today: true };
+  const any = days.find(d => d.weekday === 'any');
+  if (any) return { day: any, weekday: 'any', today: true };
+  const start = WEEKDAYS.indexOf(todayKey);
+  for (let i = 1; i <= 7 && start >= 0; i++) {
+    const wk = WEEKDAYS[(start + i) % 7];
+    const hit = days.find(d => d.weekday === wk);
+    if (hit) return { day: hit, weekday: wk, today: false };
+  }
+  return { day: days[0], weekday: days[0].weekday, today: false };
+}
+
 module.exports = {
   PLAN_ROLES, roleOf, withRole,
   isPaused, isFavourite, mainPlansOf, activePlanOf, alongsideKind, planRole, rxLabel,
   parsePlanBody, serializePlanBody, parsePrescription, addItem, removeItemAt, moveItem, updateItem, itemSets, isRestDay,
-  targetWeight, targetFirstNumber, targetIsDuration, targetDurationSeconds,
+  targetWeight, targetFirstNumber, targetIsDuration, targetDurationSeconds, startDayFor,
 };

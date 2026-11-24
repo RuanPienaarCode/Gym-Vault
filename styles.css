@@ -2861,6 +2861,25 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
 .gv-plan-help dd { margin: 0; line-height: 1.45; }
 .gv-plan-help p { margin: 0 0 4px; line-height: 1.45; }
 
+/* START CARDS (24 Nov 2026): the "In use" strip at the top of the Plans list
+   and the one Start at the top of a plan's page. They reuse .gv-alsotoday
+   (Today's "Also today" card), so every skin already dresses them. */
+.gv-plan-inuse { margin: 4px 0 14px; }
+.gv-plan-inuse .gv-plan-start:first-of-type { margin-top: 0; }
+.gv-plan-start { margin: 6px 0 14px; }
+.gv-plan-inuse .gv-plan-start { margin: 0 0 8px; cursor: pointer; }
+.gv-plan-start .gv-start-pair { flex: 0 0 auto; }
+
+/* The Plans list's equipment + focus chips, folded behind one "Filters" line
+   (the same quiet summary as "How plans work"). */
+.gv-plan-filters { margin: 4px 0 8px; font-size: 13px; color: var(--gv-ink-dim); }
+.gv-plan-filters summary {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; cursor: pointer;
+  list-style: none; font-weight: 600; color: var(--gv-ink-dim);
+}
+.gv-plan-filters summary::-webkit-details-marker { display: none; }
+.gv-plan-filters summary .svg-icon { width: 16px; height: 16px; }
+
 /* The footer of a Plans list card: role left, Active switch right, under a
    hairline so it reads apart from the plan's details above it. */
 .gv-plan-ctl {
