@@ -2,13 +2,13 @@
    On paper the poster read as white on near-white: the hero had no ground and
    the bright accent, drawn as a hairline or a ring, all but vanished. Pinned:
    L1 the poster heroes stay graphite in light mode: both dark token blocks name them
-   L2 light mode tints the page ground, so white cards stand off it
+   L2 light mode: white page and white cards (24 Nov 2026), held apart by a hairline and a drop
    L3 thin accent marks read --gv-accent-line, never the bright accent itself
    L4 the lime line tone holds 3:1 on white and on the ground; dark keeps the bright accent
-   L5 CHALK (3 Nov 2026, the lime accent's light palette; replaced Forest; white page since
-      4 Nov 2026): a warm charcoal hero whose ink and lime read, a warm limestone page (white until 16 Nov 2026) and paler
-      cards held apart by a warm hairline and a drop, warm chips and cells, green text and
-      lines that read, scoped to lime only */
+   L5 CHALK (3 Nov 2026, the lime accent's light palette; replaced Forest; white page 4 Nov,
+      limestone 16 Nov, white again 24 Nov 2026 "white bg not beige"): a warm charcoal hero
+      whose ink and lime read, a white page and white cards held apart by a warm hairline and
+      a drop, warm chips and cells, green text and lines that read, scoped to lime only */
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -41,14 +41,14 @@ ok('L1 the graphite surface block and the dark poster block both name the light-
   assert.strictEqual(decl(poster, 'color-scheme'), 'dark');
 });
 
-ok('L2 light mode gives Apex a tinted ground', () => {
-  const paper = withSel('.gv-app.gv-skin-apex').map(b => decl(b, '--gv-bg')).find(Boolean);
-  const ground = withSel('.theme-light .gv-app.gv-skin-apex').map(b => decl(b, '--gv-bg')).find(Boolean);
-  assert.ok(ground, 'no light-mode ground for Apex');
-  /* Since 16 Nov 2026 no paper is white (tests/light-paper.test.cjs), so the
-     ground is tinted itself and the cards are a paler tint of it. */
-  assert.ok(ratio(ground, '#ffffff') >= 1.1, `the ground must be tinted, not white (${ratio(ground, '#ffffff').toFixed(2)}:1)`);
-  assert.ok(paper && paper.toLowerCase() !== '#ffffff', 'Apex paper must not be white');
+ok('L2 light mode gives Apex a white page and white cards that lift off it', () => {
+  const tok = (sel, prop) => withSel(sel).map(b => decl(b, prop)).find(Boolean);
+  const L = '.theme-light .gv-app.gv-skin-apex';
+  /* 24 Nov 2026, Ruan: "white bg not beige". */
+  for (const sel of ['.gv-app.gv-skin-apex', L]) for (const k of ['--gv-bg', '--gv-surface']) assert.strictEqual((tok(sel, k) || '').toLowerCase(), '#ffffff', `${sel} ${k} must be white`);
+  const lift = tok(L, '--gv-poster-lift');
+  assert.ok(lift && /^0 1px 0 #[0-9a-f]{6}/i.test(lift) && /rgba\(/.test(lift), `white cards need a hairline and a drop (${lift})`);
+  assert.strictEqual(tok(L, 'background-image'), 'none', 'no wash on the white page');
 });
 
 ok('L3 the tab underline, rings and left rules read --gv-accent-line', () => {
@@ -70,16 +70,15 @@ ok('L4 the lime line tone holds 3:1 on paper and the ground; dark keeps the brig
 });
 
 const CHALK = '.theme-light .gv-app.gv-skin-apex.gv-accent-lime';
-ok('L5 Chalk: charcoal hero, limestone page with lifted cards, readable ink and green text, lime accent only', () => {
+ok('L5 Chalk: charcoal hero, white page with lifted cards, readable ink and green text, lime accent only', () => {
   const tok = (sel, prop) => withSel(sel).map(b => decl(b, prop)).find(Boolean);
   const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
   /* warm = red channel leads blue, green sits between: limestone and charcoal, never grey or green */
   const warm = h => { const [r, g, b] = rgb(h); return r > b && r >= g && g >= b; };
   const ground = tok(CHALK, '--gv-bg'), surface = tok(CHALK, '--gv-surface');
-  /* 16 Nov 2026: never white. A warm limestone page, paler limestone cards. */
-  assert.ok(warm(ground) && ground !== '#ffffff', `Chalk's page is warm limestone, not white (${ground})`);
-  assert.ok(warm(surface) && surface !== '#ffffff', `Chalk's cards are a paler limestone, not white (${surface})`);
-  assert.ok(ratio(surface, '#000000') > ratio(ground, '#000000'), 'cards sit lighter than the page');
+  /* 24 Nov 2026: white page, white cards ("white bg not beige"). */
+  assert.strictEqual(ground.toLowerCase(), '#ffffff', `Chalk's page is white (${ground})`);
+  assert.strictEqual(surface.toLowerCase(), '#ffffff', `Chalk's cards are white (${surface})`);
   /* cards still need an edge and a drop to lift off the page */
   const lift = tok(CHALK, '--gv-poster-lift');
   assert.ok(lift && lift !== 'none' && lift.includes(tok(CHALK, '--gv-line')) && /rgba\(/.test(lift), `cards need a hairline and a drop (${lift})`);

@@ -4279,10 +4279,10 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 }
 
 .gv-app.gv-skin-apex {
-  /* paper (light): soft green-stone, never white. Not blue (the counter's
-     cool warm-up stage would vanish on it), not warm (amber vs Blaze). */
-  --gv-bg: #e5e8e0;
-  --gv-surface: #eff2ea;
+  /* paper (light): white (24 Nov 2026, Ruan: "white bg not beige"). Cards are
+     white too and stand off the page by a hairline and a drop (--gv-poster-lift). */
+  --gv-bg: #ffffff;
+  --gv-surface: #ffffff;
   --gv-line: #d9dde2;
   --gv-line-2: #8b95a0;
   --gv-ink: #0a0b0d;
@@ -4343,10 +4343,12 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 .gv-app.gv-skin-poster { --gv-accent-line: var(--gv-accent-solid, var(--gv-lime-deep)); }
 .theme-dark .gv-app.gv-skin-poster { --gv-accent-line: var(--gv-lime); }
 .theme-light .gv-app.gv-skin-apex {
-  --gv-bg: #e5e8e0;
-  /* A soft drop under the cards (week ring, tiles, quest, unlocks): paper needs depth that graphite gets from its own dark. */
-  --gv-poster-lift: 0 8px 18px -10px rgba(10, 11, 13, 0.22);
+  --gv-bg: #ffffff;
+  --gv-surface: #ffffff;
+  /* White on white: the hairline under a card (week ring, tiles, quest, unlocks) is its edge, the drop its depth. */
+  --gv-poster-lift: 0 1px 0 #d9dde2, 0 10px 24px -12px rgba(10, 11, 13, 0.22);
   --gv-poster-track: #c9d0d8;
+  background-image: none;
 }
 .theme-light .gv-app.gv-skin-apex .gv-hero-head,
 .theme-light .gv-app.gv-skin-apex .gv-hero:not(.gv-hero-today) {
@@ -4366,25 +4368,26 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
    3 Nov 2026 from five light palettes (it replaced Forest, 27 Oct 2026). The
    poster heroes are warm charcoal and every neutral leans warm, so the lime is
    the only colour on the page. Since 4 Nov 2026 ("lifted", Ruan's pick of three
-   white variants) the page and the cards were pure white; since 16 Nov 2026
-   ("never use white bg") the page is warm limestone and the cards a paler
-   limestone, still lifted by the warm hairline and the soft drop.
+   white variants) the page and the cards were pure white; from 16 Nov 2026
+   ("never use white bg") the page was warm limestone; since 24 Nov 2026
+   ("white bg not beige") the page and the cards are white again, lifted by the
+   warm hairline and the soft drop. Chips, cells and tracks keep chalk tones.
    Scoped to the lime accent: the other accents keep the graphite hero on tinted
    paper above. */
 .theme-light .gv-app.gv-skin-apex.gv-accent-lime {
-  --gv-bg: #ebe6da;
-  --gv-surface: #f5f2ea;
-  --gv-line: #ddd7c9;
+  --gv-bg: #ffffff;
+  --gv-surface: #ffffff;
+  --gv-line: #e6e2d8;
   --gv-line-2: #8e887a;
   --gv-ink: #17150f;
   --gv-ink-dim: #57524a;
-  --gv-poster-chip: #e9e4d8;
-  --gv-poster-cell: #ede9df;
-  --gv-poster-track: #ddd7c9;
+  --gv-poster-chip: #f1efe9;
+  --gv-poster-cell: #f4f2ec;
+  --gv-poster-track: #e3dfd4;
   --gv-accent-text: #3a6309;
   --gv-accent-line: #4b7d0e;
   /* White on white: the hairline under the card is its edge, the drop its depth. */
-  --gv-poster-lift: 0 1px 0 #ddd7c9, 0 10px 24px -12px rgba(23, 21, 15, 0.22);
+  --gv-poster-lift: 0 1px 0 #e6e2d8, 0 10px 24px -12px rgba(23, 21, 15, 0.22);
   background-image: none;
 }
 .theme-light .gv-app.gv-skin-apex.gv-accent-lime .gv-hero-head,

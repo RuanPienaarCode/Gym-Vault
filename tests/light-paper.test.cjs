@@ -1,6 +1,9 @@
 'use strict';
 /* NO WHITE PAPER IN LIGHT MODE (16 Nov 2026, Ruan: "never use white bg, make
    it a light background with colour that matches the design").
+   EXCEPT APEX (24 Nov 2026, Ruan: "apex theme light mode need to be white bg
+   not beige"): Apex is exempt from P1/P2 only; tests/apex-light-mode.test.cjs
+   pins its white page and lifted cards. P3 and P4 still hold for Apex.
 
    Runs the real cascade (tests/css-cascade.js) for every style x accent in the
    light theme and reads the colour actually painted behind text on the page
@@ -25,8 +28,9 @@ const SPOTS = {
   card: ['div.gv-card', 'div.gv-tile-label'],
 };
 
+const WHITE_OK = new Set(['apex']);
 const bad = [];
-for (const [skin, accent] of COMBOS) for (const [spot, chain] of Object.entries(SPOTS)) {
+for (const [skin, accent] of COMBOS.filter(([skin]) => !WHITE_OK.has(skin))) for (const [spot, chain] of Object.entries(SPOTS)) {
   const t = cx.textColor(cx.appChain({ theme: 'light', skin, accent }, ...chain), rules);
   const c = t.bg;
   const spread = Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b);
