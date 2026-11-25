@@ -4,7 +4,7 @@
    via "Open note", and everything written here round-trips through
    plan-parse so hand-written coaching cues survive. */
 
-const { el, ico, prose, clickableCard, backButton, toggleRow, emptyLine } = require('./dom');
+const { el, ico, prose, clickableCard, backButton, toggleRow, emptyLine, clear } = require('./dom');
 const { WEEKDAYS, WEEKDAY_LABELS, startModes } = require('./constants');
 const { addItem, removeItemAt, moveItem, updateItem, isRestDay, parsePrescription, isPaused, isFavourite, planRole, rxLabel, roleOf, startDayFor } = require('./plan-parse');
 const { equipmentFor, equipmentKeys, equipmentSummary, planExerciseNames, labelFor } = require('./equipment');
@@ -12,6 +12,7 @@ const { MUSCLE_GROUPS } = require('./constants');
 const { FormModal, ConfirmModal } = require('./modals');
 const { todayISO, weekdayKey } = require('./dates');
 const { sameName } = require('./stats');
+const { findMissingExercises } = require('./data');
 
 /* SAVES OF ONE PLAN ARE SERIAL, AND THE REFRESH WAITS FOR THEM (L2-01).
 
@@ -202,7 +203,8 @@ function render(ctx, root) {
     search || '',
     el('button', { class: 'gv-btn gv-btn-ghost', type: 'button', onclick: () => ctx.nav('browse') },
       ico('search'), el('span', {}, 'Browse')),
-    el('button', { class: 'gv-btn', type: 'button', onclick: () => openAddPlan(ctx) }, ico('plus'), el('span', {}, 'Plan')));
+    /* Quiet, so the lime on this page is left for Start (finding 9). */
+    el('button', { class: 'gv-btn gv-btn-ghost gv-plan-add', type: 'button', onclick: () => openAddPlan(ctx) }, ico('plus'), el('span', {}, 'Plan')));
   root.append(bar);
 
   if (!data.plans.length) {
@@ -282,45 +284,119 @@ function render(ctx, root) {
   renderList();
 }
 
+/* THE WORDS FOR WHEN A START CARD'S DAY IS. "Today" only where Today really
+   shows the day:
+     - a plan that is switched OFF is not on Today at all ("Not on Today"; its
+       Start still works from here);
+     - an Add-on or Backup `(any)` day is never put on a weekday by the planner
+       (controller.resolveDaysOn schedules an add-on only on its own weekdays), so
+       it is "Any day", something to start from here;
+     - a MAIN plan's `(any)` day fills Today, so it stays "Today".
+   `kind` is plan-parse.roleOf: main | parallel | fallback. */
+function startWhen(pick, kind, off) {
+  if (!pick.today) return `Next · ${WEEKDAY_LABELS[pick.weekday] || pick.weekday}`;
+  if (off) return 'Not on Today';
+  if (pick.weekday === 'any' && kind !== 'main') return 'Any day';
+  return 'Today';
+}
+
 /* WHAT START OPENS, as one card: "Today" or "Next · Friday", the day's name,
    the plan, and the two ways in (Settings → Start opens decides which is
    Start). Shared by the Plans list's "In use" strip and the top of a plan's
    own page, so both start the same day. Any day can be started on any day:
-   a Friday lunch circuit on a Tuesday is the plan's next day, started now. */
+   a Friday lunch circuit on a Tuesday is the plan's next day, started now.
+
+   opts.ghost      the Start is quiet (only the main plan's card is lime)
+   opts.linkAlt    the other way in is a text link under the plan name, not a
+                   second slab button (a phone has no room for two)
+   opts.recovery   a rest plan: the one action is "Log recovery" (what Today's
+                   rest hero does), there is nothing to start */
 function startCard(ctx, plan, pick, opts = {}) {
-  const when = pick.today ? 'Today' : `Next · ${WEEKDAY_LABELS[pick.weekday] || pick.weekday}`;
+  const when = startWhen(pick, roleOf(plan.fm), !!opts.off);
   const stop = e => e.stopPropagation();
-  const alt = el('button', {
-    class: 'gv-btn gv-btn-small gv-btn-ghost gv-start-alt', type: 'button',
-    'aria-label': `${startModes(ctx.settings).altLabel}: ${pick.day.name}`,
-  }, el('span', {}, startModes(ctx.settings).altLabel));
-  alt.addEventListener('click', e => { stop(e); ctx.startAlt(plan, pick.day); });
-  const go = el('button', { class: 'gv-btn gv-btn-small gv-plan-go', type: 'button', 'aria-label': `Start ${pick.day.name}` },
-    ico('play'), el('span', {}, 'Start'));
-  go.addEventListener('click', e => { stop(e); ctx.start(plan, pick.day); });
+  const mode = startModes(ctx.settings);
+  let alt = null;
+  if (!opts.recovery) {
+    alt = el('button', {
+      class: opts.linkAlt ? 'gv-start-alt gv-start-link' : 'gv-btn gv-btn-small gv-btn-ghost gv-start-alt', type: 'button',
+      'aria-label': `${mode.altLabel}: ${pick.day.name}`,
+    }, el('span', {}, mode.altLabel));
+    alt.addEventListener('click', e => { stop(e); ctx.startAlt(plan, pick.day); });
+  }
+  let go;
+  if (opts.recovery) {
+    go = el('button', { class: 'gv-btn gv-btn-small gv-btn-ghost gv-plan-go', type: 'button', 'aria-label': `Log recovery: ${pick.day.name}` },
+      ico('circle-check'), el('span', {}, 'Log recovery'));
+    go.addEventListener('click', e => { stop(e); ctx.startLog(plan, pick.day); });
+  } else {
+    go = el('button', { class: `gv-btn gv-btn-small gv-plan-go${opts.ghost ? ' gv-btn-ghost' : ''}`, type: 'button', 'aria-label': `Start ${pick.day.name}` },
+      ico('play'), el('span', {}, 'Start'));
+    go.addEventListener('click', e => { stop(e); ctx.start(plan, pick.day); });
+  }
   const main = el('div', { class: 'gv-alsotoday-main' },
     el('div', { class: 'gv-kicker' }, opts.kicker ? `${opts.kicker} · ${when}` : when),
     el('div', { class: 'gv-alsotoday-name' }, pick.day.name),
-    opts.showPlan ? el('div', { class: 'gv-alsotoday-plan' }, plan.name) : '');
-  const pair = el('div', { class: 'gv-start-pair' }, alt, go);
+    opts.showPlan ? el('div', { class: 'gv-alsotoday-plan' }, plan.name) : '',
+    alt && opts.linkAlt ? alt : '');
+  const pair = el('div', { class: 'gv-start-pair' }, alt && !opts.linkAlt ? alt : '', go);
   if (!opts.onOpen) return el('div', { class: 'gv-card gv-alsotoday gv-plan-start' }, main, pair);
   return clickableCard({ class: 'gv-card gv-alsotoday gv-plan-start', 'aria-label': `Open ${plan.name}` }, opts.onOpen, main, pair);
 }
 
+/* The day a REST plan's card logs: today's own day, else its `any` day, else the
+   next day it has, wrapping round the week (the order plan-parse.startDayFor
+   uses, but rest days are what this plan is made of). Null for a plan with no
+   days. */
+function recoveryDayFor(plan, todayKey) {
+  const days = (plan && plan.model && plan.model.days) || [];
+  if (!days.length) return null;
+  const exact = days.find(d => d.weekday === todayKey);
+  if (exact) return { day: exact, weekday: todayKey, today: true };
+  const any = days.find(d => d.weekday === 'any');
+  if (any) return { day: any, weekday: 'any', today: true };
+  const start = WEEKDAYS.indexOf(todayKey);
+  for (let i = 1; i <= 7 && start >= 0; i++) {
+    const wk = WEEKDAYS[(start + i) % 7];
+    const hit = days.find(d => d.weekday === wk);
+    if (hit) return { day: hit, weekday: wk, today: false };
+  }
+  return { day: days[0], weekday: days[0].weekday, today: false };
+}
+
 /* THE PLANS YOU ARE ON, FIRST. Every plan Today uses (main, add-ons, backup)
    as a start card at the top of the list, above search and filters, so the
-   plan you follow is never two screens of chips away from its Start. */
+   plan you follow is never two screens of chips away from its Start.
+
+   One lime Start on this strip: the main plan's. Add-on and backup cards have a
+   quiet Start, and every card's other way in is a text link under the plan name
+   (finding 9: on a 375 px phone three lime buttons competed and the text was
+   squeezed into a third of the card). A plan made only of rest days (a Backup
+   that is on) has nothing to start, so its card logs recovery instead. */
 const ROLE_KICKER = { active: 'Main plan', alongside: 'Add-on', 'fills-gaps': 'Backup' };
 function inUseStrip(ctx, plans, activeNow) {
   const todayKey = weekdayKey(todayISO());
   const cards = [];
   for (const p of plans) {
+    const role = planRole(p, activeNow);
+    const base = { kicker: ROLE_KICKER[role], showPlan: true, onOpen: () => ctx.nav('plans', { plan: p.name }) };
     const pick = startDayFor(p, todayKey);
-    if (!pick) continue;
-    cards.push(startCard(ctx, p, pick, { kicker: ROLE_KICKER[planRole(p, activeNow)], showPlan: true, onOpen: () => ctx.nav('plans', { plan: p.name }) }));
+    if (pick) { cards.push(startCard(ctx, p, pick, { ...base, ghost: role !== 'active', linkAlt: true })); continue; }
+    const rest = recoveryDayFor(p, todayKey);
+    if (rest) cards.push(startCard(ctx, p, rest, { ...base, recovery: true }));
   }
   if (!cards.length) return null;
   return el('div', { class: 'gv-plan-inuse' }, el('div', { class: 'gv-plan-roles-label' }, 'In use'), ...cards);
+}
+
+/* "N days / week" counts DISTINCT real weekdays: a plan of six alternative
+   `(any)` sessions is not a six-day plan (finding 41). Only `(any)` days is
+   "N sessions, any day"; a mix is "N days / week + M any-day". */
+function daysLabel(days) {
+  const real = new Set(days.filter(d => d.weekday !== 'any').map(d => d.weekday)).size;
+  const any = days.filter(d => d.weekday === 'any').length;
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  if (!real) return `${plural(any, 'session')}, any day`;
+  return any ? `${plural(real, 'day')} / week + ${any} any-day` : `${plural(real, 'day')} / week`;
 }
 
 function planCards(ctx, shown, activeNow) {
@@ -341,13 +417,13 @@ function planCards(ctx, shown, activeNow) {
           el('span', {}, p.name),
           badge ? el('span', { class: 'gv-badge' }, badge) : ''),
         el('div', { class: 'gv-plan-meta' },
-          `${days.length} day${days.length === 1 ? '' : 's'} / week · ${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'}`),
+          `${daysLabel(days)} · ${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'}`),
         /* What the whole plan asks you to own, so you can tell at a glance
            whether it fits the kit you actually have. */
         el('div', { class: 'gv-plan-kit' }, ico('dumbbell'),
           el('span', {}, equipmentSummary(data.exercises, planExerciseNames(p)))),
         el('div', { class: 'gv-plan-days' },
-          ...days.map(d => el('span', { class: 'gv-tag' }, `${d.weekday} · ${d.name}`))),
+          ...days.map(d => el('span', { class: 'gv-tag' }, `${d.weekday === 'any' ? 'any day' : d.weekday} · ${d.name}`))),
         cardControls(ctx, p)),
       el('div', { class: 'gv-card-actions' }, favouriteButton(ctx, p), ico('chevron-right', 'gv-dim')));
     list.append(c);
@@ -410,7 +486,7 @@ function facetChips(ctx, label, values, labelOf, get, set) {
 const ROLES = {
   main: { label: 'Main plan', desc: 'The plan Today follows. Only one can be active.' },
   parallel: { label: 'Add-on', desc: 'Adds its days on top of your main plan.' },
-  fallback: { label: 'Backup', desc: 'Only shows on days your main plan has no workout.' },
+  fallback: { label: 'Backup', desc: 'Only shows on days your other plans have no workout' },
 };
 const ROLE_OPTIONS = ['main', 'parallel', 'fallback'].map(v => [v, ROLES[v].label]);
 
@@ -420,16 +496,40 @@ function isPlanOn(ctx, plan) {
   if (roleOf(plan.fm) === 'main') return typeof ctx.activePlan === 'function' && ctx.activePlan() === plan;
   return !isPaused(plan);
 }
+/* A write that fails says so (a phone has no console) and the page is redrawn
+   from the note either way, so a switch never shows a state that was not saved. */
+const SAVE_FAILED = 'Could not save that change. Try again.';
 async function setPlanOn(ctx, plan, on) {
-  if (roleOf(plan.fm) === 'main') await ctx.io.setActivePlan(ctx.mainPlans(), on ? plan : null);
-  else await ctx.io.setPaused(plan, !on);
-  ctx.reload();
+  try {
+    if (roleOf(plan.fm) === 'main') await ctx.io.setActivePlan(ctx.mainPlans(), on ? plan : null);
+    else await ctx.io.setPaused(plan, !on);
+  } catch (e) {
+    console.error('gym-vault plan switch', e);
+    ctx.notice(SAVE_FAILED);
+  } finally {
+    await ctx.reload();
+  }
 }
 async function changeRole(ctx, plan, next) {
-  const ok = await ctx.io.setPlanRole(plan, next);
-  if (ok && next === 'main') ctx.notice(`${plan.name} is now a main plan. Switch it to Active to make Today follow it.`);
-  ctx.reload();
+  try {
+    /* The plan Today is following is IN USE; changing its role must not leave
+       it switched off (finding 46), so the write is told to keep it on. */
+    const following = typeof ctx.activePlan === 'function' && ctx.activePlan() === plan;
+    const ok = following ? await ctx.io.setPlanRole(plan, next, { on: true }) : await ctx.io.setPlanRole(plan, next);
+    if (ok && next === 'main') ctx.notice(`${plan.name} is now a main plan. Switch it to Active to make Today follow it.`);
+  } catch (e) {
+    console.error('gym-vault plan role', e);
+    ctx.notice(SAVE_FAILED);
+  } finally {
+    await ctx.reload();
+  }
 }
+
+/* True when every training day of the plan is `(any)`: no weekday of its own. */
+const onlyAnyDays = plan => {
+  const days = plan.model.days.filter(d => !isRestDay(d));
+  return days.length > 0 && days.every(d => d.weekday === 'any');
+};
 
 /* What the Active switch will do, in one line, for each role. */
 function switchLine(ctx, plan, role, on) {
@@ -439,6 +539,9 @@ function switchLine(ctx, plan, role, on) {
     return cur ? `Switch on to make Today follow it instead of ${cur.name}.` : 'Switch on to make Today follow it.';
   }
   if (!on) return 'Not on Today. Nothing is deleted.';
+  /* An add-on's `(any)` days are never put on a weekday, so a plan made only of
+     them is not on Today at all (finding 34). */
+  if (role === 'parallel' && onlyAnyDays(plan)) return 'Start it from here on any day. It does not appear on Today.';
   return role === 'fallback' ? 'Fills the days your main plan leaves empty.' : 'Its days are added to Today.';
 }
 
@@ -453,7 +556,7 @@ function plansHelp(ui) {
   for (const v of ['main', 'parallel', 'fallback']) {
     list.append(el('dt', {}, ROLES[v].label), el('dd', {}, ROLES[v].desc));
   }
-  d.append(list, el('p', {}, 'Set a plan to Inactive to take it off Today. Nothing is deleted. Tap a plan to change it on its own page.'));
+  d.append(list, el('p', {}, 'Set a plan to Inactive to take it off Today. Nothing is deleted. If two add-ons land on the same day, a starred plan leads. Tap a plan to change it on its own page.'));
   return d;
 }
 
@@ -464,12 +567,20 @@ function plansHelp(ui) {
 function cardControls(ctx, plan) {
   const stop = e => e.stopPropagation();
   const role = roleOf(plan.fm);
-  const sel = el('select', { class: 'dropdown gv-plan-role-select', 'aria-label': `Role of ${plan.name}`, title: ROLES[role].desc },
+  const sel = el('select', { class: 'dropdown gv-plan-role-select', 'aria-label': `Role of ${plan.name}` },
     ...ROLE_OPTIONS.map(([v, label]) => el('option', v === role ? { value: v, selected: 'selected' } : { value: v }, label)));
   sel.value = role;
   sel.addEventListener('click', stop);
   sel.addEventListener('keydown', stop);
-  sel.addEventListener('change', e => { stop(e); if (sel.value !== role) changeRole(ctx, plan, sel.value); });
+  /* What the chosen role does, in words under the select: a hover tooltip never
+     shows on a phone (finding 10). It follows the select at once; the reload
+     after the write redraws it from the note. */
+  const desc = el('div', { class: 'gv-plan-role-desc' }, ROLES[role].desc);
+  sel.addEventListener('change', e => {
+    stop(e);
+    if (ROLES[sel.value]) { clear(desc); desc.append(document.createTextNode(ROLES[sel.value].desc)); }
+    if (sel.value !== role) changeRole(ctx, plan, sel.value);
+  });
   const on = isPlanOn(ctx, plan);
   const sw = el('button', {
     class: `gv-plan-switch${on ? ' on' : ''}`, type: 'button', role: 'switch',
@@ -477,7 +588,7 @@ function cardControls(ctx, plan) {
   }, el('span', {}, on ? 'Active' : 'Inactive'), el('span', { class: `gv-switch${on ? ' on' : ''}`, 'aria-hidden': 'true' }));
   sw.addEventListener('keydown', stop);
   sw.addEventListener('click', e => { stop(e); setPlanOn(ctx, plan, !on); });
-  return el('div', { class: 'gv-plan-ctl' }, sel, sw);
+  return el('div', { class: 'gv-plan-ctl' }, el('div', { class: 'gv-plan-role' }, sel, desc), sw);
 }
 
 /* WHAT THIS PLAN DOES, AND WHETHER IT IS ON — one block at the top of a
@@ -567,7 +678,9 @@ function renderDetail(ctx, root, plan) {
      now. It is the page's single flood; the per-day Starts below are ghost. */
   const todayKey = weekdayKey(todayISO());
   const pick = startDayFor(plan, todayKey);
-  if (pick) root.append(startCard(ctx, plan, pick));
+  /* A plan that is switched off is not on Today: its card says so, and keeps its
+     Start, because it can still be started from here (finding 44). */
+  if (pick) root.append(startCard(ctx, plan, pick, { off: !isPlanOn(ctx, plan) }));
 
   root.append(planControls(ctx, plan));
 
@@ -588,12 +701,16 @@ function renderDetail(ctx, root, plan) {
      Start stays on every day either way — starting a specific day from the
      plan is a real action, and this is a change of register, not of
      function. */
+  /* Which lines name an exercise with no note: data.findMissingExercises' own
+     rule (a name matches a note by stats.sameName, folded or not), asked of this
+     one plan, so the page and the "missing exercises" list can never disagree. */
+  const noNote = findMissingExercises({ exercises: ctx.data.exercises, plans: [plan], goals: [] }).map(m => m.name);
   for (const day of plan.model.days) {
     const card = el('div', { class: 'gv-card gv-day-card' });
     card.append(el('div', { class: 'gv-day-head' },
       el('div', {},
         el('div', { class: 'gv-day-title' }, day.name),
-        el('div', { class: 'gv-day-sub' }, WEEKDAY_LABELS[day.weekday] || day.weekday)),
+        el('div', { class: 'gv-day-sub' }, day.weekday === 'any' ? 'Any day' : WEEKDAY_LABELS[day.weekday] || day.weekday)),
       /* Start opens what Settings → Start opens says; the other way sits
          beside it, so the log is never reached by starting and leaving a
          guided session (issue #28). */
@@ -622,7 +739,7 @@ function renderDetail(ctx, root, plan) {
          phone silently rewrote the plan note. Edit mode already carries the
          same button (below), so removing a line now takes a deliberate step
          into edit mode first. */
-      ul.append(editing ? editableItem(ctx, plan, day, it, idx) : planItemRow(ctx, it));
+      ul.append(editing ? editableItem(ctx, plan, day, it, idx) : planItemRow(ctx, it, noNote));
     });
     ul.append(el('button', { class: 'gv-add-line', type: 'button', onclick: () => openAddItem(ctx, plan, day) },
       ico('plus'), el('span', {}, 'Add exercise')));
@@ -669,12 +786,16 @@ function renderDetail(ctx, root, plan) {
    hand-typed line — and there the row stays inert: page-exercise-detail
    bounces straight back to the library when it can't resolve one, which
    would only replace "goes nowhere" with "goes to the wrong somewhere". */
-function planItemRow(ctx, it) {
+function planItemRow(ctx, it, noNote) {
   const rx = rxLabel(it);
   const ex = ctx.data.exercises.find(e => sameName(e.name, it.exercise));
   if (!ex) {
+    /* Say so in place (finding 45) rather than leave a line that does nothing
+       when tapped and does not say why. */
+    const missing = (noNote || []).some(n => sameName(n, it.exercise));
     return el('div', { class: 'gv-day-item' },
       el('span', { class: 'gv-day-item-name' }, it.exercise),
+      missing ? el('span', { class: 'gv-day-item-nonote' }, 'No exercise note') : '',
       el('span', { class: 'gv-day-item-rx' }, rx));
   }
   return clickableCard(

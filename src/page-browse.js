@@ -21,6 +21,34 @@ const repoOf = ctx => String((ctx.settings && ctx.settings.planRepo) || '').trim
    Add was reported as an install that had been skipped. */
 const vaultKey = (ctx, name) => ctx.io.safeName(name).toLowerCase();
 
+/* THE VAULT PLAN A LIBRARY ENTRY BECAME, or null when it is not in the vault.
+   installPlan writes `source: <entry id>` into the plan's frontmatter, so a plan
+   that was renamed afterwards (or saved under another name) is still found by
+   that id. Notes installed before `source` existed carry none, so the folded
+   NAME still matches too. */
+function addedPlan(ctx, entry) {
+  const plans = (ctx.data && ctx.data.plans) || [];
+  const id = entry.id === undefined || entry.id === null ? '' : String(entry.id).trim();
+  if (id) {
+    const bySource = plans.find(p => p.fm && String(p.fm.source === undefined || p.fm.source === null ? '' : p.fm.source).trim() === id);
+    if (bySource) return bySource;
+  }
+  const key = vaultKey(ctx, entry.name);
+  return plans.find(p => vaultKey(ctx, p.name) === key) || null;
+}
+
+/* What replaces Add once a plan is in the vault: a small "added" marker and an
+   Open button that goes to that plan's page, where the Active switch is at the
+   top. Back from there returns here (ctx.nav pushes Browse on the back stack). */
+function addedControls(ctx, plan, tagClass) {
+  return el('span', { class: 'gv-browse-added' },
+    el('span', { class: tagClass }, 'added'),
+    el('button', {
+      class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', 'aria-label': `Open ${plan.name}`,
+      onclick: () => ctx.nav('plans', { plan: plan.name }),
+    }, el('span', {}, 'Open'), ico('chevron-right')));
+}
+
 function render(ctx, root) {
   const ui = ctx.state.browseUi || (ctx.state.browseUi = { index: null, repo: null, error: null, loading: false, busy: null });
 
@@ -47,7 +75,7 @@ function render(ctx, root) {
     }
     if (!ui.index) return;
 
-    const have = new Set(ctx.data.plans.map(p => vaultKey(ctx, p.name)));
+    const have = entry => addedPlan(ctx, entry);
     /* Group numbered series into one card; standalone plans stand alone. */
     const groups = [];
     const bySeries = new Map();
@@ -83,7 +111,7 @@ function render(ctx, root) {
 
 function seriesCard(ctx, group, have, draw) {
   const first = group.phases[0];
-  const installed = group.phases.filter(p => have.has(vaultKey(ctx, p.name))).length;
+  const installed = group.phases.filter(p => have(p)).length;
   const card = el('div', { class: 'gv-card gv-browse-card' },
     el('div', { class: 'gv-browse-head' },
       el('div', {},
@@ -103,25 +131,25 @@ function seriesCard(ctx, group, have, draw) {
 const seriesTitle = first => (first.name || '').replace(/\s*\d+\s*·.*$/, '').trim() || first.series;
 
 function phaseRow(ctx, p, have, draw) {
-  const added = have.has(vaultKey(ctx, p.name));
+  const added = have(p);
   return el('div', { class: 'gv-browse-phase' },
     el('span', { class: 'gv-browse-phase-n' }, `${p.phase}`),
     el('span', { class: 'gv-browse-phase-name' }, p.name.replace(/^.*?·\s*/, '')),
     el('span', { class: 'gv-browse-phase-meta' }, `${countLabel(p.days, 'day')} · ${countLabel(p.exercises.length, 'exercise')}`),
     added
-      ? el('span', { class: 'gv-tag' }, 'added')
+      ? addedControls(ctx, added, 'gv-tag')
       : addButton(ctx, 'plan:' + p.name, 'gv-btn gv-btn-ghost gv-btn-small', 'Add', () => installOne(ctx, p, draw)));
 }
 
 function planCard(ctx, p, have, draw) {
-  const added = have.has(vaultKey(ctx, p.name));
+  const added = have(p);
   return el('div', { class: 'gv-card gv-browse-card' },
     el('div', { class: 'gv-browse-head' },
       el('div', {},
         el('div', { class: 'gv-browse-name' }, p.name),
         el('div', { class: 'gv-kicker' }, `${countLabel(p.days, 'day')} · ${countLabel(p.exercises.length, 'exercise')}${p.fallback ? ' · backup' : p.parallel ? ' · add-on' : ''}`)),
       added
-        ? el('span', { class: 'gv-badge' }, 'added')
+        ? addedControls(ctx, added, 'gv-tag')
         : addButton(ctx, 'plan:' + p.name, 'gv-btn gv-btn-small', 'Add', () => installOne(ctx, p, draw))),
     el('div', { class: 'gv-browse-summary' }, p.summary));
 }

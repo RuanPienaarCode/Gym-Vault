@@ -45,11 +45,16 @@ const isSolid = c => !/gv-btn-ghost|gv-btn-danger-ghost/.test(c);
      Tuesday). Every day card's Start is therefore ghost. */
   assert.match(src, /class: 'gv-btn gv-btn-small gv-btn-ghost',\s*type: 'button',\s*onclick: \(\) => ctx\.start\(plan, day\)/,
     "the day-card Start must be ghost — the start card at the top is the page's one flood");
-  assert.match(src, /const pick = startDayFor\(plan, todayKey\);\s*if \(pick\) root\.append\(startCard\(ctx, plan, pick\)\)/,
+  assert.match(src, /const pick = startDayFor\(plan, todayKey\);\s*if \(pick\) root\.append\(startCard\(ctx, plan, pick\b/,
     'the plan page leads with one start card, chosen by the real weekday');
   assert.match(src, /const todayKey = weekdayKey\(todayISO\(\)\)/,
     'the start card must be chosen by the real weekday');
-  const solids = buttonClasses(src).filter(isSolid).filter(c => /gv-btn-small/.test(c));
+  /* 25 Nov 2026 (audit #9): on the Plans LIST an add-on's or backup's In use card
+     takes a ghost Start (opts.ghost), so the main plan's is the one flood there.
+     The class is therefore a template; judged by its fixed part, it is still the
+     only small button on the page that is solid by default. */
+  const fixedPart = c => c.replace(/\$\{[^}]*\}/g, '');
+  const solids = buttonClasses(src).map(fixedPart).filter(isSolid).filter(c => /gv-btn-small/.test(c));
   assert.deepStrictEqual(solids, ['gv-btn gv-btn-small gv-plan-go'],
     'the only solid small button on the Plans page is the start card\'s Start');
 
