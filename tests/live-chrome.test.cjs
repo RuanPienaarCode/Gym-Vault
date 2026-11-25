@@ -94,7 +94,7 @@ const PLAN = '## D (any)\n\n- Push-ups | 3 x 10\n- Goblet Squat | 1 x 8 @ 20kg\n
       eq(q(b, '.gv-rc-tapchip').textContent, 'Tap to count');
       eq(q(b, '.gv-rc-tapchip').getAttribute('aria-hidden'), 'true', 'the chip is decoration: the zone\'s own label says it');
       eq(q(b, '.gv-pb-target-kicker').textContent, 'PB target');
-      eq(q(b, '.gv-pb-target-marks').children.map(c => c.textContent), ['0', '0% of PB', 'PB 12'], 'the scale under the bar is the real best');
+      eq(q(b, '.gv-pb-target-marks'), null, 'no 0 / n% of PB / PB n scale under the bar: it repeated the best (audit 25 Nov 2026, #8)');
       /* the rest row is where Tick leads, from the same flow the rest screen uses */
       eq(q(b, '.gv-live-lbl').textContent, 'Rest · starts on tick');
       eq(inside(b, '.gv-live-ring', 'b').textContent, '1:30', 'the rest the settings give it');
@@ -189,7 +189,7 @@ const PLAN = '## D (any)\n\n- Push-ups | 3 x 10\n- Goblet Squat | 1 x 8 @ 20kg\n
       }
       const b = await guided(skin, PLAN);
       const done = H.byText(H.page(b.ctx), 'Done');
-      eq(done.className.split(/\s+/).filter(c => c !== 'clickable-icon').sort(), ['gv-btn', 'gv-btn-small'], 'Done is the small ghost-less button it always was');
+      eq(done.className.split(/\s+/).filter(c => c !== 'clickable-icon').sort(), ['gv-btn'], 'Done is a full-size ghost-less button (audit 25 Nov 2026, #7)');
       eq(q(b, '.gv-pb-target').children.map(c => c.className).filter(Boolean).sort(), ['gv-pb-target-bar', 'gv-pb-target-label', 'gv-pb-target-now', 'gv-pb-target-togo', 'gv-sr-only'], 'the PB target has exactly its old five parts');
     });
   }

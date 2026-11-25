@@ -27,7 +27,7 @@
 
    THE WRITE (awardFinished) happens where the workout is saved: page-log's
    finishSession, after io.saveWorkout resolved with the note's path. Both exits
-   (Finish & save on the complete screen, Bank it on the log, "Finish session" on a
+   (Finish & save on the complete screen, Save session on the log, "Finish session" on a
    rest, the end-session sheet) funnel there, so a session abandoned without saving
    earns nothing, and the draft.finishing guard plus draft.rewardsAwarded plus the
    ledger's own key-idempotence mean a double tap earns once. It NEVER throws and is

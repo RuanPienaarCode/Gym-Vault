@@ -70,13 +70,13 @@ const sessionCard = ctx => /Session in progress/.test(H.page(ctx).textContent);
   });
 
   /* ---------- 2. Resume -> Finish saves what was done, then clears --------- */
-  await check('2. Resume opens the log, Bank it saves the same rows, and storage is empty afterwards', async () => {
+  await check('2. Resume opens the log, Save session saves the same rows, and storage is empty afterwards', async () => {
     H.killProcess();
     const b = await H.boot({ storage });
     assert.ok(b.ctl.hasDraft(), 'precondition: the draft is offered back');
     b.ctx.resumeDraft();
     assert.strictEqual(b.ctx.state.page, 'log');
-    H.click(H.byText(H.page(b.ctx), 'Bank it'));
+    H.click(H.byText(H.page(b.ctx), 'Save session'));
     await H.flush();
     assert.strictEqual(b.saved.length, 1, 'the restored session must save through the normal Finish');
     assert.deepStrictEqual(b.saved[0].rows.filter(r => r.exercise === 'Push-ups').map(r => r.reps), ['10', '10']);
@@ -103,6 +103,7 @@ const sessionCard = ctx => /Session in progress/.test(H.page(ctx).textContent);
     assert.ok(s.raw.has(KEY), 'precondition: the draft is stored');
     H.click(H.byLabel(H.page(a.ctx), 'End session'));
     H.modals.at(-1).opts.onDiscard();
+    H.modals.at(-1).opts.onConfirm(); // Discard asks first (audit 25 Nov 2026, #23)
     assert.strictEqual(s.raw.has(KEY), false, 'the sheet\'s Discard must clear the stored draft');
   });
   await check('3c. replacing a draft ("Discard and start") stores the NEW draft, not the old one', async () => {
@@ -170,7 +171,7 @@ const sessionCard = ctx => /Session in progress/.test(H.page(ctx).textContent);
     assert.deepStrictEqual(Object.keys(r).sort(), ['date', 'day', 'entries', 'plan', 'startedAt']);
     b.ctx.resumeDraft();
     assert.strictEqual(b.ctx.state.page, 'log');
-    H.click(H.byText(H.page(b.ctx), 'Bank it'));
+    H.click(H.byText(H.page(b.ctx), 'Save session'));
     await H.flush();
     assert.strictEqual(b.saved.length, 1, 'and Finish works on it (a restored finishing flag would have swallowed this tap)');
   });

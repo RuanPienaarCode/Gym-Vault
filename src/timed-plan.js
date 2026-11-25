@@ -89,9 +89,14 @@ function shuffledIndices(n, next) {
    circuit day is the warm-up: it plays in the first round and the laps fill the
    rest of the clock. The draft already holds a run as one entry (page-log's
    makeEntry), so a repeat had nowhere to log anyway. `6 x 3 min hard` is the
-   session itself and comes back every round, and so does a run on a day with
-   nothing else to play. */
-const isOneOffRun = item => item.unit === 'km' && item.sets === 1;
+   session itself and comes back every round.
+
+   A DAY OF NOTHING BUT ONE-SET RUNS IS NOT A CIRCUIT AT ALL (audit 25 Nov 2026,
+   #38). "Long Trail Run | 1 x per the ladder" on a 15-minute dial used to be
+   played as 17 laps of 45 seconds with a "next up" between each. Such a day is
+   placed by continuousRuns below instead: each run one unbroken interval. */
+const isRun = item => item.unit === 'km';
+const isOneOffRun = item => isRun(item) && item.sets === 1;
 
 /* How long one interval of this exercise runs. A duration prescription wins
    over the generic default — `Plank | 1 x 90s` means 90 seconds, and quietly
@@ -105,6 +110,15 @@ const isOneOffRun = item => item.unit === 'km' && item.sets === 1;
    — the author wrote a duration, so honour it — while still offering a rep
    box, because reps are what gets logged. Don't "fix" this into agreement. */
 function workSecondsFor(item, config) {
+  const written = writtenSecondsFor(item);
+  return written !== null ? written : Math.max(MIN_INTERVAL_S, Math.round(config.workSeconds));
+}
+
+/* The time the plan itself prescribes for this exercise, or null when it
+   prescribes none (and the clock would use the generic config.workSeconds).
+   workSecondsFor and continuousRuns both read it, so "what did the plan
+   write" is answered once. */
+function writtenSecondsFor(item) {
   const target = (item && item.target) || '';
   /* A WRITTEN unit wins over the note's `unit:` field: "30 min easy" is
      thirty minutes however the exercise note is filled in, and this used to
@@ -117,7 +131,56 @@ function workSecondsFor(item, config) {
     const n = targetFirstNumber(target);
     if (Number.isFinite(n) && n > 0) return Math.max(MIN_INTERVAL_S, Math.round(n));
   }
-  return Math.max(MIN_INTERVAL_S, Math.round(config.workSeconds));
+  return null;
+}
+
+/* Split `total` whole seconds over `n` slots: equal shares, the rounding on
+   the last one, so the parts always add back up to the total. */
+function shares(total, n) {
+  const each = Math.floor(total / n);
+  return Array.from({ length: n }, (_, k) => (k === n - 1 ? total - each * (n - 1) : each));
+}
+
+/* A RUN-ONLY DAY (every item a one-set run): one continuous work interval per
+   run, in round 0, with a "next up" only between two DIFFERENT runs. The time
+   left on the dial is shared between them:
+     - a run with a written time keeps it, never cut (the first interval of a
+       session never was; audit 16 Nov 2026 #37: `1 x 30 min` on a 10-minute
+       dial is a 30-minute session);
+     - the runs with no written time ("per the ladder", "5 km") share what the
+       written ones leave;
+     - when every run has a written time and the dial is longer, the spare is
+       shared across them, so the clock is still filled - as one longer run,
+       not a second lap of the same run.
+   Returns the intervals; the caller pushes them and counts one set per run. */
+function continuousRuns(list, order, remaining, cfg) {
+  const gap = cfg.transitions ? Math.max(0, Math.round(cfg.transitionSeconds)) : 0;
+  const written = order.map(i => writtenSecondsFor(list[i]));
+  const fixed = written.reduce((n, w) => n + (w || 0), 0);
+  const spare = remaining - gap * (order.length - 1) - fixed;
+  const open = written.map((w, k) => (w === null ? k : -1)).filter(k => k >= 0);
+  const seconds = written.map(w => w || 0);
+  if (open.length) {
+    shares(Math.max(0, spare), open.length).forEach((v, j) => { seconds[open[j]] = Math.max(MIN_CUT_SET_S, v); });
+  } else if (spare > 0) {
+    shares(spare, order.length).forEach((v, k) => { seconds[k] += v; });
+  }
+  const out = [];
+  order.forEach((entryIndex, k) => {
+    const item = list[entryIndex];
+    if (k > 0 && gap > 0) {
+      out.push({
+        kind: 'transition', leadIn: false, exercise: item.exercise, seconds: gap,
+        entryIndex: null, setIndex: null, round: 0, target: '', unit: null,
+      });
+    }
+    out.push({
+      kind: 'work', exercise: item.exercise, seconds: seconds[k],
+      entryIndex, setIndex: 0, round: 0,
+      target: item.target || '', unit: item.unit || null,
+    });
+  });
+  return out;
 }
 
 /* Spread a fixed budget across a handful of named moves, never below the
@@ -181,6 +244,14 @@ function buildSchedule(items, config) {
     });
   }
 
+  const continuous = list.every(isOneOffRun);
+  if (continuous) {
+    for (const iv of continuousRuns(list, orderFor(0), remaining, cfg)) {
+      intervals.push(iv);
+      if (iv.kind === 'work') setsPerEntry[iv.entryIndex] = 1;
+    }
+  }
+
   let round = 0;
   let placedWork = 0;
   /* Grow the session one interval at a time until the clock is used up. The
@@ -188,7 +259,7 @@ function buildSchedule(items, config) {
      dropped: a circuit stops because the time ran out, never because the next
      set was longer than what remained. */
   outer:
-  while (intervals.length < MAX_INTERVALS) {
+  while (!continuous && intervals.length < MAX_INTERVALS) {
     const order = orderFor(round);
 
     for (const entryIndex of order) {
@@ -240,6 +311,7 @@ function buildSchedule(items, config) {
     setsPerEntry,
     totalSeconds: spent(intervals),
     workTotalSeconds: spent(intervals.filter(i => i.kind === 'work')),
+    continuous,
     source: { items: list, config: cfg },
   };
 }
@@ -258,6 +330,24 @@ function giveTimeBack(schedule, seconds, index) {
   const freed = Math.round(seconds);
   if (!schedule || !schedule.source || !(freed > 0)) return schedule;
   const { items, config } = schedule.source;
+  /* A run-only day has no laps to grow: a rebuild would share the freed time
+     over every run, the one just left included. It goes to the runs still to
+     come instead, and skipping the last run simply ends it. */
+  if (schedule.continuous) {
+    const from = Number.isInteger(index) ? index : -1;
+    const ahead = [];
+    schedule.intervals.forEach((iv, i) => { if (i > from && iv.kind === 'work') ahead.push(i); });
+    if (!ahead.length) return schedule;
+    const intervals = schedule.intervals.map(iv => Object.assign({}, iv));
+    shares(freed, ahead.length).forEach((v, j) => { intervals[ahead[j]].seconds += v; });
+    const total = arr => arr.reduce((n, i) => n + i.seconds, 0);
+    return Object.assign({}, schedule, {
+      intervals,
+      totalSeconds: total(intervals),
+      workTotalSeconds: total(intervals.filter(i => i.kind === 'work')),
+      source: { items, config: Object.assign({}, config, { extraSeconds: config.extraSeconds + freed }) },
+    });
+  }
   const iv = schedule.intervals[index];
   const refit = iv && iv === workIntervals(schedule).pop()
     ? workSecondsFor(items[iv.entryIndex], config) - iv.seconds

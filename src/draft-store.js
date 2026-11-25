@@ -95,6 +95,19 @@ function plainSet(set) {
   /* A set skipped in guided mode: re-entry resumes past it (session-flow). Only a
      real true is kept, and only when set, so an old draft reads exactly as before. */
   if (set.skipped === true) out.skipped = true;
+  /* A count or a hold put aside with Later (page-session.js, audit 25 Nov 2026
+     #5): kept, so a kill does not lose reps already counted. Finite figures
+     above zero only; a set that never had one stays without. */
+  if (set.parked && typeof set.parked === 'object' && !Array.isArray(set.parked)) {
+    const p = {};
+    if (Number.isFinite(set.parked.reps) && set.parked.reps > 0) p.reps = set.parked.reps;
+    if (Number.isFinite(set.parked.seconds) && set.parked.seconds > 0) p.seconds = set.parked.seconds;
+    if (p.reps || p.seconds) {
+      if (set.parked.away === true) p.away = true;
+      if (set.parked.targetHit === true) p.targetHit = true;
+      out.parked = p;
+    }
+  }
   /* WHICH figures the user typed (session-flow.markTyped). Without it a set
      restored after a kill is `touched` with no record of what was typed, and
      session-flow.typedKinds falls back to "everything" - so typing only the
@@ -123,7 +136,9 @@ function plainEntry(entry) {
   };
 }
 
-const hasLoggedWork = entries => entries.some(e => e.sets.some(setCounts));
+/* A count put aside with Later is work too: without it a session whose only
+   figure is a parked count was "nothing worth keeping" and the count was lost. */
+const hasLoggedWork = entries => entries.some(e => e.sets.some(s => setCounts(s) || !!s.parked));
 
 /* WHAT THE LIVE SESSION HOLDS BESIDES SETS (fix wave F2: audit C-05 + R2-04).
    page-session.js keeps one plain-data block on the draft, `draft.live`:

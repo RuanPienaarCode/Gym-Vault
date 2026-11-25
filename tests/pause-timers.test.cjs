@@ -153,7 +153,7 @@ const PLANK2 = '## D (any)\n\n- Plank | 2 x 60s\n';
     assert.ok(right.classList.contains('gv-hold-done'));
   });
 
-  await check('H6. X -> Bank it from a paused hold saves the frozen seconds', async () => {
+  await check('H6. X -> Save session from a paused hold saves the frozen seconds', async () => {
     const b = await guided(PLANK); startHold(b);
     holdTo(b, 12);
     H.click(pauseBtn(b)); H.advance(300000);

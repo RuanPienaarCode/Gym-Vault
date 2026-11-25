@@ -46,7 +46,7 @@ const tapN = (b, n) => { const z = q(b, '.gv-session-zone'); for (let i = 0; i <
     const t = q(b, '.gv-pb-target');
     assert.ok(t, 'a .gv-pb-target is on the reps screen');
     assert.strictEqual(text(b, '.gv-pb-target-label'), 'Beat 12');
-    assert.strictEqual(text(b, '.gv-pb-target-now'), "You're on 0");
+    assert.strictEqual(text(b, '.gv-pb-target-now'), null /* Apex drops "You're on": the big count says it (audit 25 Nov 2026, #8) */);
     assert.strictEqual(text(b, '.gv-pb-target-togo'), '13 to go');
     assert.ok(q(b, '.gv-pb-target-bar').querySelector('.gv-pb-target-fill'), 'bar > fill');
     assert.strictEqual(widthOf(q(b, '.gv-pb-target-fill')), 0);
@@ -61,7 +61,7 @@ const tapN = (b, n) => { const z = q(b, '.gv-session-zone'); for (let i = 0; i <
     assert.strictEqual(H.countText(b.ctx), '6');
     assert.strictEqual(q(b, '.gv-pb-target'), before, 'the target node survives the taps (updated in place)');
     assert.strictEqual(q(b, '.gv-session-zone'), zoneBefore, 'and so does the zone: nothing re-rendered per rep');
-    assert.strictEqual(text(b, '.gv-pb-target-now'), "You're on 6");
+    assert.strictEqual(text(b, '.gv-pb-target-now'), null /* Apex drops "You're on": the big count says it (audit 25 Nov 2026, #8) */);
     assert.strictEqual(text(b, '.gv-pb-target-togo'), '7 to go');
     assert.strictEqual(widthOf(q(b, '.gv-pb-target-fill')), 50);
     assert.ok(!before.classList.contains('is-beaten'));
@@ -81,7 +81,7 @@ const tapN = (b, n) => { const z = q(b, '.gv-session-zone'); for (let i = 0; i <
     const t = q(b, '.gv-pb-target');
     assert.ok(t.classList.contains('is-beaten'));
     assert.strictEqual(text(b, '.gv-pb-target-label'), 'New PB');
-    assert.strictEqual(text(b, '.gv-pb-target-now'), "You're on 15");
+    assert.strictEqual(H.countText(b.ctx), '15', 'the count is the big numeral (Apex has no "You\'re on" line: audit 25 Nov 2026, #8)');
     assert.strictEqual(widthOf(q(b, '.gv-pb-target-fill')), 100, 'never past the track');
   });
 
@@ -129,7 +129,7 @@ const tapN = (b, n) => { const z = q(b, '.gv-session-zone'); for (let i = 0; i <
     assert.strictEqual(text(b, '.gv-pb-target-label'), 'Beat 40s');
     H.advance(5420 + 20000);
     assert.strictEqual(q(b, '.gv-pb-target'), t, 'ticks update in place');
-    assert.strictEqual(text(b, '.gv-pb-target-now'), "You're on 20s");
+    assert.strictEqual(H.countText(b.ctx), '20s', 'the held time is the big numeral (Apex has no "You\'re on" line: audit 25 Nov 2026, #8)');
     assert.strictEqual(text(b, '.gv-pb-target-togo'), '21s to go');
     assert.strictEqual(widthOf(q(b, '.gv-pb-target-fill')), 50);
     H.advance(21000);
@@ -172,7 +172,7 @@ const tapN = (b, n) => { const z = q(b, '.gv-session-zone'); for (let i = 0; i <
     const at = writes.length;
     tapN(b, 4);                                         // reps 14..17: past the record, nothing new to say
     assert.strictEqual(writes.length, at, 'no further write to the live region on later reps: each write would be re-announced');
-    assert.strictEqual(text(b, '.gv-pb-target-now'), "You're on 17", 'the reps were counted');
+    assert.strictEqual(H.countText(b.ctx), '17', 'the reps were counted');
   });
 
   await check('12. the announcement fires on the way UP only: undo below the record clears it, crossing again speaks again', async () => {

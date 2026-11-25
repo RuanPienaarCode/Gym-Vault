@@ -149,10 +149,11 @@ const STRENGTH = [item('Jump Squat', '8'), item('Pull-ups', '3'), item('Plank', 
   assert.ok(works(s).filter(w => w.exercise === 'Interval Repeats').length > 1);
 }
 
-/* T12. A day of nothing but a run still has something to play. */
+/* T12. A day of nothing but a run still fills the clock - as ONE continuous
+   run, not laps of it (audit 25 Nov 2026, #38). */
 {
   const s = tp.buildSchedule([run('Easy Run', '5 min easy', 1)], { minutes: 20 });
-  assert.ok(works(s).length > 1, 'nothing else to fill the clock with');
+  assert.strictEqual(works(s).length, 1, 'one run, one interval');
   assert.strictEqual(s.totalSeconds, 20 * 60);
 }
 
@@ -186,6 +187,8 @@ async function circuit(planBody, guideMinutes, extra) {
     }, extra || {}),
   });
   const plan = b.ctx.activePlan(); b.ctx.startGuided(plan, plan.model.days[0]);
+  /* A one-exercise day opens set by set (audit 25 Nov 2026, #38): this guard is about the timed circuit, so pick it. */
+  { const card = H.page(b.ctx).querySelectorAll('[role=radio]').find(c => c.getAttribute('aria-label') === 'Timed circuit'); if (b.settings.guideMode === 'timed' && card && card.getAttribute('aria-checked') !== 'true') H.click(card); }
   H.click(H.page(b.ctx).querySelectorAll('button').find(x => /Start/.test(x.textContent)));
   return b;
 }

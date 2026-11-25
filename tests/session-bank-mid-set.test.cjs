@@ -3,7 +3,7 @@
    L3-02).
 
    THE BUG THIS LOCKS. On the live screen the X opens the End session sheet.
-   With twelve taps on the counter and no Done yet, "Bank it" saved the sets
+   With twelve taps on the counter and no Done yet, "Save session" saved the sets
    that were already ticked and silently dropped the twelve; "Back to the log"
    did the same and the log showed an empty set. A hold that was running was
    dropped the same way: a 50-second plank saved nothing. What the user was
@@ -49,7 +49,7 @@ const rowsOf = b => (b.saved[0] ? b.saved[0].rows : []).map(r => `${r.exercise} 
 const savedOnce = b => { assert.strictEqual(b.saved.length, 1, `expected one saved session, got ${b.saved.length} (rows: ${JSON.stringify(rowsOf(b))})`); return b.saved[0]; };
 
 (async () => {
-  await check('1. 12 taps, X, Bank it -> a row with reps=12', async () => {
+  await check('1. 12 taps, X, Save session -> a row with reps=12', async () => {
     const b = await twelveOnScreen();
     await openSheet(b.ctx).opts.onSave();
     const reps = savedOnce(b).rows.filter(r => r.exercise === 'Push-ups').map(r => r.reps);
@@ -81,6 +81,7 @@ const savedOnce = b => { assert.strictEqual(b.saved.length, 1, `expected one sav
     const b = await twelveOnScreen();
     const set = b.ctx.state.logDraft.entries[0].sets[1];
     openSheet(b.ctx).opts.onDiscard();
+    H.modals.at(-1).opts.onConfirm(); // Discard asks first (audit 25 Nov 2026, #23)
     await H.flush();
     assert.strictEqual(b.saved.length, 0);
     assert.strictEqual(b.ctx.state.logDraft, null);
@@ -97,7 +98,7 @@ const savedOnce = b => { assert.strictEqual(b.saved.length, 1, `expected one sav
     assert.ok(sets.every(s => !s.done && !s.touched), `no set may be ticked: ${JSON.stringify(sets)}`);
   });
 
-  await check('6. a running 50 s hold, X, Bank it -> seconds 50', async () => {
+  await check('6. a running 50 s hold, X, Save session -> seconds 50', async () => {
     const b = await guided('## D (any)\n\n- Push-ups | 1 x 10\n- Plank | 1 x 60s\n');
     H.advance(6000); const z = H.page(b.ctx).querySelector('.gv-session-zone');
     for (let i = 0; i < 10; i++) { H.tapZone(z); H.advance(800); }
@@ -145,7 +146,7 @@ const savedOnce = b => { assert.strictEqual(b.saved.length, 1, `expected one sav
     assert.ok(!set.done && !set.touched, `count-in must not commit: ${JSON.stringify(set)}`);
   });
 
-  await check('9. on the rest screen there is no live set: Bank it saves exactly the ticked sets', async () => {
+  await check('9. on the rest screen there is no live set: Save session saves exactly the ticked sets', async () => {
     const b = await guided('## D (any)\n\n- Push-ups | 2 x 10\n', { settings: { guideRestSeconds: 30 } });
     H.advance(6000); const z = H.page(b.ctx).querySelector('.gv-session-zone');
     for (let i = 0; i < 10; i++) { H.tapZone(z); H.advance(800); }
@@ -167,5 +168,5 @@ const savedOnce = b => { assert.strictEqual(b.saved.length, 1, `expected one sav
   const failed = results.filter(([, e]) => e);
   for (const [name, e] of results) console.log(`${e ? 'FAIL' : 'ok  '} ${name}${e ? `\n       ${String(e.message).split('\n')[0]}` : ''}`);
   if (failed.length) { console.error(`${failed.length} of ${results.length} bank-mid-set checks failed`); process.exit(1); }
-  console.log(`session bank mid-set OK (${results.length} checks: the live count and the running hold are saved by Bank it and Back to the log, never by Keep going or Discard)`);
+  console.log(`session bank mid-set OK (${results.length} checks: the live count and the running hold are saved by Save session and Back to the log, never by Keep going or Discard)`);
 })();

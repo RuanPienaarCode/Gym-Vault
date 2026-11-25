@@ -38,6 +38,8 @@ async function circuit(planBody, exercises, guideMinutes, extra, workouts) {
     settings: Object.assign({}, STRENGTH_SETTINGS, { guideMinutes }, extra || {}),
   });
   const plan = b.ctx.activePlan(); b.ctx.startGuided(plan, plan.model.days[0]);
+  /* A one-exercise day opens set by set (audit 25 Nov 2026, #38): this guard is about the timed circuit, so pick it. */
+  { const card = H.page(b.ctx).querySelectorAll('[role=radio]').find(c => c.getAttribute('aria-label') === 'Timed circuit'); if (b.settings.guideMode === 'timed' && card && card.getAttribute('aria-checked') !== 'true') H.click(card); }
   H.click(H.page(b.ctx).querySelectorAll('button').find(x => /^Start/.test(x.textContent.trim())));
   return b;
 }

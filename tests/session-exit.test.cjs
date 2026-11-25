@@ -6,7 +6,7 @@
    session", it opened a sheet titled "Discard session?", and the button that
    actually wrote the note sat beside a "Discard session" button under it.
    Someone trying to KEEP three sets had to walk a cancel icon, a discard
-   heading, and trust "Bank it".
+   heading, and trust "Save session".
 
    The data path was never wrong. These guards are on the exit: the sheet
    both routes share must name BOTH ways out, and no control that saves or
@@ -74,12 +74,12 @@ const openSheet = opts => {
     'the sheet every exit shares must not be titled as a discard — that was the whole bug');
 
   const labels = buttons.map(b => b.text);
-  assert.deepStrictEqual(labels, ['Keep going', 'Back to the log', 'Discard', 'Bank it'],
+  assert.deepStrictEqual(labels, ['Keep going', 'Back to the log', 'Discard', 'Save session'],
     'the sheet must offer all four ways out, with the save last (rightmost, under the thumb)');
 
   const save = buttons.find(b => b.cta);
   const discard = buttons.find(b => b.warning);
-  assert.strictEqual(save.text, 'Bank it', 'the PRIMARY action must be the save');
+  assert.strictEqual(save.text, 'Save session', 'the PRIMARY action must be the save');
   assert.strictEqual(discard.text, 'Discard', 'the destructive action must be the discard');
   assert.ok(buttons.indexOf(save) > buttons.indexOf(discard),
     'the discard must not sit where a hurried tap on the primary lands');
@@ -94,7 +94,7 @@ const openSheet = opts => {
 /* ---- GUARD 2: onReview is optional, and dropping it drops only that row ---- */
 {
   const { buttons } = openSheet({ onSave: () => {}, onDiscard: () => {} });
-  assert.deepStrictEqual(buttons.map(b => b.text), ['Keep going', 'Discard', 'Bank it'],
+  assert.deepStrictEqual(buttons.map(b => b.text), ['Keep going', 'Discard', 'Save session'],
     'without a review route the sheet must still offer save and discard');
 }
 

@@ -91,7 +91,7 @@ const setHidden = hidden => {
     assert.strictEqual((sess(b).records || []).length, 1, 'banked 10 s + 45 s = 55 s, all in view');
   });
 
-  await check('F2-7e. ending the session with the tainted hold on screen (Bank it) saves the seconds and claims nothing', async () => {
+  await check('F2-7e. ending the session with the tainted hold on screen (Save session) saves the seconds and claims nothing', async () => {
     const b = await start();
     H.advance(6000); H.advance(5000);
     setHidden(true); H.advance(3600 * 1000); setHidden(false);

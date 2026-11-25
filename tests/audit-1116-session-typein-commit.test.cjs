@@ -98,7 +98,7 @@ const doneBtn = m => mbtn(m, x => x.textContent.trim() === 'Done');
     assert.strictEqual(b.ctx.state.session.counter.count, 13, 'the next tap counts as usual');
   });
 
-  await check('T4. guided: X -> Bank it with the box open saves the typed 12', async () => {
+  await check('T4. guided: X -> Save session with the box open saves the typed 12', async () => {
     const b = await guided();
     openBox(b).value = '12';
     H.click(H.byLabel(H.page(b.ctx), 'End session'));

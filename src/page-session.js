@@ -35,7 +35,7 @@ const { resolveExerciseImages } = require('./page-exercise-detail');
 const pageLog = require('./page-log');
 const { noteActivity } = require('./draft-store');
 const { buildRows, finishSession, growToSchedule, keepDraft, saveMotionPref } = pageLog;
-const { EndSessionModal } = require('./modals');
+const { EndSessionModal, ConfirmModal } = require('./modals');
 const { nextFrameIndex, autoPlayMedia, MEDIA_CYCLE_MS } = require('./media-cycle');
 const { openMediaViewer } = require('./media-viewer');
 const { mountMuscleMap, canDraw } = require('./muscle-map');
@@ -243,7 +243,7 @@ function progressBar(draft) {
 }
 
 /* THE SET ON SCREEN IS PART OF THE SESSION (0.12.1, audit L3-02). With twelve
-   taps on the counter and no Done yet, "Bank it" saved the sets already ticked
+   taps on the counter and no Done yet, "Save session" saved the sets already ticked
    and silently dropped the twelve; "Back to the log" left an empty set behind;
    a hold that was running (a 50-second plank) saved nothing. What the user was
    looking at is not what landed.
@@ -286,7 +286,7 @@ function commitLiveSet(ctx, draft) {
   if (!counter || sess.counterFor !== key || !(counter.count > 0)) {
     /* NOTHING WAS COUNTED, SO THE WEIGHT BOX ALONE DID NOT LOG A SET (audit 16 Nov
        2026, #2). Nudging the weight sets `touched`, which makes the plan's
-       prefilled reps ("8") worth saving: Bank it wrote an `8 x 62.5` the user
+       prefilled reps ("8") worth saving: Save session wrote an `8 x 62.5` the user
        never lifted. If that weight write is the only reason the set is touched,
        give the set back to the plan (the figure stays in the box). A set the user
        typed or ticked themselves is not in this case and is left alone. */
@@ -316,15 +316,79 @@ function releaseWeightOnlyTouch(sess, set) {
 
 /* The one sheet both ways out of a session go through. X used to nav
    straight to the overview, which made the ONLY exit from the live screen an
-   icon that reads as cancel — and the save then hid behind "Bank it" under
+   icon that reads as cancel — and the save then hid behind "Save session" under
    the overview's discard-flavoured chrome. Now X asks, and names the save.
    `review` keeps the old behaviour available as one of the three answers. */
 function endSession(ctx, draft, { review } = {}) {
   new EndSessionModal(ctx.app, {
-    onSave: () => { commitLiveSet(ctx, draft); return finishSession(ctx, draft); },
-    onDiscard: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
-    onReview: review ? () => { commitLiveSet(ctx, draft); ctx.nav('log'); } : null,
+    onSave: () => { commitLiveSet(ctx, draft); commitParkedSets(ctx, draft); return finishSession(ctx, draft); },
+    /* DISCARD ASKS FIRST (audit 25 Nov 2026, #23). It sat one tap from "Save session"
+       and cleared the session at once, while the log page's own Discard asks.
+       Same action, same question, word for word (page-log.js), so it behaves
+       one way wherever it is found. Cancel leaves the session exactly as it was. */
+    onDiscard: () => new ConfirmModal(ctx.app, {
+      title: 'Discard session?', message: 'Nothing you logged will be saved.', confirmLabel: 'Discard',
+      onConfirm: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
+    }).open(),
+    onReview: review ? () => { commitLiveSet(ctx, draft); commitParkedSets(ctx, draft); ctx.nav('log'); } : null,
   }).open();
+}
+
+/* LATER KEEPS WHAT WAS COUNTED (audit 25 Nov 2026, #5). Later used to drop the
+   live set like a skip does: twelve taps, Later, and the counter was back at 0
+   when the exercise came round again; a running plank lost its seconds. Later is
+   not a skip and not a tick, so the figure is PARKED on the set (`set.parked`,
+   plain data, never read by buildRows or stats.setCounts) and the set stays
+   unticked and untouched. repsBody / durationBody take it back when the set is
+   on screen again: the counter resumes at 12, the hold comes back paused at its
+   time with Done beside it. Same reading rules as commitLiveSet: a count above
+   0, a hold that had begun (heldSeconds, so a hold that left the screen keeps
+   its capped figure and its `away` flag). A run writes its boxes as they are
+   typed and has nothing to park. */
+function parkLiveSet(draft, sess) {
+  commitOpenTypeIn(); // a typed count still in its box is part of the count
+  const cur = flow.currentSet(draft, sess.pos);
+  if (!cur || cur.entry.distance) return;
+  const { entry, set } = cur;
+  const key = setKey(sess.pos);
+  if (entry.duration) {
+    const hold = sess.hold;
+    if (!hold || sess.holdFor !== key || !hold.running) return;
+    const secs = Math.round(heldSeconds(hold));
+    if (secs > 0) set.parked = { seconds: secs, away: hold.away === true, targetHit: hold.targetHit === true };
+    return;
+  }
+  const counter = sess.counter;
+  if (counter && sess.counterFor === key && counter.count > 0) set.parked = { reps: counter.count };
+}
+
+/* The parked figure, once, or null. A set handled in the meantime (ticked or
+   typed on the log page) has its own figure, and the parked one is dropped. */
+function takeParked(set) {
+  const p = set && set.parked;
+  if (!p) return null;
+  delete set.parked;
+  return flow.isHandled(set) ? null : p;
+}
+
+/* The exits that keep the work (Save session, Back to the log) keep a parked count
+   too, by the same rule and with the same observed kind as commitLiveSet keeps
+   the one on screen: what the user counted is part of the session wherever it
+   is waiting. Discard and Keep going never reach here. */
+function commitParkedSets(ctx, draft) {
+  const sess = ctx.state.session;
+  if (!sess || !draft) return;
+  for (const entry of draft.entries) {
+    for (const set of entry.sets) {
+      const p = takeParked(set);
+      if (!p) continue;
+      if (entry.duration && p.seconds > 0) {
+        applyCompletion(ctx, draft, sess, set, entry, { seconds: String(p.seconds) }, p.away ? OBSERVED_AWAY : OBSERVED_SECONDS);
+      } else if (!entry.duration && p.reps > 0) {
+        applyCompletion(ctx, draft, sess, set, entry, { reps: String(p.reps) }, OBSERVED_REPS);
+      }
+    }
+  }
 }
 
 function exitButton(ctx, draft) {
@@ -599,6 +663,7 @@ function renderActive(ctx, root, draft, sess) {
     laterBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-session-skip gv-session-later', type: 'button', 'aria-label': `Do ${entry.exercise} later` },
       ico('clock'), el('span', {}, 'Later'));
     laterBtn.addEventListener('click', () => {
+      parkLiveSet(draft, sess); // #5: the count waits on the set; nothing is ticked
       flow.markLater(draft, sess.pos);
       keepDraft(ctx);
       sess.pos = laterTo;
@@ -661,13 +726,38 @@ function exerciseBlock(ctx, sess, entry, opts) {
     showTarget ? el('div', { class: 'gv-session-target' }, entry.target) : '',
     /* Last time and your bests (issue #28), the same lines the log card shows;
        history from before this session (sess.workoutsAtStart). */
-    recapEl(sess.workoutsAtStart, entry, timed ? 'gv-session-recap gv-timed-recap' : 'gv-session-recap', timed ? { last: false } : undefined));
+    timed
+      ? recapEl(sess.workoutsAtStart, entry, 'gv-session-recap gv-timed-recap', { last: false })
+      : liveRecap(ctx, sess, entry, 'gv-session-recap'));
   /* Guided view only ever animates a start->finish pair — cap BEFORE error
      handling wires up, so a dropped frame 1 never promotes a frame 3 that
      was never even resolved for this view (the detail page still shows
      everything; this cap is guided-view only). */
   const img = ex ? exerciseMedia(ctx, sess, ex) : null;
   return el('div', { class: `gv-session-exblock${timed ? ' gv-timed-exblock' : ''}` }, head, img || '');
+}
+
+/* THE RECAP ON A LIVE SET, WITHOUT THE BEST THE TARGET ALREADY SAYS (audit 25
+   Nov 2026, #8). The PB target reads "Beat 12"; a recap line "Most reps 12"
+   beside it is the same figure again, on a screen the owner wants to carry only
+   what there is time to read mid-set. The line that repeats the target is
+   dropped: "Most reps" for a reps set, "Longest" for a hold, and only when its
+   text is exactly the target's (a "12 × 20 kg" most-reps set says something
+   the target does not). The target is the one this screen draws (liveTarget,
+   with the observed kind repsBody / durationBody pass), so the line goes only
+   where the target is actually on screen. recap.js is unchanged. */
+function liveRecap(ctx, sess, entry, cls) {
+  const node = recapEl(sess.workoutsAtStart, entry, cls);
+  if (!node || entry.distance) return node;
+  const best = liveTarget(ctx, sess, entry, entry.duration ? OBSERVED_SECONDS.observed : OBSERVED_REPS.observed);
+  if (best === null || best === undefined) return node;
+  const label = entry.duration ? 'Longest' : 'Most reps';
+  const shown = entry.duration ? fmtSeconds(best) : String(best);
+  for (const line of node.querySelectorAll('.gv-recap-line')) {
+    const dt = line.querySelector('dt'), dd = line.querySelector('dd');
+    if (dt && dd && dt.textContent === label && dd.textContent === shown) line.remove();
+  }
+  return node.querySelector('.gv-recap-line') ? node : '';
 }
 
 /* The exercise's picture on the live set: its Muscle Map when it has a motion
@@ -765,7 +855,7 @@ function posterHead(ctx, sess, entry, entryIndex, setIndex) {
     el('div', { class: 'gv-live-headtext' },
       el('h2', { class: 'gv-display gv-session-exname gv-live-name' }, entry.exercise),
       sub ? el('div', { class: 'gv-session-target gv-live-sub' }, sub) : '',
-      recapEl(sess.workoutsAtStart, entry, 'gv-session-recap gv-live-recap')),
+      liveRecap(ctx, sess, entry, 'gv-session-recap gv-live-recap')),
     img || '',
     el('div', { class: 'gv-live-rail', role: 'img', 'aria-label': label },
       ...chrome.railPips(entry.sets, setIndex).map(p => el('span', { class: `gv-live-pip is-${p}` })),
@@ -1140,12 +1230,14 @@ function pbTargetBlock(best, kind, rich) {
   const live = el('span', { class: 'gv-sr-only', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
   let wasBeaten = null;
   /* POSTER SKINS ONLY (live-chrome.js): the mockup's "PB target" kicker above
-     the label, and the 0 / n% / PB n scale under the bar. The same figures the
-     slab already holds, laid out as the design draws them. */
+     the label. They used to add a 0 / n% of PB / PB n scale under the bar and
+     "You're on n" too, so with the big count and the recap the live set said the
+     same best four times and the current count three (audit 25 Nov 2026, #8).
+     The poster keeps "Beat n", "n to go" and the bar; the count beside it is the
+     big numeral. Floor and Editorial keep their "You're on" line. */
   const kicker = rich ? el('span', { class: 'gv-pb-target-kicker' }, 'PB target') : '';
-  const marks = rich ? el('div', { class: 'gv-pb-target-marks', 'aria-hidden': 'true' }, el('span', {}), el('span', {}), el('span', {})) : null;
-  const node = el('div', { class: 'gv-pb-target', role: 'group' }, kicker, label, now, togo,
-    el('div', { class: 'gv-pb-target-bar' }, fill), marks || '', live);
+  const node = el('div', { class: 'gv-pb-target', role: 'group' }, kicker, label, rich ? '' : now, togo,
+    el('div', { class: 'gv-pb-target-bar' }, fill), live);
   const set = current => {
     const t = pbTarget(best, current);
     if (!t) return;
@@ -1157,11 +1249,6 @@ function pbTargetBlock(best, kind, rich) {
     now.textContent = `You're on ${say(t.current)}`;
     togo.textContent = t.beaten ? `${say(t.over)} over` : `${say(t.toGo)} to go`;
     fill.setAttribute('style', `width:${t.pct}%`);
-    if (marks) {
-      marks.children[0].textContent = say(0);
-      marks.children[1].textContent = t.beaten ? 'New PB' : `${Math.round(t.pct)}% of PB`;
-      marks.children[2].textContent = `PB ${say(t.best)}`;
-    }
     node.setAttribute('aria-label', t.beaten
       ? `New personal best: ${say(t.current)}, beating ${say(t.best)}`
       : `Personal best target: beat ${say(t.best)}, you are on ${say(t.current)}, ${say(t.toGo)} to go`);
@@ -1177,6 +1264,9 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   if (!sess.counter || sess.counterFor !== setKey(sess.pos)) {
     sess.counter = createCounter();
     sess.counterFor = setKey(sess.pos);
+    /* Back from Later (#5): the count it parked carries on from where it was. */
+    const parked = takeParked(set);
+    if (parked && parked.reps > 0) sess.counter = { count: parked.reps, lastTapAt: sess.counter.lastTapAt };
   }
   /* BEFORE anything below reads sess.motionOn (the hint line, the count-in's
      hint): which exercise is this, and does it count from motion? */
@@ -1357,7 +1447,10 @@ function repsBody(ctx, draft, sess, entry, set, extraTop) {
   });
 
   const tick = chrome.tickCopy((ctx.settings || {}).skin);
-  const doneBtn = el('button', { class: tick.poster ? 'gv-btn-go gv-live-tick' : 'gv-btn gv-btn-small', type: 'button' }, ico('check'), el('span', {}, tick.label));
+  /* The main action of a live set is a full-size button in every style (audit
+     25 Nov 2026, #7): as a small one it measured 65 x 31 px in Calm, under the
+     44 px a thumb needs mid-set. */
+  const doneBtn = el('button', { class: tick.poster ? 'gv-btn-go gv-live-tick' : 'gv-btn', type: 'button' }, ico('check'), el('span', {}, tick.label));
   /* OBSERVED_REPS ALWAYS — this button is shared by a plain reps entry
      AND a weighted one (weightedBody wraps this same body). The tap counter
      watched the reps either way; it never watched the weight, so this list
@@ -1544,7 +1637,19 @@ function heldSeconds(hold) {
    paused, so ending the session still banks the figure), `paused` means
    frozen, and startedAt / bankedSeconds are the clock. */
 function durationBody(ctx, draft, sess, entry, set) {
-  if (!sess.hold || sess.holdFor !== setKey(sess.pos)) {
+  const parkedHold = (!sess.hold || sess.holdFor !== setKey(sess.pos)) ? takeParked(set) : null;
+  if (parkedHold && parkedHold.seconds > 0) {
+    /* Back from Later (#5): the hold it parked, PAUSED at its time - a plank
+       cannot carry on by itself while you did something else, so Resume adds
+       to it and Done saves it, the way restorePaused puts back a paused hold.
+       It already began, so it does not count in again. */
+    sess.hold = Object.assign({
+      running: true, frozenSeconds: parkedHold.seconds, lastAnnounced: -1, lastLiveAnnounced: -1,
+      targetHit: parkedHold.targetHit === true, away: parkedHold.away === true,
+    }, timerState.frozenClock(parkedHold.seconds), parkedHold.away === true ? { awaySeconds: parkedHold.seconds } : null);
+    sess.holdFor = setKey(sess.pos);
+    sess.countedIn = setKey(sess.pos);
+  } else if (!sess.hold || sess.holdFor !== setKey(sess.pos)) {
     /* NOT set.seconds — that is the plan's target sitting in the box, and
        seeding the stopwatch with it made the numeral say 0:30 before the
        clock had run. counter-target.resumeSeconds owns the rule: only a

@@ -3,7 +3,7 @@
    closes Obsidian. On relaunch the device draft brings the records back on
    `draft.live.records`. Resuming THROUGH GUIDED restores ctx.state.session and
    pays the PB; resuming from Today's card (which opens the Log page) and tapping
-   Bank it found neither a live session nor a carry, so sessionInputs returned no
+   Save session found neither a live session nor a carry, so sessionInputs returned no
    records and the PB went unpaid and uncelebrated. The restored draft's own
    records are the fallback. */
 const assert = require('node:assert');

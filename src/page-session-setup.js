@@ -25,6 +25,7 @@ const { musicRow } = require('./music-picker');
 const { sameName, countLabel } = require('./stats');
 const { itemSets } = require('./plan-parse');
 const { startDraft, setsInDraft } = require('./page-log');
+const { safeName } = require('./data');
 const sound = require('./sound');
 
 /* How many moves a warm-up / cool-down block is built from. timed-plan.js
@@ -55,11 +56,21 @@ function clampMinutes(n) {
 /* Seeded from settings once per visit. `seed` is fixed here rather than at
    Start so the preview below and the session you actually get are the same
    shuffle — a preview that lies about the order is worse than no preview. */
-function uiState(ctx) {
+function uiState(ctx, day) {
   if (!ctx.state.setupUi) {
     const s = ctx.settings || {};
+    const remembered = s.guideMode === 'timed' ? 'timed' : 'reps';
+    /* ONE EXERCISE IS NOT A CIRCUIT (audit 25 Nov 2026, #38). "Pull-ups | 5
+       sets through the day" in the remembered timed mode became 19 back-to-back
+       intervals. Such a day opens set by set, for THIS visit only: `remember`
+       is what Start saves as guideMode, and it stays the user's own choice
+       unless they tap a mode card here. A run is left alone - timed-plan plays
+       a run-only day as one continuous interval. */
+    const oneExercise = oneNonRunExercise(ctx, day);
     ctx.state.setupUi = {
-      mode: s.guideMode === 'timed' ? 'timed' : 'reps',
+      mode: oneExercise ? 'reps' : remembered,
+      remember: remembered,
+      oneExercise: oneExercise && remembered === 'timed',
       minutes: clampMinutes(s.guideMinutes),
       warmup: !!s.guideWarmup,
       cooldown: !!s.guideCooldown,
@@ -136,9 +147,17 @@ function levelSets(ui, count, n) {
   return ui.sets;
 }
 
+/* The note behind a plan line, by the rule data.findMissingExercises uses:
+   the name as written, or its safeName form - "90/90 Hip Switch" is saved as
+   the note "90-90 Hip Switch" (audit 25 Nov 2026, #45). */
 function unitOf(ctx, name) {
-  const ex = (ctx.data.exercises || []).find(e => sameName(e.name, name));
+  const ex = (ctx.data.exercises || []).find(e => sameName(e.name, name) || sameName(e.name, safeName(name)));
   return ex && ex.fm ? ex.fm.unit || null : null;
+}
+
+function oneNonRunExercise(ctx, day) {
+  const items = (day && day.items) || [];
+  return items.length === 1 && unitOf(ctx, items[0].exercise) !== 'km';
 }
 
 /* Every mobility move in the library that needs no kit, ORDERED BY HOW
@@ -244,7 +263,7 @@ function render(ctx, root) {
   const resolved = resolveSetup(ctx);
   if (!resolved) { ctx.state.setup = null; ctx.nav('dashboard'); return; }
   const { plan, day } = resolved;
-  const ui = uiState(ctx);
+  const ui = uiState(ctx, day);
 
   /* setup is reset HERE, not in the back button's own click handler — this
      runs on every way off the screen (Back, a primary-tab tap, the vault
@@ -285,7 +304,7 @@ function render(ctx, root) {
     const on = ui.mode === key;
     modes.append(clickableCard(
       { class: `gv-card gv-optrow${on ? ' on' : ''}`, role: 'radio', 'aria-checked': on ? 'true' : 'false', 'aria-label': name },
-      () => { ui.mode = key; ctx.rerender(); },
+      () => { ui.mode = key; ui.remember = key; ui.oneExercise = false; ctx.rerender(); },
       el('div', { class: 'gv-optrow-main' },
         el('div', { class: 'gv-optrow-name' }, name),
         el('div', { class: 'gv-optrow-desc' }, desc || '')),
@@ -294,6 +313,9 @@ function render(ctx, root) {
   modes.setAttribute('role', 'radiogroup');
   modes.setAttribute('aria-label', 'How to be guided');
   wrap.append(modes);
+  if (ui.oneExercise && ui.mode === 'reps') {
+    wrap.append(el('p', { class: 'gv-dial-note gv-setup-why' }, 'One exercise today, so this opens one set at a time.'));
+  }
 
   /* NOT .gv-microcopy: the Editorial skin hides that class outright
      (styles.css), and this line is the only place the screen says how many
@@ -326,7 +348,9 @@ function render(ctx, root) {
      by the schedule the moment it was built: offering it would be offering
      a control that does nothing. In reps mode there is no clock to set. */
   if (ui.mode === 'timed') wrap.append(minutesBlock(ctx, ui, refresh));
-  else wrap.append(setsBlock(ctx, day, ui, refresh));
+  /* summary: the preview line under the dial already says "n exercises · n
+     sets", so the dial's own note does not repeat it (audit 25 Nov 2026, #16). */
+  else wrap.append(setsBlock(ctx, day, ui, refresh, { summary: true }));
 
   /* 3. GO. */
   refresh();
@@ -366,7 +390,8 @@ function render(ctx, root) {
    different rules" failure this codebase keeps finding, and the total in the
    preview line underneath would contradict it. The first press levels them,
    and says so before it does. */
-function setsBlock(ctx, day, ui, onChange) {
+function setsBlock(ctx, day, ui, onChange, opts) {
+  const summaryShown = !!(opts && opts.summary);
   const items = (day && day.items) || [];
   if (!items.length) return el('div', {});
 
@@ -407,9 +432,11 @@ function setsBlock(ctx, day, ui, onChange) {
        condensed display face at 54px reads as a headline, not as a value —
        and it is not a value, it is the honest refusal to give one. */
     countEl.classList.toggle('word', n === null);
+    /* "Mixed" needs its why; a plain count is already in the summary line
+       when the screen shows one (and .gv-dial-note:empty hides the box). */
     noteEl.textContent = n === null
       ? `The plan varies — this levels all ${items.length}`
-      : `${items.length} exercise${items.length === 1 ? '' : 's'}, ${n} each`;
+      : (summaryShown ? '' : `${items.length} exercise${items.length === 1 ? '' : 's'}, ${n} each`);
     /* BOTH ends, and both against the constants nextSetsValue clamps to —
        plus used to stay live at SETS_MAX because only the floor was wired.
        The number was never wrong (the clamp held); the control was, which
@@ -631,7 +658,8 @@ function beginSession(ctx, plan, day, ui) {
 function rememberSetup(ctx, ui) {
   try {
     Object.assign(ctx.plugin.settings, {
-      guideMode: ui.mode,
+      /* What the user chose, not a one-exercise day's own default (#38). */
+      guideMode: ui.remember || ui.mode,
       guideMinutes: ui.minutes,
       guideWarmup: ui.warmup,
       guideCooldown: ui.cooldown,

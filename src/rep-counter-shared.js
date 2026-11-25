@@ -353,7 +353,7 @@ function attachFillMeter(zone, target) {
    input focused when a BUTTON is tapped - so Tick set could read the count from
    before the number was typed. The tap zone is worse: it preventDefault()s
    touchstart, which stops the focus change that would have blurred the box. So
-   every handler that reads the count (Tick / Done, the tap zone, Bank it) first
+   every handler that reads the count (Tick / Done, the tap zone, Save session) first
    calls commitOpenTypeIn() below: an explicit "commit what is in the open box",
    independent of blur. */
 const openTypeIns = new Set();

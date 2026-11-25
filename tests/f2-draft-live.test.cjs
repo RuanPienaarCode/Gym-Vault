@@ -9,7 +9,7 @@
        paused, nothing was "logged", hasDraft was false and the session was gone.
    (b) THE RECORDS BROKEN SO FAR (sess.records). rewards-flow's sessionInputs
        reads ctx.state.session.records, so a personal best earned before the kill
-       was neither celebrated on the completion screen nor paid on "Bank it".
+       was neither celebrated on the completion screen nor paid on "Save session".
 
    Both now ride on the draft as one plain-data block (`draft.live`), refreshed
    wherever the session changes it, whitelisted by draft-store and put back by
@@ -98,7 +98,7 @@ function background(then) {
     assert.ok(!s.hold || !s.hold.paused, 'a running clock is not carried');
   });
 
-  await check('F2-2d. the records broken before the kill are on the restored session (so Bank it pays them)', async () => {
+  await check('F2-2d. the records broken before the kill are on the restored session (so Save session pays them)', async () => {
     const storage = H.makeStorage();
     const a = await start(storage, PUSH);
     H.advance(6000);

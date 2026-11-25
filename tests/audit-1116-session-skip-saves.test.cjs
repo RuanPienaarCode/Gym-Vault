@@ -6,7 +6,7 @@
    stats.setCounts calls "worth saving". Skip left a touched set exactly as it was,
    so `Bench Press | 3 x 8 @ 60kg` with the weight nudged to 62.5 on set 3 and then
    Skip saved a third set `8 x 62.5`, and the tile said "3 sets done". The same
-   happened on X -> Bank it / Back to the log with 0 reps on the counter.
+   happened on X -> Save session / Back to the log with 0 reps on the counter.
 
    The rule lives in session-flow.markSkipped: Skip puts the set back to a plan
    prefill (touched false), so stats.setCounts, buildRows, flow.progress and the
@@ -59,7 +59,7 @@ const { buildRows } = require('../src/page-log.js');
     assert.deepStrictEqual(b.saved[0].rows.map(r => r.reps + 'x' + r.weight_kg), ['8x60', '8x60'], 'the skipped set 3 reached the note');
   });
 
-  await check('A2. X -> Bank it with a weight change and 0 reps on the counter: the untouched set is not saved', async () => {
+  await check('A2. X -> Save session with a weight change and 0 reps on the counter: the untouched set is not saved', async () => {
     const b = await start();
     doSet(b); doSet(b);
     H.advance(6000);
@@ -94,7 +94,7 @@ const { buildRows } = require('../src/page-log.js');
     assert.deepStrictEqual(buildRows(draft(b)).map(r => r.reps + 'x' + r.weight_kg), ['8x60', '8x60', '8x62.5']);
   });
 
-  await check('A5. control: reps TYPED on the log before Guided, then X -> Bank it with 0 on the counter, still saves the typed set', async () => {
+  await check('A5. control: reps TYPED on the log before Guided, then X -> Save session with 0 on the counter, still saves the typed set', async () => {
     const b = await start();
     doSet(b);
     H.advance(6000);

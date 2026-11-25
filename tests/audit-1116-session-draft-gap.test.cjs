@@ -31,7 +31,7 @@ async function log(opts) {
   return b;
 }
 const tick = (b, i) => H.click(H.page(b.ctx).querySelectorAll('button').filter(x => /Mark done|Mark not done/.test(x.getAttribute('aria-label') || ''))[i]);
-const bank = async b => { H.click(H.page(b.ctx).querySelectorAll('button').find(x => /Bank it/.test(x.textContent))); await H.flush(); await H.flush(); };
+const bank = async b => { H.click(H.page(b.ctx).querySelectorAll('button').find(x => /Save session/.test(x.textContent))); await H.flush(); await H.flush(); };
 
 (async () => {
   await check('G1. #8: tick a set, 15 hours open, Finish: duration_min is the workout, not 900', async () => {

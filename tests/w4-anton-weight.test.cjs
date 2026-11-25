@@ -31,7 +31,7 @@ const TITLES = {
   'log title (h2.gv-logtop-title)': ['main.gv-page', 'div.gv-logtop', 'h2.gv-logtop-title'],
   'section title (h3.gv-section-title span)': ['main.gv-page', 'h3.gv-section-title', 'span'],
   'Start / Next (button.gv-btn-go)': ['main.gv-page', 'div.gv-hero-action', 'button.gv-btn-go.clickable-icon'],
-  'Bank it (button.gv-btn-finish span)': ['main.gv-page', 'div.gv-log-foot', 'button.gv-btn-finish.clickable-icon', 'span'],
+  'Save session (button.gv-btn-finish span)': ['main.gv-page', 'div.gv-log-foot', 'button.gv-btn-finish.clickable-icon', 'span'],
 };
 for (const skin of ['floor', 'editorial']) {
   for (const theme of ['light', 'dark']) {

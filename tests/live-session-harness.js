@@ -208,7 +208,8 @@ const origLoad = Module._load;
 Module._load = function (req, parent, ...rest) {
   if (req === 'obsidian') return obsidian;
   if (req === './modals') return modalStub;
-  if (req === './data' && ioStub) return { makeIo: () => ioStub };
+  /* The real module's pure helpers (safeName, findMissingExercises) stay; only the vault io is faked. */
+  if (req === './data' && ioStub) return Object.assign({}, origLoad.call(this, req, parent, ...rest), { makeIo: () => ioStub });
   return origLoad.call(this, req, parent, ...rest);
 };
 
