@@ -644,20 +644,30 @@ function renderActive(ctx, root, draft, sess) {
   else root.append(repsBody(ctx, draft, sess, entry, set));
 }
 
-function exerciseBlock(ctx, sess, entry) {
+/* `opts.timed` is the timed circuit's interval screen: you are mid-set with the
+   clock running, so the block gives its height back to the dial and the
+   controls (Ruan, 25 Nov 2026 — the pause/skip row sat below the fold on an
+   iPhone). Only the bests are shown, on one line (recapLines' { last: false }),
+   and the target line is dropped because that screen already prints the target
+   beside the reps box (timedFigures) or under the dial — the same figure twice.
+   `opts.target` is the interval's own target: when it is empty the head keeps
+   the entry's, so the target is never lost, only never doubled. */
+function exerciseBlock(ctx, sess, entry, opts) {
+  const timed = !!(opts && opts.timed);
+  const showTarget = entry.target && !(timed && opts.target);
   const ex = findExercise(ctx, entry.exercise);
   const head = el('div', { class: 'gv-session-exhead' },
     el('h2', { class: 'gv-display gv-session-exname' }, entry.exercise),
-    entry.target ? el('div', { class: 'gv-session-target' }, entry.target) : '',
+    showTarget ? el('div', { class: 'gv-session-target' }, entry.target) : '',
     /* Last time and your bests (issue #28), the same lines the log card shows;
        history from before this session (sess.workoutsAtStart). */
-    recapEl(sess.workoutsAtStart, entry, 'gv-session-recap'));
+    recapEl(sess.workoutsAtStart, entry, timed ? 'gv-session-recap gv-timed-recap' : 'gv-session-recap', timed ? { last: false } : undefined));
   /* Guided view only ever animates a start->finish pair — cap BEFORE error
      handling wires up, so a dropped frame 1 never promotes a frame 3 that
      was never even resolved for this view (the detail page still shows
      everything; this cap is guided-view only). */
   const img = ex ? exerciseMedia(ctx, sess, ex) : null;
-  return el('div', { class: 'gv-session-exblock' }, head, img || '');
+  return el('div', { class: `gv-session-exblock${timed ? ' gv-timed-exblock' : ''}` }, head, img || '');
 }
 
 /* The exercise's picture on the live set: its Muscle Map when it has a motion
@@ -2379,7 +2389,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
      demonstration media animates here too. A warm-up or transition has no
      draft entry — it passes the interval's own name and target instead,
      which is all exerciseBlock reads. */
-  root.append(exerciseBlock(ctx, sess, entry || { exercise: iv.exercise, target: iv.target || '' }));
+  root.append(exerciseBlock(ctx, sess, entry || { exercise: iv.exercise, target: iv.target || '' }, { timed: true, target: iv.target || '' }));
 
   const ring = countdown.countdownRing(200);
   const digits = el('div', { class: 'gv-timed-count' }, String(Math.ceil(iv.seconds)));

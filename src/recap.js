@@ -65,13 +65,17 @@ const rowText = r => setText(num(r.reps), num(r.weight_kg), num(r.reps) === null
      'duration' — a hold or timed piece: Last, then Longest;
      otherwise  — Last, then Best and Most reps (Longest only when the history
                   holds nothing else, e.g. an old note before the plan said so).
-   With no kind given, history decides: a run's last session reads as a run. */
-function recapLines(recap, kind) {
+   With no kind given, history decides: a run's last session reads as a run.
+   `opts.last === false` drops the Last line and keeps only the bests: the timed
+   circuit's interval screen, where you are mid-set with the clock running and
+   last session's sets are reading you have no time for — "Most reps 15" is the
+   one figure worth a glance there (Ruan, 25 Nov 2026). */
+function recapLines(recap, kind, opts) {
   if (!recap || kind === 'distance') return [];
   const lines = [];
   const sets = recap.last ? recap.last.sets.filter(r => num(r.distance_km) === null) : [];
   if (!kind && recap.last && !sets.length && recap.last.sets.length) return []; // a run
-  if (sets.length) {
+  if (sets.length && !(opts && opts.last === false)) {
     const shown = sets.slice(0, LAST_MAX).map(rowText).filter(Boolean);
     const more = sets.length > LAST_MAX ? [`+${sets.length - LAST_MAX}`] : [];
     lines.push({ label: `Last · ${fmtShort(recap.last.date)}`, text: [...shown, ...more].join(' · ') });
@@ -95,9 +99,10 @@ const kindOf = entry => (!entry || !Array.isArray(entry.sets) ? undefined : entr
 /* The lines as one small block, or '' when there is nothing to say (never
    logged): the log card and the guided live set both draw this, so the two
    screens cannot drift. `workouts` is saved history only — the session being
-   logged is not saved until Finish, so it can never be its own "last time". */
-function recapEl(workouts, entry, cls) {
-  const lines = recapLines(exerciseRecap(workouts, entry.exercise), kindOf(entry));
+   logged is not saved until Finish, so it can never be its own "last time".
+   `opts` passes through to recapLines (the timed screen's { last: false }). */
+function recapEl(workouts, entry, cls, opts) {
+  const lines = recapLines(exerciseRecap(workouts, entry.exercise), kindOf(entry), opts);
   if (!lines.length) return '';
   return el('dl', { class: `gv-recap${cls ? ` ${cls}` : ''}` },
     ...lines.map(l => el('div', { class: 'gv-recap-line' }, el('dt', {}, l.label), el('dd', {}, l.text))));

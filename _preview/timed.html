@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Timed interval harness</title>
+<link rel="stylesheet" href="gym.css">
+<style>
+  body{margin:0;padding:16px;background:#e9e9e4;font-family:system-ui,sans-serif;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .lab{font:600 11px/1.6 system-ui;color:#555;letter-spacing:.05em;text-transform:uppercase;margin:0 0 4px}
+  .frame{border:1px solid #bbb;background:#fff;overflow:hidden;width:414px}
+  .frame .gv-app{display:flex;flex-direction:column}
+  .frame .gv-page{overflow:auto;flex:1 1 auto}
+</style></head>
+<body class="is-phone">
+<script src="bundle.js"></script>
+<script>
+  /* Timed circuit interval at a phone pane's height. ?skin=apex (default). Two
+     frames: 705px (an iPhone 11 pane -> gv-short) and 560px (gv-shorter). */
+  const { el } = window.__dom;
+  const skin = new URLSearchParams(location.search).get('skin') || 'apex';
+  const poster = skin === 'apex' || skin === 'lockin';
+  function mount(h, tier) {
+    const rootEl = el('div', { class: `gv-app gv-skin-${skin}${poster ? ' gv-skin-poster' : ''} gv-accent-lime gv-narrow ${tier}` });
+    rootEl.style.height = h + 'px';
+    const pageEl = el('main', { class: 'gv-page' });
+    rootEl.append(pageEl);
+    const wrap = document.createElement('div');
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = `${h}px pane · ${skin} · ${tier}`;
+    const frame = document.createElement('div'); frame.className = 'frame'; frame.append(rootEl);
+    wrap.append(lab, frame); document.body.append(wrap);
+    const draft = {
+      date: '2026-11-25', plan: 'Harness', day: 'Day A', startedAt: Date.now(),
+      entries: [{ exercise: 'Jump Squat', target: '8', duration: false, weighted: false, distance: false,
+        sets: [{ reps: '8', weight_kg: '', seconds: '', done: false, touched: false }] }],
+      timed: { intervals: [
+        { kind: 'work', exercise: 'Jump Squat', seconds: 45, entryIndex: 0, setIndex: 0, round: 0, target: '8' },
+      ], rounds: 1, setsPerEntry: [1], totalSeconds: 45, workTotalSeconds: 45 },
+    };
+    const plugin = { settings: { soundMode: 'off', voiceURI: '', weekStart: 'monday', skin, accent: 'lime' } };
+    const data = { present: true,
+      exercises: [{ name: 'Jump Squat', fm: { image: 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Freehand_Jump_Squat/0.jpg' }, file: null }],
+      workouts: [{ fm: { date: '2026-11-24' }, rows: [{ exercise: 'Jump Squat', seconds: '45' }, { exercise: 'Jump Squat', seconds: '45' }] },
+                 { fm: { date: '2026-11-10' }, rows: [{ exercise: 'Jump Squat', reps: '15' }] }],
+      goals: [], body: [] };
+    const ctx = { app: {}, plugin, io: { saveExercise: async () => {} }, view: { contentEl: rootEl },
+      settings: plugin.settings, data, state: { page: 'session', params: {}, logDraft: draft, session: null, pageCleanup: null },
+      notice: () => {}, _interval: null };
+    ctx.setPageInterval = (fn, ms) => { if (ctx._interval) clearInterval(ctx._interval); ctx._interval = setInterval(fn, ms); };
+    ctx.rerender = () => { if (ctx._interval) { clearInterval(ctx._interval); ctx._interval = null; }
+      while (pageEl.firstChild) pageEl.removeChild(pageEl.firstChild); window.__pages.session.render(ctx, pageEl); };
+    ctx.nav = () => {};
+    ctx.rerender();
+    return { rootEl, pageEl };
+  }
+  window.__frames = [mount(705, 'gv-short'), mount(560, 'gv-short gv-shorter'), mount(900, '')];
+</script>
+</body></html>

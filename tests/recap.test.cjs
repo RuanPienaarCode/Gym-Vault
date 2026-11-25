@@ -118,4 +118,14 @@ const history = [
   assert.strictEqual(r.best, null);
   assert.deepStrictEqual(R.recapLines(r, 'reps').map(l => [l.label, l.text]), [[`Last · ${fmtShort('2026-11-02')}`, '9 · 11'], ['Most reps', '11']]);
 }
+{ /* the timed circuit's interval screen asks for the bests only: no Last line,
+     the bests unchanged and in the same order (Ruan, 25 Nov 2026 — mid-set,
+     last session's sets are noise; Most reps is the figure worth a glance) */
+  const r = R.exerciseRecap(history, 'Leg Press');
+  assert.deepStrictEqual(R.recapLines(r, 'reps', { last: false }).map(l => l.label), ['Best', 'Most reps'], 'no Last line on the timed screen');
+  assert.deepStrictEqual(R.recapLines(r, 'reps', { last: false }), R.recapLines(r, 'reps').slice(1), 'the bests are the same lines the full recap prints');
+  const plank = R.exerciseRecap([w('2026-11-06', [{ exercise: 'Plank', seconds: '75' }])], 'Plank');
+  assert.deepStrictEqual(R.recapLines(plank, 'duration', { last: false }).map(l => [l.label, l.text]), [['Longest', '1:15']]);
+  assert.deepStrictEqual(R.recapLines(r, 'reps', {}).map(l => l.label)[0], `Last · ${fmtShort('2026-11-08')}`, 'an options object without last:false keeps the Last line');
+}
 console.log('recap OK');

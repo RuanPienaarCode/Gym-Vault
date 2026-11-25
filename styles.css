@@ -3448,6 +3448,26 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
   margin: 0; padding: 0; pointer-events: none;
 }
 
+/* THE TIMED SCREEN GIVES ITS HEIGHT TO THE CLOCK AND THE CONTROLS (25 Nov 2026).
+   Mid-set on an iPhone the back / pause / skip row sat below the fold, under a
+   picture, a "Last" line and a target printed twice. page-session.js now draws
+   the block without those (exerciseBlock's opts.timed); this is the rest: the
+   bests on one line, a shorter picture, and on a short pane (controller.js's
+   gv-short / gv-shorter, measured on the PANE, not the window) a smaller dial.
+   The body.is-phone dial rule above is (0,3,1), so the pane rules carry `body`
+   to match it and win by coming later. */
+.gv-app .gv-timed-exblock { margin: 6px 0 8px; }
+/* the h2's own margins (the host's and the browser's) were ~30px above and
+   below the name — on this screen that is the controls' room */
+.gv-app .gv-timed-exblock .gv-session-exname { margin: 0; }
+/* (0,3,0): .gv-app .gv-session-recap's margin further down must not win */
+.gv-app .gv-timed-exblock .gv-timed-recap { margin-top: 6px; flex-direction: row; flex-wrap: wrap; gap: 0 16px; }
+.gv-app .gv-timed-exblock .gv-session-frame { height: clamp(104px, 20vh, 160px); }
+.gv-app.gv-short .gv-timed-exblock .gv-session-frame { height: clamp(92px, 15vh, 124px); }
+body .gv-app.gv-short .gv-timed-dial { width: min(50vw, 168px); margin: 0 auto 8px; }
+.gv-app.gv-shorter .gv-timed-exblock .gv-session-frame { height: 80px; }
+body .gv-app.gv-shorter .gv-timed-dial { width: min(42vw, 140px); }
+
 /* ============================================================================
    MUSCLE MAP (muscle-map.js) — the animated mannequin that replaces the photos
    for an exercise with a motion (motion-library.js): on the exercise page, in
