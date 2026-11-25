@@ -10,13 +10,14 @@ const { accentFor } = require('./constants');
 const { el, ico, fmtSeconds, numericInput } = require('./dom');
 const { recapEl } = require('./recap');
 const { todayISO, fmtShort, fromISO, toISO } = require('./dates');
-const { setCounts, sameName } = require('./stats');
+const { setCounts, sameName, workoutDate } = require('./stats');
 const { targetFirstNumber, targetWeight, targetIsDuration, targetDurationSeconds, itemSets } = require('./plan-parse');
 
 const { FormModal, ConfirmModal, EndSessionModal } = require('./modals');
 const { RepCounterModal } = require('./rep-counter-modal');
 const { noteActivity, countedElapsedMs } = require('./draft-store');
 const { secondsFromMinutes } = require('./timed-plan');
+const { ROW_EXTRA } = require('./markdown');
 const { markTyped } = require('./session-flow');
 const { motionPref, setMotionPref } = require('./motion-count');
 const rewardsFlow = require('./rewards-flow');
@@ -31,8 +32,13 @@ const { isOpenEnded } = require('./counter-target');
 
    `opts.date` (YYYY-MM-DD) logs the session on that day instead of today -
    the Running page's "Log" on a day earlier this week. A future or unreadable
-   date is ignored (it logs today): a session cannot have happened tomorrow. */
+   date is ignored (it logs today): a session cannot have happened tomorrow.
+
+   `opts.pickDate` (History's "Log a past session", audit 25 Nov 2026 #21)
+   opens the log with its date control focused. A one-shot flag on ctx.state,
+   not on the draft: it is a screen instruction, not part of the session. */
 function startDraft(ctx, plan, day, opts) {
+  ctx.state.logPickDate = !!(opts && opts.pickDate);
   const perEntry = (opts && opts.setsPerEntry) || null;
   const entries = [];
   if (day) {
@@ -69,6 +75,9 @@ function growToSchedule(ctx, draft, setsPerEntry) {
    device-local copy; it asks directly. A no-op under a ctx that has no
    controller behind it (the unit guards render these pages against a stub). */
 function keepDraft(ctx) {
+  /* An edit of a saved note is not the live session: nothing to keep on the
+     device, and the live draft (if any) has not changed. */
+  if (isEditing(ctx)) return;
   markActive(ctx);
   if (ctx && typeof ctx.persistDraft === 'function') ctx.persistDraft();
 }
@@ -76,8 +85,10 @@ function keepDraft(ctx) {
 /* SOMETHING HAPPENED IN THE SESSION (audit 16 Nov 2026, #8): stamps the live draft
    so a stale gap between two activities is left out of the workout's length - the
    same rule restoreDraft applies after a kill (draft-store.noteActivity). Every
-   edit that changes the draft calls this, directly or through keepDraft. */
+   edit that changes the draft calls this, directly or through keepDraft. Typing
+   into an EDIT of a saved note is not activity in the live session. */
 function markActive(ctx) {
+  if (isEditing(ctx)) return;
   const d = ctx && ctx.state && ctx.state.logDraft;
   if (d) noteActivity(d, Date.now());
 }
@@ -88,6 +99,187 @@ function pastDate(iso) {
   if (!d) return null;
   const canon = toISO(d);
   return canon <= todayISO() ? canon : null;
+}
+
+/* EDITING A SAVED SESSION (audit 25 Nov 2026, #27). History's "Edit" opens this
+   same page over a draft built from the note, and saving rewrites that note
+   through io.updateWorkout - never saveWorkout (a second note), never the XP
+   award (the note already earned it).
+
+   THE EDIT DRAFT IS NOT ctx.state.logDraft. That accessor is the live session:
+   every write to it is kept on the device (draft-store.js), Today offers it as
+   "Session in progress", and the stored copy is a whitelist that would drop
+   `editing` - so an edit kept there would come back after a kill as a plain
+   session and Save session would save the note a second time and pay its XP again.
+   It lives on ctx.state.editDraft instead, a plain field nothing keeps or
+   offers, and the route says which one is on screen (`editing` param = the
+   note's path). A live session open at the time is left exactly as it was. */
+const cell = v => String(v === null || v === undefined ? '' : v).trim();
+
+function isEditing(ctx) {
+  const p = ctx && ctx.state && ctx.state.params;
+  return !!(p && p.editing);
+}
+
+/* The draft this page draws: the edit named by the route, else the live one. */
+function shownDraft(ctx) {
+  if (!isEditing(ctx)) return ctx.state.logDraft;
+  const d = ctx.state.editDraft;
+  return d && d.editing === ctx.state.params.editing ? d : null;
+}
+
+/* Whole seconds back to the minutes box a distance set is typed in. Two decimals
+   are enough for buildRows' secondsFromMinutes to give the same whole seconds
+   back (the error is under 0.3 s), so an untouched run row saves unchanged. */
+function minutesOf(seconds) {
+  const n = parseFloat(seconds);
+  return Number.isFinite(n) ? String(Math.round((n / 60) * 100) / 100) : '';
+}
+
+/* What makes an edit worth asking about before it is thrown away. */
+const editSignature = draft => JSON.stringify([draft.date, buildRows(draft)]);
+
+/* A saved note as a draft this page can draw and buildRows can save, or null for
+   a note this app cannot date (it would have to guess which day to write back).
+   Rows are grouped the way History shows them (consecutive rows of one exercise).
+   An entry's kind is read from what its rows HOLD, so saving writes every figure
+   back: buildRows blanks reps and weight on a duration or distance entry, so a
+   group holding either is never made one of those. Every set is ticked and
+   touched - these are things that happened. */
+function editDraftFrom(ctx, w) {
+  const date = w ? workoutDate(w) : null;
+  if (!w || !w.file || !w.file.path || !date) return null;
+  const fm = w.fm || {};
+  const groups = [];
+  for (const r of w.rows || []) {
+    const name = cell(r && r.exercise);
+    if (!name) continue;
+    const last = groups[groups.length - 1];
+    if (last && last.exercise === name) last.rows.push(r);
+    else groups.push({ exercise: name, rows: [r] });
+  }
+  const entries = groups.map(g => {
+    const ex = ctx.data.exercises.find(e => sameName(e.name, g.exercise));
+    const unit = ex && ex.fm ? ex.fm.unit : null;
+    const has = k => g.rows.some(r => cell(r[k]) !== '');
+    const lifts = has('reps') || has('weight_kg');
+    const distance = !lifts && (has('distance_km') || unit === 'km');
+    const duration = !distance && !lifts && (has('seconds') || unit === 'seconds');
+    const weighted = !distance && !duration && (has('weight_kg') || unit === 'kg');
+    return {
+      exercise: g.exercise, target: '', duration, weighted, distance,
+      sets: g.rows.map(r => {
+        const set = distance
+          ? { distance_km: cell(r.distance_km), minutes: minutesOf(r.seconds) }
+          : { reps: cell(r.reps), weight_kg: cell(r.weight_kg), seconds: cell(r.seconds), distance_km: cell(r.distance_km) };
+        set.done = true;
+        set.touched = true;
+        if (cell(r.note)) set.note = cell(r.note);
+        /* Columns the user added to the table by hand ride on the row as
+           ROW_EXTRA (data.tableByHeader). Carried on the set, or Save changes
+           kept their headings and blanked every value under them. */
+        if (Array.isArray(r[ROW_EXTRA]) && r[ROW_EXTRA].length) set.extra = r[ROW_EXTRA].slice();
+        return set;
+      }),
+    };
+  });
+  const draft = {
+    editing: w.file.path, editingName: w.name,
+    date, plan: cell(fm.plan), day: cell(fm.day),
+    /* The note's own length: time spent editing is not training time. */
+    duration_min: fm.duration_min,
+    startedAt: Date.now(),
+    entries,
+  };
+  if (typeof fm.kind === 'string' && fm.kind.trim()) draft.kind = fm.kind.trim();
+  draft.original = editSignature(draft);
+  return draft;
+}
+
+/* History's Edit. Replaces only an earlier, unsaved EDIT (a note is the truth,
+   so reopening one starts from it again); the live session is untouched. */
+function startEdit(ctx, w) {
+  const draft = editDraftFrom(ctx, w);
+  if (!draft) { ctx.notice('This session has no date the app can read, so it can only be edited in its note.'); return; }
+  ctx.state.editDraft = draft;
+  ctx.nav('log', { editing: draft.editing });
+}
+
+function leaveEdit(ctx, draft) {
+  if (ctx.state.editDraft === draft) ctx.state.editDraft = null;
+  ctx.back('history');
+}
+
+/* Back arrow and Discard: an unchanged edit just leaves; a changed one asks. */
+function discardEdit(ctx, draft) {
+  if (editSignature(draft) === draft.original) { leaveEdit(ctx, draft); return; }
+  new ConfirmModal(ctx.app, {
+    title: 'Discard changes?', message: 'The saved session stays as it was.', confirmLabel: 'Discard changes',
+    onConfirm: () => leaveEdit(ctx, draft),
+  }).open();
+}
+
+async function saveEdit(ctx, draft) {
+  const rows = buildRows(draft);
+  if (!rows.length) { ctx.notice('Keep at least one set. To remove the whole session, delete it in History.'); return; }
+  if (draft.finishing) return;
+  draft.finishing = true;
+  /* Looked up by path now, not held: a reload since Edit replaced ctx.data. */
+  const w = ctx.data.workouts.find(x => x.file && x.file.path === draft.editing);
+  if (!w) { draft.finishing = false; ctx.notice('That session note was moved or deleted, so nothing was changed.'); return; }
+  const session = { date: draft.date, plan: draft.plan, day: draft.day, duration_min: draft.duration_min, rows };
+  if (draft.kind) session.kind = draft.kind;
+  try {
+    await ctx.io.updateWorkout(w.file, session);
+  } catch (e) {
+    draft.finishing = false;
+    ctx.notice(`could not save the changes (${e.message || e})`);
+    return;
+  }
+  ctx.notice('Changes saved.');
+  leaveEdit(ctx, draft);
+  ctx.reload();
+}
+
+/* THE DAY THIS SESSION IS SAVED ON (audit 25 Nov 2026, #21). A native date
+   control, today or earlier: `max` keeps the picker from offering a later day,
+   and pastDate - the one validator, the same one startDraft uses - refuses
+   anything else typed in. An emptied control (iOS has a Reset button) puts the
+   day back. Changing the day changes nothing else in the draft. */
+function dateControl(ctx, draft) {
+  const input = el('input', {
+    class: 'gv-log-date', type: 'date', max: todayISO(), value: draft.date,
+    'aria-label': 'Day of this session',
+  });
+  input.value = draft.date;
+  input.addEventListener('change', () => {
+    const raw = String(input.value || '');
+    const iso = pastDate(raw);
+    if (!iso) {
+      input.value = draft.date;
+      if (raw) ctx.notice('Pick today or an earlier day.');
+      return;
+    }
+    if (iso === draft.date) return;
+    draft.date = iso;
+    ctx.rerender();
+  });
+  return input;
+}
+
+/* Focus the date control once it is on screen: after the route change has
+   moved focus to the page heading (controller.focusPageHeading runs after the
+   render). showPicker opens it where the engine has it (not iOS 15); focus
+   alone is the fallback. Never throws. */
+function focusDate(input) {
+  const setT = (typeof window !== 'undefined' && window.setTimeout) || setTimeout;
+  setT(() => {
+    try {
+      if (input.isConnected === false) return;
+      input.focus();
+      if (typeof input.showPicker === 'function') input.showPicker();
+    } catch (e) { /* focus is enough */ }
+  }, 0);
 }
 
 /* HOW MANY SETS A DRAFT ENTRY HOLDS - the ONE rule, makeEntry builds by it and the
@@ -138,30 +330,46 @@ function makeEntry(ctx, exercise, sets, target) {
 }
 
 function render(ctx, root) {
-  const draft = ctx.state.logDraft;
-  if (!draft) { ctx.nav('dashboard'); return; }
+  /* The live session, or the edit of a saved note the route names (#27). */
+  const draft = shownDraft(ctx);
+  const editing = !!(draft && draft.editing);
+  if (!draft) { ctx.nav(isEditing(ctx) ? 'history' : 'dashboard'); return; }
 
   /* Leaving this page is a FORK, so the sheet names both ways out rather
      than assuming the destructive one. The back arrow used to be labelled
      "Discard session" and open a "Discard session?" confirm — which made
      every route off this page, including the one people take to KEEP a
-     workout, read as throwing it away. */
-  const endSheet = () => new EndSessionModal(ctx.app, {
-    onSave: () => finishSession(ctx, draft),
-    onDiscard: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
+     workout, read as throwing it away. An edit has no session to end: its
+     back arrow leaves, asking first only when something was changed. */
+  /* DISCARD ASKS, WHEREVER IT IS FOUND (audit 25 Nov 2026, #23): the foot
+     button below always did; this sheet cleared the session in one tap. One
+     question, one wording (page-session.js uses the same). */
+  const askDiscard = () => new ConfirmModal(ctx.app, {
+    title: 'Discard session?', message: 'Nothing you logged will be saved.', confirmLabel: 'Discard',
+    onConfirm: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
   }).open();
+  const endSheet = () => (editing ? discardEdit(ctx, draft) : new EndSessionModal(ctx.app, {
+    onSave: () => finishSession(ctx, draft),
+    onDiscard: askDiscard,
+  }).open());
 
-  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': 'End session' }, ico('arrow-left'));
+  const back = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': editing ? 'Back to History' : 'End session' }, ico('arrow-left'));
   back.addEventListener('click', endSheet);
 
   /* Enters guided mode over THIS SAME draft at the first incomplete set —
      no new session, just a second renderer over the one draft (see
-     controller.js ctx.enterGuided). */
-  const guidedBtn = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-logtop-guided', type: 'button' },
+     controller.js ctx.enterGuided). Not for an edit: guided mode runs the
+     live draft, and a saved session is not one to train through again. */
+  const guidedBtn = editing ? null : el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-logtop-guided', type: 'button' },
     ico('play'), el('span', { class: 'gv-btn-guided-label' }, 'Guided'));
-  guidedBtn.addEventListener('click', () => ctx.enterGuided());
+  if (guidedBtn) guidedBtn.addEventListener('click', () => ctx.enterGuided());
 
-  root.append(el('div', { class: 'gv-logtop' },
+  /* The day is a control (#21). A live session on another day says so in words
+     under it, the way Today names the day of a draft left open from earlier. An
+     edit already names its day in the title. */
+  const dateInput = dateControl(ctx, draft);
+  const otherDay = !editing && draft.date !== todayISO();
+  root.append(el('div', { class: `gv-logtop${editing ? ' gv-logtop-editing' : ''}` },
     el('div', { class: 'gv-logtop-lead' },
       back,
       el('div', {},
@@ -169,17 +377,27 @@ function render(ctx, root) {
            without it the log page had none at all — nothing for a screen
            reader's rotor to land on, and ctx.nav's focus-move silently
            no-opped here. */
-        el('h2', { class: 'gv-logtop-title' }, draft.day || 'Freestyle session'),
-        el('div', { class: 'gv-logtop-sub' }, [draft.plan, fmtShort(draft.date)].filter(Boolean).join(' · ')))),
+        el('h2', { class: 'gv-logtop-title' }, editing
+          ? `Editing ${fmtShort(draft.date)} · ${draft.day || 'Freestyle session'}`
+          : draft.day || 'Freestyle session'),
+        el('div', { class: 'gv-logtop-sub' }, draft.plan ? `${draft.plan} · ` : '', dateInput),
+        otherDay ? el('div', { class: 'gv-logtop-when' }, `This session will be saved on ${fmtShort(draft.date)}.`) : null)),
     guidedBtn,
-    el('div', { class: 'gv-log-clock' }, ico('timer'), el('span', { class: 'gv-log-elapsed' }, elapsed(draft)))));
+    /* Editing is not training time: no running clock. */
+    editing ? null : el('div', { class: 'gv-log-clock' }, ico('timer'), el('span', { class: 'gv-log-elapsed' }, elapsed(draft)))));
+  if (!editing && ctx.state.logPickDate) {
+    ctx.state.logPickDate = false;
+    focusDate(dateInput);
+  }
 
   // Tick the elapsed label without re-rendering the whole page (inputs would
   // lose focus). The interval dies with the page via ctx.pageInterval.
-  ctx.setPageInterval(() => {
-    const t = elapsed(ctx.state.logDraft || draft);
-    for (const s of root.querySelectorAll('.gv-log-elapsed')) s.textContent = t;
-  }, 30000);
+  if (!editing) {
+    ctx.setPageInterval(() => {
+      const t = elapsed(ctx.state.logDraft || draft);
+      for (const s of root.querySelectorAll('.gv-log-elapsed')) s.textContent = t;
+    }, 30000);
+  }
 
   /* The tally's two figures are painted by this function, so a typed figure can
      refresh them in place (see below) without a re-render. Declared here, filled
@@ -211,20 +429,30 @@ function render(ctx, root) {
     repsNum.textContent = String(doneReps);
   };
   paintTally();
+  /* An edit shows the note's saved minutes, which it keeps; never a clock. */
+  const saved = cell(draft.duration_min);
   root.append(el('div', { class: 'gv-log-tally' },
     el('span', {}, 'Sets', setsNum),
     el('span', {}, 'Reps', repsNum),
-    el('span', {}, 'Elapsed', el('b', { class: 'gv-log-elapsed' }, elapsed(draft)))));
+    editing
+      ? el('span', {}, 'Minutes', el('b', {}, saved || '—'))
+      : el('span', {}, 'Elapsed', el('b', { class: 'gv-log-elapsed' }, elapsed(draft)))));
+
+  if (editing) {
+    const save = el('button', { class: 'gv-btn-finish', type: 'button', onclick: () => saveEdit(ctx, draft) },
+      el('span', {}, 'Save changes'));
+    const drop = el('button', { class: 'gv-btn-discard', type: 'button', onclick: () => discardEdit(ctx, draft) }, 'Discard changes');
+    root.append(el('div', { class: 'gv-log-foot' }, save, drop,
+      el('p', { class: 'gv-microcopy' }, 'Saving rewrites this session\'s note. Its XP stays as it was.')));
+    return;
+  }
 
   const finish = el('button', { class: 'gv-btn-finish', type: 'button', onclick: () => finishSession(ctx, draft) },
-    el('span', {}, 'Bank it'));
+    el('span', {}, 'Save session'));
   /* This button IS the destructive route, so its own confirm may say so —
      what was wrong was the SHEET that every exit shared being titled that
      way. Kept as a ConfirmModal for that reason: there is no fork here. */
-  const discard = el('button', { class: 'gv-btn-discard', type: 'button', onclick: () => new ConfirmModal(ctx.app, {
-    title: 'Discard session?', message: 'Nothing you logged will be saved.', confirmLabel: 'Discard',
-    onConfirm: () => { ctx.state.logDraft = null; ctx.nav('dashboard'); },
-  }).open() }, 'Discard');
+  const discard = el('button', { class: 'gv-btn-discard', type: 'button', onclick: askDiscard }, 'Discard');
   root.append(el('div', { class: 'gv-log-foot' }, finish, discard,
     el('p', { class: 'gv-microcopy' }, "The bar isn't going to climb itself.")));
 }
@@ -256,7 +484,9 @@ function entryCard(ctx, draft, entry, ei, onFigure) {
     removeBtn(ctx, draft, ei)));
   /* Last time, best set, most reps (issue #28): what you need sitting down
      at the machine, without leaving the log. */
-  const recap = recapEl(ctx.data.workouts, entry, 'gv-log-recap');
+  /* An edit's own note is not "last time" for itself. */
+  const history = draft.editing ? ctx.data.workouts.filter(w => !(w.file && w.file.path === draft.editing)) : ctx.data.workouts;
+  const recap = recapEl(history, entry, 'gv-log-recap');
   if (recap) card.append(recap);
 
   const rows = el('div', { class: 'gv-log-sets' });
@@ -454,6 +684,13 @@ function setWorthSaving(entry, set) {
    check goal progress mid-session, without ever writing to disk) — two
    copies of "what a saved row looks like" is exactly how this codebase
    grows wrong numbers (see stats.js's header comment). */
+/* A row for the table, with the hand-added columns its set was loaded with (an
+   edit of a saved note; a live set has none). */
+const withExtra = (set, row) => {
+  if (Array.isArray(set.extra) && set.extra.length) row[ROW_EXTRA] = set.extra.slice();
+  return row;
+};
+
 function buildRows(draft) {
   const rows = [];
   for (const entry of draft.entries) {
@@ -467,11 +704,11 @@ function buildRows(draft) {
            seconds, the input is minutes because nobody logs a 30-minute run as
            1800. */
         const secs = secondsFromMinutes(set.minutes);
-        rows.push({
+        rows.push(withExtra(set, {
           exercise: entry.exercise, set: n, reps: '', weight_kg: '',
           seconds: secs !== null ? String(secs) : '',
-          note: '', distance_km: String(set.distance_km ?? '').trim(),
-        });
+          note: rowNote(set), distance_km: String(set.distance_km ?? '').trim(),
+        }));
       } else {
         /* seconds is written whenever the set HAS them, not only for
            duration entries. For every pre-existing path this changes
@@ -480,18 +717,24 @@ function buildRows(draft) {
            timed-plan.js) measures real time on a rep exercise too, so a
            push-up interval can log "15 reps, 45 s" instead of throwing away
            the one figure the clock actually knew. */
-        rows.push({
+        /* note and distance_km: only a set built from a saved note (an edit,
+           #27) carries either, so a live set still writes both empty. */
+        rows.push(withExtra(set, {
           exercise: entry.exercise, set: n,
           reps: entry.duration ? '' : String(set.reps).trim(),
           weight_kg: entry.duration ? '' : String(set.weight_kg).trim(),
           seconds: String(set.seconds ?? '').trim(),
-          note: '', distance_km: '',
-        });
+          note: rowNote(set), distance_km: String(set.distance_km ?? '').trim(),
+        }));
       }
     }
   }
   return rows;
 }
+
+/* A row's Note column. The log has no box for it; a set read back from a saved
+   note keeps the one it had, so editing other figures does not erase it. */
+const rowNote = set => String(set.note ?? '').trim();
 
 /* THE ONE MINUTES RULE FOR A FINISHED SESSION. duration_min used to be the
    time the log page had been open, so a 30-minute run entered afterwards
@@ -515,7 +758,26 @@ function sessionMinutes(draft, now = Date.now()) {
   return Math.max(1, Math.round(elapsedMin), Math.round(workSec / 60));
 }
 
+/* WHAT IS SAVED AS THE LENGTH. Today's session: sessionMinutes. A session logged
+   for an EARLIER day (the date control, audit 25 Nov 2026 #21) has no clock -
+   the minutes this page was open today are not how long that workout took, and
+   saved a misleading `duration_min: 1`. It keeps only the time actually
+   entered (holds, a run's minutes); with none, no length is written at all. */
+function savedMinutes(draft, today = todayISO(), now = Date.now()) {
+  if (draft.date === today) return sessionMinutes(draft, now);
+  let workSec = 0;
+  for (const r of buildRows(draft)) {
+    const sec = parseFloat(r.seconds);
+    if (Number.isFinite(sec) && sec > 0) workSec += sec;
+  }
+  const min = Math.round(workSec / 60);
+  return min > 0 ? min : undefined;
+}
+
 async function finishSession(ctx, draft) {
+  /* An edit of a saved note is an update, by whatever route it gets here: never
+     a second note, never a second award. */
+  if (draft && draft.editing) return saveEdit(ctx, draft);
   /* stats.setCounts is the one rule for what gets saved: ticked done OR
      holding any typed figure — sweaty thumbs forget ticks, and silently
      dropping three typed sets is worse than saving an untucked one. The
@@ -526,7 +788,7 @@ async function finishSession(ctx, draft) {
      second tap mid-await would write "<date> 2.md" with identical rows. */
   if (draft.finishing) return;
   draft.finishing = true;
-  const duration_min = sessionMinutes(draft);
+  const duration_min = savedMinutes(draft);
   let path;
   try {
     path = await ctx.io.saveWorkout({ date: draft.date, plan: draft.plan, day: draft.day, duration_min, rows });
@@ -539,13 +801,24 @@ async function finishSession(ctx, draft) {
      under the finishing guard above, so a session abandoned without saving earns
      nothing and a second tap cannot pay twice. It never throws and is given a
      moment at most: a failed or slow award does not fail or hold up a finished
-     session. Awarded BEFORE the draft is cleared, because the records a guided
-     session found live on ctx.state.session / the carry for THIS draft. */
-  const award = await rewardsFlow.awardWithin(ctx, draft, rows, path, rewardsFlow.flow.AWARD_WAIT_MS);
-  ctx.state.logDraft = null;
+     session.
+
+     THE NOTE EXISTS, SO THE DRAFT STOPS BEING RESUMABLE NOW (audit 25 Nov 2026,
+     #4). It used to be cleared only after the award (up to 1.5 s): backgrounding
+     the app in that window kept it on the device again, it came back as
+     "Session in progress", and finishing it wrote a second note and paid XP
+     twice. The award is STARTED first - awardFinished reads the records a guided
+     session found (ctx.state.session / the carry for THIS draft) before its first
+     await - and works from the local `draft` from then on. Clearing the accessor
+     clears the stored copy, and with no live draft the controller's keepDraft
+     has nothing to write back while the award runs. Only THIS draft is cleared:
+     anything newer is not ours to drop. */
+  const awarding = rewardsFlow.awardWithin(ctx, draft, rows, path, rewardsFlow.flow.AWARD_WAIT_MS);
+  if (ctx.state.logDraft === draft) ctx.state.logDraft = null;
+  const award = await awarding;
   ctx.notice(award && award.xp ? `Session logged. Strong work. +${award.xp} XP` : 'Session logged. Strong work.');
   ctx.nav('dashboard');
   ctx.reload();
 }
 
-module.exports = { render, startDraft, growToSchedule, setsInDraft, buildRows, finishSession, sessionMinutes, elapsedMinutes, keepDraft, saveMotionPref };
+module.exports = { render, startDraft, growToSchedule, setsInDraft, buildRows, finishSession, sessionMinutes, savedMinutes, elapsedMinutes, keepDraft, saveMotionPref, startEdit, editDraftFrom };

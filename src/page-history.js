@@ -3,9 +3,10 @@
 
 const { el, ico, fmtSeconds, clickableCard, emptyLine } = require('./dom');
 const { todayISO, addDays, startOfWeek, fmtShort, monthLabel, weekdayKey } = require('./dates');
-const { workoutDates, workoutDate, weekStreak, sessionCount, sessionVolume, sessionSets, countLabel, isChallengeRun } = require('./stats');
+const { workoutDates, workoutDate, weekStreak, sessionCount, sessionVolume, sessionSets, countLabel, isChallengeRun, sameName } = require('./stats');
 const { streakFlame } = require('./streak-flame');
 const { ConfirmModal } = require('./modals');
+const { startEdit } = require('./page-log');
 
 const HEAT_WEEKS = 16;
 
@@ -53,6 +54,14 @@ function render(ctx, root) {
      figure, one component, so the two pages cannot disagree about how long
      the streak is or how hot it should look. */
   root.append(streakFlame(weekStreak([...dates], settings.weekStart, today)));
+
+  /* "I trained yesterday and forgot to log it" (audit 25 Nov 2026, #21): the
+     same freestyle log Today's "Log a freestyle session" starts, through the same
+     ctx.startLog (which asks first if a session is already open), opened with its
+     date control focused so the day is the first thing picked. */
+  root.append(el('div', { class: 'gv-history-actions' },
+    el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button', onclick: () => ctx.startLog(null, null, { pickDate: true }) },
+      ico('calendar-days'), el('span', {}, 'Log a past session'))));
 
   if (!data.workouts.length) {
     root.append(emptyLine('Nothing logged yet — your first session will land here.'));
@@ -114,7 +123,16 @@ function sessionCard(ctx, w, open) {
       else byEx.push({ exercise: r.exercise, rows: [r] });
     }
     for (const g of byEx) {
-      table.append(el('div', { class: 'gv-set-ex' }, g.exercise));
+      /* The exercise's own page (audit 25 Nov 2026, #28): the same route and
+         params Records and the library use, and Back returns here with this
+         session still open (`session` is kept on the back-stack entry). A name
+         with no exercise note stays text - its page would only bounce to the
+         library. */
+      const ex = ctx.data.exercises.find(e => sameName(e.name, g.exercise));
+      table.append(ex
+        ? el('button', { class: 'gv-set-ex gv-set-ex-link', type: 'button',
+          onclick: () => ctx.nav('exercise', { exercise: ex.name, path: ex.file ? ex.file.path : null }) }, g.exercise)
+        : el('div', { class: 'gv-set-ex' }, g.exercise));
       for (const r of g.rows) {
         const bits = [];
         if (r.distance_km) bits.push(`${r.distance_km} km`);
@@ -128,9 +146,14 @@ function sessionCard(ctx, w, open) {
       }
     }
     const openNote = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button' },
-      ico('pencil'), el('span', {}, 'Open note'));
+      ico('file-text'), el('span', {}, 'Open note'));
     openNote.addEventListener('click', () => ctx.openFile(w.file));
-    table.append(el('div', { class: 'gv-session-foot' }, openNote));
+    /* Edit (audit 25 Nov 2026, #27): this session back in the log screen, saved
+       over its own note (page-log.startEdit). Only for a note the app can date:
+       an edit has to know which day to write back. */
+    const edit = d ? el('button', { class: 'gv-btn gv-btn-small', type: 'button', onclick: () => startEdit(ctx, w) },
+      ico('pencil'), el('span', {}, 'Edit')) : null;
+    table.append(el('div', { class: 'gv-session-foot' }, edit, openNote));
     card.append(table);
   }
   return card;
