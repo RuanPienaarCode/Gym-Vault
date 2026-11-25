@@ -12,11 +12,11 @@
 <script src="bundle.js"></script>
 <script>
   /* Timed circuit interval at a phone pane's height. ?skin=apex (default). Two
-     frames: 705px (an iPhone 11 pane -> gv-short) and 560px (gv-shorter). */
+     frames: 705px (an iPhone 11 pane -> gv-short) and 560px (gv-shorter), and a 20-minute run at 705px (four digits). */
   const { el } = window.__dom;
   const skin = new URLSearchParams(location.search).get('skin') || 'apex';
   const poster = skin === 'apex' || skin === 'lockin';
-  function mount(h, tier) {
+  function mount(h, tier, run) {
     const rootEl = el('div', { class: `gv-app gv-skin-${skin}${poster ? ' gv-skin-poster' : ''} gv-accent-lime gv-narrow ${tier}` });
     rootEl.style.height = h + 'px';
     const pageEl = el('main', { class: 'gv-page' });
@@ -27,11 +27,15 @@
     wrap.append(lab, frame); document.body.append(wrap);
     const draft = {
       date: '2026-11-25', plan: 'Harness', day: 'Day A', startedAt: Date.now(),
-      entries: [{ exercise: 'Jump Squat', target: '8', duration: false, weighted: false, distance: false,
-        sets: [{ reps: '8', weight_kg: '', seconds: '', done: false, touched: false }] }],
-      timed: { intervals: [
-        { kind: 'work', exercise: 'Jump Squat', seconds: 45, entryIndex: 0, setIndex: 0, round: 0, target: '8' },
-      ], rounds: 1, setsPerEntry: [1], totalSeconds: 45, workTotalSeconds: 45 },
+      entries: run
+        ? [{ exercise: 'Easy Run', target: '20 min easy', duration: false, weighted: false, distance: true,
+            sets: [{ reps: '', weight_kg: '', seconds: '', distance_km: '', done: false, touched: false }] }]
+        : [{ exercise: 'Jump Squat', target: '8', duration: false, weighted: false, distance: false,
+            sets: [{ reps: '8', weight_kg: '', seconds: '', done: false, touched: false }] }],
+      timed: { intervals: [run
+        ? { kind: 'work', exercise: 'Easy Run', seconds: 1200, entryIndex: 0, setIndex: 0, round: 0, target: '20 min easy' }
+        : { kind: 'work', exercise: 'Jump Squat', seconds: 45, entryIndex: 0, setIndex: 0, round: 0, target: '8' },
+      ], rounds: 1, setsPerEntry: [1], totalSeconds: run ? 1200 : 45, workTotalSeconds: run ? 1200 : 45 },
     };
     const plugin = { settings: { soundMode: 'off', voiceURI: '', weekStart: 'monday', skin, accent: 'lime' } };
     const data = { present: true,
@@ -49,6 +53,6 @@
     ctx.rerender();
     return { rootEl, pageEl };
   }
-  window.__frames = [mount(705, 'gv-short'), mount(560, 'gv-short gv-shorter'), mount(900, '')];
+  window.__frames = [mount(705, 'gv-short'), mount(560, 'gv-short gv-shorter'), mount(705, 'gv-short', true)];
 </script>
 </body></html>

@@ -3464,9 +3464,24 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 .gv-app .gv-timed-exblock .gv-timed-recap { margin-top: 6px; flex-direction: row; flex-wrap: wrap; gap: 0 16px; }
 .gv-app .gv-timed-exblock .gv-session-frame { height: clamp(104px, 20vh, 160px); }
 .gv-app.gv-short .gv-timed-exblock .gv-session-frame { height: clamp(92px, 15vh, 124px); }
-body .gv-app.gv-short .gv-timed-dial { width: min(50vw, 168px); margin: 0 auto 8px; }
 .gv-app.gv-shorter .gv-timed-exblock .gv-session-frame { height: 80px; }
-body .gv-app.gv-shorter .gv-timed-dial { width: min(42vw, 140px); }
+
+/* THE DIAL FILLS THE SPARE HEIGHT; THE TRANSPORT ROW IS ALWAYS LAST (25 Nov
+   2026). The slot flex-grows from a zero basis, so it takes exactly the height
+   the other rows leave and never pushes them; page-session.js sizes the ring
+   to the slot's smaller side (inline width, which beats the fixed widths
+   above). The min-height is the floor on a very short pane, where the page
+   scrolls rather than the ring vanishing. stretch: the body centres its
+   children, and a centred slot would shrink to the ring and never grow. */
+.gv-app .gv-timed-dialslot {
+  flex: 1 1 0; min-height: 112px; align-self: stretch;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; margin: 0 0 8px;
+}
+/* (0,3,1), later than body.is-phone's dial margin, which pushed the ring past the slot's top */
+body .gv-app .gv-timed-dialslot .gv-timed-dial { margin: 0; flex: 0 0 auto; }
+.gv-app .gv-timed-sound { display: flex; justify-content: center; margin: 0 0 8px; }
+.gv-app .gv-timed-controls { margin-top: auto; }
 
 /* ============================================================================
    MUSCLE MAP (muscle-map.js) — the animated mannequin that replaces the photos

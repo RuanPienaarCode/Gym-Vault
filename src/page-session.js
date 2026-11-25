@@ -2371,6 +2371,10 @@ function timedTopBar(ctx, draft, sess, schedule, iv) {
   };
 }
 
+/* The timed dial's largest size: past this a ring on a tablet is just empty
+   space around a number already readable from across the room. */
+const DIAL_MAX_PX = 360;
+
 function renderTimedInterval(ctx, root, draft, sess, iv) {
   focusMode(ctx);
   const schedule = draft.timed;
@@ -2411,7 +2415,39 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   const dial = el('div', { class: 'gv-timed-dial', 'data-urgency': 'calm' }, ring.svg, digits,
     el('div', { class: 'gv-rc-hint' }, tp.paused ? 'Paused' : ''));
   let urgency = 'calm';
-  body.append(dial);
+  /* THE DIAL FILLS WHATEVER THE SCREEN HAS LEFT (Ruan, 25 Nov 2026). The slot
+     flex-grows into the height the name, picture, reps box and controls did
+     not use, and the ring is sized to the slot's smaller side — so the
+     controls always sit at the bottom and the clock is as big as the phone
+     allows, rather than a fixed-size ring with a band of white under the
+     controls. Measured (ResizeObserver, iOS 13.4+) rather than done in CSS:
+     a square that tracks a flexed HEIGHT needs container units (iOS 16) or
+     percentage heights inside a flex item, which iOS 15 WebKit does not
+     resolve reliably. Without ResizeObserver the stylesheet's fixed ring
+     stays, exactly as before. */
+  const slot = el('div', { class: 'gv-timed-dialslot' }, dial);
+  body.append(slot);
+  let dialPx = 0, digitLen = 0;
+  const fitDigits = () => {
+    const len = digits.textContent.length;
+    if (!dialPx || len === digitLen) return;
+    digitLen = len;
+    /* half the ring for one to three digits; four ("1200" s of a long run)
+       step down so they stay inside it */
+    digits.style.fontSize = `${Math.round(dialPx * Math.min(0.5, 1.6 / Math.max(1, len)))}px`;
+  };
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(entries => {
+      if (!slot.isConnected) { ro.disconnect(); return; }
+      const r = entries[entries.length - 1].contentRect;
+      const px = Math.floor(Math.min(r.width, r.height, DIAL_MAX_PX));
+      if (px < 60 || px === dialPx) return;
+      dialPx = px; digitLen = 0;
+      dial.style.width = `${px}px`;
+      fitDigits();
+    });
+    ro.observe(slot);
+  }
 
   /* Rep, weight and (for a duration entry) seconds boxes for a work
      interval that has them. A timer cannot count your push-ups, so the
@@ -2446,13 +2482,15 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   const skipBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': isWork ? 'Skip this interval' : 'Skip ahead' }, ico('skip-forward'));
   skipBtn.addEventListener('click', () => advanceTimed(ctx, draft, sess, { skip: true }));
 
-  body.append(el('div', { class: 'gv-timed-controls' }, backBtn, playBtn, skipBtn));
-  body.append(el('div', { class: 'gv-rc-bar gv-session-rcbar' }, muteButton(ctx, sess)));
-
+  /* Sound sits ABOVE the transport row, and the row is the last thing on the
+     screen: back / pause / next always at the bottom, under the thumb
+     (Ruan, 25 Nov 2026). */
   const callouts = (sess.pendingCallouts || []).length
     ? el('div', { class: 'gv-session-callouts' }, ...(sess.pendingCallouts || []).map(line => el('div', { class: 'gv-session-callout' }, line)))
     : '';
   if (callouts) { body.append(callouts); }
+  body.append(el('div', { class: 'gv-timed-sound' }, muteButton(ctx, sess)));
+  body.append(el('div', { class: 'gv-timed-controls' }, backBtn, playBtn, skipBtn));
 
   root.append(body, live);
 
@@ -2484,6 +2522,7 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
     const elapsed = timedElapsed(tp);
     const remaining = Math.max(0, iv.seconds - elapsed);
     digits.textContent = String(Math.ceil(remaining));
+    fitDigits();
     const left = iv.seconds ? remaining / iv.seconds : 0;
     ring.set(left);
     /* Under 40% it warms; under 15% it goes urgent and the digits get a
