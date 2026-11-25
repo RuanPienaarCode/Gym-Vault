@@ -663,9 +663,9 @@ const SEED_PLAN = {
     'muscle-up — with rows for shoulder health, a full leg & core day, and mobility',
     'built into every warm-up.',
     '',
-    'THE WEEK: Mon pull, Wed push, Thu legs & core — with the running plan',
-    'filling Tue and Sat, and the Rest & Recovery plan filling whatever is',
-    'left. Five sessions and two rest days.',
+    'THE WEEK: Mon pull, Wed push, Thu legs & core. Switch on the running',
+    'plan on the Plans page and it fills Tue and Sat; switch on Rest &',
+    'Recovery and it fills whatever is left. Five sessions and two rest days.',
     'Legs sit on Thursday so there is a clear day between them and the',
     'Saturday trail run; a leg session the day before a long run is how ITBs',
     'and knees get angry. Adding running means no second pull day — recovery',
@@ -715,11 +715,15 @@ const SEED_PLAN = {
    alternative to the strength plan, it runs alongside it, so the dashboard
    merges days from the active plan and every parallel one. The ladder is
    frontmatter data (not prose) so the Running page can say which week you
-   are in and what today's target is. */
+   are in and what today's target is.
+   It arrives SWITCHED OFF (`paused: true`, plan-parse.isPaused): a new
+   user's first Today is the one main plan, not someone else's running
+   programme on top of it. Switching it on is one tap on the Plans page. */
 const SEED_RUN_PLAN = {
   name: 'Trail Base — Road to 15km',
   fm: {
     parallel: true,
+    paused: true,
     ladder: [4, 5, 6, 5, 7, 8, 9, 6, 10, 11.5, 13, 15],
     start_date: '',          // set on setup to the Monday of the current week
   },
@@ -750,10 +754,11 @@ const SEED_RUN_PLAN = {
 /* Rest & Recovery is a FALLBACK plan: it does not compete with the training
    plan, it fills whatever weekday nothing else claims. Rest therefore never
    has to be re-arranged by hand when training days move or the active plan
-   changes. `(any)` is the wildcard day; an exact weekday wins over it. */
+   changes. `(any)` is the wildcard day; an exact weekday wins over it.
+   Arrives switched off (`paused: true`) like the running plan. */
 const SEED_REST_PLAN = {
   name: 'Rest & Recovery',
-  fm: { parallel: true, fallback: true },
+  fm: { parallel: true, fallback: true, paused: true },
   body: [
     'Not a programme you switch to — this fills any day your training plan',
     'leaves empty, whichever plan that is. Nothing here is compulsory: pick',
@@ -781,13 +786,16 @@ const SEED_REST_PLAN = {
   ].join('\n') + '\n',
 };
 
+/* Only goals for what the ACTIVE starter plan (Get Over The Bar) trains, plus
+   the general workouts-a-week goal. The running goals belong to the running
+   plan, which arrives switched off, and "10 Muscle-ups" measures an exercise
+   no starter day trains — a new user would open on goals nothing they do can
+   move. */
 const SEED_GOALS = [
   { name: '10 Pull-ups', fm: { metric: 'exercise-reps', exercise: 'Pull-ups', target: 10, direction: 'increase' },
     note: 'The first gateway — muscle-up skill work unlocks at 8–10 clean pull-ups (with the dip gateway).' },
   { name: '10 Straight-bar Dips', fm: { metric: 'exercise-reps', exercise: 'Straight-bar Dips', target: 10, direction: 'increase' },
     note: 'The other gateway. Hit both and the muscle-up skill work opens.' },
-  { name: '10 Muscle-ups', fm: { metric: 'exercise-reps', exercise: 'Muscle-ups', target: 10, direction: 'increase' },
-    note: 'The mission. A year-plus goal — patience is the plan. First rep → ten reps, consistency beats intensity.' },
   { name: '50 Box Jumps', fm: { metric: 'exercise-reps', exercise: 'Box Jumps', target: 50, direction: 'increase' },
     note: 'Add 2–4 reps a week. Landings over height, always; step down every rep.' },
   { name: '6-minute Plank', fm: { metric: 'exercise-duration', exercise: 'Plank', target: 360, direction: 'increase' },
@@ -796,12 +804,8 @@ const SEED_GOALS = [
     note: 'Shrink the assistance: lower box → no box. Gated mostly by ankle/hip mobility.' },
   { name: '45s Dead Hang', fm: { metric: 'exercise-duration', exercise: 'Dead Hang', target: 45, direction: 'increase' },
     note: 'Grip + shoulder prehab.' },
-  { name: '10km Trail Run', fm: { metric: 'exercise-distance', exercise: 'Long Trail Run', target: 10, direction: 'increase' },
-    note: 'The halfway marker on the way to 15. Around week 9 of the ladder.' },
-  { name: '15km Trail Run', fm: { metric: 'exercise-distance', exercise: 'Long Trail Run', target: 15, direction: 'increase' },
-    note: 'The mission: 15km on trail, comfortably. No deadline on purpose — the body sets the pace. Add one later if you want the pressure.' },
-  { name: '4 Workouts a Week', fm: { metric: 'workouts-per-week', target: 4, direction: 'increase' },
-    note: 'The three strength days plus a run. Recovery is the real ceiling — if progress stalls, cut volume, don\'t add days.' },
+  { name: '3 Workouts a Week', fm: { metric: 'workouts-per-week', target: 3, direction: 'increase' },
+    note: 'The three strength days. Recovery is the real ceiling — if progress stalls, cut volume, don\'t add days.' },
 ];
 
 const SEED_PROFILE = {

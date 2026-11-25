@@ -60,6 +60,8 @@ function makeVault(bodyLogText) {
       byPath.set(p, f); contents.set(p, text);
     },
     async modify(f, text) { contents.set(f.path, text); },
+    /* appendBodyRow writes through vault.process (audit 25 Nov 2026 #3). */
+    async process(f, fn) { const next = fn(contents.get(f.path) ?? ''); contents.set(f.path, next); return next; },
   };
   return { v, read: () => contents.get('Gym/Body Log.md') };
 }

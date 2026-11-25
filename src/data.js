@@ -13,7 +13,7 @@
 
 const { normalizePath, TFile, TFolder, requestUrl, Notice } = require('obsidian');
 const { parseFrontmatter, serializeFrontmatter, tableToObjects, parseMdTable, unescMd, ROW_EXTRA, buildMdTable, replaceFirstTable, tableHeaderLabels } = require('./markdown');
-const { parsePlanBody, serializePlanBody, isPaused, withRole } = require('./plan-parse');
+const { parsePlanBody, serializePlanBody, isPaused, withRole, mainPlansOf } = require('./plan-parse');
 const { BODY_COLUMNS, WORKOUT_COLUMNS } = require('./constants');
 const { SEED_EXERCISES, SEED_PLAN, SEED_RUN_PLAN, SEED_REST_PLAN, SEED_GOALS, SEED_PROFILE, isSeedMediaUrl } = require('./seed');
 const { photosRoot, poseFolder, photoPath, parsePhotoPath, IMAGE_EXT } = require('./progress-photos');
@@ -53,19 +53,36 @@ const safeName = s => {
    WRITES are untouched: appendBodyRow still reads positionally and refuses a
    table whose columns are not ours. */
 const normHeader = h => String(h === null || h === undefined ? '' : h).trim().toLowerCase();
-function tableByHeader(text, columns) {
-  const rows = parseMdTable(text);
-  if (!rows.length) return [];
-  const header = rows[0].map(normHeader);
-  if (columns.every((c, i) => i >= header.length || header[i] === normHeader(c.label))) return tableToObjects(text, columns);
+/* The rule above, once: null when the table reads POSITIONALLY, else which
+   header cell each column reads from (`slot`, -1 = none) and the set of cells
+   so claimed (`used`). Shared by tableByHeader and extraHeaderLabels, so the
+   columns a rewrite keeps are exactly the extra cells the load carried. */
+function headerSlots(rawHeader, columns) {
+  const header = rawHeader.map(normHeader);
+  if (columns.every((c, i) => i >= header.length || header[i] === normHeader(c.label))) return null;
   const at = columns.map(c => {
     const i = header.indexOf(normHeader(c.label));
     return i >= 0 ? i : header.indexOf(c.key);
   });
-  if (at.every(i => i < 0)) return tableToObjects(text, columns);
+  if (at.every(i => i < 0)) return null;
   const claimed = new Set(at.filter(i => i >= 0));
   const slot = columns.map((c, i) => (at[i] >= 0 ? at[i] : (i < header.length && !claimed.has(i) ? i : -1)));
-  const used = new Set(slot.filter(i => i >= 0));
+  return { slot, used: new Set(slot.filter(i => i >= 0)) };
+}
+/* Header labels of the cells tableByHeader carries as each row's ROW_EXTRA
+   tail, in that order — the user's own columns, for buildMdTable to keep. */
+function extraHeaderLabels(text, columns) {
+  const rows = parseMdTable(text);
+  if (!rows.length) return [];
+  const s = headerSlots(rows[0], columns);
+  return s ? rows[0].filter((_, i) => !s.used.has(i)) : rows[0].slice(columns.length);
+}
+function tableByHeader(text, columns) {
+  const rows = parseMdTable(text);
+  if (!rows.length) return [];
+  const s = headerSlots(rows[0], columns);
+  if (!s) return tableToObjects(text, columns);
+  const { slot, used } = s;
   return rows.slice(1).map(cells => {
     const o = {};
     columns.forEach((col, i) => { o[col.key] = slot[i] >= 0 ? unescMd(cells[slot[i]] ?? '') : ''; });
@@ -425,7 +442,6 @@ function makeIo(plugin) {
   async function appendBodyRow(row) {
     await ensureFolder(root());
     const path = paths.bodyLog();
-    const f = v.getFileByPath(path);
     /* The form sends EVERY column, unmeasured ones as '' — drop those
        before the merge or an evening resting-HR entry blanks the morning's
        weight (empty must mean "not remeasured", never "erase"). Copy first:
@@ -434,29 +450,51 @@ function makeIo(plugin) {
        await. */
     row = Object.fromEntries(Object.entries(row).filter(([, v]) => String(v ?? '').trim() !== ''));
 
-    if (!f) { await writeFile(path, buildMdTable(BODY_COLUMNS, [row]) + '\n'); return; }
-
     /* This file may be one the USER writes in. Rebuilding it as
        `frontmatter + one table` deleted their headings, prose, whole
        sections and any column our schema doesn't know — so we now touch
        only the lines of our own table, and refuse outright if the first
-       table isn't ours rather than overwriting something we can't read. */
-    const text = await v.cachedRead(f);
-    const header = tableHeaderLabels(text);
-    if (header && !BODY_COLUMNS.every((c, i) => i >= header.length || header[i] === c.label)) {
-      throw new Error(`Body Log: the first table in "${path}" isn't the measurement log — its columns don't match. Nothing was written. Move your own table below the log table.`);
-    }
-    const extraLabels = header ? header.slice(BODY_COLUMNS.length) : [];
-    const rows = tableToObjects(text, BODY_COLUMNS);
-    // One row per date: logging twice on a day updates in place.
-    const i = rows.findIndex(r => r.date === row.date);
-    if (i >= 0) rows[i] = { ...rows[i], ...row };
-    else rows.push(row);
-    rows.sort(compareBodyRows);
+       table isn't ours rather than overwriting something we can't read.
+       Worked out on the text the change is APPLIED to (inside vault.process),
+       never on a copy read earlier: two saves close together, or the other
+       phone's row arriving mid-save, used to lose a row. */
+    const merged = text => {
+      const header = tableHeaderLabels(text);
+      if (header && !BODY_COLUMNS.every((c, i) => i >= header.length || header[i] === c.label)) {
+        throw new Error(`Body Log: the first table in "${path}" isn't the measurement log — its columns don't match. Nothing was written. Move your own table below the log table.`);
+      }
+      const extraLabels = header ? header.slice(BODY_COLUMNS.length) : [];
+      const rows = tableToObjects(text, BODY_COLUMNS);
+      // One row per date: logging twice on a day updates in place.
+      const i = rows.findIndex(r => r.date === row.date);
+      if (i >= 0) rows[i] = { ...rows[i], ...row };
+      else rows.push(row);
+      rows.sort(compareBodyRows);
+      const table = buildMdTable(BODY_COLUMNS, rows, extraLabels);
+      const next = replaceFirstTable(text, table);
+      return next !== null ? next : text.replace(/\n*$/, '\n\n') + table + '\n';
+    };
 
-    const table = buildMdTable(BODY_COLUMNS, rows, extraLabels);
-    const next = replaceFirstTable(text, table);
-    await writeFile(path, next !== null ? next : text.replace(/\n*$/, '\n\n') + table + '\n');
+    /* One save of this note at a time (exclusive). No note yet: create it —
+       and if another device created it first (create says it exists), merge
+       into theirs on the next round. A note deleted mid-save is created
+       fresh on the next round. */
+    return exclusive(path, async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (!v.getFileByPath(path)) {
+          try {
+            await tracked(path, () => v.create(path, buildMdTable(BODY_COLUMNS, [row]) + '\n'));
+            return;
+          } catch (e) {
+            if (v.getFileByPath(path)) continue;
+            throw e;
+          }
+        }
+        const res = await applyToFile(path, merged);
+        if (!res.gone) return;
+      }
+      throw new Error(`Body Log: could not write "${path}".`);
+    });
   }
 
   /* ---- rewards ledger (Gym/Rewards.md) --------------------------------------
@@ -694,13 +732,21 @@ function makeIo(plugin) {
      off (the plan page's Active switch): every plan is then stamped
      `active: false`, including a hand-written note with no `active` key,
      because plan-parse.activePlanOf lets a key-less plan stand in when
-     nothing is flagged — and "off" must not hand Today to the next plan. */
+     nothing is flagged — and "off" must not hand Today to the next plan.
+
+     WHAT TO WRITE IS DECIDED FROM EACH NOTE'S CURRENT TEXT, inside the write,
+     never from the record in memory: a phone that is behind (another phone
+     switched plan Y on since this one loaded) used to skip Y as "already
+     off", and two notes ended `active: true`. Now the target ends
+     `active: true`, and every other note that is a main plan NOW (not
+     parallel/fallback — plan-parse.mainPlansOf's rule) ends `active: false`
+     unless it already says so. A key-less main note is stamped too, for the
+     reason above. A note that has become an add-on or backup since the load
+     is left alone (`active` means nothing there). A note already right is not
+     written. */
   async function setActivePlan(plans, target) {
     for (const p of plans) {
       const want = p === target;
-      const is = String(p.fm.active) === 'true';
-      const stampOff = target === null && String(p.fm.active) !== 'false';
-      if (want === is && !stampOff) continue;
       /* Patch the FRONTMATTER only. savePlan re-serializes the body from the
          parsed model, so flipping a flag used to rewrite every other plan's
          prose and list formatting too — a plan switch has no business
@@ -708,14 +754,18 @@ function makeIo(plugin) {
          like every save here, and the new text becomes the record's baseline
          so a later savePlan does not mistake this write for an outside edit. */
       await exclusive(p.file.path, async () => {
+        let ends = null;
         const res = await applyToFile(p.file.path, current => {
           const { fm, body } = parseFrontmatter(current);
+          if (!want && mainPlansOf([{ fm }]).length === 0) return null;   // an add-on/backup now
+          ends = want;
+          if (String(fm.active) === String(want)) return null;            // already says so
           fm.active = want;
           return serializeFrontmatter(fm) + '\n' + body;
         });
         if (res.gone) { tell(`"${p.name}" was deleted or moved outside the app — nothing was saved.`); return; }
-        p.fm.active = want;
-        rememberLoaded(p.fm, undefined, res.text);
+        if (ends !== null) p.fm.active = ends;
+        if (res.text !== null) rememberLoaded(p.fm, undefined, res.text);
       });
     }
   }
@@ -739,14 +789,16 @@ function makeIo(plugin) {
   /* Make a plan main, alongside or fills-gaps (plan-parse.withRole says what
      the frontmatter becomes). Frontmatter only, applied to the note's current
      text like setPlanFlag; the body is the file's own. Resolves true when the
-     note now says what was asked, false when it was deleted outside the app. */
-  async function setPlanRole(plan, role) {
+     note now says what was asked, false when it was deleted outside the app.
+     `opts` ({ on }) is handed to withRole as it is: a boolean `on` there sets
+     the plan on or off instead of the on/off withRole would work out. */
+  async function setPlanRole(plan, role, opts) {
     const path = plan.file && plan.file.path;
     return exclusive(path, async () => {
       let nextFm = null;
       const res = await applyToFile(path, current => {
         const { fm, body } = parseFrontmatter(current);
-        nextFm = withRole(fm, role);
+        nextFm = withRole(fm, role, opts);
         return nextFm ? serializeFrontmatter(nextFm) + '\n' + body : null;
       });
       if (res.gone) { tell(`"${plan.name}" was deleted or moved outside the app — nothing was saved.`); return false; }
@@ -778,12 +830,41 @@ function makeIo(plugin) {
     });
   }
 
+  /* Is there a file at `path` on DISK, whatever the vault index says? On a
+     shared vault a note another phone made can be on disk (iCloud) before
+     Obsidian lists it. Asks the adapter; a host without one, or an adapter
+     that fails, answers false and the caller falls back to what create() said. */
+  async function onDisk(path) {
+    const ad = v.adapter;
+    if (!ad || typeof ad.exists !== 'function') return false;
+    try { return !!(await ad.exists(path)); } catch (e) { return false; }
+  }
+
+  /* Create a NEW note at `<base>.<ext>`, or `<base> 2.<ext>`, `<base> 3.<ext>`…
+     when that name is taken. Taken means in the vault index (taken(), case-
+     insensitive) OR on disk (onDisk) — and, because the disk can still change
+     between that check and the write, a create() that fails while the name
+     turns out to exist moves on to the next number too. Any other failure
+     throws. Never overwrites. Bounded, so a broken host cannot spin. */
+  const MAX_NUMBERED = 100;
+  async function createNumbered(base, ext, content) {
+    for (let n = 1; n <= MAX_NUMBERED; n++) {
+      const path = n === 1 ? `${base}.${ext}` : `${base} ${n}.${ext}`;
+      if (taken(path) || await onDisk(path)) continue;
+      try {
+        await tracked(path, () => v.create(path, content));
+        return path;
+      } catch (e) {
+        const exists = taken(path) || await onDisk(path) || /already exists/i.test(String(e && e.message || e));
+        if (!exists) throw e;
+      }
+    }
+    throw new Error(`could not find a free name for "${base}.${ext}" — nothing was saved.`);
+  }
+
   async function saveWorkout(session) {
     await ensureFolder(paths.workouts());
     const base = safeName(`${session.date}${session.day ? ' ' + session.day : ''}`) || session.date;
-    let path = `${paths.workouts()}/${base}.md`;
-    // A second session the same day gets a numbered file, not an overwrite.
-    for (let n = 2; taken(path); n++) path = `${paths.workouts()}/${base} ${n}.md`;
     const fm = { date: session.date, plan: session.plan, day: session.day };
     /* `kind` is how a weekly-challenge go is told from a session when the note
        is read back (stats.isChallengeRun reads fm.kind). Written only when the
@@ -791,8 +872,64 @@ function makeIo(plugin) {
        lines it always had. Sits after `day` and before `duration_min`. */
     if (typeof session.kind === 'string' && session.kind.trim() !== '') fm.kind = session.kind.trim();
     fm.duration_min = session.duration_min;
-    await tracked(path, () => v.create(path, serializeFrontmatter(fm) + '\n' + buildMdTable(WORKOUT_COLUMNS, session.rows) + '\n'));
-    return path;
+    /* A second session the same day gets a numbered file, not an overwrite —
+       and so does a same-name note another phone synced in that the index
+       has not listed yet (it used to fail every retry with "File already
+       exists."). */
+    return createNumbered(`${paths.workouts()}/${base}`, 'md',
+      serializeFrontmatter(fm) + '\n' + buildMdTable(WORKOUT_COLUMNS, session.rows) + '\n');
+  }
+
+  /* EDIT A SAVED WORKOUT IN PLACE (the in-app edit, lane L6 calls it as
+     io.updateWorkout(file, session)). `session` has saveWorkout's shape:
+     { date, plan, day, duration_min, rows, kind? }.
+
+     Rewrites ONLY the workout table and the frontmatter keys date, plan, day
+     and duration_min — plus `kind` when the session names one (a `kind` the
+     note already has is otherwise left as it is). Every other frontmatter
+     line keeps its own text and place (serializeFrontmatter's layout), and the
+     text above and below the table is kept byte for byte: the new frontmatter
+     block replaces only the old block, and replaceFirstTable splices only the
+     table's lines. A column of the user's own in the table is kept (its
+     values ride on each row as ROW_EXTRA, as tableByHeader loaded them).
+
+     Never renames or moves the note, even when the date or day changes — the
+     file name is only where a note first landed; every reader takes the date
+     from the frontmatter (stats.workoutDate). Applied to the note's CURRENT
+     text inside vault.process, one save of the note at a time. Resolves the
+     path; throws when the note is gone (it is never re-created). */
+  async function updateWorkout(file, session) {
+    const path = file && file.path;
+    if (!path) throw new Error('that workout note is not in the vault any more — nothing was saved.');
+    return exclusive(path, async () => {
+      const res = await applyToFile(path, current => {
+        const text = String(current).replace(/^﻿/, '');
+        const { fm, body } = parseFrontmatter(text);
+        /* Everything before the body: the old block and the blank lines after
+           it ('' when the note has no frontmatter). Keep those blank lines
+           exactly; swap only the block. */
+        const head = text.slice(0, text.length - body.length);
+        const gap = head ? /(?:\r?\n)*$/.exec(head)[0] : '';
+        const next = { ...fm };
+        next.date = session.date;
+        next.plan = session.plan;
+        next.day = session.day;
+        if (typeof session.kind === 'string' && session.kind.trim() !== '') next.kind = session.kind.trim();
+        /* An edit of a note that never had a length passes none: leave the key
+           out rather than write an empty one. */
+        if (session.duration_min !== undefined && session.duration_min !== null) next.duration_min = session.duration_min;
+        const block = serializeFrontmatter(next);
+        const rows = Array.isArray(session.rows) ? session.rows : [];
+        const table = buildMdTable(WORKOUT_COLUMNS, rows, extraHeaderLabels(body, WORKOUT_COLUMNS));
+        const spliced = replaceFirstTable(body, table);
+        const nextBody = spliced !== null ? spliced : (body.trim() === '' ? '' : body.replace(/\n*$/, '\n\n')) + table + '\n';
+        /* serializeFrontmatter ends `---\n`; the kept gap already holds the
+           closing fence's own newline. */
+        return (gap ? block.slice(0, -1) + gap : block + '\n') + nextBody;
+      });
+      if (res.gone) throw new Error(`"${path}" was deleted or moved outside the app — nothing was saved.`);
+      return path;
+    });
   }
 
   /* An export is saved as a REAL file of its own kind: the markdown summary
@@ -878,10 +1015,18 @@ function makeIo(plugin) {
          be live the moment they landed while Browse says "arrives switched off".
          Whether a plan is alongside is asked of isPaused itself (asked of a
          copy that says `paused: true`), so this uses the one rule for
-         parallel/fallback rather than a second reading of the same flags. */
+         parallel/fallback rather than a second reading of the same flags.
+         An add-on or backup carries ONLY `paused: true` — no `active` line,
+         which means nothing for those (and the plan page would read it). A
+         main plan arrives `active: false`.
+         `source: <library id>` records which library plan this note came
+         from, so Browse can tell it is installed even after it is renamed. */
       const { fm, body } = parseFrontmatter(res.text);
-      const nextFm = { ...fm, active: false };
-      if (isPaused({ fm: { ...fm, paused: true } })) nextFm.paused = true;
+      const nextFm = { ...fm };
+      if (isPaused({ fm: { ...fm, paused: true } })) { delete nextFm.active; nextFm.paused = true; }
+      else nextFm.active = false;
+      const id = typeof entry.id === 'number' ? String(entry.id) : typeof entry.id === 'string' ? entry.id.trim() : '';
+      if (id) nextFm.source = id;
       delete nextFm.name;                       // the filename carries the name
       await tracked(planPath, () => v.create(planPath, serializeFrontmatter(nextFm) + '\n' + body));
       out.plan = planPath;
@@ -1226,7 +1371,7 @@ function makeIo(plugin) {
     paths, loadAll, scaffold, refreshSeedMedia, downloadMedia, saveExport, saveProfile, appendBodyRow, readRewards, appendRewards,
     fetchPlanIndex, installPlan,
     createExercise, saveExercise, createGoal, saveGoal,
-    createPlan, savePlan, setActivePlan, setPaused, setFavourite, setPlanRole, saveWorkout, trash, safeName,
+    createPlan, savePlan, setActivePlan, setPaused, setFavourite, setPlanRole, saveWorkout, updateWorkout, trash, safeName,
     listPhotos, savePhoto, photoSrc,
     listVoiceClips, saveVoiceClip, readVoiceClip,
   };

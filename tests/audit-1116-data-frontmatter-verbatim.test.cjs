@@ -232,7 +232,8 @@ check('F43 every seed plan, exercise, goal and the profile round-trips byte for 
   for (const p of [seed.SEED_PLAN, seed.SEED_RUN_PLAN, seed.SEED_REST_PLAN]) fms.push([`plan ${p.name}`, p.fm]);
   for (const g of seed.SEED_GOALS) fms.push([`goal ${g.name}`, g.fm]);
   fms.push(['profile', seed.SEED_PROFILE.fm]);
-  assert.ok(fms.length > 80, `only ${fms.length} seed notes found`);
+  /* 75, not 80: audit 25 Nov 2026 #25 dropped three starter goals. */
+  assert.ok(fms.length > 75, `only ${fms.length} seed notes found`);
   for (const [label, fm] of fms) {
     const written = serializeFrontmatter(fm);
     const again = parseFrontmatter(written + '\nbody\n');

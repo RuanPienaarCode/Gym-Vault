@@ -90,7 +90,8 @@ const install = async (fmLines, name = 'Lib Plan') => {
 
 check('K3 a downloaded `parallel: true` plan arrives paused, so Today does not run it', async () => {
   const { text, plan } = await install(['type: plan', 'parallel: true', 'active: true']);
-  assert.match(text, /^active: false$/m, `active not forced off:\n${text}`);
+  /* Audit 25 Nov 2026 #46: an add-on carries no `active` line at all (it means nothing there). */
+  assert.ok(!/^active:/m.test(text), `add-on install kept an active line:\n${text}`);
   assert.match(text, /^paused: true$/m, `no paused line:\n${text}`);
   assert.strictEqual(isPaused(plan), true, 'plan-parse.isPaused says the downloaded plan is live');
 });
