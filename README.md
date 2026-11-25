@@ -35,7 +35,9 @@ desktop and mobile.
   heaviest weight, body weight, workouts per week). A rep or hold goal can
   also be a *weekly challenge*, below.
 - **History** — activity heatmap and every logged session, plus a Records
-  page of every personal best.
+  page of every personal best. **Edit** reopens a saved session in the log
+  and **Save changes** rewrites that note (no extra XP). **Log a past
+  session** logs a workout for an earlier day.
 - **Running** — the week's runs from your running plan, the long-run ladder,
   and a Running records page of its own: longest run, best pace over 1, 5,
   10, 15 and 21.1 km+, longest time on feet, biggest week, and every time
@@ -91,9 +93,10 @@ the command palette (it appears as *Gym Vault: Open gym*).
   Today, in which case yours stays in charge;
 - a running plan, **Trail Base — Road to 15km**, with a 12-week long-run ladder
   starting from the Monday of the current week, and a **Rest & Recovery** plan
-  that fills any weekday the others leave empty;
-- ten goals (pull-ups, dips, muscle-ups, box jumps, a plank, pistol squats, a
-  dead hang, two trail-run distances and workouts per week);
+  for days with no workout. Both arrive switched off: turn them on with the
+  **Active** switch on the Plans page if you want them;
+- seven goals (pull-ups, dips, box jumps, a plank, pistol squats, a dead hang
+  and workouts per week);
 - a `Profile.md` with empty fields and a `Body Log.md` table.
 
 Nothing you already have is overwritten, and you can re-run it any time from
@@ -106,6 +109,12 @@ and work through the exercises in any order. Settings → *Start opens* swaps
 the two: with *Log screen* chosen, Start opens the log and **Guided** sits
 beside it. Every Start follows it: Today, *Also today* and each day on a plan's
 page.
+
+**Another day, another workout.** The date at the top of the log can be changed
+to today or any earlier day, so a session you forgot is saved on the day you
+did it. On Today, **Choose another workout** starts any plan's day once without
+changing which plan is active. Leave a session and a **Session in progress**
+button on every page takes you back to the screen you left.
 
 Each exercise in the log, and on the guided screen, shows what you did **last
 time** (the date and up to six sets), your **best** set (the heaviest, with its own
@@ -135,7 +144,7 @@ pick is kept the same way, as `motion_sensitivity`. On iPhone the first grant
 still comes from your tap on the button; if a remembered start can't begin
 without one, the button stays off and says so.
 
-**Count-back and sound.** Settings → *Count-back* chooses how a rep, a
+**Sound and voice.** Settings → *Sound and voice* chooses how a rep, a
 countdown or a new record is announced: *Voice* (counted out loud), *My voice*
 (your own recordings, below), *Beeps*, *Vibration* (Android only — iOS does not
 allow it) or *Silent* (the count is still on screen).
@@ -191,7 +200,7 @@ the camera so you can line yourself up the same way each time. Drag the slider
 to compare any two dates, or press play for a slow dissolve through all of
 them. The photos are ordinary `.jpg` files in your vault.
 
-**Count yourself in.** Settings → *Count-back* → **My voice**, then *Open
+**Count yourself in.** Settings → *Sound and voice* → **My voice**, then *Open
 the recorder* (or Profile → *Your voice*, or the command *Record your own
 count-in*). The recorder walks you through the list — five, four, three,
 two, one, Begin, each rep number to thirty, target reached, new record,
@@ -218,13 +227,16 @@ pairs with the Olive accent, are also there).
 - **Refresh starter media** — updates the demonstration images and videos on
   the starter exercises to the latest set. It only touches media that is still
   the bundled default; anything you set yourself stays.
-- **Calm motion** — no confetti, no pulsing, flickering or scrolling, and
+- **Less motion** — no confetti, no pulsing, flickering or scrolling, and
   exercise images held still. Sounds and counting are unchanged.
 - **Look and feel on this device only** — for a vault shared between devices
   or people. With it on, *Style* (the Calm colours included), *Accent color*, *Rewards* and
-  *Calm motion* are kept on that phone or computer only, in Obsidian's local
+  *Less motion* are kept on that phone or computer only, in Obsidian's local
   storage, and are not written to the synced `data.json`, so the other devices
   keep their own. With it off they follow one shared choice.
+- **Use a different Gym folder on this phone** — for two people sharing one
+  vault. With it on, this phone keeps its own plans, workouts, records and
+  body log in the folder you name; other devices are not changed.
 
 ## Plan format
 
