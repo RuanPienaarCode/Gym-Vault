@@ -16,7 +16,7 @@
    usually come from different sets, and "160 kg" glued to "14 reps" would be a
    lift nobody did (best1RM's rule). */
 
-const { forEachExerciseRow, num, workoutDate } = require('./stats');
+const { forEachExerciseRow, num, workoutDate, setWeight, claimableKinds } = require('./stats');
 const { fmtShort } = require('./dates');
 const { fmtSeconds, el } = require('./dom');
 
@@ -37,8 +37,8 @@ function exerciseRecap(workouts, exercise) {
   forEachExerciseRow(workouts || [], exercise, (r, w) => {
     if (!hasFigure(r)) return;
     any = true;
-    const rp = num(r.reps), wt = num(r.weight_kg), sc = num(r.seconds);
-    if (wt !== null && wt > 0 && (best === null || wt > best.weight || (wt === best.weight && (rp || 0) > (best.reps || 0)))) best = { weight: wt, reps: rp };
+    const rp = num(r.reps), wt = setWeight(r), sc = num(r.seconds);
+    if (wt !== null && (best === null || wt > best.weight || (wt === best.weight && (rp || 0) > (best.reps || 0)))) best = { weight: wt, reps: rp };
     if (rp !== null && (mostReps === null || rp > mostReps.reps || (rp === mostReps.reps && (wt || 0) > (mostReps.weight || 0)))) mostReps = { reps: rp, weight: wt };
     if (sc !== null && (longest === null || sc > longest)) longest = sc;
     const d = workoutDate(w);
@@ -57,7 +57,23 @@ function setText(reps, weight, seconds) {
   return weight ? `${weight} kg` : '';
 }
 
-const rowText = r => setText(num(r.reps), num(r.weight_kg), num(r.reps) === null ? num(r.seconds) : null);
+const rowText = r => setText(num(r.reps), setWeight(r), num(r.reps) === null ? num(r.seconds) : null);
+
+/* THE ONE READING OF "WHAT WAS THIS SET", for every list that prints a logged
+   row: the log card's Last line (through rowText) and the exercise page's Recent
+   list. Reps come first: a timed circuit saves its 45 s interval in `seconds` for
+   a rep exercise as well (page-log.buildRows, on purpose), so a row of reps 15 +
+   seconds 45 is "15", never "45s" (audit 25 Nov 2026, #47). Seconds are the
+   answer only when no reps were typed (a hold). A run row reads its distance and,
+   when it has one, its time. */
+function rowSummary(r) {
+  const km = num(r.distance_km);
+  if (km !== null && km > 0) {
+    const sc = num(r.seconds);
+    return `${km} km${sc !== null && sc > 0 ? ' · ' + fmtSeconds(sc) : ''}`;
+  }
+  return rowText(r);
+}
 
 /* → [{ label, text }]. `kind` is what the exercise IS on the card being drawn
    (the draft entry's own flags, see kindOf), not a guess from its history:
@@ -66,6 +82,11 @@ const rowText = r => setText(num(r.reps), num(r.weight_kg), num(r.reps) === null
      otherwise  — Last, then Best and Most reps (Longest only when the history
                   holds nothing else, e.g. an old note before the plan said so).
    With no kind given, history decides: a run's last session reads as a run.
+   Longest is a HOLD figure, so it is printed only for a duration entry, or, when
+   the kind is not known (a stand-in card), for an exercise stats.claimableKinds
+   lets claim seconds. A rep exercise whose only seconds are a circuit's clock
+   never gets one (audit #48). `opts.exercise` is the exercise object for that
+   gate; without it an unknown kind keeps the old behaviour.
    `opts.last === false` drops the Last line and keeps only the bests: the timed
    circuit's interval screen, where you are mid-set with the clock running and
    last session's sets are reading you have no time for — "Most reps 15" is the
@@ -86,7 +107,8 @@ function recapLines(recap, kind, opts) {
   }
   if (recap.best) lines.push({ label: 'Best', text: setText(recap.best.reps, recap.best.weight, null) });
   if (recap.mostReps) lines.push({ label: 'Most reps', text: setText(recap.mostReps.reps, recap.mostReps.weight, null) });
-  if (!recap.best && !recap.mostReps && recap.longest !== null) lines.push({ label: 'Longest', text: fmtSeconds(recap.longest) });
+  const holdOk = kind === undefined && !(opts && opts.exercise && !claimableKinds(opts.exercise).includes('seconds'));
+  if (holdOk && !recap.best && !recap.mostReps && recap.longest !== null) lines.push({ label: 'Longest', text: fmtSeconds(recap.longest) });
   return lines;
 }
 
@@ -100,7 +122,8 @@ const kindOf = entry => (!entry || !Array.isArray(entry.sets) ? undefined : entr
    logged): the log card and the guided live set both draw this, so the two
    screens cannot drift. `workouts` is saved history only — the session being
    logged is not saved until Finish, so it can never be its own "last time".
-   `opts` passes through to recapLines (the timed screen's { last: false }). */
+   `opts` passes through to recapLines (the timed screen's { last: false },
+   and `exercise`, the exercise object, for the Longest gate). */
 function recapEl(workouts, entry, cls, opts) {
   const lines = recapLines(exerciseRecap(workouts, entry.exercise), kindOf(entry), opts);
   if (!lines.length) return '';
@@ -108,4 +131,4 @@ function recapEl(workouts, entry, cls, opts) {
     ...lines.map(l => el('div', { class: 'gv-recap-line' }, el('dt', {}, l.label), el('dd', {}, l.text))));
 }
 
-module.exports = { exerciseRecap, recapLines, recapEl, kindOf, LAST_MAX };
+module.exports = { exerciseRecap, recapLines, recapEl, kindOf, rowSummary, LAST_MAX };

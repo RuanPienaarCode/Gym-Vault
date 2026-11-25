@@ -36,21 +36,39 @@ const PACE_BANDS = [5, 10, 15, 21.1];
 
 const isRunExercise = ex => !!ex && !!ex.fm && (ex.fm.unit || '') === 'km';
 
-/* Every logged run, one per row with a distance, in date order (undated
+/* THE ONE RULE FOR "THIS ROW IS A RUN YOU DID" (audit 25 Nov 2026, #50). A row
+   is a run when it has a distance above 0, or a time above 0 on a run exercise
+   (unit km, from `exercises`, the library's notes). A timed circuit saves a run
+   as minutes with no km, and that is still a run: it counts for "last run",
+   "done" (stats.ranOn calls this) and "longest time". It cannot count for
+   distance, pace or longest-distance records, which need a km above 0, and a
+   hold's or a circuit's seconds on a non-run exercise are never a run. Without
+   `exercises` only a distance can say it. */
+function isRunRow(r, exercises) {
+  if (!r) return false;
+  const km = num(r.distance_km);
+  if (km !== null && km > 0) return true;
+  const sc = num(r.seconds);
+  return sc !== null && sc > 0 && (exercises || []).some(e => isRunExercise(e) && sameName(e.name, r.exercise));
+}
+
+/* Every logged run, one per run row (isRunRow), in date order (undated
    rows last — same rule as records.inDateOrder: a run that cannot be placed
-   in the story can only ADD a record, never retroactively invalidate one). */
-function runRows(workouts) {
+   in the story can only ADD a record, never retroactively invalidate one).
+   `km` is 0 for a timed run with no distance: every distance figure below skips
+   km <= 0, so such a run is counted and timed but never measured. */
+function runRows(workouts, exercises) {
   const out = [];
   for (const w of workouts || []) {
     const date = workoutDate(w);
     for (const r of w.rows || []) {
+      if (!isRunRow(r, exercises)) continue;
       const km = num(r.distance_km);
-      if (km === null || km <= 0) continue;
       const seconds = num(r.seconds);
       out.push({
         date,
         exercise: String(r.exercise || '').trim(),
-        km,
+        km: km !== null && km > 0 ? km : 0,
         seconds: seconds !== null && seconds > 0 ? seconds : null,
         workout: w.name || '',
       });
@@ -83,7 +101,7 @@ function fastestPace(runs, minKm) {
   const floor = minKm == null ? MIN_PACE_KM : minKm;
   let best = null;
   for (const r of runs || []) {
-    if (r.km < floor) continue;
+    if (r.km <= 0 || r.km < floor) continue;
     const p = paceOf(r);
     if (p === null) continue;
     if (best === null || p < paceOf(best)) best = r;
@@ -94,8 +112,14 @@ function fastestPace(runs, minKm) {
 /* The longest run. Strictly greater, earliest keeps — same tie rule. */
 function longestRun(runs) {
   let best = null;
-  for (const r of runs || []) if (best === null || r.km > best.km) best = r;
+  for (const r of runs || []) if (r.km > 0 && (best === null || r.km > best.km)) best = r;
   return best;
+}
+
+/* The date of the most recent run (a timed run with no distance included), or
+   null. The Running page's "last run" and the exercise page's both read this. */
+function lastRunDate(runs) {
+  return (runs || []).reduce((d, r) => (r.date && (!d || r.date > d) ? r.date : d), null);
 }
 
 /* The most time on feet in one run. */
@@ -116,7 +140,7 @@ function biggestWeek(workouts, weekStart) {
   const seen = new Set();
   let best = null;
   for (const r of runRows(workouts)) {
-    if (!r.date) continue;
+    if (!r.date || r.km <= 0) continue;
     const start = startOfWeek(r.date, weekStart);
     if (seen.has(start)) continue;
     seen.add(start);
@@ -135,7 +159,7 @@ function longestTimeline(runs) {
   const out = [];
   let best = null;
   for (const r of runs || []) {
-    if (best === null || r.km > best) {
+    if (r.km > 0 && (best === null || r.km > best)) {
       out.push({ km: r.km, prev: best, date: r.date, exercise: r.exercise, seconds: r.seconds });
       best = r.km;
     }
@@ -149,7 +173,7 @@ function longestTimeline(runs) {
    exercise in the library (so an exercise never run still shows, honestly
    empty) plus any exercise name that appears in a run row but has no note. */
 function byExercise(workouts, exercises) {
-  const runs = runRows(workouts);
+  const runs = runRows(workouts, exercises);
   const names = [];
   for (const ex of exercises || []) if (isRunExercise(ex)) names.push(ex.name);
   for (const r of runs) if (r.exercise && !names.some(n => sameName(n, r.exercise))) names.push(r.exercise);
@@ -163,21 +187,26 @@ function byExercise(workouts, exercises) {
       longest: bests.distance === null ? null : longestRun(mine),
       fastest: fastestPace(mine, MIN_PACE_KM),
       longestTime: longestTime(mine),
-      lastDate: mine.length ? mine[mine.length - 1].date : null,
+      lastDate: lastRunDate(mine),
     };
   }).sort((a, b) => b.totalKm - a.totalKm || a.exercise.localeCompare(b.exercise));
 }
 
 /* Everything the page needs, in one call. */
 function runRecords(workouts, exercises, weekStart) {
-  const runs = runRows(workouts);
+  const all = runRows(workouts, exercises);
+  /* `runs` counts the runs that have a distance - what this page's headline, pace
+     and records describe (the page reads `longest` whenever `runs` is above 0).
+     `timedRuns` are the km-less ones, kept for longest time. */
+  const runs = all.filter(r => r.km > 0);
   const totalKm = Math.round(runs.reduce((n, r) => n + r.km, 0) * 10) / 10;
   return {
     runs: runs.length,
+    timedRuns: all.length - runs.length,
     totalKm,
     longest: longestRun(runs),
     fastest: fastestPace(runs, MIN_PACE_KM),
-    longestTime: longestTime(runs),
+    longestTime: longestTime(all),
     bands: PACE_BANDS.map(km => ({ km, best: fastestPace(runs, km) })),
     biggestWeek: biggestWeek(workouts, weekStart),
     timeline: longestTimeline(runs),
@@ -188,5 +217,5 @@ function runRecords(workouts, exercises, weekStart) {
 
 module.exports = {
   MIN_PACE_KM, PACE_BANDS, isRunExercise,
-  runRows, paceOf, fmtPace, fastestPace, longestRun, longestTime, biggestWeek, longestTimeline, byExercise, runRecords,
+  isRunRow, lastRunDate, runRows, paceOf, fmtPace, fastestPace, longestRun, longestTime, biggestWeek, longestTimeline, byExercise, runRecords,
 };

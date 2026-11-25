@@ -16,7 +16,14 @@ const toISO = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDat
 function fromISO(iso) {
   const m = (iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return null;
-  return new Date(+m[1], +m[2] - 1, +m[3]);
+  const y = +m[1], mo = +m[2], day = +m[3];
+  const d = new Date(y, mo - 1, day);
+  /* A date that does not survive the round trip is not a date: the Date
+     constructor rolls 2026-11-31 over to 1 December, and a workout note must
+     not be quietly moved to another day. It reads as unreadable (null), exactly
+     like a malformed one. (Years 0-99 are also caught: Date maps them to 19xx.) */
+  if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== day) return null;
+  return d;
 }
 
 const todayISO = () => toISO(new Date());

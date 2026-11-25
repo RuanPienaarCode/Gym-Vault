@@ -10,7 +10,7 @@ const { el, ico, fmt, fmtSeconds, statTile, emptyLine } = require('./dom');
 const { WEEKDAY_LABELS, WEEKDAYS } = require('./constants');
 const { todayISO, weekdayKey, fmtShort, startOfWeek, addDays } = require('./dates');
 const { distanceInWeek, ladderWeek, num, ranOn, workoutDate } = require('./stats');
-const { runRows, longestRun, paceOf, fmtPace } = require('./run-records');
+const { runRows, longestRun, lastRunDate, paceOf, fmtPace } = require('./run-records');
 const { isPaused } = require('./plan-parse');
 
 /* THE ONE RULE FOR "WHICH LONG RUN IS THIS WEEK'S". The plan's days that fall in
@@ -84,7 +84,7 @@ function render(ctx, root) {
     hero.append(el('h2', { class: 'gv-display gv-hero-title' }, el('span', { class: 'gv-mark' }, 'Running')));
     hero.append(el('p', { class: 'gv-hero-sub' }, plan
       ? (startDate ? 'The ladder starts on ' + fmtShort(startDate) + '.' : 'Add a start_date to the running plan to track the ladder.')
-      : 'No running plan yet — create one on the Plans page and mark it parallel.'));
+      : 'No running plan yet. Make a Run plan your main plan, or add one as an Add-on, on the Plans page.'));
   }
   root.append(hero);
   /* A paused running plan still drives THIS page (ctx.runPlan reads every
@@ -101,10 +101,11 @@ function render(ctx, root) {
       root.append(el('div', { class: 'gv-section-title' }, ico('calendar-days'), el('span', {}, 'This week')));
       const list = el('div', { class: 'gv-card-list' });
       for (const s of scheduled) {
-        /* stats.ranOn is the one rule for "a run happened that day" - a
-           distance row, or a row of a km exercise (a timed circuit saves a
-           run as minutes with no km). It reads the day through workoutDate,
-           THE rule for a workout's day. */
+        /* stats.ranOn is the one rule for "a run happened that day" - it calls
+           run-records.isRunRow, the same rule "last run" and the exercise page
+           read (a distance, or a time on a km exercise: a timed circuit saves a
+           run as minutes with no km). It reads the day through workoutDate, THE
+           rule for a workout's day. */
         const done = ranOn(data.workouts, s.iso, data.exercises);
         /* The rung of THAT DAY's week (weekRuns -> stats.ladderWeek, the rule the
            headline reads too), not today's: a ladder that steps up mid-calendar-week
@@ -142,10 +143,12 @@ function render(ctx, root) {
 
      longestRun(runRows(...)) IS runRecords().longest: same function, same
      input, so the tile cannot disagree with the hero. */
-  const runs = runRows(data.workouts);
+  /* runRows(.., data.exercises) is every run you did (isRunRow); longestRun
+     skips a km-less one, lastRunDate counts it. */
+  const runs = runRows(data.workouts, data.exercises);
   const longestRunRow = longestRun(runs);
   const longest = longestRunRow ? longestRunRow.km : null;
-  const lastRun = runs.reduce((d, r) => (r.date && (!d || r.date > d) ? r.date : d), null);
+  const lastRun = lastRunDate(runs);
   root.append(el('div', { class: 'gv-tiles' },
     statTile(ico('footprints'), fmt(thisWeekKm, ' km'), 'this week'),
     statTile(ico('chart-line'), fmt(lastWeekKm, ' km'), 'last week'),

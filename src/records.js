@@ -10,7 +10,7 @@
    'weight', 'seconds'. Distance (runs) has no record concept here in v1 —
    callers simply don't call this for a distance entry. */
 
-const { exerciseBests, sameName, num, workoutDate, claimableKinds } = require('./stats');
+const { exerciseBests, sameName, num, workoutDate, claimableKinds, setWeight } = require('./stats');
 
 /* The three dimensions a record can exist in, in the order they are shown.
    Distance is deliberately absent: a run's record is its own thing and
@@ -80,28 +80,42 @@ function inDateOrder(workouts) {
 }
 
 /* Every time this exercise's best in `kind` was BEATEN, oldest first:
-   [{value, prev, date}]. The first entry has prev === null — the first time
-   you ever did something is not a record broken, it is the baseline, and
-   isRecord() says the same thing.
+   [{value, prev, date}]. The first entry has prev === null - it is the
+   baseline, not a record broken - and isRecord() says the same thing.
 
-   The last entry's value is, by construction, exerciseBests(...)[kind]. The
-   guard suite asserts exactly that: this walks the rows to find WHEN the
-   best moved, and if it ever disagreed with the number the exercise page
-   shows, the two would be a "same figure, two rules" pair — the shape this
-   codebase keeps having to dig out. */
+   THE BASELINE IS THE WHOLE FIRST DAY. The first day a figure of this kind was
+   logged is the starting point: every set of that day folds into the one
+   baseline entry (its value is that day's best), so a second session on day one,
+   or a better set later the same day, does not count as "beating" the first. A
+   record is broken only on a LATER day (audit 25 Nov 2026, #55: two of seven PBs
+   were first-day sets). An undated note has no day, so it is a day of its own
+   ('') that sorts last: it only ever ADDS a record after the dated ones, unless
+   it is all there is, and then it is the baseline.
+
+   The weight column is read through stats.setWeight (0 kg is no weight), the same
+   rule exerciseBests applies, so the last entry's value is, by construction,
+   exerciseBests(...)[kind]. The guard suite asserts exactly that: this walks the
+   rows to find WHEN the best moved, and if it ever disagreed with the number the
+   exercise page shows, the two would be a "same figure, two rules" pair. */
 function recordHistory(workouts, exercise, kind) {
   const column = COLUMN[kind];
   if (!column) return [];
   const out = [];
-  let best = null;
+  let best = null, baseDay = null;
   for (const w of inDateOrder(workouts)) {
     const date = workoutDate(w) || '';  // the day, not the raw string it was typed as
     for (const r of w.rows || []) {
       if (!sameName(r.exercise, exercise)) continue;
-      const v = num(r[column]);
+      const v = kind === 'weight' ? setWeight(r) : num(r[column]);
       if (v === null) continue;
+      if (best === null) { baseDay = date; out.push({ value: v, prev: null, date }); best = v; continue; }
+      if (date === baseDay && out.length === 1) {
+        /* still the first day: fold into the baseline */
+        if (v > best) { out[0].value = v; best = v; }
+        continue;
+      }
       /* Strictly greater, same as isRecord: a tie beats nothing. */
-      if (best === null || v > best) {
+      if (v > best) {
         out.push({ value: v, prev: best, date });
         best = v;
       }

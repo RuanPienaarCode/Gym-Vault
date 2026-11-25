@@ -195,13 +195,23 @@ function forEachExerciseRow(workouts, exercise, fn) {
   }
 }
 
+/* THE one rule for "the weight on this set": a number above zero, else null.
+   0 kg is no load, not a best of 0 (recap, progress.js and the Records page all
+   read it so; exerciseBests used to keep the 0 and a later 5 kg set read as "a
+   new record, was 0" - audit 25 Nov 2026, #51). Records.recordHistory reads the
+   weight column through here too, so the two cannot disagree. */
+function setWeight(r) {
+  const w = num(r && r.weight_kg);
+  return w !== null && w > 0 ? w : null;
+}
+
 /* Scan every logged set of `exercise` for maxima. Returns nulls when the
    exercise was never logged — "no data" and "zero" must stay distinct. */
 function exerciseBests(workouts, exercise) {
   let reps = null, weight = null, seconds = null, distance = null, lastDate = null;
   let totalDistance = 0;
   forEachExerciseRow(workouts, exercise, (r, w) => {
-    const rp = num(r.reps), wt = num(r.weight_kg), sc = num(r.seconds), di = num(r.distance_km);
+    const rp = num(r.reps), wt = setWeight(r), sc = num(r.seconds), di = num(r.distance_km);
     if (rp !== null && (reps === null || rp > reps)) reps = rp;
     if (wt !== null && (weight === null || wt > weight)) weight = wt;
     if (sc !== null && (seconds === null || sc > seconds)) seconds = sc;
@@ -280,17 +290,18 @@ function distanceInWeek(workouts, refIso, weekStart) {
   return Math.round(km * 10) / 10;
 }
 
-/* THE ONE RULE FOR "A RUN HAPPENED ON THIS DAY". A saved session that day
-   holds a row with a distance, OR a row of a km exercise (`exercises` are the
-   library's notes): a timed circuit saves a run as minutes with no km, and
-   Today ("Logged for today") and the Running page's week list must not read
-   the same saved session two ways. This answers "did it happen" only - the
-   distance figures (week/last-week km, longest run, pace, records) still need
-   a distance, so a km-less row adds no kilometres. */
+/* THE ONE RULE FOR "A RUN HAPPENED ON THIS DAY": a saved session that day holds
+   a run row, by run-records.isRunRow - a distance above 0, or a time above 0 on
+   a km exercise (`exercises` are the library's notes; a timed circuit saves a
+   run as minutes with no km). The Running page's "last run", its "done" marks
+   and the exercise page's run tiles read the same rule, so Today ("Logged for
+   today") and Running cannot read one saved session two ways. This answers "did
+   it happen" only - the distance figures (week/last-week km, longest run, pace,
+   records) still need a distance, so a km-less row adds no kilometres.
+   run-records requires this file, so it is required here, at call time. */
 function ranOn(workouts, iso, exercises) {
-  const runNames = (exercises || []).filter(e => e.fm && e.fm.unit === 'km').map(e => e.name);
-  return (workouts || []).some(w => workoutDate(w) === iso && (w.rows || []).some(r =>
-    num(r.distance_km) !== null || runNames.some(n => sameName(n, r.exercise))));
+  const { isRunRow } = require('./run-records');
+  return (workouts || []).some(w => workoutDate(w) === iso && (w.rows || []).some(r => isRunRow(r, exercises)));
 }
 
 /* Which week of a training ladder `today` falls in: 1-based, null before the
@@ -423,7 +434,8 @@ function goalIssue(goal, ctx) {
   /* Last, so the metric and the exercise are named first: a goal with no
      target has nothing to measure against, and "log a workout to start
      tracking" would send the user to fix the wrong thing. */
-  if (num(fm.target) === null) return 'this goal has no target set';
+  const target = num(fm.target);
+  if (target === null || target <= 0) return 'this goal has no target set';
   return null;
 }
 
@@ -487,7 +499,7 @@ function newGoalDefaults(v, body) {
 function goalProgress(goal, current, ctx) {
   const fm = goal.fm || {};
   const target = num(fm.target);
-  if (target === null || current === null) return null;
+  if (target === null || target <= 0 || current === null) return null;
   let start = num(fm.start_value);
   if (start === null && fm.metric === 'body-weight' && ctx && ctx.body) start = bodyBaseline(goal, ctx.body);
   const decrease = fm.direction === 'decrease';
@@ -496,6 +508,8 @@ function goalProgress(goal, current, ctx) {
     return clamp01((start - current) / (start - target));
   }
   const base = start !== null && start < target ? start : 0;
+  /* The span to cover must be above zero, or the fraction is NaN ("NaN%"). */
+  if (target - base <= 0) return null;
   return clamp01((current - base) / (target - base));
 }
 
@@ -524,5 +538,5 @@ function bmi(weightKg, heightCm) {
 module.exports = {
   num, workoutDates, workoutDate, workoutTime, compareWorkouts, sameName, forEachExerciseRow, countInWeek, sessionCount, sessionsInWeek, sessionsOf, sessionDates, isChallengeRun, weekStreak, exerciseBests, epley1RM, best1RM,
   sessionVolume, sessionSets, countLabel, countNoun, setCounts, distanceInWeek, ladderWeek, ranOn,
-  goalCurrent, goalIssue, goalProgress, newGoalDefaults, weightSeries, bmi, claimableKinds, claimedBests,
+  goalCurrent, goalIssue, goalProgress, newGoalDefaults, weightSeries, bmi, claimableKinds, claimedBests, setWeight,
 };

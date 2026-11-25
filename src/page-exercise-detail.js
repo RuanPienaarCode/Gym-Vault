@@ -15,6 +15,8 @@ const { MarkdownRenderer } = require('obsidian');
 const { el, ico, fmt, fmtSeconds, backButton, statTile } = require('./dom');
 const { claimedBests, claimableKinds, best1RM, sameName } = require('./stats');
 const { fmtShort } = require('./dates');
+const { rowSummary } = require('./recap');
+const { runRows, longestTime, lastRunDate } = require('./run-records');
 const { equipmentTokens, labelFor } = require('./equipment');
 const { recordHistory, KINDS } = require('./records');
 const { openMediaViewer } = require('./media-viewer');
@@ -118,12 +120,17 @@ function render(ctx, root) {
      Longest time is deliberately NOT divided by longest distance to make a
      pace: they can come from different runs, and two figures derived by
      different rules is exactly how this codebase grows wrong numbers. */
+  /* A run's "longest time" and "last run" read run-records' ONE run-row rule
+     (isRunRow: a distance, or a time on this km exercise) over this exercise's
+     rows, the same rows the Running pages use - not "any row at all". */
+  const myRuns = isRun ? runRows(ctx.data.workouts, [ex]).filter(r => sameName(r.exercise, ex.name)) : [];
+  const timeRow = longestTime(myRuns), lastRun = lastRunDate(myRuns);
   root.append(isRun
     ? el('div', { class: 'gv-tiles' },
         statTile(ico('trophy'), fmt(bests.distance, ' km'), 'longest run'),
-        statTile(ico('timer'), bests.seconds !== null ? fmtSeconds(bests.seconds) : '—', 'longest time'),
+        statTile(ico('timer'), timeRow ? fmtSeconds(timeRow.seconds) : '—', 'longest time'),
         statTile(ico('chart-line'), bests.totalDistance ? `${bests.totalDistance} km` : '—', 'total logged'),
-        statTile(ico('history'), bests.lastDate ? fmtShort(bests.lastDate) : '—', 'last run'))
+        statTile(ico('history'), lastRun ? fmtShort(lastRun) : '—', 'last run'))
     : el('div', { class: 'gv-tiles' },
         statTile(ico('trophy'), fmt(bests.reps), 'best reps'),
         statTile(ico('dumbbell'), fmt(bests.weight, ' kg'), 'best weight'),
@@ -363,14 +370,12 @@ function recentSessions(workouts, exercise, n) {
     const w = workouts[i];
     const sets = (w.rows || []).filter(r => sameName(r.exercise, exercise));
     if (!sets.length) continue;
-    const summary = sets.map(r => {
-      if (r.distance_km) return `${r.distance_km} km${r.seconds ? ' · ' + fmtSeconds(r.seconds) : ''}`;
-      if (r.seconds) return fmtSeconds(r.seconds);
-      return r.weight_kg ? `${r.reps || '?'}×${r.weight_kg}kg` : `${r.reps || '?'}`;
-    }).join('  ·  ');
+    /* recap.rowSummary: the one "what was this set" formatter (reps before the
+       circuit clock). An empty set stays a "?" so the set count is still visible. */
+    const summary = sets.map(r => rowSummary(r) || '?').join('  ·  ');
     out.push({ date: w.fm.date || '', day: w.fm.day || '', summary });
   }
   return out;
 }
 
-module.exports = { render, resolveExerciseImages };
+module.exports = { render, resolveExerciseImages, recentSessions };
