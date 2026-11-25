@@ -101,7 +101,8 @@ check('D6 inputs are not mutated', () => {
   assert.deepStrictEqual(input, shared);
 });
 
-/* D7 (16 Nov 2026): the device choice also covers Rewards and Calm motion, so one phone can
+/* D7 (16 Nov 2026): the device choice also covers Rewards and Calm motion (the row is
+   "Less motion" since 25 Nov 2026; the key is still quietMotion), so one phone can
    go quiet without switching the other's XP or celebrations off. Booleans only. */
 check('D7 rewards and calm motion are device choices too', () => {
   const look = cleanLook({ skin: 'calm', rewards: false, quietMotion: true });
@@ -113,6 +114,15 @@ check('D7 rewards and calm motion are device choices too', () => {
   assert.strictEqual(out.rewards, true, 'device rewards leaked into data.json');
   assert.strictEqual(out.quietMotion, false, 'device calm motion leaked into data.json');
   assert.deepStrictEqual(cleanLook({ rewards: 'no', quietMotion: 1 }), null, 'non-booleans must be dropped');
+});
+
+/* D8 (25 Nov 2026, audit #20): the Gym folder per device has its OWN record
+   (tests/audit-1125-settings-device-folder.test.cjs). The look record never carries it,
+   so switching the device look off can never move a phone's training data. */
+check('D8 the look record never carries the Gym folder', () => {
+  assert.deepStrictEqual(cleanLook({ skin: 'calm', gymFolder: 'Gym Anna' }), { skin: 'calm' });
+  const { FOLDER_KEY } = require('../src/device-look');
+  assert.ok(FOLDER_KEY && FOLDER_KEY !== LOOK_KEY, 'the folder needs its own key');
 });
 
 if (failed) { console.error(`device-look: ${failed} failed`); process.exit(1); }

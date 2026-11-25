@@ -90,8 +90,11 @@ const addPlaylist = async (name, url) => {
     const saved = await addPlaylist('x', 'https://example.com/?si=1');
     assert.strictEqual(saved, undefined, 'a non-music link was saved');
   });
+  /* 25 Nov 2026 (audit #31): the page now has four sections, so headings are
+     right; a LONE heading (Playlists, as it once was) still is not. */
   await check('S-08 the settings page has no lone heading', () => {
-    assert.deepStrictEqual(headings, [], `settings use setHeading() for: ${headings.join(', ')} (one section needs no heading)`);
+    const once = [...new Set(headings)];
+    assert.deepStrictEqual(once, ['Look', 'Workouts', 'Sound', 'Files'], `settings use setHeading() for: ${once.join(', ')} (headings are for the page's sections only)`);
   });
   if (failed) { console.log(`F5 settings tab: ${failed} guard(s) FAILED`); process.exit(1); }
   console.log('F5 settings tab OK');

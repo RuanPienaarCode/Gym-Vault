@@ -3,7 +3,7 @@
 
 const { el, ico, fmt, fmtSeconds, ring, clickableCard, emptyLine } = require('./dom');
 const { GOAL_METRICS } = require('./constants');
-const { goalCurrent, goalIssue, goalProgress, newGoalDefaults, countLabel } = require('./stats');
+const { goalCurrent, goalIssue, goalProgress, newGoalDefaults, countLabel, sameName } = require('./stats');
 const { todayISO, daysBetween, fmtShort } = require('./dates');
 const { FormModal, ConfirmModal } = require('./modals');
 const ch = require('./challenge');
@@ -57,12 +57,20 @@ function render(ctx, root) {
     const dl = g.fm.deadline;
     const dLeft = dl ? daysBetween(today, dl) : null;
 
+    /* WHERE A TAP GOES (audit 25 Nov 2026, #28). A goal tied to an exercise
+       opens that exercise's page in the app (its Progression and Recent are
+       what the number is made of), as a step so Back returns here; "Open note"
+       is the secondary button beside Edit/Delete. A goal with no exercise, or
+       one naming an exercise that has no note, has no page to open and keeps
+       opening its note. Same route and params as the exercise library. */
+    const ex = g.fm.exercise ? data.exercises.find(e => sameName(e.name, g.fm.exercise)) : null;
+    const openNote = () => ctx.openFile(g.file);
     /* clickableCard, not a div with a click listener: role=button, tabindex 0
        and Enter/Space come with it, and the nested Edit/Delete buttons keep
        firing on their own (the same pattern as the exercise cards). */
     const card = clickableCard(
-      { class: `gv-card gv-goal-card${done ? ' done' : ''}`, 'aria-label': `Open goal note: ${g.name}` },
-      () => ctx.openFile(g.file),
+      { class: `gv-card gv-goal-card${done ? ' done' : ''}`, 'aria-label': ex ? `Open ${ex.name}: ${g.name}` : `Open goal note: ${g.name}` },
+      ex ? () => ctx.nav('exercise', { exercise: ex.name, path: ex.file ? ex.file.path : null }) : openNote,
       el('div', { class: 'gv-goal-ring' }, done ? ico('trophy', 'gv-trophy') : ring(p ?? 0, 64, `${g.name} progress`)),
       el('div', { class: 'gv-goal-main' },
         el('div', { class: 'gv-goal-name' }, g.name),
@@ -77,6 +85,7 @@ function render(ctx, root) {
           done ? `done · target was ${fmtShort(dl)}`
                : dLeft === null ? '' : dLeft >= 0 ? `${countLabel(dLeft, 'day')} left · ${fmtShort(dl)}` : `${countLabel(-dLeft, 'day')} past ${fmtShort(dl)}`) : ''),
       el('div', { class: 'gv-card-actions' },
+        ex ? noteBtn(g, openNote) : '',
         iconBtn('pencil', 'Edit', () => openEdit(ctx, g)),
         iconBtn('trash-2', 'Delete', () => new ConfirmModal(ctx.app, {
           title: 'Delete goal?', message: `"${g.name}" will be deleted, following your Obsidian "Deleted files" setting.`,
@@ -89,6 +98,14 @@ function render(ctx, root) {
 
 function iconBtn(name, label, onClick) {
   const b = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': label }, ico(name));
+  b.addEventListener('click', e => { e.stopPropagation(); onClick(); });
+  return b;
+}
+
+/* The small secondary "Open note" on a card whose tap opens the exercise. */
+function noteBtn(g, onClick) {
+  const b = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small gv-goal-note', type: 'button', 'aria-label': `Open note: ${g.name}` },
+    ico('file-text'), el('span', {}, 'Open note'));
   b.addEventListener('click', e => { e.stopPropagation(); onClick(); });
   return b;
 }
@@ -141,6 +158,13 @@ function goalFields(ctx, g) {
 
 const validateGoal = v => {
   if (v.name !== undefined && !v.name.trim()) return 'Give it a name.';
+  /* A week holds whole workouts (#52): a 4.4 target let the week ring say
+     "Week done" at 4 while the goal said 91%. Number(), not parseFloat, so a
+     typed "2,5" is not read as 2. */
+  if (v.metric === 'workouts-per-week') {
+    const n = Number(String(v.target).trim());
+    if (!Number.isInteger(n) || n < 1) return 'Workouts per week is a whole number: 1 or more.';
+  }
   const t = parseFloat(v.target);
   if (!Number.isFinite(t) || t <= 0) return 'Set a target above zero.';
   if (v.metric.startsWith('exercise-') && !String(v.exercise).trim()) return 'Pick the exercise this goal measures.';
@@ -206,4 +230,4 @@ function openEdit(ctx, g) {
   }).open();
 }
 
-module.exports = { render, goalFields, goalFm };
+module.exports = { render, goalFields, goalFm, validateGoal };

@@ -6,6 +6,7 @@
 const { Modal, Setting, Notice } = require('obsidian');
 const { el, clickableCard, numericInput, normaliseNumber } = require('./dom');
 const { DEFAULT_SETTINGS, skinClasses } = require('./constants');
+const { withImage } = require('./exercise-photo');
 
 /* A modal action that fails must SAY so. These all used to land in
    console.error alone, which on a phone is invisible — a delete that threw
@@ -30,8 +31,8 @@ function wearApp(modalEl) {
   for (const c of cls) modalEl.addClass(c);
 }
 
-/* fields: [{key, label, kind: 'text'|'number'|'decimal'|'date'|'dropdown'|'toggle'|'textarea',
-             options?, value?, placeholder?, desc?}]
+/* fields: [{key, label, kind: 'text'|'number'|'decimal'|'date'|'dropdown'|'toggle'|'textarea'|'images',
+             options?, value?, placeholder?, desc?, onPhoto?}]
    onSubmit(values) — called only when required fields validate.
 
    `number` is a browser <input type="number">, which holds ONE decimal
@@ -41,7 +42,14 @@ function wearApp(modalEl) {
    decimal keypad that dom.js numericInput gives the logging screens, its value
    cleaned by dom.normaliseNumber — "82,5" is stored as "82.5", "abc" as
    nothing. The value is normalised again at submit, so a value that never went
-   through the input (a prefill) is held to the same rule. */
+   through the input (a prefill) is held to the same rule.
+
+   `images` is a text box (a pasted URL or path still works) with an "Add
+   photo" button under it (audit 25 Nov 2026, #29). The button opens a hidden
+   <input type="file" accept="image/*">: no `capture`, so a phone offers the
+   camera AND the library. The chosen file goes to `onPhoto(file, values)`,
+   which saves it and resolves its vault path (or null for nothing saved);
+   the path is added to the end of the box (exercise-photo.withImage). */
 class FormModal extends Modal {
   constructor(app, { title, fields, submitLabel, onSubmit, validate }) {
     super(app);
@@ -81,6 +89,8 @@ class FormModal extends Modal {
         input.value = normaliseNumber(this.values[f.key]);
         this.values[f.key] = input.value;
         s.controlEl.append(input);
+      } else if (f.kind === 'images') {
+        this.imagesRow(s, f);
       } else {
         s.addText(t => {
           if (f.kind === 'number') t.inputEl.type = 'number';
@@ -93,6 +103,40 @@ class FormModal extends Modal {
     }
     this.errEl = c.createDiv({ cls: 'gv-modal-err' });
     new Setting(c).addButton(b => b.setButtonText(this.submitLabel).setCta().onClick(() => this.submit()));
+  }
+
+  imagesRow(s, f) {
+    let box = null;
+    s.addText(t => {
+      box = t;
+      if (f.placeholder) t.setPlaceholder(f.placeholder);
+      t.setValue(String(this.values[f.key] ?? ''));
+      t.onChange(v => { this.values[f.key] = v; });
+    });
+    const pick = el('input', { type: 'file', accept: 'image/*', class: 'gv-photo-input' });
+    pick.hidden = true;
+    let busy = false;
+    s.addButton(b => {
+      const idle = () => b.setDisabled(false).setButtonText('Add photo');
+      idle();
+      b.onClick(() => { if (!busy) pick.click(); });
+      pick.addEventListener('change', () => {
+        const file = pick.files && pick.files[0];
+        pick.value = '';   // the same picture can be chosen again
+        if (!file || typeof f.onPhoto !== 'function') return;
+        busy = true;
+        b.setDisabled(true).setButtonText('Saving…');
+        Promise.resolve(f.onPhoto(file, this.values))
+          .then(saved => {
+            if (!saved) return;
+            this.values[f.key] = withImage(this.values[f.key], saved);
+            box.setValue(this.values[f.key]);
+          })
+          .catch(e => failed('adding the photo', e))
+          .then(() => { busy = false; idle(); });
+      });
+    });
+    s.controlEl.append(pick);
   }
 
   submit() {
@@ -133,7 +177,7 @@ class ConfirmModal extends Modal {
    titled "Discard session?", which meant the only route to *keeping* a
    workout ran under a heading that said the opposite: you tapped X (an icon
    that reads as cancel), landed on discard-flavoured chrome, and had to
-   trust that "Bank it" was the save. Reported from a 0.10.2 smoke test.
+   trust that "Save session" was the save. Reported from a 0.10.2 smoke test.
 
    onReview is optional and exists for exactly one caller: the guided screen,
    where "back to the overview" is a third, non-committal way out AND the
@@ -163,7 +207,7 @@ class EndSessionModal extends Modal {
       this.close();
       Promise.resolve(this.onDiscard()).catch(e => failed('discarding the session', e));
     }));
-    s.addButton(b => b.setButtonText('Bank it').setCta().onClick(() => {
+    s.addButton(b => b.setButtonText('Save session').setCta().onClick(() => {
       this.close();
       Promise.resolve(this.onSave()).catch(e => failed('saving the session', e));
     }));
@@ -222,4 +266,4 @@ function planSummary(p) {
   return `${days.length} day${days.length === 1 ? '' : 's'} · ${days.map(d => d.weekday).join(', ')}`;
 }
 
-module.exports = { FormModal, ConfirmModal, EndSessionModal, PlanPickerModal };
+module.exports = { FormModal, ConfirmModal, EndSessionModal, PlanPickerModal, wearApp };

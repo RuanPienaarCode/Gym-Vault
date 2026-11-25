@@ -15,7 +15,8 @@
 
 const { el, ico, fmtSeconds, clickableCard, backButton, emptyLine } = require('./dom');
 const { MUSCLE_GROUPS } = require('./constants');
-const { allRecords, latestRecord } = require('./records');
+const { allRecords, latestRecord, inDateOrder, COLUMN } = require('./records');
+const { workoutDate, sameName, num } = require('./stats');
 const { pbDelta, marginText } = require('./progress');
 const { fmtShort, todayISO } = require('./dates');
 const rewardsUi = require('./rewards-ui');
@@ -32,6 +33,35 @@ function figure(kind, value) {
 }
 
 function listOf(v) { return Array.isArray(v) ? v : v ? [v] : []; }
+
+/* THE SESSION THAT SET A RECORD (audit 25 Nov 2026, #28): the workout on the
+   record's day (stats.workoutDate) with a row of its exercise (stats.sameName)
+   holding the record's value in its kind's column (records.COLUMN). Walked in
+   records.inDateOrder, the order recordHistory dated the record by, so two
+   sessions that day resolve to the one that set it first. null when there is
+   none to point at: an undated record, or a note edited since. */
+function sessionFor(workouts, r) {
+  const column = r && r.date ? COLUMN[r.kind] : null;
+  if (!column) return null;
+  for (const w of inDateOrder(workouts)) {
+    if (workoutDate(w) !== r.date) continue;
+    if ((w.rows || []).some(x => sameName(x.exercise, r.exercise) && num(x[column]) === r.value)) return w;
+  }
+  return null;
+}
+
+/* The record's date, as a link to History opened on that session when there
+   is one (a button inside the row's card: clickableCard leaves nested buttons
+   to themselves, so the row still opens the exercise). */
+function dateBit(ctx, r) {
+  if (!r.date) return '';
+  const w = sessionFor(ctx.data.workouts, r);
+  if (!w) return ` · ${fmtShort(r.date)}`;
+  const b = el('button', { class: 'gv-recrow-session', type: 'button', 'aria-label': `Open the session on ${fmtShort(r.date)} in History` },
+    ico('history'), el('span', {}, fmtShort(r.date)));
+  b.addEventListener('click', e => { e.stopPropagation(); ctx.nav('history', { session: w.name }); });
+  return [' · ', b];
+}
 
 function render(ctx, root) {
   const { data } = ctx;
@@ -130,8 +160,8 @@ function render(ctx, root) {
             /* `times: 1` means set once and never beaten. Calling that a
                "record" overstates it — it is the only figure there is, and
                saying so is the honest version. */
-            `${KIND_LABEL[r.kind]} · ${r.times === 1 ? 'first logged' : `beaten ${r.times - 1}×`}`
-            + (r.date ? ` · ${fmtShort(r.date)}` : ''),
+            `${KIND_LABEL[r.kind]} · ${r.times === 1 ? 'first logged' : `beaten ${r.times - 1}×`}`,
+            dateBit(ctx, r),
             /* What the newest record beat, and by how much. */
             ...(isNew ? [' · ', el('s', { class: 'gv-rec-prev' }, figure(r.kind, latest.prev)),
               ' ', latestDelta ? el('span', { class: 'gv-rec-delta' }, marginText(r.kind, latestDelta.abs)) : ''] : []))),
@@ -153,4 +183,4 @@ function render(ctx, root) {
   root.append(el('p', { class: 'gv-microcopy' }, 'Every number here is one you already did.'));
 }
 
-module.exports = { render };
+module.exports = { render, sessionFor };

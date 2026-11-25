@@ -75,59 +75,40 @@ class GymSettingTab extends PluginSettingTab {
        global object that outlives the tab. */
     if (this._stopVoices) { this._stopVoices(); this._stopVoices = null; }
 
+    /* FOUR SECTIONS, Obsidian's own heading rows (audit 25 Nov 2026, #31):
+       about 25 rows with no headings were hard to scan. Look, Workouts, Sound
+       and voice, Files. Labels changed, setting keys did not. */
+    new Setting(c).setName('Look').setHeading();
+    this.renderLook(c);
+    new Setting(c).setName('Workouts').setHeading();
+    this.renderWorkouts(c);
+    new Setting(c).setName('Sound').setHeading();
+    this.renderSound(c);
     new Setting(c)
-      .setName('Gym folder')
-      .setDesc('Vault folder holding your exercises, plans, workouts, goals and body log.')
-      .addText(t => commitOnBlur(this, t.setValue(this.plugin.settings.gymFolder), async v => {
-        /* An empty box still means Gym — the fallback has to be here as well
-           as at every read, or blanking the field persists ''. */
-        this.plugin.settings.gymFolder = v.trim() || 'Gym';
-        await this.plugin.saveSettings();
-        /* Once, on the finished folder name. */
-        this.plugin.refreshViews();
-      }));
-
-    new Setting(c)
-      .setName('Start opens')
-      .setDesc('What the Start button does. Guided leads you set by set; Log screen opens the log, where you can work through the exercises in any order. The other one is always one tap away beside Start.')
+      .setName('Music app')
+      .setDesc('Adds a shortcut button in guided sessions to jump out and change the song.')
       .addDropdown(d => {
-        for (const [key, label] of START_OPENS) d.addOption(key, label);
-        return d
-          .setValue(this.plugin.settings.startOpens === 'log' ? 'log' : 'guided')
+        for (const [key, label] of MUSIC_APPS) d.addOption(key, label);
+        d.setValue(this.plugin.settings.musicApp || 'none')
           .onChange(async v => {
-            this.plugin.settings.startOpens = v;
+            this.plugin.settings.musicApp = v;
             await this.plugin.saveSettings();
             this.plugin.refreshViews();
           });
       });
+    this.renderPlaylists(c);
+    new Setting(c).setName('Files').setHeading();
+    this.renderFiles(c);
+  }
 
-    new Setting(c)
-      .setName('Week starts on')
-      .addDropdown(d => {
-        for (const [key, label] of WEEK_STARTS) d.addOption(key, label);
-        return d
-          .setValue(this.plugin.settings.weekStart)
-          .onChange(async v => {
-            this.plugin.settings.weekStart = v;
-            await this.plugin.saveSettings();
-            this.plugin.refreshViews();
-          });
-      });
-
-    new Setting(c)
-      .setName('Look and feel on this device only')
-      .setDesc('For a shared vault: on means Style, Calm colour, Accent, Rewards and Calm motion change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
-      .addToggle(t => t
-        .setValue(!!this.plugin.deviceLook)
-        .onChange(v => {
-          this.plugin.setDeviceLook(v);
-          this.display();
-        }));
-
+  /* Style, then Calm colour directly under it (only while Calm is on; it has
+     been moved three times and stays there), then Accent, then the
+     device-only switch, then the rows that change how much moves. */
+  renderLook(c) {
     const device = this.plugin.deviceLook ? ' Applies to this device only.' : '';
     new Setting(c)
       .setName('Style')
-      .setDesc(`How the gym looks. Every style uses the same data. Calm is the quiet one (soft cards, plain type, no shouting); choose it and a Calm colour list appears right below. Lock In is designed around the Blaze (orange) accent; it never changes your accent for you.${device}`)
+      .setDesc(`How the gym looks. Lock In is made for the Blaze accent.${device}`)
       .addDropdown(d => {
         for (const [key, label] of SKINS) d.addOption(key, label);
         d.setValue(this.plugin.settings.skin || 'apex')
@@ -151,15 +132,36 @@ class GymSettingTab extends PluginSettingTab {
     }
 
     new Setting(c)
+      .setName('Accent color')
+      .setDesc(`The highlight color threading through the whole app. Olive is the softest. A Calm colour other than Sage brings its own and ignores this.${device}`)
+      .addDropdown(d => {
+        for (const [key, label] of ACCENTS) d.addOption(key, label);
+        d.setValue(this.plugin.settings.accent || 'lime')
+          .onChange(v => this.plugin.setLook('accent', v));
+      });
+
+    new Setting(c)
+      .setName('Look and feel on this device only')
+      .setDesc('For a shared vault: on means Style, Calm colour, Accent, Rewards and Less motion change this phone or computer only, and the other devices keep theirs. Off follows the shared choice.')
+      .addToggle(t => t
+        .setValue(!!this.plugin.deviceLook)
+        .onChange(v => {
+          this.plugin.setDeviceLook(v);
+          this.display();
+        }));
+
+    new Setting(c)
       .setName('Rewards')
-      .setDesc(`XP, levels, a weekly quest and medals, tracked in Gym/Rewards.md. Off means nothing is awarded, shown or written.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
+      .setDesc(`XP, levels, a weekly quest and medals, tracked in Gym/Rewards.md. Off means nothing is awarded, shown or written.${device}`)
       .addToggle(t => t
         .setValue(rewardsEnabled(this.plugin.settings))
         .onChange(v => this.plugin.setLook('rewards', v)));
 
+    /* "Less motion", not "Calm motion": it applies to every style, and the old
+       name read as part of the Calm style. The key is still quietMotion. */
     new Setting(c)
-      .setName('Calm motion')
-      .setDesc(`No confetti, no pulsing, flickering or scrolling, and exercise images held still. Sounds and counting are unchanged.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
+      .setName('Less motion')
+      .setDesc(`For every style: no confetti, no pulsing, flickering or scrolling, and exercise images held still. Sounds and counting are unchanged.${device}`)
       .addToggle(t => t
         .setValue(quietMotionOn(this.plugin.settings))
         .onChange(v => this.plugin.setLook('quietMotion', v)));
@@ -204,32 +206,35 @@ class GymSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
           this.plugin.refreshViews();
         }));
+  }
 
+  renderWorkouts(c) {
     new Setting(c)
-      .setName('Accent color')
-      .setDesc(`The highlight color threading through the whole app. Olive is the softest. A Calm colour other than Sage brings its own and ignores this.${this.plugin.deviceLook ? ' Applies to this device only.' : ''}`)
+      .setName('Start opens')
+      .setDesc('What the Start button does. Guided leads you set by set; Log screen opens the log, where you can work through the exercises in any order. The other one is always one tap away beside Start.')
       .addDropdown(d => {
-        for (const [key, label] of ACCENTS) d.addOption(key, label);
-        d.setValue(this.plugin.settings.accent || 'lime')
-          .onChange(v => this.plugin.setLook('accent', v));
-      });
-
-    this.renderSound(c);
-
-    new Setting(c)
-      .setName('Music app')
-      .setDesc('Adds a shortcut button in guided sessions to jump out and change the song.')
-      .addDropdown(d => {
-        for (const [key, label] of MUSIC_APPS) d.addOption(key, label);
-        d.setValue(this.plugin.settings.musicApp || 'none')
+        for (const [key, label] of START_OPENS) d.addOption(key, label);
+        return d
+          .setValue(this.plugin.settings.startOpens === 'log' ? 'log' : 'guided')
           .onChange(async v => {
-            this.plugin.settings.musicApp = v;
+            this.plugin.settings.startOpens = v;
             await this.plugin.saveSettings();
             this.plugin.refreshViews();
           });
       });
 
-    this.renderPlaylists(c);
+    new Setting(c)
+      .setName('Week starts on')
+      .addDropdown(d => {
+        for (const [key, label] of WEEK_STARTS) d.addOption(key, label);
+        return d
+          .setValue(this.plugin.settings.weekStart)
+          .onChange(async v => {
+            this.plugin.settings.weekStart = v;
+            await this.plugin.saveSettings();
+            this.plugin.refreshViews();
+          });
+      });
 
     /* A DROPDOWN, not a text box: this is a choice from a short list, so it
        commits immediately — the blur rule above exists for half-typed
@@ -263,6 +268,54 @@ class GymSettingTab extends PluginSettingTab {
           this.plugin.settings.openOnStartup = v;
           await this.plugin.saveSettings();
         }));
+  }
+
+  renderFiles(c) {
+    /* While this device has its own folder (below), this row shows and edits
+       the SHARED one: what data.json holds and the other devices follow. */
+    const ownFolder = this.plugin.deviceFolder || null;
+    const sharedFolder = ownFolder && typeof this.plugin.sharedGymFolder === 'function'
+      ? this.plugin.sharedGymFolder() : this.plugin.settings.gymFolder;
+    new Setting(c)
+      .setName('Gym folder')
+      .setDesc('Vault folder holding your exercises, plans, workouts, goals and body log.')
+      .addText(t => commitOnBlur(this, t.setValue(sharedFolder), async v => {
+        /* An empty box still means Gym — the fallback has to be here as well
+           as at every read, or blanking the field persists ''. */
+        const folder = v.trim() || 'Gym';
+        if (ownFolder) { await this.plugin.setSharedFolder(folder); return; }
+        this.plugin.settings.gymFolder = folder;
+        await this.plugin.saveSettings();
+        /* Once, on the finished folder name. */
+        this.plugin.refreshViews();
+      }));
+
+    /* TWO PEOPLE, ONE VAULT (audit 25 Nov 2026, #20). data.json syncs, so the
+       folder above is the same on every device. This keeps one for this device
+       in local storage (src/device-look.js): on starts from the folder in use
+       now, off follows the shared folder again. setDeviceFolder reloads the
+       views, and a new empty folder shows the usual "Create my gym" card. */
+    new Setting(c)
+      .setName('Use a different Gym folder on this phone')
+      .setDesc('For two people sharing one vault. This phone keeps its own plans, workouts and records in the folder below. Other devices are not changed.')
+      .addToggle(t => t
+        .setValue(!!ownFolder)
+        .onChange(v => {
+          this.plugin.setDeviceFolder(v ? this.plugin.settings.gymFolder : null);
+          this.display();
+        }));
+
+    if (ownFolder) {
+      new Setting(c)
+        .setName("This phone's Gym folder")
+        .setDesc('A folder in this vault, for example Gym Anna. Only this phone uses it.')
+        .addText(t => commitOnBlur(this, t.setValue(ownFolder), async v => {
+          if (this.plugin.setDeviceFolder(v) === false) {
+            new Notice('Gym: that is not a folder in this vault. Type a folder name, for example Gym Anna.', 7000);
+            t.setValue(this.plugin.deviceFolder || '');
+          }
+        }));
+    }
 
     new Setting(c)
       .setName('Plan library')
@@ -337,7 +390,8 @@ class GymSettingTab extends PluginSettingTab {
      a sync from an older version) is shown with its problem stated rather
      than quietly disappearing, because it does quietly disappear from the
      pickers and that would otherwise be inexplicable. */
-  /* Count-back: HOW the app answers a rep, a countdown or a record.
+  /* Sound and voice (the row was "Count-back" until 25 Nov 2026, #31; the
+     key is still soundMode): HOW the app answers a rep, a countdown or a record.
 
      Two settings, not one, and the second only appears when the first is
      'voice' — a voice picker under "Beeps" is a control over nothing.
@@ -353,7 +407,7 @@ class GymSettingTab extends PluginSettingTab {
 
     const desc = SOUND_MODES.find(m => m[0] === mode);
     const setting = new Setting(c)
-      .setName('Count-back')
+      .setName('Sound and voice')
       .setDesc(desc ? desc[2] : '')
       .addDropdown(d => {
         for (const [key, label] of SOUND_MODES) {

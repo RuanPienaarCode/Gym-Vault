@@ -6,6 +6,7 @@ const { EXERCISE_TYPES, MUSCLE_GROUPS } = require('./constants');
 const { exerciseBests } = require('./stats');
 const { equipmentTokens, labelFor } = require('./equipment');
 const { FormModal, ConfirmModal } = require('./modals');
+const photo = require('./exercise-photo');
 
 function render(ctx, root) {
   const { data } = ctx;
@@ -155,14 +156,33 @@ function iconBtn(name, label, onClick) {
   return b;
 }
 
-function exerciseFields(fm, name) {
+/* The Images row's "Add photo" (audit 25 Nov 2026, #29): the picked picture,
+   resized, saved under <Gym folder>/Attachments/<exercise>/ (the folder THIS
+   device uses) and its path handed back to the form. The exercise's name is
+   the folder, so a new exercise must have one first; the edit form has no
+   Name field and passes the note's name. Called through `photo.` so the guard
+   suite can stand in for the image decoding a WebView does. */
+function photoAdder(ctx, fallbackName) {
+  return async (file, values) => {
+    const name = String((values && values.name !== undefined ? values.name : fallbackName) || '').trim();
+    if (!name) { ctx.notice('give the exercise a name first: the photo is saved in a folder named after it.'); return null; }
+    const bytes = await photo.fileToJpeg(file);
+    return photo.saveExercisePhoto(ctx.app, {
+      gymFolder: ctx.settings.gymFolder, exercise: name, bytes,
+      onWrite: p => photo.markOwnWrite(ctx.plugin, p),
+    });
+  };
+}
+
+function exerciseFields(fm, name, onPhoto) {
   return [
     { key: 'name', label: 'Name', kind: 'text', value: name || '', placeholder: 'e.g. Pull-ups' },
     { key: 'type', label: 'Type', kind: 'dropdown', options: EXERCISE_TYPES.map(t => [t, t]), value: (fm && fm.type) || 'strength' },
     { key: 'muscles', label: 'Muscles', kind: 'text', value: listOf(fm && fm.muscles).join(', '), placeholder: 'back, biceps', desc: 'Comma-separated' },
     { key: 'equipment', label: 'Equipment', kind: 'text', value: listOf(fm && fm.equipment).join(', '), placeholder: 'bar, dumbbells, bodyweight', desc: 'Comma-separated' },
     { key: 'unit', label: 'Tracked as', kind: 'dropdown', options: [['reps', 'reps'], ['kg', 'weight (kg)'], ['seconds', 'seconds'], ['km', 'distance (km)']], value: (fm && fm.unit) || 'reps' },
-    { key: 'image', label: 'Images', kind: 'text', value: listOf(fm && fm.image).join(', '), placeholder: 'vault path or https URL', desc: 'Comma-separate two (start, finish) to show the movement' },
+    { key: 'image', label: 'Images', kind: 'images', onPhoto, value: listOf(fm && fm.image).join(', '), placeholder: 'https:// link, or Add photo',
+      desc: 'Add photo takes or picks a picture. Two pictures (start, finish) show the movement.' },
     { key: 'video', label: 'Video', kind: 'text', value: (fm && fm.video) || '', placeholder: 'vault path or https URL' },
   ];
 }
@@ -216,7 +236,7 @@ const parseImages = s => {
 function openAdd(ctx) {
   new FormModal(ctx.app, {
     title: 'New exercise',
-    fields: exerciseFields(null, ''),
+    fields: exerciseFields(null, '', photoAdder(ctx, '')),
     submitLabel: 'Add',
     validate: v => (!v.name.trim() ? 'Give it a name.' : null),
     onSubmit: async v => {
@@ -236,7 +256,7 @@ function openEdit(ctx, ex) {
     /* No Name field: plans, goals and every logged row reference an exercise
        BY NAME, so renaming the note (the only way to rename one) detaches all
        of them — the missing-exercise warning above says so when it happens. */
-    fields: exerciseFields(ex.fm, ex.name).filter(f => f.key !== 'name'),
+    fields: exerciseFields(ex.fm, ex.name, photoAdder(ctx, ex.name)).filter(f => f.key !== 'name'),
     onSubmit: async v => {
       ex.fm = {
         ...ex.fm, type: v.type, muscles: parseMuscles(v.muscles), equipment: parseEquipment(v.equipment), unit: v.unit,
@@ -248,4 +268,4 @@ function openEdit(ctx, ex) {
   }).open();
 }
 
-module.exports = { render, editExercise: openEdit, parseImages };
+module.exports = { render, editExercise: openEdit, parseImages, exerciseFields, photoAdder };

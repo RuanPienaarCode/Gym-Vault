@@ -17,7 +17,7 @@ const { RepCounterModal } = require('./rep-counter-modal');
 const { weekdayKey, todayISO } = require('./dates');
 const { isChallenge } = require('./challenge');
 const { openChallenge, openNewChallenge } = require('./challenge-flow');
-const { applyLook, sharedForSave, makeLookStore, LOOK_FIELDS } = require('./device-look');
+const { applyLook, sharedForSave, makeLookStore, LOOK_FIELDS, applyFolder, makeFolderStore, cleanFolder } = require('./device-look');
 
 class GymPlugin extends Plugin {
   async onload() {
@@ -152,14 +152,21 @@ class GymPlugin extends Plugin {
 
   /* Style + Accent may be chosen for THIS DEVICE ONLY (src/device-look.js):
      this.settings holds what this device shows, this._sharedLook what
-     data.json holds, this.deviceLook the local override (or null). */
+     data.json holds, this.deviceLook the local override (or null).
+
+     The Gym folder too (audit 25 Nov 2026, finding 20): this.deviceFolder is
+     this device's own folder (or null), this._sharedFolder the one data.json
+     holds, and this.settings.gymFolder the EFFECTIVE one every reader uses. */
   async loadSettings() {
     const stored = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this._sharedLook = {};
     for (const f of LOOK_FIELDS) this._sharedLook[f] = stored[f];
+    this._sharedFolder = stored.gymFolder;
     this._lookStore = makeLookStore(this.app);
+    this._folderStore = makeFolderStore(this.app);
     this.deviceLook = this._lookStore.read();
-    this.settings = applyLook(stored, this.deviceLook);
+    this.deviceFolder = this._folderStore.read();
+    this.settings = applyFolder(applyLook(stored, this.deviceLook), this.deviceFolder);
   }
 
   /* data.json was changed on disk by something else — the vault syncing another
@@ -174,7 +181,45 @@ class GymPlugin extends Plugin {
     this.refreshViews();
   }
 
-  async saveSettings() { await this.saveData(sharedForSave(this.settings, this._sharedLook, this.deviceLook)); }
+  /* Without a device folder the folder shown IS the shared one, so whatever a
+     caller set on settings.gymFolder is what switching a device folder off
+     later returns to. With one, data.json keeps the shared folder. */
+  async saveSettings() {
+    if (!this.deviceFolder) this._sharedFolder = this.settings.gymFolder;
+    const shared = Object.assign({}, this._sharedLook, { gymFolder: this._sharedFolder });
+    await this.saveData(sharedForSave(this.settings, shared, this.deviceLook, this.deviceFolder));
+  }
+
+  /* The folder data.json holds (what the other devices follow). */
+  sharedGymFolder() { return this.deviceFolder ? this._sharedFolder : this.settings.gymFolder; }
+
+  /* The shared "Gym folder" row while this device has its own: only data.json
+     changes, this device stays where it is (so no reload). */
+  async setSharedFolder(folder) {
+    this._sharedFolder = folder;
+    if (!this.deviceFolder) this.settings.gymFolder = folder;
+    await this.saveSettings();
+  }
+
+  /* This device's own Gym folder: a folder to use it (false when it is no
+     folder: empty, the vault root, hidden), null to follow the shared folder
+     again. Kept in local storage only; the views reload either way, the same
+     as changing the shared folder does. */
+  setDeviceFolder(folder) {
+    if (folder === null || folder === undefined) {
+      this.deviceFolder = null;
+      this._folderStore.write(null);
+      this.settings.gymFolder = this._sharedFolder;
+    } else {
+      const clean = cleanFolder(folder);
+      if (!clean) return false;
+      this.deviceFolder = clean;
+      this._folderStore.write(clean);
+      this.settings.gymFolder = clean;
+    }
+    this.refreshViews();
+    return true;
+  }
 
   /* Style, Accent, Rewards or Calm motion picked in Settings: this device's choice when one is on,
      otherwise the shared one every device follows. */
