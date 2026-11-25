@@ -113,7 +113,8 @@ const lastWeek = () => addDays(WK, -3);
   const spans = [];
   (function walk(n) { for (const c of n.children || []) { if (c.nodeType !== 1) continue; if (c.tag === 'span') spans.push(c); walk(c); } })(t);
   assert.ok(spans.length >= 3, 'a strip of spans');
-  assert.ok(spans.some(s => s.textContent === 'Lock in') && spans.some(s => s.textContent === 'No days off') && spans.some(s => s.textContent === 'Earn it'));
+  assert.ok(spans.some(s => s.textContent === 'Show up') && spans.some(s => s.textContent === 'No days off') && spans.some(s => s.textContent === 'Earn it'));
+  assert.ok(!spans.some(s => s.textContent === 'Lock in'), '"Lock in" is the Start button\'s label, not a ticker word (audit 25 Nov 2026, #18)');
   /* between the hero's head (kicker, title, chips, sub) and the Rx list. The
      head is one wrapper so Lock In can flood it alone; the title lives in it. */
   const hero = one(root, 'gv-hero');

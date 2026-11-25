@@ -29,7 +29,7 @@ const norm = s => s.replace(/\s+/g, ' ').trim();
   const go = T.findAll(root, 'gv-btn-hero-ghost').concat(T.findAll(root, 'gv-btn')).find(b => /Plans/.test(b.textContent));
   assert.ok(go, 'a button to Plans');
   go.click();
-  assert.deepStrictEqual(navs.pop(), ['plans'], 'it opens Plans');
+  assert.deepStrictEqual(navs.pop(), ['plans', null, { reset: true }], 'it opens Plans like a tab tap (audit 25 Nov 2026, #33)');
 }
 {
   /* control: a plan with nothing scheduled today is still a rest day, kicker carries its name */

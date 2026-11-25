@@ -11,6 +11,7 @@ const { streakFlame } = require('./streak-flame');
 const { itemSets, isRestDay, targetDurationSeconds, rxLabel } = require('./plan-parse');
 const { equipmentFor } = require('./equipment');
 const { PlanPickerModal } = require('./modals');
+const { pickerRows, WorkoutPickerModal } = require('./workout-picker');
 const { pbInReach, reachText, weekPlan, weekProgress, weekWords, streakRisk, streakRiskText } = require('./progress');
 const rewardsUi = require('./rewards-ui');
 
@@ -30,7 +31,25 @@ function kitChips(ctx, day) {
    estMinutes is the ONE minutes rule. It fed the "9 sets · est. 15 min" line
    alone; the Apex / Lock In slab chips read it too, so the two cannot
    disagree. */
+/* A day NAME can state its own length ("8-minute Primer", "12 minute Flow",
+   "A · 15-min Core"); that is the plan author's number and beats any estimate.
+   A count before it ("4 x 3 min") is a repeat, not a length, and so is a figure
+   that is the tail of a longer number. Returns 0 when the name says nothing. */
+function statedMinutes(name) {
+  const text = String(name == null ? '' : name);
+  const re = /(\d{1,3})(?:\s*[-\u2013]\s*\d{1,3})?\s*-?\s*min(?:ute)?s?\b/gi;
+  let m;
+  while ((m = re.exec(text))) {
+    const before = text.slice(0, m.index);
+    if (/[x\u00d7]\s*$/i.test(before) || /\d$/.test(before)) continue;
+    const n = Number(m[1]);
+    if (n >= 1 && n <= 240) return n;
+  }
+  return 0;
+}
+
 function estMinutes(load) {
+  if (load && typeof load === 'object') { const stated = statedMinutes(load.name); if (stated) return stated; }
   /* A bare number is a set count (1.8 min a set). A day is read line by line:
      a set takes the longer of that 1.8 and the time its line WRITES, so
      `1 x 30 min easy` is 30 minutes, not "~15". A short hold ("3 x 60s")
@@ -41,7 +60,9 @@ function estMinutes(load) {
         const sets = itemSets(it), written = targetDurationSeconds(it.target || '');
         return n + Math.max(sets * 1.8, written ? sets * written / 60 : 0);
       }, 0);
-  return Math.max(15, Math.round(raw / 5) * 5);
+  /* No 15-minute floor (a day that is 7 minutes of work said "about 15"); 5 is
+     the least worth printing. */
+  return Math.max(5, Math.round(raw / 5) * 5);
 }
 
 /* The Start button's words, keyed by skin. Apex and Lock In wear the mockups'
@@ -224,11 +245,7 @@ function render(ctx, root) {
       plans: ctx.mainPlans(),
       extras: [...ctx.parallelPlans(), ...ctx.fallbackPlans()],
       currentName: plan.name,
-      onPick: async next => {
-        await ctx.io.setActivePlan(ctx.mainPlans(), next);
-        ctx.notice(`switched to ${next.name}.`);
-        ctx.reload();
-      },
+      onPick: next => activate(ctx, next, `switched to ${next.name}.`),
     }).open());
     kicker.append(swap);
   }
@@ -242,11 +259,7 @@ function render(ctx, root) {
   if (plan && ctx.activePlanIsImplicit()) {
     const claim = el('button', { class: 'gv-btn gv-btn-ghost gv-btn-small', type: 'button' },
       ico('circle-check'), el('span', {}, 'Make it active'));
-    claim.addEventListener('click', async () => {
-      await ctx.io.setActivePlan(ctx.mainPlans(), plan);
-      ctx.notice(`${plan.name} is now your active plan.`);
-      ctx.reload();
-    });
+    claim.addEventListener('click', () => activate(ctx, plan, `${plan.name} is now your active plan.`));
     head.append(el('div', { class: 'gv-card gv-alsotoday' },
       el('div', { class: 'gv-alsotoday-main' },
         el('div', { class: 'gv-kicker' }, 'No active plan'),
@@ -266,11 +279,7 @@ function render(ctx, root) {
       plans: mains,
       extras: [...ctx.parallelPlans(), ...ctx.fallbackPlans()],
       currentName: null,
-      onPick: async next => {
-        await ctx.io.setActivePlan(ctx.mainPlans(), next);
-        ctx.notice(`${next.name} is now your active plan.`);
-        ctx.reload();
-      },
+      onPick: next => activate(ctx, next, `${next.name} is now your active plan.`),
     }).open());
     head.append(el('div', { class: 'gv-card gv-alsotoday' },
       el('div', { class: 'gv-alsotoday-main' },
@@ -314,6 +323,11 @@ function render(ctx, root) {
       class: 'gv-btn-hero-ghost', type: 'button',
       onclick: () => ctx.startLog(dayPlan, day),
     }, ico('circle-check'), el('span', {}, 'Log recovery')));
+    /* Rest is not a cage: the next TRAINING day can be started now, the same
+       button a day with nothing scheduled gets (audit 25 Nov 2026, #22). */
+    afterHead.push(...nextStartButtons(ctx, nextPlannedDay(ctx, todayKeyName), false));
+    const another = chooseAnother(ctx, todayKeyName);
+    if (another) afterHead.push(another);
     if (simple) { const more = todayMore(ctx, [list]); if (more) afterHead.push(more); }
   } else if (todays.length) {
     const { plan: dayPlan, day } = todays[0];
@@ -367,17 +381,30 @@ function render(ctx, root) {
       class: 'gv-btn-hero-ghost gv-hero-manual', type: 'button',
       onclick: () => ctx.startAlt(dayPlan, day),
     }, el('span', {}, startModes(settings).altLabel)));
+    const another = chooseAnother(ctx, todayKeyName);
+    if (another) afterHead.push(another);
     /* Calm: the detail goes UNDER the buttons, so opening it never moves Start. */
     if (simple) afterHead.push(todayMore(ctx, [prose ? el('p', { class: 'gv-today-notes' }, prose) : null, rx, kit]));
   } else if (!plan) {
-    /* No active plan at all is not a rest day: "Rest day" on every weekday
-       told a new user nothing was wrong while nothing was set up. */
-    addTitle('No plan yet');
-    sub.append('Pick a plan, or build your own, on the Plans page.');
-    afterHead.push(el('button', {
-      class: 'gv-btn-hero-ghost', type: 'button',
-      onclick: () => ctx.nav('plans'),
-    }, ico('clipboard-list'), el('span', {}, 'Go to Plans')));
+    if (mains.length) {
+      /* Plans exist and every main one is switched off: the "No active plan"
+         card above already says so and holds the one action. Saying "No plan
+         yet" and pointing at Plans as well was two messages that disagreed. */
+      addTitle('Nothing planned today');
+      const another = chooseAnother(ctx, todayKeyName);
+      if (another) afterHead.push(another);
+    } else {
+      /* No plans at all is not a rest day: "Rest day" on every weekday told a
+         new user nothing was wrong while nothing was set up. */
+      addTitle('No plan yet');
+      sub.append('Pick a plan, or build your own, on the Plans page.');
+      /* Like a tab tap: Back from a plan opened out of Plans should land on the
+         Plans list, not on Today (audit 25 Nov 2026, #33). */
+      afterHead.push(el('button', {
+        class: 'gv-btn-hero-ghost', type: 'button',
+        onclick: () => ctx.nav('plans', null, { reset: true }),
+      }, ico('clipboard-list'), el('span', {}, 'Go to Plans')));
+    }
     afterHead.push(el('button', {
       class: 'gv-btn-hero-ghost', type: 'button',
       onclick: () => ctx.startLog(null, null),
@@ -392,16 +419,9 @@ function render(ctx, root) {
        2026, Ruan: "I want to do my lunch time plan in the week" — a Friday
        lunch circuit had no Start on a Tuesday). The real Start, with the
        other way under it, the same pair a training day gets. */
-    if (next && next.plan) {
-      afterHead.push(el('button', {
-        class: 'gv-btn-go gv-go-next', type: 'button',
-        onclick: () => ctx.start(next.plan, next.day),
-      }, `Start ${next.day.name}`, ico('arrow-right', 'gv-go-arrow')));
-      afterHead.push(el('button', {
-        class: 'gv-btn-hero-ghost gv-hero-manual', type: 'button',
-        onclick: () => ctx.startAlt(next.plan, next.day),
-      }, el('span', {}, startModes(settings).altLabel)));
-    }
+    afterHead.push(...nextStartButtons(ctx, next, true));
+    const another = chooseAnother(ctx, todayKeyName);
+    if (another) afterHead.push(another);
     afterHead.push(el('button', {
       class: 'gv-btn-hero-ghost', type: 'button',
       onclick: () => ctx.startLog(plan, null),
@@ -476,7 +496,7 @@ function render(ctx, root) {
   /* A live streak is already the hero's badge in Apex and Lock In. */
   if (streak > 0) flame.classList.add('gv-streak-dup');
   page.append(flame);
-  const risk = streakRisk(streak, wp, today, settings.weekStart);
+  const risk = streakRisk(streak, wp, today, settings.weekStart, dates);
   if (risk) page.append(el('p', { class: 'gv-streak-risk' }, streakRiskText(risk)));
 
   /* Three tiles in a two-column grid leaves a hole, and an empty cell reads
@@ -526,7 +546,9 @@ function render(ctx, root) {
    Wrapper > band > track: the wrapper is the clip around the band's rotation
    (see "THE CLIP" in styles.css), the band is the strip. */
 function ticker() {
-  const words = ['Lock in', 'No days off', 'Earn it'];
+  /* Not "Lock in": that is the Start button's label on Apex and Lock In, and the
+     primary button's words are unique on the screen. */
+  const words = ['Show up', 'No days off', 'Earn it'];
   return el('div', { class: 'gv-ticker', 'aria-hidden': 'true' },
     el('div', { class: 'gv-ticker-band' },
       el('div', {}, ...words.concat(words).map(w => el('span', {}, w)))));
@@ -595,15 +617,65 @@ function dayShort(day) {
   return first.slice(0, 3).toUpperCase();
 }
 
-/* Searches every plan (active + parallel), not just the strength one. */
+/* The next TRAINING day, searching every plan (active + parallel + backup),
+   not just the strength one. A rest day is never "next" (plan-parse.isRestDay,
+   the rule startDayFor skips them by): it used to be offered as "Start Rest".
+   Every plan's day on a weekday is looked at, so a rest day in one plan does
+   not hide a workout in another. */
 function nextPlannedDay(ctx, todayKeyName) {
   const start = WEEKDAYS.indexOf(todayKeyName);
   for (let i = 1; i <= 7; i++) {
     const wk = WEEKDAYS[(start + i) % 7];
-    const hit = ctx.daysOn(wk)[0];
+    const hit = ctx.daysOn(wk).find(h => !isRestDay(h.day));
     if (hit) return { weekday: wk, day: hit.day, plan: hit.plan };
   }
   return null;
+}
+
+/* "Start <next day>" (+ the other way under it when `withAlt`), drawn by BOTH
+   the rest-day hero and the nothing-scheduled hero, so the two cannot drift.
+   Nothing when there is no next training day. */
+function nextStartButtons(ctx, next, withAlt) {
+  if (!next || !next.plan) return [];
+  const out = [el('button', {
+    class: 'gv-btn-go gv-go-next', type: 'button',
+    onclick: () => ctx.start(next.plan, next.day),
+  }, `Start ${next.day.name}`, ico('arrow-right', 'gv-go-arrow'))];
+  if (withAlt) {
+    out.push(el('button', {
+      class: 'gv-btn-hero-ghost gv-hero-manual', type: 'button',
+      onclick: () => ctx.startAlt(next.plan, next.day),
+    }, el('span', {}, startModes(ctx.settings).altLabel)));
+  }
+  return out;
+}
+
+/* "Choose another workout": do a different plan's day ONCE, without switching
+   the active plan (audit 25 Nov 2026, #30). A quiet ghost button, never a
+   second lime one. Null when no plan has anything to train. The pick goes
+   through ctx.start, so Settings → Start opens still decides Guided or Log. */
+function chooseAnother(ctx, todayKeyName) {
+  const rows = pickerRows((ctx.data && ctx.data.plans) || [], ctx.activePlan(), todayKeyName);
+  if (!rows.length) return null;
+  return el('button', {
+    class: 'gv-btn-hero-ghost gv-hero-another', type: 'button',
+    onclick: () => new WorkoutPickerModal(ctx.app, { rows, onStart: (plan, day) => ctx.start(plan, day) }).open(),
+  }, el('span', {}, 'Choose another workout'));
+}
+
+/* Make `plan` the active one. A write that fails must SAY so and the screen must
+   redraw from what is really on disk either way (finally), instead of a silent
+   rejection leaving Today showing a switch that never happened. */
+async function activate(ctx, plan, said) {
+  try {
+    await ctx.io.setActivePlan(ctx.mainPlans(), plan);
+    ctx.notice(said);
+  } catch (e) {
+    console.error('gym-vault set active plan', e);
+    ctx.notice('Could not switch plan. Try again.');
+  } finally {
+    ctx.reload();
+  }
 }
 
 module.exports = { render, startCopy, splitTitle, estMinutes, simpleToday, todaySummary };

@@ -17,7 +17,7 @@
    of the user. */
 
 const records = require('./records');
-const { num, sameName, sessionsInWeek } = require('./stats');
+const { num, sameName, sessionsInWeek, weekStreak } = require('./stats');
 const { weekdayKey, addDays, startOfWeek } = require('./dates');
 const { targetIsDuration, targetWeight } = require('./plan-parse');
 const { weekSchedule } = require('./rewards');
@@ -228,19 +228,33 @@ function weekWords(wp) {
   };
 }
 
-/* The streak nag. weekStreak survives on ONE session in a week, so the only
+/* Is this week already one of the streak's weeks? Asked of stats.weekStreak
+   itself, so it can never disagree with the flame: the week is kept exactly when
+   counting it raises the streak, i.e. the streak read from today is longer than
+   the one read from the last day of the week before. `dates` is
+   stats.workoutDates(workouts), the same list the flame is given: a weekly-
+   challenge go is a workout DATE (it keeps the streak) though it is not a
+   session (it does not move wp.done). */
+function weekKept(dates, today, weekStart) {
+  const before = addDays(startOfWeek(today, weekStart), -1);
+  return weekStreak(dates, weekStart, today) > weekStreak(dates, weekStart, before);
+}
+
+/* The streak nag. weekStreak survives on ONE workout date in a week, so the only
    state in which the streak is genuinely at risk is: it is alive (streak > 0)
    and this week has nothing logged yet - it breaks if that is still true when
-   the week ends. Being under the week's TARGET is not a risk to the streak (the
-   ring's "to go" covers that), and saying "don't break it" there would claim a
-   danger the code does not honour.
+   the week ends. "Nothing logged" is the streak's own question (weekKept), NOT
+   wp.done: that counts sessions only and would warn over a week a challenge go
+   has already kept. Being under the week's TARGET is not a risk to the streak
+   (the ring's "to go" covers that), and saying "don't break it" there would
+   claim a danger the code does not honour.
 
    Returns {streak, by}: the streak that would be lost and the last day of the
    week it can still be saved on. `streak` is stats.weekStreak, passed in so the
    flame and this read ONE number. A week with no target at all (rest-only,
    wp === null) is a week the plan asks nothing of, so no nag. */
-function streakRisk(streak, wp, today, weekStart) {
-  if (!(streak > 0) || !wp || wp.done !== 0) return null;
+function streakRisk(streak, wp, today, weekStart, dates) {
+  if (!(streak > 0) || !wp || weekKept(dates || [], today, weekStart)) return null;
   const lastDay = weekdayKey(addDays(startOfWeek(today, weekStart), 6));
   return { streak, by: WEEKDAY_LABELS[lastDay] };
 }
@@ -251,5 +265,5 @@ function streakRiskText(r) {
 
 module.exports = {
   classifyKind, entryShape, claimableBest, liveBest, pbTarget, pbDelta, marginText, pctText,
-  pbInReach, reachText, figureText, weekPlan, weekProgress, weekWords, streakRisk, streakRiskText, REACH_STEP,
+  pbInReach, reachText, figureText, weekPlan, weekProgress, weekWords, weekKept, streakRisk, streakRiskText, REACH_STEP,
 };

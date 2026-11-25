@@ -78,7 +78,7 @@ const first = (node, cls) => findAll(node, cls)[0] || null;
   }
 
   /* the minutes rule: the line and the chips read this one function */
-  eq([0, 3, 9, 13, 20, 27, 40].map(estMinutes), [15, 15, 15, 25, 35, 50, 70], 'est. minutes: 1.8 min a set, to the nearest 5, never under 15');
+  eq([0, 3, 9, 13, 20, 27, 40].map(estMinutes), [5, 5, 15, 25, 35, 50, 70], 'est. minutes: 1.8 min a set, to the nearest 5, never under 5 (no 15-minute floor)');
 
   /* splitTitle: splits where it can, declines where it cannot, and loses nothing */
   eq(splitTitle('Push Day'), { first: 'Push', rest: 'Day', n1: 4, n2: 3 }, 'the mockup\'s own PUSH / DAY.');

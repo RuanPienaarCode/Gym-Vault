@@ -308,14 +308,15 @@ check('streakRisk: alive streak and NOTHING logged this week -> the streak itsel
   assert.deepStrictEqual(P.streakRisk(9, wp, TODAY, 'sun'), { streak: 9, by: 'Saturday' });
 });
 check('streakRisk: one session done but UNDER target is NOT a risk (weekStreak survives on one session)', () => {
-  assert.strictEqual(P.streakRisk(9, { done: 1, target: 4, toGo: 3, met: false }, TODAY, 'mon'), null);
-  assert.strictEqual(P.streakRisk(9, { done: 3, target: 4, toGo: 1, met: false }, TODAY, 'mon'), null);
+  /* the 5th argument is the workout dates the flame reads (audit 25 Nov 2026, #49): the week is kept when one falls in it */
+  assert.strictEqual(P.streakRisk(9, { done: 1, target: 4, toGo: 3, met: false }, TODAY, 'mon', ['2026-10-05']), null);
+  assert.strictEqual(P.streakRisk(9, { done: 3, target: 4, toGo: 1, met: false }, TODAY, 'mon', ['2026-10-05', '2026-10-06']), null);
 });
 check('streakRisk: hidden with no streak', () => {
   assert.strictEqual(P.streakRisk(0, { done: 0, target: 4, toGo: 4, met: false }, TODAY, 'mon'), null);
 });
 check('streakRisk: hidden once the target is met', () => {
-  assert.strictEqual(P.streakRisk(9, { done: 4, target: 4, toGo: 0, met: true }, TODAY, 'mon'), null);
+  assert.strictEqual(P.streakRisk(9, { done: 4, target: 4, toGo: 0, met: true }, TODAY, 'mon', ['2026-10-05', '2026-10-06']), null);
 });
 check('streakRisk: hidden when the week has no target (rest-only)', () => {
   assert.strictEqual(P.streakRisk(9, null, TODAY, 'mon'), null);
@@ -330,11 +331,11 @@ check('streakRisk is fed by the SAME streak rule the flame uses (stats.weekStrea
   assert.strictEqual(streak, 1, 'last week counts while this week is still empty');
   const wp = P.weekProgress({ workouts: ws, goals: [], daysOn, today: TODAY, weekStart: 'mon' });
   assert.strictEqual(wp.done, 0);
-  assert.deepStrictEqual(P.streakRisk(streak, wp, TODAY, 'mon'), { streak: 1, by: 'Sunday' });
+  assert.deepStrictEqual(P.streakRisk(streak, wp, TODAY, 'mon', workoutDates(ws)), { streak: 1, by: 'Sunday' });
   /* ...and a first session this week makes the same streak safe. */
   const ws2 = ws.concat([sess('2026-10-05')]);
   const wp2 = P.weekProgress({ workouts: ws2, goals: [], daysOn, today: TODAY, weekStart: 'mon' });
-  assert.strictEqual(P.streakRisk(weekStreak(workoutDates(ws2), 'mon', TODAY), wp2, TODAY, 'mon'), null);
+  assert.strictEqual(P.streakRisk(weekStreak(workoutDates(ws2), 'mon', TODAY), wp2, TODAY, 'mon', workoutDates(ws2)), null);
 });
 
 /* ------------------------------------------------------------------ */
