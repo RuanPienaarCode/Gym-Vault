@@ -3417,9 +3417,10 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 .gv-app .gv-timed-exblock .gv-session-exname { margin: 0; }
 /* (0,3,0): .gv-app .gv-session-recap's margin further down must not win */
 .gv-app .gv-timed-exblock .gv-timed-recap { margin-top: 6px; flex-direction: row; flex-wrap: wrap; gap: 0 16px; }
-.gv-app .gv-timed-exblock .gv-session-frame { height: clamp(104px, 20vh, 160px); }
-.gv-app.gv-short .gv-timed-exblock .gv-session-frame { height: clamp(92px, 15vh, 124px); }
-.gv-app.gv-shorter .gv-timed-exblock .gv-session-frame { height: 80px; }
+/* taller since the sound row moved up into the header (25 Nov 2026) */
+.gv-app .gv-timed-exblock .gv-session-frame { height: clamp(120px, 24vh, 200px); }
+.gv-app.gv-short .gv-timed-exblock .gv-session-frame { height: clamp(108px, 21vh, 160px); }
+.gv-app.gv-shorter .gv-timed-exblock .gv-session-frame { height: 92px; }
 
 /* THE DIAL FILLS THE SPARE HEIGHT; THE TRANSPORT ROW IS ALWAYS LAST (25 Nov
    2026). The slot flex-grows from a zero basis, so it takes exactly the height
@@ -3435,7 +3436,6 @@ body.is-phone .gv-app .gv-timed-play { width: 68px; height: 68px; }
 }
 /* (0,3,1), later than body.is-phone's dial margin, which pushed the ring past the slot's top */
 body .gv-app .gv-timed-dialslot .gv-timed-dial { margin: 0; flex: 0 0 auto; }
-.gv-app .gv-timed-sound { display: flex; justify-content: center; margin: 0 0 8px; }
 .gv-app .gv-timed-controls { margin-top: auto; }
 
 /* ============================================================================

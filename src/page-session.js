@@ -2360,11 +2360,17 @@ function timedTopBar(ctx, draft, sess, schedule, iv) {
 
   const ord = el('div', { class: 'gv-session-ord' }, label);
   const bar = el('div', { class: 'gv-bar gv-session-bar' }, el('div', { class: 'gv-bar-fill gv-timed-bar-fill' }));
+  /* Sound lives up here beside Music (Ruan, 25 Nov 2026): it is set once per
+     workout, not per interval, and the row it used to take in the body is the
+     picture's now. The header's small size, the same as the music button. */
+  const sound = muteButton(ctx, sess);
+  sound.classList.add('gv-icon-btn-small');
   return {
     node: el('div', { class: 'gv-session-top' },
       el('div', { class: 'gv-session-top-row' },
         exitButton(ctx, draft),
         el('div', { class: 'gv-session-top-extra' }, ord),
+        sound,
         musicButton(ctx) || ''),
       bar),
     fill: bar.firstChild,
@@ -2482,14 +2488,12 @@ function renderTimedInterval(ctx, root, draft, sess, iv) {
   const skipBtn = el('button', { class: 'gv-icon-btn', type: 'button', 'aria-label': isWork ? 'Skip this interval' : 'Skip ahead' }, ico('skip-forward'));
   skipBtn.addEventListener('click', () => advanceTimed(ctx, draft, sess, { skip: true }));
 
-  /* Sound sits ABOVE the transport row, and the row is the last thing on the
-     screen: back / pause / next always at the bottom, under the thumb
-     (Ruan, 25 Nov 2026). */
   const callouts = (sess.pendingCallouts || []).length
     ? el('div', { class: 'gv-session-callouts' }, ...(sess.pendingCallouts || []).map(line => el('div', { class: 'gv-session-callout' }, line)))
     : '';
   if (callouts) { body.append(callouts); }
-  body.append(el('div', { class: 'gv-timed-sound' }, muteButton(ctx, sess)));
+  /* Back / pause / next is the last row, under the thumb (Ruan, 25 Nov 2026);
+     the sound toggle is in the header (timedTopBar). */
   body.append(el('div', { class: 'gv-timed-controls' }, backBtn, playBtn, skipBtn));
 
   root.append(body, live);
