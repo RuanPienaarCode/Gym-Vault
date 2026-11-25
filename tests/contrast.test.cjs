@@ -320,13 +320,7 @@ const PROBES = [
   text('live: set rail label', ['div.gv-session-page', 'div.gv-session-exblock.gv-live-head', 'div.gv-live-rail', 'b'], 'poster'),
   text('live: PB target kicker', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target', 'span.gv-pb-target-kicker'], 'poster'),
   text('live: PB target kicker (beaten)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target.is-beaten', 'span.gv-pb-target-kicker'], 'poster'),
-  text('live: PB target scale', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target', 'div.gv-pb-target-marks', 'span'], 'poster'),
-  text('live: PB target scale (beaten)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target.is-beaten', 'div.gv-pb-target-marks', 'span'], 'poster'),
-  /* The scale's MIDDLE figure ("62% of PB") is the one span the poster skins colour differently (the accent's text tone),
-     through a `:nth-child(2)` rule. A probe whose last link is a bare `span` never matches that rule, so the gate measured the
-     two outer figures and passed while the middle one printed 4.42:1 (Electric, Lock In light). Probe it by position. */
-  text('live: PB target scale, middle figure', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target', 'div.gv-pb-target-marks', 'span:nth-child(2)'], 'poster'),
-  text('live: PB target scale, middle figure (beaten)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-pb-target.is-beaten', 'div.gv-pb-target-marks', 'span:nth-child(2)'], 'poster'),
+  /* (The PB target's 0 / n% of PB / PB n scale and its probes went with the scale itself: audit 25 Nov 2026, #8.) */
   text('live: tap chip (idle zone)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-rc-zone.gv-session-zone.gv-live-zone', 'div.gv-rc-tapchip'], 'poster'),
   text('live: count caption (idle zone)', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-rc-zone.gv-session-zone.gv-live-zone', 'div.gv-rc-target'], 'poster'),
   text('live: Tick set label', ['div.gv-session-page', 'div.gv-session-body.gv-live', 'div.gv-live-sheet', 'div.gv-live-tickwrap', 'button.gv-btn-go.gv-live-tick', 'span'], 'poster'),

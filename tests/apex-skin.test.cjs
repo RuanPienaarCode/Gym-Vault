@@ -166,7 +166,7 @@ const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
 /* ---------- 7 ---------- */
 {
   const animated = apex.filter(r => !r.media && r.decls.some(d => d.prop === 'animation' && !/^none\b/.test(d.value)));
-  assert.ok(animated.length >= 4, `expected the ticker, pulse and glow animations, found ${animated.length}`);
+  assert.ok(animated.length >= 3, `expected the ticker, pulse and live pip animations, found ${animated.length}`);
   const calm = new Set(apex.filter(r => r.media && /prefers-reduced-motion:\s*reduce/.test(r.media) && r.decls.some(d => d.prop === 'animation' && /^none\b/.test(d.value))).map(r => r.selector));
   for (const r of animated) assert.ok(calm.has(r.selector), `${r.selector} animates forever but has no prefers-reduced-motion rule that stops it`);
   const fills = apex.filter(r => r.media && /prefers-reduced-motion/.test(r.media) && r.decls.some(d => d.prop === 'transition' && d.value === 'none'));
@@ -205,14 +205,12 @@ const ACCENTS = ['lime', 'volt', 'blaze', 'electric', 'punch'];
         '(put the glow on a pseudo-element with a fixed shadow and animate its opacity)');
     }
   }
-  assert.ok(loops.length >= 4, `expected the ticker, CTA pulse and both glow loops, found ${loops.length}`);
+  assert.ok(loops.length >= 3, `expected the ticker, CTA pulse and live pip loops, found ${loops.length}`);
   const names = new Set(loops.map(l => l.name));
-  for (const n of ['gv-poster-marquee', 'gv-apex-pulse', 'gv-apex-halo', 'gv-apex-glow', 'gv-live-blink']) assert.ok(names.has(n), `the ${n} loop is no longer found by this guard`);
-  /* the shadow itself is static: the loop rules that carry a glow declare no animated-property keyframes of their own */
-  for (const sel of ['.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten::after', '.theme-dark .gv-app.gv-skin-apex .gv-pb-new::after']) {
-    const rule = apex.find(r => r.selector === sel && r.decls.some(d => d.prop === 'animation'));
-    assert.ok(rule, `${sel} should carry the loop (a pseudo-element, not the element or its text)`);
-  }
+  for (const n of ['gv-poster-marquee', 'gv-apex-pulse', 'gv-live-blink']) assert.ok(names.has(n), `the ${n} loop is no longer found by this guard`);
+  /* The two PB glow loops (the beaten target's halo, the new figure's bloom) are gone with the glows themselves
+     (audit 25 Nov 2026, #12): tests/audit-1125-styles-design.test.cjs pins that Apex dark has none. */
+  for (const n of ['gv-apex-halo', 'gv-apex-glow']) assert.ok(!names.has(n) && !keyframes[n], `the ${n} glow loop is back`);
 }
 
 /* ---------- 8 ---------- */

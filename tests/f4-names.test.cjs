@@ -47,9 +47,12 @@ check('the Guided button\'s word is hidden visually, not removed from the access
   }
 });
 
-check('the narrow nav label is still display:none (the tab keeps its icon; the name is the aria-label)', () => {
+/* Audit 25 Nov 2026 (#11): the narrow tab bar now shows its word under the icon in every skin (Calm, Floor and
+   Editorial phones had six bare icons). The aria-label above still names each tab. */
+check('the narrow nav label is shown in every skin (display:block), never display:none', () => {
   const rule = cx.load().find(r => r.selector === '.gv-app.gv-narrow .gv-nav-label');
-  assert.ok(rule && rule.decls.some(d => d.prop === 'display' && d.value === 'none'));
+  assert.ok(rule && rule.decls.some(d => d.prop === 'display' && d.value === 'block'));
+  assert.ok(!cx.load().some(r => /\.gv-narrow[^,]*\.gv-nav-label$/.test(r.selector) && !r.media && r.decls.some(d => d.prop === 'display' && d.value === 'none')), 'no narrow rule hides the label');
 });
 
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }

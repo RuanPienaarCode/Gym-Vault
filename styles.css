@@ -591,15 +591,23 @@ body.is-phone.auto-full-screen .gv-app .gv-page {
    Each gets a transparent ::after centred on it, as big as the control or 44px, whichever is larger: a
    click on it is a click on the control and nothing is painted or moved (the .gv-planswap technique).
    ::after, because the poster skins paint their slab on ::before; .gv-btn-go is not a .gv-btn and
-   keeps its own ::after. tests/w4-touch-boxes.test.cjs. */
+   keeps its own ::after. tests/w4-touch-boxes.test.cjs.
+   The text links (audit 25 Nov 2026: a start card's "Log manually", a record's session date) and the
+   "Session in progress" pill are drawn small on purpose and take the same 44px box. */
 .gv-app .gv-btn:not(.gv-btn-go),
 .gv-app .gv-btn-hero-ghost,
 .gv-app .gv-icon-btn,
-.gv-app .gv-goal-mini { position: relative; }
+.gv-app .gv-goal-mini,
+.gv-app .gv-start-link,
+.gv-app .gv-recrow-session,
+.gv-app .gv-session-pill { position: relative; }
 .gv-app .gv-btn:not(.gv-btn-go)::after,
 .gv-app .gv-btn-hero-ghost::after,
 .gv-app .gv-icon-btn::after,
-.gv-app .gv-goal-mini::after {
+.gv-app .gv-goal-mini::after,
+.gv-app .gv-start-link::after,
+.gv-app .gv-recrow-session::after,
+.gv-app .gv-session-pill::after {
   content: '';
   position: absolute;
   left: 50%;
@@ -2158,7 +2166,11 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
    Colour is the whole treatment for the warn band; the urgent band adds a
    heartbeat on the digits. Nothing animates layout, and the heartbeat is a
    transform so it stays on the compositor while a session runs. */
-.gv-timed-dial[data-urgency="warn"] .gv-count-ring-fill { stroke: var(--gv-lime-hi); }
+/* The warn band must read as MORE than the normal ring, never less (audit 25 Nov 2026, #13): on paper the bright
+   lime-hi was paler than the fill it replaced (1.11:1 on Apex's white), so light takes the deep accent text tone and
+   dark keeps the brighter tone, which is the stronger one on graphite. */
+.gv-timed-dial[data-urgency="warn"] .gv-count-ring-fill { stroke: var(--gv-accent-text, var(--gv-lime-deep)); }
+.theme-dark .gv-app .gv-timed-dial[data-urgency="warn"] .gv-count-ring-fill { stroke: var(--gv-lime-hi); }
 .gv-timed-dial[data-urgency="urgent"] .gv-count-ring-fill { stroke: var(--gv-danger); }
 .gv-timed-dial[data-urgency="urgent"] .gv-timed-count {
   color: var(--gv-danger);
@@ -2843,6 +2855,9 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
   border: 2px solid var(--gv-line-2, var(--gv-ink-dim)); box-sizing: border-box;
 }
+/* On a dark card the hairline tone is too faint for a control's edge (Apex dark 1.73:1, audit 25 Nov 2026, #15):
+   the dim ink holds 3:1. Before the .on rule, which takes the ring back to full ink. */
+.theme-dark .gv-app .gv-radio { border-color: var(--gv-ink-dim); }
 .gv-plan-roleopt.on .gv-radio { border-color: var(--gv-ink); background: var(--gv-ink); box-shadow: inset 0 0 0 3px var(--gv-surface); }
 
 /* "How plans work" above the Plans list: one quiet line, open on demand. */
@@ -2886,7 +2901,46 @@ body .gv-app input.gv-rc-targetinput { width: 118px; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gv-line);
 }
-.gv-app .gv-plan-role-select { min-height: 40px; max-width: 60%; }
+/* THE ROLE PICKER (audit 25 Nov 2026, #10): the role block (select + the chosen role's one sentence) on the
+   left, the Active switch on the right at the top. The select was the one native white box in the app; it is
+   now drawn like the skin's other controls, with the caret made of two gradient triangles in the text's own
+   colour (no image, no literal), at the 44px touch height. `.gv-app .gv-plan-ctl select` (0,3,1) out-ranks
+   the host's `.dropdown` / `.dropdown:hover` / `select.dropdown:hover` chrome; its focus ring is put back. */
+.gv-app .gv-plan-ctl { align-items: flex-start; }
+.gv-app .gv-plan-role { flex: 1 1 auto; min-width: 0; }
+.gv-app .gv-plan-ctl .gv-plan-switch { flex: 0 0 auto; }
+.gv-app .gv-plan-ctl select.gv-plan-role-select {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 34px 8px 12px;
+  border: 2px solid var(--gv-ink);
+  border-radius: 0;
+  background-color: var(--gv-surface);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  box-shadow: none;
+  color: var(--gv-ink);
+  font-family: var(--gv-body);
+  font-size: 14px;
+  font-weight: 700;
+  color-scheme: light;
+  cursor: pointer;
+}
+.theme-dark .gv-app .gv-plan-ctl select.gv-plan-role-select { border-color: var(--gv-line-2); color-scheme: dark; }
+.gv-app.gv-skin-editorial .gv-plan-ctl select.gv-plan-role-select { border: 1px solid var(--gv-line-2); }
+.gv-app.gv-skin-calm .gv-plan-ctl select.gv-plan-role-select { border: 1px solid var(--gv-line-2); border-radius: 10px; font-weight: 600; }
+.gv-app .gv-plan-ctl select.gv-plan-role-select:focus { outline: 2px solid var(--gv-lime-deep); outline-offset: 2px; }
+.theme-dark .gv-app .gv-plan-ctl select.gv-plan-role-select:focus { outline-color: var(--gv-lime); }
+/* What the chosen role means, in place: a hover tooltip never shows on a phone. */
+.gv-app .gv-plan-role-desc { margin-top: 6px; font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--gv-ink-dim); }
 .gv-app .gv-plan-switch {
   /* app.css owns the bare `button`: undo its fixed height and chrome. */
   height: auto; min-height: 44px; padding: 0 2px;
@@ -3122,7 +3176,8 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
 
 /* Dashboard hero's secondary "Log manually" — a quiet ghost, not competing
    with the one lime flood above it. */
-.gv-app .gv-hero-manual { min-height: 40px; margin: 8px 0 18px; font-size: 10px; border-width: 1px; }
+.gv-app .gv-hero-manual,
+.gv-app .gv-hero-another { min-height: 40px; margin: 8px 0 18px; font-size: 10px; border-width: 1px; }
 
 /* ---------- narrow panes ----------
    Keyed on .gv-narrow (a ResizeObserver in controller.js watches the APP
@@ -3131,12 +3186,38 @@ body.is-phone .gv-app .gv-session-media { margin: 6px 0 0; }
    and hide half of it behind an invisible scrollbar. */
 
 .gv-app.gv-narrow .gv-page, .gv-app.gv-narrow .gv-head { padding-left: var(--gv-page-gutter); padding-right: var(--gv-page-gutter); }
-.gv-app.gv-narrow .gv-nav { padding-left: 12px; padding-right: 12px; }
+.gv-app.gv-narrow .gv-nav { padding-left: 4px; padding-right: 4px; }
 .gv-app.gv-narrow .gv-logtop { margin-left: -12px; margin-right: -12px; padding-left: 14px; padding-right: 14px; }
-/* ONLY the label — `ico()` builds a <span class="gv-ico">, so a bare
-   `.gv-nav-btn span` here hides the icon too and every button in a
-   narrow pane collapses to an empty block. */
-.gv-app.gv-narrow .gv-nav-label { display: none; }
+/* EVERY SKIN SHOWS ITS WORDS (audit 25 Nov 2026, #11). The narrow tab bar used to drop the
+   labels and leave six bare icons (a flame for Today, footprints for Running) in Floor,
+   Editorial and Calm; only Apex and Lock In put them back. Now every skin draws the 11px
+   label under its icon, the six tabs sharing the bar evenly (flex 1 1 0 + min-width 0, so a
+   long word cannot widen its tab). (0,4,0), to out-rank the phone rule below
+   (body.is-mobile .gv-app .gv-nav-btn, 0,3,1); the poster skins' own bar rules (same
+   weight, later) keep their bottom bar. The label is set in the skin's display face (Anton
+   on Floor and Editorial, condensed, so "EXERCISES" fits a 56px tab; Calm's display face is
+   its body face) and never hides the icon: `ico()` builds a <span class="gv-ico">, so a
+   bare `.gv-nav-btn span` rule would blank both (tests/css-guards.test.cjs GUARD 1). */
+.gv-app.gv-narrow .gv-nav .gv-nav-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  min-height: 56px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 2px 5px;
+}
+.gv-app.gv-narrow .gv-nav .gv-nav-btn .gv-ico svg { width: 22px; height: 22px; }
+.gv-app.gv-narrow .gv-nav-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--gv-display);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
 /* The Guided button's word is VISUALLY hidden in a narrow pane (the .gv-sr-only rule up the file
    carries it): display:none would leave the button with no accessible name. */
 .gv-app.gv-narrow .gv-logtop-guided { padding: 7px 9px; }
@@ -3376,8 +3457,10 @@ body.is-mobile .gv-app .gv-tile-ico .gv-ico svg,
 .gv-count-ring { display: block; width: 100%; height: auto; }
 .gv-count-ring-track { fill: none; stroke: var(--gv-line); stroke-width: 9; }
 .theme-dark .gv-app .gv-count-ring-track { stroke: var(--gv-line-2); }
+/* A thin accent mark, so the skins that name --gv-accent-line (Apex, Lock In: 3:1 on paper) use it; the bright
+   lime on Apex's light track was 1.02:1 (audit 25 Nov 2026, #13). Every other skin falls back to the lime. */
 .gv-count-ring-fill {
-  fill: none; stroke: var(--gv-lime); stroke-width: 9; stroke-linecap: butt;
+  fill: none; stroke: var(--gv-accent-line, var(--gv-lime)); stroke-width: 9; stroke-linecap: butt;
   transition: stroke-dasharray 0.2s linear;
 }
 @media (prefers-reduced-motion: reduce) { .gv-count-ring-fill { transition: none; } }
@@ -4350,7 +4433,8 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   --gv-apex-hero-hi: #ffffff;
   --gv-apex-hero-lo: #e8ebee;
   --gv-poster-sheen: rgba(10, 11, 13, 0.04);
-  background-image: radial-gradient(90% 260px at 50% -40px, var(--gv-lime-ghost), var(--gv-bg) 70%);
+  /* No lime wash at the top of the page (audit 25 Nov 2026, #12: Ruan hates coloured glows). Flat, as light mode was. */
+  background-image: none;
 }
 
 /* graphite (dark) — the mockup's own values. Light mode's poster heroes take them too (see LIGHT MODE below). */
@@ -4507,6 +4591,7 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
    button (what a thumb hits) keeps the full box. */
 .gv-app.gv-skin-poster .gv-btn::before,
 .gv-app.gv-skin-poster .gv-hero-manual::before,
+.gv-app.gv-skin-poster .gv-hero-another::before,
 .gv-app.gv-skin-poster .gv-chip::before,
 .gv-app.gv-skin-poster .gv-segmented-btn::before { top: var(--gv-slab-pull, 0px); bottom: var(--gv-slab-pull, 0px); }
 
@@ -4933,7 +5018,8 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
 @media (hover: hover) {
   .gv-app.gv-skin-poster .gv-btn-hero-ghost:hover { --gv-slab: var(--gv-line); }
 }
-.gv-app.gv-skin-poster .gv-hero-manual { --gv-slab-pull: 2px; min-height: 44px; font-size: 15px; }
+.gv-app.gv-skin-poster .gv-hero-manual,
+.gv-app.gv-skin-poster .gv-hero-another { --gv-slab-pull: 2px; min-height: 44px; font-size: 15px; }
 
 /* The week: seven leaning cells. Today is the inverse (ink); done is the
    flood; a day that is both keeps the flood and gains an ink edge. */
@@ -5127,8 +5213,10 @@ body.is-phone .gv-app .gv-mm-mini .gv-mm-svg { width: 100%; height: 100%; max-he
   transform: skewX(-12deg);
 }
 .gv-app.gv-skin-apex .gv-hero-chip-min::before { content: '\00B7'; margin-right: 8px; }
-/* A 320px phone cannot hold the one-line chip, the outlined word and the badge: the chip stacks. */
-@media (max-width: 359px) {
+/* A phone cannot hold the one-line chip, the outlined word and the badge: the chip stacks. This was 320px only,
+   and at 375-390 the outlined word ("PRIORITY") ran into "10 SETS · ~20 MIN" with no gap (audit 25 Nov 2026,
+   #18). Stacked, the chip is half as wide and the word keeps clear of it. */
+@media (max-width: 400px) {
   .gv-app.gv-skin-apex .gv-hero-chip-row { flex-direction: column; gap: 3px; }
   .gv-app.gv-skin-apex .gv-hero-chip-min::before { content: none; }
   .gv-app.gv-skin-apex .gv-hero-stage.has-chips .gv-title-rest { max-width: calc(100% - 190px); }
@@ -5521,7 +5609,6 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 /* Session complete: the XP card sits on the page, no box. */
 .gv-app.gv-skin-poster .gv-rw-xp { margin: 12px 0 0; padding: 0; background-color: transparent; border: 0; }
 .gv-app.gv-skin-poster .gv-rw-xp-big { font-size: 58px; font-weight: 900; font-style: italic; line-height: 0.8; text-transform: uppercase; color: var(--gv-accent-text); }
-.theme-dark .gv-app.gv-skin-poster .gv-rw-xp-big { text-shadow: 0 0 30px var(--gv-lime); }
 .gv-app.gv-skin-apex .gv-rw-xp-lv b { font-size: 24px; font-weight: 900; font-style: italic; }
 .gv-app.gv-skin-poster .gv-rw-xp .gv-rw-bar { margin: 12px 0 7px; }
 .gv-app.gv-skin-poster .gv-rw-xp-togo { color: var(--gv-accent-text); }
@@ -5668,9 +5755,12 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
   50%      { opacity: 0.55; }
 }
 
-/* the PB target: kicker above the label, the 0 / n% / PB n scale under the bar */
+/* the PB target: kicker above, "Beat 12" left and "13 to go" right on one line, the bar under both. The
+   "You're on N" figure and the 0 / n% / PB n scale are no longer drawn here: the big count and the label
+   already say both (audit 25 Nov 2026, #8). */
 .gv-app.gv-skin-poster .gv-live .gv-pb-target {
-  grid-template-areas: "kicker kicker" "label now" "label togo" "bar bar" "marks marks";
+  grid-template-areas: "kicker kicker" "label togo" "bar bar";
+  align-items: center;
   margin: 4px 0 8px;
 }
 .gv-app.gv-skin-poster .gv-pb-target-kicker {
@@ -5681,23 +5771,19 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.gv-app.gv-skin-poster .gv-pb-target-marks {
-  grid-area: marks;
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
-  color: var(--gv-ink-dim);
-  font-size: 11.5px;
-  font-weight: 700;
-}
-.gv-app.gv-skin-poster .gv-pb-target-marks span:nth-child(2) { color: var(--gv-accent-text); }
-.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-kicker,
-.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-marks,
-.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-marks span:nth-child(2) { color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-apex .gv-pb-target.is-beaten .gv-pb-target-kicker { color: var(--gv-ink-fixed); }
 
 /* the count: a giant italic numeral, the zone a hairline panel around the meter */
-.gv-app.gv-skin-poster .gv-live-zone.gv-session-zone { margin-bottom: 22px; border-width: 1px; border-color: var(--gv-line); }
-.gv-app.gv-skin-poster .gv-live-zone .gv-session-count { font-size: min(46vw, 22vh, 208px); font-style: italic; line-height: 0.9; }
+/* THE COUNT STAYS IN ITS BOX (audit 25 Nov 2026, #19). The zone is a centred flex column whose floor was a
+   fixed 140px, so when the pane gave it less than its stack (the digit, the unit, the tap chip; the count-in's
+   two lines) the stack was cut at both edges: the digit's top against the PB target above. min-content is the
+   column's own content height (not `auto`: the zone clips, overflow: hidden, and a clipping flex item's automatic
+   minimum is 0), so the zone can no longer be squeezed below what it holds (a page that still cannot fit scrolls,
+   as THE LIVE SET FILLS THE PANE below says), and the digit's height share drops from 22vh to 19vh, which is what
+   leaves room for the lines under it at 375x812. The short tiers set their own. */
+.gv-app.gv-skin-poster .gv-live-zone.gv-session-zone { min-height: min-content; margin-bottom: 22px; border-width: 1px; border-color: var(--gv-line); }
+.gv-app.gv-skin-poster .gv-live-zone .gv-session-count { font-size: min(46vw, 19vh, 208px); font-style: italic; line-height: 0.9; }
+.gv-app.gv-skin-poster .gv-live-zone .gv-session-count.gv-rc-countin { font-size: min(36vw, 15vh, 150px); }
 .gv-app.gv-skin-poster .gv-live-zone.gv-live-hold .gv-session-count { font-size: min(32vw, 17vh, 150px); }
 .gv-app.gv-skin-poster .gv-live-zone .gv-rc-target { margin-top: 2px; font-family: var(--gv-display); font-size: 20px; letter-spacing: 0.14em; }
 .gv-app.gv-skin-poster .gv-live-zone .gv-rc-tapchip {
@@ -5776,12 +5862,10 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 .gv-app.gv-skin-poster.gv-short .gv-live-head .gv-session-exname.gv-live-name { font-size: clamp(30px, 10vw, 40px); }
 .gv-app.gv-skin-poster.gv-short .gv-live-head { margin-bottom: 4px; }
 .gv-app.gv-skin-poster.gv-short .gv-live-toprow { margin-bottom: 2px; }
-.gv-app.gv-skin-poster.gv-short .gv-pb-target-marks { display: none; }
 .gv-app.gv-skin-poster.gv-short .gv-live-rail { margin-top: 6px; }
 .gv-app.gv-skin-poster.gv-short .gv-live .gv-pb-target { margin: 2px 0 6px; padding: 6px 20px 8px; row-gap: 0; }
 .gv-app.gv-skin-poster.gv-short .gv-pb-target-kicker { font-size: 11px; }
 .gv-app.gv-skin-poster.gv-short .gv-pb-target-label { font-size: clamp(28px, 9vw, 34px); }
-.gv-app.gv-skin-poster.gv-short .gv-pb-target-now { font-size: 18px; }
 .gv-app.gv-skin-poster.gv-short .gv-pb-target-togo { font-size: 11.5px; }
 .gv-app.gv-skin-poster.gv-short .gv-pb-target-bar { margin-top: 6px; height: 10px; }
 .gv-app.gv-skin-poster.gv-short .gv-live-zone.gv-session-zone { min-height: 96px; }
@@ -5937,10 +6021,8 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 .gv-app.gv-skin-poster .gv-session-complete-ico { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
 .gv-app.gv-skin-poster .gv-session-callout { background-color: var(--gv-lime-ghost); }
 
-/* Live set: the target slab. Lime edge at rest; floods and glows once the
-   set is past the record. The glow is a pseudo-element shadow (it follows the
-   leaning shape) and exists in the dark theme only: a glow on paper is a
-   smudge. */
+/* Live set: the target slab. Lime edge at rest; floods once the set is past
+   the record, in both themes, and nothing glows (audit 25 Nov 2026, #12). */
 .gv-app.gv-skin-poster .gv-pb-target {
   --gv-slab: var(--gv-surface);
   --gv-slab-edge: inset 4px 0 0 var(--gv-accent-line), inset 0 0 0 1px var(--gv-line);
@@ -5951,7 +6033,6 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   color: var(--gv-ink);
 }
 .gv-app.gv-skin-poster .gv-pb-target-label { font-size: clamp(34px, 11vw, 46px); font-weight: 900; line-height: 0.82; color: var(--gv-accent-text); }
-.gv-app.gv-skin-poster .gv-pb-target-now { font-size: 22px; font-weight: 900; color: var(--gv-ink); }
 .gv-app.gv-skin-poster .gv-pb-target-togo { font-size: 12.5px; letter-spacing: 0.1em; color: var(--gv-accent-text); }
 .gv-app.gv-skin-poster .gv-pb-target-bar { margin-top: 10px; height: 14px; border: 0; background-color: var(--gv-poster-track); transform: skewX(-14deg); }
 .gv-app.gv-skin-poster .gv-pb-target.is-beaten,
@@ -5963,33 +6044,11 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 }
 .gv-app.gv-skin-poster .gv-pb-target.is-beaten .gv-pb-target-label,
 .theme-dark .gv-app.gv-skin-poster .gv-pb-target.is-beaten .gv-pb-target-label,
-.gv-app.gv-skin-poster .gv-pb-target.is-beaten .gv-pb-target-now,
 .gv-app.gv-skin-poster .gv-pb-target.is-beaten .gv-pb-target-togo,
 .theme-dark .gv-app.gv-skin-poster .gv-pb-target.is-beaten .gv-pb-target-togo { color: var(--gv-ink-fixed); }
 .gv-app.gv-skin-poster .gv-pb-target.is-beaten .gv-pb-target-bar,
 .theme-dark .gv-app.gv-skin-poster .gv-pb-target.is-beaten .gv-pb-target-bar { background-color: var(--gv-lime-hi); border-color: transparent; }
 .gv-app.gv-skin-poster .gv-pb-target.is-beaten .gv-pb-target-fill { background-color: var(--gv-ink-fixed); }
-/* The halo is a FIXED shadow on a leaning pseudo-element behind the slab; only
-   its opacity moves. Animating filter or box-shadow itself repaints the shadow
-   every frame, for as long as the screen is open, on a phone. */
-.theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: -2;
-  pointer-events: none;
-  box-shadow: 0 0 26px 2px var(--gv-lime);
-  opacity: 0.8;
-  transform: skewX(var(--gv-skew, -4deg));
-  animation: gv-apex-halo 2.4s ease-in-out infinite;
-}
-@keyframes gv-apex-halo {
-  0%, 100% { opacity: 0.45; }
-  50%      { opacity: 1; }
-}
 
 /* A SHORT PHONE (iPhone SE, 375x667, less the host's own bars). The target is
    ~87px tall and the tap zone is the one thing on this screen that flexes to
@@ -5999,13 +6058,15 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 @media (max-height: 700px) {
   .gv-app.gv-skin-poster .gv-pb-target { margin: 6px 0 8px; padding: 6px 20px 8px; row-gap: 0; }
   .gv-app.gv-skin-poster .gv-pb-target-label { font-size: clamp(28px, 9vw, 34px); }
-  .gv-app.gv-skin-poster .gv-pb-target-now { font-size: 18px; }
   .gv-app.gv-skin-poster .gv-pb-target-togo { font-size: 11.5px; }
   .gv-app.gv-skin-poster .gv-pb-target-bar { margin-top: 6px; height: 10px; }
 }
 
-/* Session complete: the glow moment. Dark = a graphite slab with a lime edge
-   and a huge glowing new value; light = the accent flood with ink on it. */
+/* Session complete: the PB moment is the accent flood with ink on it, in both
+   themes. Dark used to be a graphite slab with a glowing lime figure and a
+   breathing bloom behind it; Ruan hates coloured glows (audit 25 Nov 2026, #12),
+   so dark now takes the flat treatment light mode always had: the new figure
+   still stands out by size, weight and the flood around it. */
 .gv-app.gv-skin-poster .gv-pb-moment {
   --gv-slab: var(--gv-lime);
   --gv-slab-edge: none;
@@ -6014,18 +6075,10 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   padding: 16px 22px 14px;
   color: var(--gv-ink-fixed);
 }
-.theme-dark .gv-app.gv-skin-apex .gv-pb-moment {
-  --gv-slab: var(--gv-surface);
-  --gv-slab-edge: inset 0 0 0 2px var(--gv-lime);
-  --gv-slab-sheen: var(--gv-poster-sheen);
-  color: var(--gv-ink);
-}
 .gv-app.gv-skin-apex .gv-pb-moment-kicker { margin: 0; font-size: 12px; letter-spacing: 0.16em; color: var(--gv-ink-fixed); }
-.theme-dark .gv-app.gv-skin-apex .gv-pb-moment-kicker { color: var(--gv-accent-text); }
 .gv-app.gv-skin-apex .gv-pb-moment-name { margin: 4px 0 6px; font-size: 32px; font-weight: 900; line-height: 0.86; color: inherit; }
 .gv-app.gv-skin-poster .gv-pb-moment-swap { margin-top: 2px; }
 .gv-app.gv-skin-poster .gv-pb-old { padding-bottom: 6px; font-size: 52px; font-weight: 900; color: var(--gv-flood-dim); }
-.theme-dark .gv-app.gv-skin-apex .gv-pb-old { color: var(--gv-ink-dim); }
 .gv-app.gv-skin-poster .gv-pb-old::after { height: 5px; }
 .gv-app.gv-skin-poster .gv-pb-arrow { margin: 0 0 14px; color: inherit; }
 .gv-app.gv-skin-poster .gv-pb-arrow svg { width: 30px; height: 30px; stroke-width: 3.4; }
@@ -6035,34 +6088,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   line-height: 0.8;
   color: var(--gv-ink-fixed);
 }
-.theme-dark .gv-app.gv-skin-apex .gv-pb-new {
-  position: relative;
-  isolation: isolate;
-  color: var(--gv-accent-text);
-  text-shadow: 0 0 28px var(--gv-lime);
-}
-/* The pulse: a soft lime bloom BEHIND the figure whose opacity breathes. The
-   figure's own text-shadow above is fixed (a 128px glyph's shadow repainted
-   every frame was the most expensive thing on this screen). */
-.theme-dark .gv-app.gv-skin-apex .gv-pb-new::after {
-  content: '';
-  position: absolute;
-  top: -10%;
-  right: -14%;
-  bottom: -10%;
-  left: -14%;
-  z-index: -1;
-  pointer-events: none;
-  background-image: radial-gradient(closest-side, var(--gv-lime), transparent);
-  opacity: 0.2;
-  animation: gv-apex-glow 2.6s ease-in-out infinite;
-}
-@keyframes gv-apex-glow {
-  0%, 100% { opacity: 0.1; }
-  50%      { opacity: 0.32; }
-}
 .gv-app.gv-skin-poster .gv-pb-unit { margin: 0 0 8px; font-size: 22px; font-weight: 800; color: var(--gv-flood-dim); }
-.theme-dark .gv-app.gv-skin-apex .gv-pb-unit { color: var(--gv-ink-dim); }
 .gv-app.gv-skin-apex .gv-pb-delta {
   --gv-slab: var(--gv-ink-fixed);
   margin: 0;
@@ -6073,7 +6099,6 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   font-weight: 900;
   letter-spacing: 0.06em;
 }
-.theme-dark .gv-app.gv-skin-apex .gv-pb-delta { --gv-slab: var(--gv-lime); color: var(--gv-ink-fixed); }
 /* The page already lists each record as a moment above; the older row list
    would print every one twice. Floor and Editorial still show it. */
 .gv-app.gv-skin-poster .gv-session-records { display: none; }
@@ -6091,7 +6116,6 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   box-shadow: none;
 }
 .gv-app.gv-skin-apex .gv-rec-new .gv-recrow-margin { font-size: 52px; line-height: 0.85; color: var(--gv-accent-text); }
-.theme-dark .gv-app.gv-skin-apex .gv-rec-new .gv-recrow-margin { text-shadow: 0 0 24px var(--gv-lime); }
 .gv-app.gv-skin-apex .gv-recrow.gv-rec-new::after { left: 26px; }
 .gv-app.gv-skin-apex .gv-rec-prev { font-family: var(--gv-display); font-size: 15px; font-weight: 800; color: var(--gv-ink-dim); }
 .gv-app.gv-skin-apex .gv-rec-delta {
@@ -6133,8 +6157,6 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   .gv-app.gv-skin-apex .gv-ticker-band > div { animation: none; min-width: 0; }
   .gv-app.gv-skin-poster .gv-ticker span { flex: 0 0 auto; padding-left: 16px; }
   .gv-app.gv-skin-apex .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
-  .theme-dark .gv-app.gv-skin-apex .gv-pb-target.is-beaten::after { animation: none; }
-  .theme-dark .gv-app.gv-skin-apex .gv-pb-new::after { animation: none; }
   .gv-app.gv-skin-poster .gv-bar-fill,
   .gv-app.gv-skin-poster .gv-pb-target-fill { transition: none; }
 }
@@ -6142,8 +6164,6 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
 .gv-app.gv-skin-apex.gv-quiet-motion .gv-ticker-band > div { animation: none; min-width: 0; }
 .gv-app.gv-skin-poster.gv-quiet-motion .gv-ticker span { flex: 0 0 auto; padding-left: 16px; }
 .gv-app.gv-skin-apex.gv-quiet-motion .gv-hero > .gv-hero-action .gv-btn-go::after { animation: none; }
-.theme-dark .gv-app.gv-skin-apex.gv-quiet-motion .gv-pb-target.is-beaten::after { animation: none; }
-.theme-dark .gv-app.gv-skin-apex.gv-quiet-motion .gv-pb-new::after { animation: none; }
 .gv-app.gv-skin-poster.gv-quiet-motion .gv-bar-fill, .gv-app.gv-skin-poster.gv-quiet-motion .gv-pb-target-fill { transition: none; }
 
 /* ============================================================================
@@ -6922,9 +6942,7 @@ body.is-phone .gv-app.gv-skin-apex .gv-session-exname { font-size: clamp(30px, 9
   text-transform: uppercase;
 }
 
-.gv-app.gv-skin-lockin .gv-pb-target.is-beaten .gv-pb-target-kicker,
-.gv-app.gv-skin-lockin .gv-pb-target.is-beaten .gv-pb-target-marks,
-.gv-app.gv-skin-lockin .gv-pb-target.is-beaten .gv-pb-target-marks span:nth-child(2) { color: var(--gv-ink-fixed); }
+.gv-app.gv-skin-lockin .gv-pb-target.is-beaten .gv-pb-target-kicker { color: var(--gv-ink-fixed); }
 
 .gv-app.gv-skin-lockin .gv-live-sheet {
   position: relative;
@@ -7500,9 +7518,11 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
 .gv-app.gv-skin-calm *,
 .gv-app.gv-skin-calm *::before,
 .gv-app.gv-skin-calm *::after { text-transform: none; letter-spacing: normal; }
-/* The two base rules that out-rank that reset (three classes each). */
+/* The base rules that out-rank that reset (three classes each, or two and an element: the recap's
+   "Most reps" label, audit 25 Nov 2026, #14). */
 .gv-app.gv-skin-calm .gv-dial-value.word,
-.gv-app.gv-skin-calm .gv-recrow.gv-rec-new::after { text-transform: none; letter-spacing: normal; font-weight: 600; }
+.gv-app.gv-skin-calm .gv-recrow.gv-rec-new::after,
+.gv-app.gv-skin-calm .gv-recap dt { text-transform: none; letter-spacing: normal; font-weight: 600; }
 .gv-app.gv-skin-calm .gv-display,
 .gv-app.gv-skin-calm .gv-logo-text,
 .gv-app.gv-skin-calm .gv-toolbar-title,
@@ -7570,6 +7590,24 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
 .gv-app.gv-skin-calm .gv-head-btn { border-radius: 10px; font-weight: 600; }
 .gv-app.gv-skin-calm .gv-nav-btn.on,
 .gv-app.gv-skin-calm .gv-head-btn.on { background: var(--gv-calm-tint); color: var(--gv-calm-tint-ink); }
+/* The tint alone was too faint to find at a glance on a phone (audit 25 Nov 2026, #11): the selected tab
+   also carries a short solid bar in Calm's fill under its label. Inside the tab (bottom: 3px), never poking
+   out of the scrolling bar. */
+.gv-app.gv-skin-calm .gv-nav-btn { position: relative; }
+.gv-app.gv-skin-calm .gv-nav-btn.on::after {
+  content: '';
+  position: absolute;
+  left: 28%;
+  right: 28%;
+  bottom: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background-color: var(--gv-calm-fill);
+}
+/* The narrow label's 0.04em tracking (narrow panes, above) out-ranks Calm's blanket reset. */
+.gv-app.gv-skin-calm.gv-narrow .gv-nav-label { letter-spacing: normal; }
+/* "How plans work" took the base's square box between rounded cards (audit 25 Nov 2026, #17). */
+.gv-app.gv-skin-calm .gv-plan-help dl { border-radius: var(--gv-calm-radius); }
 .gv-app.gv-skin-calm .gv-logo .gv-ico { background: var(--gv-calm-fill); color: var(--gv-calm-fill-ink); border-radius: 9px; }
 
 /* Buttons: rounded, 1px, sentence case. Solid = the deep accent. */
@@ -7659,7 +7697,8 @@ body.is-phone .gv-app.gv-skin-lockin .gv-session-exname { font-size: clamp(30px,
 .gv-app.gv-skin-calm .gv-today .gv-rw-level-foot { display: none; }
 .gv-app.gv-skin-calm .gv-today .gv-hero-sub { font-size: 15px; }
 /* The second way in is a quiet line of text, not a second box. */
-.gv-app.gv-skin-calm .gv-today .gv-hero-manual {
+.gv-app.gv-skin-calm .gv-today .gv-hero-manual,
+.gv-app.gv-skin-calm .gv-today .gv-hero-another {
   min-height: 44px; margin-top: 4px; border: 0; background: transparent;
   color: var(--gv-ink-dim); font-size: 14px; font-weight: 500;
 }
@@ -7818,3 +7857,266 @@ b.gv-badge-num { color: inherit; }
 .gv-app.gv-skin-calm .gv-log-recap { border: 0; background: transparent; padding: 8px 4px 6px; }
 /* On the live set it sits under the target line. */
 .gv-app .gv-session-recap { margin-top: 8px; }
+
+/* ---------- Audit fixes (25 Nov 2026): touch size, and the markup the fix wave added ---------- */
+
+/* SMALL BUTTONS ARE 44px TALL ON A PHONE, IN EVERY SKIN (#7). Apex and Lock In already were (their slab is
+   drawn shorter inside a 44px box, --gv-slab-pull); in Calm, Floor and Editorial a small button measured 22-31px
+   tall, the live set's Skip pair included. Phones and narrow panes only: a desktop pane keeps the compact size. */
+body.is-mobile .gv-app .gv-btn.gv-btn-small,
+.gv-app.gv-narrow .gv-btn.gv-btn-small { min-height: 44px; }
+/* Three more the runtime pass measured short on a phone: Calm's filter chips (26px; Floor and Editorial already
+   reach 44 through a ::before box, Calm had none), the Muscle Map's Basic/Detailed pair (36px), and a plan page's
+   exercise rows that open the exercise (34-38px). */
+.gv-app.gv-skin-calm .gv-page .gv-chip { position: relative; margin: 5px 0; }
+.gv-app.gv-skin-calm .gv-page .gv-chip::before { content: ''; position: absolute; top: -9px; bottom: -9px; left: -3px; right: -3px; }
+body.is-mobile .gv-app .gv-mm-seg .gv-segmented-btn,
+.gv-app.gv-narrow .gv-mm-seg .gv-segmented-btn { min-height: 44px; }
+body.is-mobile .gv-app .gv-day-item-link,
+.gv-app.gv-narrow .gv-day-item-link { min-height: 44px; }
+/* The live set's top line: "Exercise 1/3 · Set 1/5" and the Skip buttons share one row, and at 375-390px the
+   taller buttons cut the line to "Exercise 1/1 · S…". When both do not fit, the buttons move to a second row,
+   kept on the right, and the line is whole. */
+.gv-app.gv-narrow .gv-session-top-extra { flex-wrap: wrap; row-gap: 4px; }
+.gv-app.gv-narrow .gv-session-skips { margin-left: auto; }
+/* Done on the reps screen (Floor, Editorial, Calm) is a full-size button now: it takes the bar's spare width
+   beside the settings and mute buttons, so it is the screen's one clear action. */
+.gv-app .gv-session-rcbar > .gv-btn { flex: 1 1 auto; min-height: 48px; }
+
+/* The setup screen's Start keeps the next section ("Equipment") off it in every skin (#16): Calm's and Editorial's
+   `.gv-hero-action` margin shorthand (0,3,0) zeroed the bottom margin, and "Equipment" began ~7px under Start.
+   Same weight, later. The poster skins' sticky Start (0,5,0) keeps its own. */
+.gv-app .gv-guidesetup .gv-setup-start { margin-bottom: 18px; }
+
+/* "SESSION IN PROGRESS" (controller.js renderSessionPill). The slot sits in the root's flex column between the
+   tab bar and the page, in normal flow, so it can never cover the bottom tab bar or a sticky Start. An empty
+   slot takes no room. A quiet tinted pill: the accent's own tint and text tone, no glow, no motion; drawn 32px
+   tall, with the 44px touch box the other small controls have (TOUCH BOXES, above). */
+.gv-session-pill-slot { flex: 0 0 auto; display: flex; }
+.gv-session-pill-slot.gv-has-pill { padding: 6px 18px; }
+.gv-app.gv-narrow .gv-session-pill-slot.gv-has-pill { padding-left: var(--gv-page-gutter); padding-right: var(--gv-page-gutter); }
+.gv-app.gv-focus .gv-session-pill-slot { display: none; }
+.gv-app .gv-session-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: auto;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--gv-lime-ghost);
+  box-shadow: none;
+  color: var(--gv-lime-deep);
+  font-family: var(--gv-body);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.theme-dark .gv-app .gv-session-pill { color: var(--gv-lime); }
+.gv-app .gv-session-pill .gv-ico svg { width: 14px; height: 14px; }
+.gv-app.gv-skin-apex .gv-session-pill,
+.gv-app.gv-skin-lockin .gv-session-pill,
+.theme-dark .gv-app.gv-skin-apex .gv-session-pill,
+.theme-dark .gv-app.gv-skin-lockin .gv-session-pill {
+  border-radius: 0;
+  box-shadow: inset 3px 0 0 var(--gv-accent-line);
+  color: var(--gv-accent-text);
+  font-family: var(--gv-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.gv-app.gv-skin-calm .gv-session-pill { background-color: var(--gv-calm-tint); color: var(--gv-calm-tint-ink); font-weight: 600; }
+@media (hover: hover) {
+  .gv-app .gv-session-pill:hover { box-shadow: inset 0 0 0 1px currentColor; }
+}
+
+/* THE PLANS LIST AT 375px (#9). The title takes row 1; the search, Browse and "+ Plan" share row 2, the search
+   taking the spare width and the two buttons never shrinking. Named by position (the list toolbar is the one with
+   a title then exactly three more items: search, Browse, Plan) because the toolbar carries no class of its own. */
+.gv-app.gv-narrow .gv-toolbar > .gv-toolbar-title:first-child:nth-last-child(4) { flex: 1 0 100%; }
+.gv-app.gv-narrow .gv-toolbar > .gv-search:nth-child(2):nth-last-child(3) { flex: 1 1 90px; min-width: 0; }
+.gv-app.gv-narrow .gv-toolbar > .gv-btn:nth-child(3):nth-last-child(2),
+.gv-app.gv-narrow .gv-toolbar > .gv-btn.gv-plan-add { flex: 0 0 auto; padding-left: 12px; padding-right: 12px; }
+/* Start cards: the text first. With one button left on the card it keeps the right edge, and only when the
+   text would get under 160px does the button move under it. */
+.gv-app .gv-plan-start { flex-wrap: wrap; row-gap: 10px; }
+.gv-app .gv-plan-start .gv-alsotoday-main { flex: 1 1 160px; overflow-wrap: break-word; }
+.gv-app .gv-plan-start .gv-start-pair { margin-left: auto; }
+/* "Log manually" on an In use card: a plain text link under the plan's name, not a second slab. */
+.gv-app .gv-start-link {
+  display: inline-block;
+  height: auto;
+  min-height: 0;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--gv-ink-dim);
+  font-family: var(--gv-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .gv-app .gv-start-link:hover { color: var(--gv-ink); }
+}
+/* A plan line whose exercise has no note says so on its own small line under the name. */
+.gv-app .gv-day-item { flex-wrap: wrap; row-gap: 2px; }
+.gv-app .gv-day-item-name { min-width: 0; overflow-wrap: break-word; }
+.gv-app .gv-day-item-nonote { order: 3; flex: 1 0 100%; font-size: 11px; font-weight: 600; color: var(--gv-ink-dim); }
+/* Browse: "added" + Open in place of Add, on the right of the card head or a series phase row. */
+.gv-app .gv-browse-added { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+@media (max-width: 359px) {
+  .gv-app .gv-browse-phase .gv-browse-added .gv-tag { display: none; }
+}
+
+/* THE WORKOUT PICKER ("Choose another workout"): its rows are Today's "Also today" cards (they keep their own
+   10px top margin), under small group headings. */
+.gv-app.gv-modal .gv-picker-group { margin: 14px 0 0; }
+.gv-app.gv-modal .gv-search { display: block; width: 100%; margin: 0 0 8px; }
+.gv-app.gv-modal .gv-picker-row .gv-btn { flex: 0 0 auto; }
+
+/* THE LOG'S DAY (page-log.js dateControl): a native date control that reads as part of the small line under the
+   title, in that line's colour, with a dashed underline to say it can be tapped and no box. The host styles
+   input[type=date] itself, so this carries `.gv-app .gv-logtop input` (0,3,1). color-scheme follows the paper
+   the header is drawn on, so the native picker icon shows: Floor's header is an ink slab (dark in light mode,
+   near-white in dark mode); every other skin draws it on the page's own paper. */
+.gv-app .gv-logtop input.gv-log-date {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  min-height: 32px;
+  margin: 0;
+  padding: 6px 0 2px;
+  border: 0;
+  border-bottom: 1px dashed currentColor;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color-scheme: dark;
+  cursor: pointer;
+}
+.theme-dark .gv-app .gv-logtop input.gv-log-date { color-scheme: light; }
+.gv-app.gv-skin-editorial .gv-logtop input.gv-log-date,
+.gv-app.gv-skin-apex .gv-logtop input.gv-log-date,
+.gv-app.gv-skin-lockin .gv-logtop input.gv-log-date,
+.gv-app.gv-skin-calm .gv-logtop input.gv-log-date { color-scheme: light; }
+.theme-dark .gv-app.gv-skin-editorial .gv-logtop input.gv-log-date,
+.theme-dark .gv-app.gv-skin-apex .gv-logtop input.gv-log-date,
+.theme-dark .gv-app.gv-skin-lockin .gv-logtop input.gv-log-date,
+.theme-dark .gv-app.gv-skin-calm .gv-logtop input.gv-log-date { color-scheme: dark; }
+.gv-app .gv-logtop input.gv-log-date:focus { outline: 2px solid currentColor; outline-offset: 2px; }
+.gv-app .gv-logtop input.gv-log-date::-webkit-calendar-picker-indicator { cursor: pointer; }
+/* "This session will be saved on 24 Nov.": a plain sentence at full strength, because it changes where the
+   session lands. */
+.gv-app .gv-logtop-when { margin-top: 4px; font-size: 12px; font-weight: 700; line-height: 1.3; letter-spacing: 0; text-transform: none; color: inherit; }
+/* Editing a saved session: no Guided button and no clock, so the title takes the width and wraps. */
+.gv-app .gv-logtop.gv-logtop-editing .gv-logtop-lead { flex: 1 1 auto; }
+.gv-app .gv-logtop.gv-logtop-editing .gv-logtop-title { overflow-wrap: break-word; }
+
+/* History: Edit + Open note under an opened session; "Log a past session" above the months. */
+.gv-app .gv-session-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gv-app .gv-history-actions { display: flex; gap: 8px; margin: 10px 0 4px; }
+/* An exercise heading in an opened session that has a page: the heading's own type, in the accent, underlined,
+   with no button chrome and a 44px row to tap. */
+.gv-app button.gv-set-ex-link {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--gv-lime-deep);
+  font-family: var(--gv-display);
+  font-size: 15px;
+  font-weight: 400;
+  text-align: left;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  white-space: normal;
+  cursor: pointer;
+}
+.theme-dark .gv-app button.gv-set-ex-link { color: var(--gv-lime); }
+.gv-app.gv-skin-apex button.gv-set-ex-link,
+.gv-app.gv-skin-lockin button.gv-set-ex-link,
+.theme-dark .gv-app.gv-skin-apex button.gv-set-ex-link,
+.theme-dark .gv-app.gv-skin-lockin button.gv-set-ex-link { color: var(--gv-accent-text); font-weight: 800; }
+.gv-app.gv-skin-calm button.gv-set-ex-link { color: var(--gv-calm-tint-ink); font-weight: 600; text-transform: none; }
+@media (hover: hover) {
+  .gv-app button.gv-set-ex-link:hover { color: var(--gv-ink); }
+}
+
+/* Goals: "Open note" beside the edit and delete buttons, on one line; a narrow card lets the row wrap. */
+.gv-app .gv-goal-card .gv-goal-note { flex: 0 0 auto; white-space: nowrap; }
+.gv-app.gv-narrow .gv-goal-card .gv-card-actions { flex-wrap: wrap; justify-content: flex-end; }
+/* Records: the date a record was set, as an inline link in its grey line (it takes the line's colour, so Lock
+   In's flooded row keeps its own). */
+.gv-app .gv-recrow-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.gv-app .gv-recrow-session .gv-ico svg { width: 12px; height: 12px; }
+@media (hover: hover) {
+  .gv-app .gv-recrow-session:hover { color: var(--gv-ink); }
+}
+
+/* The exercise form's photo picker: the file input is never drawn (it carries `hidden`), and on a phone a row
+   with a text box and a button stacks them instead of squeezing the box to a few characters. */
+.gv-modal .gv-photo-input[hidden] { display: none; }
+body.is-phone .gv-modal .setting-item-control { flex-wrap: wrap; gap: 8px; }
+body.is-phone .gv-modal .setting-item-control input[type='text'] { flex: 1 1 100%; }
+
+/* Moved here from the narrow-pane and plans sections: nothing above the Apex banner may name a poster skin
+   (tests/lockin-skin.test.cjs), and these name them.
+   Anton has one weight: Floor and Editorial set the narrow tab label at 400 (the faux-bold 800 the tab inherits
+   smears at 11px). Named by what it is not, so Apex and Lock In keep their Barlow 800 and Calm its 600. */
+.gv-app.gv-narrow:not(.gv-skin-apex):not(.gv-skin-lockin):not(.gv-skin-calm) .gv-nav-label { font-weight: 400; }
+/* The role picker's edge in Apex and Lock In: the hairline their search box and fields use. */
+.gv-app.gv-skin-apex .gv-plan-ctl select.gv-plan-role-select,
+.gv-app.gv-skin-lockin .gv-plan-ctl select.gv-plan-role-select { border: 1px solid var(--gv-line-2); }

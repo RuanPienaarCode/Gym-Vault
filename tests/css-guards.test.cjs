@@ -35,10 +35,15 @@ assert.deepStrictEqual(
   `display:none on a bare \`span\` also hides .gv-ico icons — target a class instead: ${offenders.join(', ')}`,
 );
 
-/* GUARD 2: the narrow-pane nav must hide the label and KEEP the icon. */
+/* GUARD 2: the narrow-pane nav shows the label (audit 25 Nov 2026, #11: every skin draws the word under the
+   icon) and KEEPS the icon. */
 assert.ok(
-  /\.gv-narrow[^{]*\.gv-nav-label\s*\{[^}]*display:\s*none/.test(bare),
-  'narrow mode must hide .gv-nav-label (the label span), not the whole button contents',
+  /\.gv-app\.gv-narrow \.gv-nav-label\s*\{[^}]*display:\s*block/.test(bare),
+  'narrow mode must show .gv-nav-label under the icon in every skin',
+);
+assert.ok(
+  !/\.gv-narrow[^{,]*\.gv-nav-label\s*\{[^}]*display:\s*none/.test(bare),
+  'narrow mode must not hide .gv-nav-label: six bare icons is the bug this replaced',
 );
 assert.ok(
   !/\.gv-narrow[^{]*\.gv-ico\s*\{[^}]*display:\s*none/.test(bare),
@@ -146,4 +151,4 @@ assert.ok(
   );
 }
 
-console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons; no linter-flagged features; wrapping button labels reset white-space; one navbar-clearance rule, on .gv-page)');
+console.log('css guards OK (no bare-span display:none; narrow nav keeps its icons and shows its labels; no linter-flagged features; wrapping button labels reset white-space; one navbar-clearance rule, on .gv-page)');
