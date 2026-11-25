@@ -163,8 +163,10 @@ check('runPlanOf: a live non-running parallel plan does not displace a paused ru
   const t = withPaused(TRAIL);
   assert.strictEqual(runPlanOf([GTG, t], isRun), t);
 });
-check('runPlanOf: no run exercise anywhere -> the first parallel plan (old behaviour); none -> null', () => {
-  assert.strictEqual(runPlanOf([LUNCH, GTG], () => false), GTG);
+/* Audit 25 Nov 2026 #35: a plan with no run in it is never the running plan
+   (it used to fall back to the first parallel plan). */
+check('runPlanOf: no run exercise anywhere -> null; none -> null', () => {
+  assert.strictEqual(runPlanOf([LUNCH, GTG], () => false), null);
   assert.strictEqual(runPlanOf([LUNCH], isRun), null);
   assert.strictEqual(runPlanOf([], isRun), null);
 });

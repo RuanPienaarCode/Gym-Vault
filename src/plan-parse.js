@@ -353,8 +353,9 @@ function isPaused(plan) {
   return String(fm.paused) === 'true' && (String(fm.parallel) === 'true' || String(fm.fallback) === 'true');
 }
 
-/* A plan you have starred (`favourite: true` on the note). It only moves the
-   plan up the Plans list; Today does not look at it. */
+/* A plan you have starred (`favourite: true` on the note). It moves the plan
+   up the Plans list, and when two add-ons train on the same weekday the
+   starred one leads Today (controller.resolveDaysOn, audit 25 Nov 2026 #37). */
 function isFavourite(plan) {
   return String(((plan && plan.fm) || {}).favourite) === 'true';
 }
@@ -418,12 +419,22 @@ function planRole(p, activePlan) {
    on, anything else → paused), and a plan moved INTO main arrives
    `active: false` — becoming main never silently takes Today over from the
    plan you chose. Keys the new role does not read are removed, so a note
-   never carries a flag that means nothing. Pure. */
+   never carries a flag that means nothing. Pure.
+
+   withRole(fm, role, { on }) (audit 25 Nov 2026, #46): a boolean `on` decides
+   the on/off of an ALONGSIDE result instead of the carried-across state. The
+   case it exists for: the main plan Today follows with no `active` line at all
+   (activePlanOf picks it implicitly) reads as "not active" above, so making it
+   an Add-on used to arrive paused. The caller, which knows the plan is in use,
+   passes { on: true }. A plan moved INTO main still arrives `active: false`
+   whatever `on` says: switching a main plan on goes through setActivePlan,
+   which switches the others off, and a bare `active: true` here would leave two
+   plans claiming Today. Anything but a boolean is ignored. */
 const PLAN_ROLES = ['main', 'parallel', 'fallback'];
 function roleOf(fm) {
   return alongsideKind({ fm: fm || {} }) || 'main';
 }
-function withRole(fm, role) {
+function withRole(fm, role, opts) {
   if (!PLAN_ROLES.includes(role)) throw new Error(`unknown plan role: ${role}`);
   const was = roleOf(fm);
   /* A plan flagged BOTH parallel and fallback reads as fallback; picking
@@ -435,7 +446,8 @@ function withRole(fm, role) {
     next.active = false;
     return next;
   }
-  const on = was === 'main' ? String(fm.active) === 'true' : String(fm.paused) !== 'true';
+  const forced = opts && typeof opts.on === 'boolean' ? opts.on : null;
+  const on = forced !== null ? forced : was === 'main' ? String(fm.active) === 'true' : String(fm.paused) !== 'true';
   delete next.active;
   if (role === 'parallel') { next.parallel = true; delete next.fallback; }
   else { next.fallback = true; delete next.parallel; }

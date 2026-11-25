@@ -6,7 +6,7 @@ const { Notice, normalizePath } = require('obsidian');
 const { el, ico, clear, emptyLine } = require('./dom');
 const { makeIo } = require('./data');
 const { ConfirmModal } = require('./modals');
-const { isPaused, mainPlansOf, activePlanOf } = require('./plan-parse');
+const { isPaused, isFavourite, isRestDay, mainPlansOf, activePlanOf } = require('./plan-parse');
 const { makeDraftStore, EMPTY, LOST } = require('./draft-store');
 const voiceClips = require('./voice-clips');
 const sound = require('./sound');
@@ -79,8 +79,8 @@ const NAV = [
 
    Order matters and is the contract: the active plan's own weekday first,
    then its `any` day if it claims this weekday no other way, then every
-   parallel plan, then — only when nothing at all is scheduled — one
-   fallback plan. */
+   parallel plan (a starred one first), then — only when none of that is a
+   workout — one fallback plan, after whatever rest day is already there. */
 function resolveDaysOn(weekday, activePlan, parallelPlans, fallbackPlans) {
   const out = [];
   if (activePlan) {
@@ -101,12 +101,27 @@ function resolveDaysOn(weekday, activePlan, parallelPlans, fallbackPlans) {
       if (anyDay) out.push({ plan: activePlan, day: anyDay });
     }
   }
-  for (const p of parallelPlans || []) {
+  /* WHICH ADD-ON LEADS (audit 25 Nov 2026, #37). Add-ons arrive in the order
+     their notes load, which is by file name, so with two on one weekday the
+     name decided the headline ("Grease the Groove" over the Long Trail Run,
+     because G sorts before T). A starred plan (plan-parse.isFavourite) now comes
+     first; among starred, and among unstarred, the loaded order stays. The main
+     plan's day is already in `out` and stays first. A copy is ordered, never
+     the caller's list. */
+  const list = parallelPlans || [];
+  const ranked = list.filter(isFavourite).concat(list.filter(p => !isFavourite(p)));
+  for (const p of ranked) {
     for (const d of p.model.days) if (d.weekday === weekday) out.push({ plan: p, day: d });
   }
-  /* Nothing training-related today? A fallback plan (rest & recovery) fills
-     the gap — an exact weekday match first, then its `any` day. */
-  if (!out.length) {
+  /* THE BACKUP (fallback) PLAN: only shows on days your other plans have no
+     workout (audit 25 Nov 2026, #36). A written rest day (plan-parse.isRestDay)
+     is not a workout, so it does not block the backup any more: when everything
+     scheduled is a rest day, the backup's day is added AFTER it, so the main
+     plan's own rest day still leads. An add-on's training day does block it.
+     It used to fill only a day with nothing at all on it, so any add-on, or a
+     main plan's "Rest (sun)", hid it for good. One fallback plan, an exact
+     weekday match first, then its `any` day. */
+  if (!out.some(x => !isRestDay(x.day))) {
     for (const p of fallbackPlans || []) {
       const day = p.model.days.find(d => d.weekday === weekday) || p.model.days.find(d => d.weekday === 'any');
       if (day) { out.push({ plan: p, day }); break; }
@@ -135,14 +150,21 @@ function fallbackPlansOf(plans, opts) {
   return (plans || []).filter(p => isFallbackPlan(p) && (all || !isPaused(p)));
 }
 
-/* The plan the Running page reads its ladder and run days from. Chosen from
-   EVERY parallel plan, paused or not: pausing "Trail Base" stops its days
-   landing on Today, and must not blank the Running page's ladder and targets
-   (the page's own data, not Today's schedule). `isRunExercise(name)` says
-   whether an exercise is measured in km. */
+/* The plan the Running page reads its ladder and run days from
+   (audit 25 Nov 2026, #35): the active MAIN plan when it has a run in it -
+   every library Run plan (5, 15, 21, 42 km) is a main plan - else the first
+   add-on with a run in it. Add-ons are chosen from EVERY parallel plan, paused
+   or not: pausing "Trail Base" stops its days landing on Today, and must not
+   blank the Running page's ladder and targets (the page's own data, not
+   Today's schedule). A plan with no run in it is never the answer: null, and
+   the page shows its no-plan state. It used to look at add-ons only and fall
+   back to the first one, run or not. `isRunExercise(name)` says whether an
+   exercise is measured in km. */
 function runPlanOf(plans, isRunExercise) {
-  const all = parallelPlansOf(plans, { includePaused: true });
-  return all.find(p => p.model.days.some(d => d.items.some(i => isRunExercise(i.exercise)))) || all[0] || null;
+  const hasRun = p => !!p && ((p.model && p.model.days) || []).some(d => (d.items || []).some(i => isRunExercise(i.exercise)));
+  const main = activePlanOf(plans || []);
+  if (hasRun(main)) return main;
+  return parallelPlansOf(plans, { includePaused: true }).find(hasRun) || null;
 }
 
 /* True when NOTHING carries the active flag and activePlan() is merely
@@ -276,6 +298,60 @@ function describeDraft(draft) {
   return draft.day || draft.plan || 'Freestyle session';
 }
 
+/* WHERE "RESUME" GOES (audit 25 Nov 2026, #24), pure and exported.
+
+   Resume used to open the log overview whatever you had been on, so leaving a
+   guided set by a tab cost three taps to get back, and a timed circuit came
+   back as a list. Now it returns to the screen the draft was last open on.
+
+   liveViewOf(page, draft)   what a live page IS for this draft: 'timed' (the
+                             session page over a draft with a timed schedule),
+                             'guided' (the session page, set by set), 'log', or
+                             null for any other page or no draft.
+   resumeTarget(draft, mark) the page to open: 'session' or 'log' (null with no
+                             draft). `mark` = { draft, view } is what the
+                             controller noted when the draft's page was last
+                             left; it counts only for THAT draft object.
+
+   The mark lives in the controller, not on the draft: draft-store.js keeps a
+   whitelist of plain data, so after a relaunch the mark is unknown and the log
+   - the hub that is right for any draft - is where Resume goes. The timed
+   schedule is not kept either, so a 'timed' mark over a draft that has lost
+   its schedule also goes to the log. Re-entering guided mode lands on the
+   first set not yet handled (page-session.js initialPosition; a timed circuit
+   on timed-plan.initialIndex), with a paused clock put back. */
+const LIVE_VIEW_PAGES = ['session', 'log'];
+function liveViewOf(page, draft) {
+  if (!draft || LIVE_VIEW_PAGES.indexOf(page) < 0) return null;
+  if (page === 'log') return 'log';
+  return draft.timed ? 'timed' : 'guided';
+}
+/* THE MARK AFTER LEAVING A LIVE PAGE. A timed circuit hides the tab bar on
+   every one of its screens, so the only way out of it is "Back to the log" -
+   and leaving the log then overwrote the timed mark with "log", which made
+   the timed branch of resumeTarget unreachable from the app (found by the
+   runtime pass of 25 Nov 2026). The log reached from a timed circuit is a way
+   out, not a choice of view: the timed mark is kept. Set by set has its tab
+   bar, so there the last screen left is the one that counts. */
+function nextLiveMark(mark, page, draft) {
+  const view = liveViewOf(page, draft);
+  if (!view) return mark || null;
+  if (view === 'log' && mark && mark.draft === draft && mark.view === 'timed' && draft.timed) return mark;
+  return { draft, view };
+}
+function resumeTarget(draft, mark) {
+  if (!draft) return null;
+  if (!mark || mark.draft !== draft) return 'log';
+  if (mark.view === 'guided') return 'session';
+  if (mark.view === 'timed') return draft.timed ? 'session' : 'log';
+  return 'log';
+}
+
+/* THE "SESSION IN PROGRESS" PILL (audit 25 Nov 2026, #24): on every page that
+   is not itself the session, log or setup page, while a draft exists. */
+const NO_PILL_PAGES = ['session', 'log', 'setup'];
+const showsSessionPill = (page, hasDraft) => !!hasDraft && NO_PILL_PAGES.indexOf(page) < 0;
+
 function mountApp(view) {
   const plugin = view.plugin;
   const app = plugin.app;
@@ -329,6 +405,10 @@ function mountApp(view) {
   const draftStore = makeDraftStore(app);
   let logDraft = null;
   let draftStatus = EMPTY;
+  /* The screen the draft was last open on, { draft, view } (liveViewOf /
+     resumeTarget). Noted by applyNav when a live page is left; dropped when
+     the draft is replaced or cleared. In memory only: see resumeTarget. */
+  let lastLive = null;
   /* Never throws: the store catches its own storage failures, but the
      snapshot is taken before it gets there, and a workout must never fail
      because its safety copy did. A copy that could not be taken is LOST, so
@@ -343,6 +423,7 @@ function mountApp(view) {
     get: () => logDraft,
     set: next => {
       const had = !!logDraft;
+      if ((next || null) !== logDraft) lastLive = null;
       logDraft = next || null;
       if (logDraft) keepDraft();
       else if (had) { draftStore.clear(); draftStatus = EMPTY; }
@@ -366,7 +447,7 @@ function mountApp(view) {
   };
   syncChrome();
 
-  let navEl = null, pageEl = null, headActionsEl = null;
+  let navEl = null, pageEl = null, headActionsEl = null, pillSlotEl = null;
 
   ctx.notice = msg => new Notice(`Gym: ${msg}`, 5000);
 
@@ -384,8 +465,9 @@ function mountApp(view) {
   ctx.mainPlans = () => (ctx.data ? mainPlansOf(ctx.data.plans) : []);
   const isRunExercise = name => !!ctx.data && ctx.data.exercises.some(e =>
     e.name.toLowerCase() === (name || '').toLowerCase() && (e.fm.unit || '') === 'km');
-  /* From the UNFILTERED parallel plans: a paused running plan still owns the
-     Running page's ladder (see runPlanOf). */
+  /* The active main plan when it has a run, else from the UNFILTERED parallel
+     plans: a paused running plan still owns the Running page's ladder (see
+     runPlanOf). */
   ctx.runPlan = () => (ctx.data ? runPlanOf(ctx.data.plans, isRunExercise) : null);
   /* Every {plan, day} scheduled on a weekday, active plan first. The rule
      itself is resolveDaysOn, up at the top of this file — see its comment
@@ -413,6 +495,11 @@ function mountApp(view) {
      directly so that returning somewhere cannot push the page you just left,
      which would make Back a toggle between two screens. */
   const applyNav = (page, params, how) => {
+    /* Leaving the session or the log with a draft open: note which screen it
+       was, so Resume can come back to it (resumeTarget). */
+    if (page !== ctx.state.page) {
+      lastLive = nextLiveMark(lastLive, ctx.state.page, logDraft);
+    }
     /* Leaving a page that registered cleanup (guided mode's wake lock and
        any in-flight confetti burst) tears it down exactly once — even when
        the user bails via the persistent nav bar rather than guided mode's
@@ -468,12 +555,18 @@ function mountApp(view) {
      ctx.resumeDraft() is the way back in (the dashboard offers it), and
      everything that would REPLACE a live draft asks first. */
   ctx.describeDraft = () => describeDraft(ctx.state.logDraft);
-  /* Back into the draft by way of the log overview — the "one draft, two
-     views" hub, which shows what is already ticked and keeps Guided one tap
-     away. Deliberately NOT straight into guided mode: a manually typed draft
-     and a guided one are the same object, and only the overview is right for
-     both. */
-  ctx.resumeDraft = () => { if (ctx.state.logDraft) ctx.nav('log'); };
+  /* Back into the draft, on the screen it was last open on (audit 25 Nov
+     2026, #24; the rule is resumeTarget). A manually typed draft and a guided
+     one are still the same object, which is why the log overview stays the
+     answer whenever the screen is not known (after a relaunch, or a draft that
+     was never left). Guided goes through ctx.enterGuided, so the sound unlock
+     happens inside this tap like every other way into guided mode. Called with
+     no argument by Today's card and the "Session in progress" pill. */
+  ctx.resumeDraft = () => {
+    const to = resumeTarget(ctx.state.logDraft, lastLive);
+    if (to === 'session') ctx.enterGuided();
+    else if (to === 'log') ctx.nav('log');
+  };
 
   const replacingDraft = onProceed => {
     if (!ctx.state.logDraft) { onProceed(); return; }
@@ -608,6 +701,7 @@ function mountApp(view) {
        that has no other way out of itself. */
     rootEl.classList.remove('gv-focus');
     renderNavState();
+    renderSessionPill();
     /* NEVER render nothing. A blank page under the nav is indistinguishable
        from a broken plugin, and this is exactly what a mid-index vault used
        to produce: loadAll fails or finds nothing, and the screen goes empty
@@ -730,14 +824,37 @@ function mountApp(view) {
       el('div', { class: 'gv-logo' }, ico('dumbbell'), el('span', { class: 'gv-logo-text' }, 'Gym Vault')),
       headActionsEl);
     navEl = el('nav', { class: 'gv-nav', 'aria-label': 'Gym sections' });
+    /* The "Session in progress" pill's slot: its own child of the shell, IN
+       FLOW between the tab bar and the page, so it can never sit over the
+       bottom tab bar (ordered last on a phone) or Today's sticky Start (which
+       sticks inside the page). Empty, it takes no room. */
+    pillSlotEl = el('div', { class: 'gv-session-pill-slot' });
     pageEl = el('main', { class: 'gv-page' });
-    rootEl.append(head, navEl, pageEl);
+    rootEl.append(head, navEl, pillSlotEl, pageEl);
     buildNav();
+  }
+
+  /* A small way back into an open session from any other page (audit 25 Nov
+     2026, #24): a real button that resumes it (ctx.resumeDraft). Redrawn on
+     every render, so it comes and goes with the draft and the page. */
+  function renderSessionPill() {
+    if (!pillSlotEl) return;
+    clear(pillSlotEl);
+    const show = showsSessionPill(ctx.state.page, !!ctx.state.logDraft);
+    pillSlotEl.classList.toggle('gv-has-pill', show);
+    if (!show) return;
+    pillSlotEl.append(el('button', {
+      class: 'gv-session-pill', type: 'button', title: `Resume ${ctx.describeDraft()}`,
+      onclick: () => ctx.resumeDraft(),
+    }, ico('play'), el('span', { class: 'gv-session-pill-label' }, 'Session in progress')));
   }
 
   function renderNavState() {
     if (!navEl) return;
-    const current = ctx.state.page === 'log' || ctx.state.page === 'session' || ctx.state.page === 'setup' ? 'dashboard'
+    /* Editing a saved session (History -> Edit) is the log page under History. */
+    const editingSaved = ctx.state.page === 'log' && !!(ctx.state.params && ctx.state.params.editing);
+    const current = editingSaved ? 'history'
+      : ctx.state.page === 'log' || ctx.state.page === 'session' || ctx.state.page === 'setup' ? 'dashboard'
       : ctx.state.page === 'exercise' ? 'exercises'
       : ctx.state.page === 'run-records' ? 'running'
       : ctx.state.page === 'voice' ? 'profile'
@@ -968,6 +1085,7 @@ function renderSetup(ctx, root) {
    copied nav is a nav that silently stops matching the app. */
 module.exports = {
   mountApp, NAV, paneHeightTier, SHORT_PANE_PX, SHORTER_PANE_PX, resolveDaysOn, isImplicitActive, describeDraft,
+  liveViewOf, nextLiveMark, resumeTarget, showsSessionPill,
   isPaused, parallelPlansOf, fallbackPlansOf, runPlanOf,
   mainPlansOf, activePlanOf, scrollDecision, viewKey, clampScroll, shouldRedrawForNewDay, discardLiveSession,
 };
