@@ -5331,6 +5331,22 @@ body.is-phone .gv-app.gv-skin-poster.gv-narrow:not(.gv-focus) .gv-page { padding
 /* In the sticky layout "Last:" goes: the Last-session tile below says it. */
 .gv-app.gv-skin-poster.gv-narrow .gv-hero-today .gv-hero-action-line { display: none; }
 
+/* STICKY START ON THE SETUP SCREEN TOO (25 Nov 2026, Ruan on an iPhone 11:
+   "start button still bit off screen"). The Guide cards and the minutes dial
+   fill a phone's pane, so Start landed half under the tab bar. It now sticks
+   to the bottom of the scroll area exactly as Today's does (same -24px offset
+   and padding, see STICKY START above): always whole and one tap away, and at
+   the end of its own content it simply sits in place. */
+.gv-app.gv-skin-poster.gv-narrow .gv-guidesetup .gv-setup-start {
+  position: sticky;
+  bottom: -24px;
+  z-index: 4;
+  margin: 0 calc(-1 * var(--gv-page-gutter)) 10px;
+  padding: 10px var(--gv-page-gutter) 30px;
+  background-image: linear-gradient(180deg, transparent 0, var(--gv-bg) 12px);
+}
+.gv-app.gv-skin-poster.gv-narrow .gv-guidesetup .gv-setup-start .gv-btn-go { margin-top: 0; }
+
 /* ---------- REWARDS UI (design 10: level strip, XP chip, quest, XP card, medals, profile) ----------
    One markup (src/rewards-ui.js), drawn here with Apex's own devices: hexagons from a rectangle and two
    border triangles (the streak badge's technique, twice: the tier ring, then the page colour inside),
